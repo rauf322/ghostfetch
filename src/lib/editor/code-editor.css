@@ -1,0 +1,80 @@
+/* The body editor (code-editor.ts) and its vim keys (vim.ts), which build their own elements, and
+   the syntax colours of highlight() and tokens(). Plain CSS on theme.css's values: the Zen test
+   loads this file as it is, next to the editor's TypeScript (see test/fixtures.mjs). */
+
+/* rows: the find bar, the text, and vim's status line (each 0 px while hidden) */
+.code {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto;
+  height: 280px; min-height: 120px; resize: vertical; overflow: hidden;
+  border: 1px solid var(--line); background: var(--code-bg);
+  font-family: var(--font); font-size: 11.5px; line-height: 1.75; letter-spacing: 0;
+}
+.code:focus-within { border-color: var(--t50); }
+.code .icon { flex: none; }
+.code-gutter, .code-main { grid-row: 2; }
+.code-gutter { overflow: hidden; padding: 8px 0; min-width: 34px; border-right: 1px solid var(--line-soft); color: var(--t20); text-align: right; user-select: none; }
+
+/* the body's own find bar (Cmd/Ctrl+F), a row of cells across the top of the editor */
+.code-find { grid-column: 1 / -1; grid-row: 1; display: flex; align-items: stretch; height: 32px; border-bottom: 1px solid var(--line); background: var(--bg); }
+.code-find-icon { display: flex; align-items: center; padding-left: 10px; color: var(--t30); }
+.code-find-input {
+  flex: 1; min-width: 0; height: 100%; padding: 0 10px; border: 0; background: transparent; outline: none;
+  font-size: 11.5px; letter-spacing: 0.02em; color: var(--text);
+}
+.code-find-input::placeholder { color: var(--t30); }
+.code-find-count { display: flex; align-items: center; padding: 0 10px; white-space: nowrap; font-size: 10.5px; font-variant-numeric: tabular-nums; color: var(--t40); }
+.code-find.none .code-find-count { color: var(--text); }
+.code-find button { display: grid; place-items: center; width: 32px; padding: 0; border: 0; border-left: 1px solid var(--line); background: none; color: var(--t50); cursor: pointer; }
+.code-find button:hover { background: var(--pressed); color: var(--text); }
+.code-marks mark { color: transparent; background: rgba(241, 239, 232, 0.16); }
+.code-marks mark.current { background: rgba(52, 211, 153, 0.32); box-shadow: 0 0 0 1px var(--signal); }
+.code-lines { white-space: pre; padding: 0 9px 0 10px; }
+.code-main { position: relative; overflow: hidden; }
+.code-main pre, .code-main textarea {
+  position: absolute; inset: 0; margin: 0; padding: 8px 40px 8px 12px;
+  border: 0; font: inherit; letter-spacing: 0; tab-size: 2; white-space: pre; overflow: auto;
+}
+.code-main pre { overflow: hidden; pointer-events: none; color: var(--t65); }
+.code-main .code-marks { color: transparent; }
+/* vim's block cursor, on its own layer above the highlighted text: inverted white, or an outline
+   while the editor isn't focused. The textarea's own caret only shows in Insert mode. */
+.code-main .code-cursor { color: transparent; }
+.code-cursor .cursor { background: var(--text); color: #000; }
+.code:not(:focus-within) .code-cursor .cursor { background: none; color: transparent; box-shadow: inset 0 0 0 1px var(--t50); }
+.code[data-vim]:not([data-vim="insert"]) .code-main textarea { caret-color: transparent; }
+.code-main textarea { color: transparent; caret-color: var(--text); background: transparent; resize: none; outline: none; scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+.code-main textarea::selection { background: rgba(255, 255, 255, 0.18); color: transparent; }
+.code-main textarea::placeholder { color: var(--t30); }
+
+/* vim's status line across the bottom of the editor: mode, keys typed so far, cursor position */
+.code-vim {
+  grid-column: 1 / -1; grid-row: 3; display: flex; align-items: stretch; height: 24px;
+  border-top: 1px solid var(--line); background: var(--bg); white-space: nowrap; overflow: hidden;
+}
+.code-vim > span { display: flex; align-items: center; padding: 0 10px; }
+.code-vim-mode {
+  gap: 7px; min-width: 86px; border-right: 1px solid var(--line);
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--t65);
+}
+/* hollow square in Normal, the green square while typing, inverted white while selecting */
+.code-vim-mode::before { content: ""; flex: none; width: 7px; height: 7px; box-shadow: inset 0 0 0 1px var(--t40); }
+.code[data-vim="insert"] .code-vim-mode { color: #fff; }
+.code[data-vim="insert"] .code-vim-mode::before { background: var(--signal); box-shadow: none; }
+.code[data-vim^="visual"] .code-vim-mode { background: var(--text); color: #000; font-weight: 500; }
+.code[data-vim^="visual"] .code-vim-mode::before { background: #000; box-shadow: none; }
+.code-vim-keys { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 11px; color: var(--t65); }
+.code-vim-keys.message { color: var(--text); }
+.code-vim-pos { font-size: 10.5px; font-variant-numeric: tabular-nums; color: var(--t40); }
+/* "/" and "?" open the find bar as vim's search line, with that character instead of the icon */
+.code-find-prompt { display: none; }
+.code-find.vim-search .code-find-icon { padding-left: 12px; font-size: 12px; color: var(--t80); }
+.code-find.vim-search .code-find-icon svg { display: none; }
+.code-find.vim-search .code-find-prompt { display: inline; }
+
+/* syntax colours */
+.tk-key { color: var(--tk-key); }
+.tk-str { color: var(--tk-str); }
+.tk-num { color: var(--tk-num); }
+.tk-lit { color: var(--tk-lit); }
+.tk-kw { color: var(--tk-kw); }
+.tk-com { color: var(--tk-com); font-style: italic; }

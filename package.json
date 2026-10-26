@@ -1,0 +1,48 @@
+{
+  "name": "ghostfetch",
+  "version": "0.6.0",
+  "private": true,
+  "type": "module",
+  "description": "Ghostfetch browser extension for Chrome and Firefox/Zen, built with WXT and TypeScript; its popup and editor are React, on Base UI and styled with Tailwind. See README.md for building, testing and packaging.",
+  "scripts": {
+    "postinstall": "wxt prepare",
+    "dev": "wxt",
+    "build": "wxt build && wxt build -b firefox",
+    "zip": "wxt zip && wxt zip -b firefox",
+    "check": "tsc --noEmit",
+    "lint": "oxlint . --deny-warnings",
+    "lint:fix": "oxlint . --fix",
+    "format": "oxfmt --check .",
+    "format:fix": "oxfmt .",
+    "browsers": "playwright-core install chromium",
+    "test": "wxt build && node test/e2e.mjs",
+    "test:firefox": "wxt build -b firefox && node test/firefox.mjs",
+    "test:kit": "NODE_ENV=production wxt build --mode kit && NODE_ENV=production wxt build -b firefox --mode kit && node test/kit.mjs",
+    "test:release": "npm run zip && node test/release.mjs",
+    "lint:firefox": "wxt build -b firefox && web-ext lint --source-dir .output/firefox-mv3",
+    "start:zen": "ZEN=/Applications/Zen.app/Contents/MacOS/zen wxt -b firefox"
+  },
+  "dependencies": {
+    "@base-ui/react": "1.9.0",
+    "class-variance-authority": "0.7.1",
+    "clsx": "2.1.1",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "tailwind-merge": "3.7.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "4.3.3",
+    "@types/chrome": "0.3.6",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@wxt-dev/module-react": "1.2.2",
+    "oxfmt": "0.74.0",
+    "oxlint": "1.89.0",
+    "playwright-core": "1.64.1",
+    "puppeteer-core": "25.16.0",
+    "tailwindcss": "4.3.3",
+    "typescript": "7.0.2",
+    "web-ext": "10.8.0",
+    "wxt": "0.21.4"
+  }
+}

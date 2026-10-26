@@ -1,0 +1,19 @@
+{
+  "extends": "./.wxt/tsconfig.json",
+  "compilerOptions": {
+    // The text-editing code (vim, the editor, URL matching) indexes strings and arrays inside
+    // bounds it checks itself; flagging every one of those would bury real problems.
+    "noUncheckedIndexedAccess": false,
+    // Only TypeScript that can be stripped without compiling: the tests import src/lib/store.ts
+    // directly, and the test server hands the editor's sources to the browser the same way.
+    "erasableSyntaxOnly": true,
+    // TypeScript 6 and later only load the @types packages listed here: the extension APIs, and
+    // Node's for wxt.config.ts.
+    "types": ["chrome", "node"],
+    // React's JSX, in the .tsx files: the UI kit and the pages built from it.
+    "jsx": "react-jsx",
+    // The "@/" WXT gives Vite, spelled out for shadcn's CLI (components.json), which reads the
+    // inherited one from the wrong folder and would write components outside the project.
+    "paths": { "@/*": ["./src/*"] }
+  }
+}

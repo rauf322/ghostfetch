@@ -1,0 +1,45 @@
+/* Ghostfetch's look, after effect.institute: black, warm white at a few opacities, 1px hairline
+   cells, square corners and Commit Mono throughout. The one colour is the green square: it means
+   "on" or "a rule fired". Errors are inverted white instead of red.
+
+   These are its values, in plain CSS: kit.css makes them Tailwind's theme for the screens, and the
+   body editor's own stylesheet (src/lib/editor/code-editor.css) uses them as they are. */
+
+@font-face {
+  font-family: "Commit Mono";
+  src: url("/fonts/CommitMono-VF.woff2") format("woff2");
+  font-weight: 200 700;
+  font-style: normal;
+  font-display: block;
+}
+
+:root {
+  color-scheme: dark;
+  --bg: #000;
+  --text: #f1efe8;
+  --t80: rgba(255, 255, 255, 0.8);
+  --t65: rgba(255, 255, 255, 0.65);
+  --t50: rgba(255, 255, 255, 0.5);
+  --t40: rgba(255, 255, 255, 0.4);
+  --t30: rgba(255, 255, 255, 0.3);
+  --t20: rgba(255, 255, 255, 0.2);
+  --line: #222;
+  --line-strong: #333;
+  --line-soft: #181818;
+  --panel: rgba(255, 255, 255, 0.02);
+  --hover: #0a0a0a;
+  --pressed: #141414;
+  --code-bg: #050505;
+  --signal: #34d399;
+  --shadow: 0 12px 32px rgba(0, 0, 0, 0.7);
+  --font: "Commit Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  /* effect.institute's dotted grid, behind empty space */
+  --dots: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0.8px, transparent 1.2px) 7px 7px / 14px 14px;
+  /* code keeps effect.institute's GitHub-dark colours, slightly dimmed */
+  --tk-key: #e1e4e8;
+  --tk-str: rgba(158, 203, 255, 0.9);
+  --tk-num: rgba(255, 171, 112, 0.9);
+  --tk-lit: rgba(249, 117, 131, 0.95);
+  --tk-kw: rgba(249, 117, 131, 0.95);
+  --tk-com: #6a737d;
+}

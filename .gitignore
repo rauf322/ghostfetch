@@ -1,0 +1,9 @@
+# Installed packages, and what the build and `wxt prepare` make: npm ci and npm run build/zip
+# recreate them.
+node_modules/
+.output/
+.wxt/
+web-ext-artifacts/
+
+.DS_Store
+*.log

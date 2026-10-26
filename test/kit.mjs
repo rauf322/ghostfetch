@@ -16,7 +16,7 @@ import http from 'node:http';
 import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
-import puppeteer from 'puppeteer-core';
+import { launch } from 'puppeteer-core';
 import { icon } from '../src/lib/icons.ts';
 import { ROOT, check, expect, finish, requireBuild, sleep } from './fixtures.mjs';
 
@@ -47,12 +47,13 @@ const SLOTS = Object.fromEntries(
       ];
     }),
 );
-// The icons as src/lib/icons.ts draws them as HTML, for the body editor's find bar.
+// The icons as src/lib/icons.ts draws them as HTML, for the body editor's find bar. The names
+// come from its list of shapes, whose long ones oxfmt moves onto the line after the name.
 const ICONS = Object.fromEntries(
   [
     ...fs
       .readFileSync(path.join(ROOT, 'src', 'lib', 'icons.ts'), 'utf8')
-      .matchAll(/^ {2}(\w+): '/gm),
+      .matchAll(/^ {2}(\w+):\s*'/gm),
   ].map(([, name]) => [name, icon(name, 18)]),
 );
 
@@ -371,7 +372,7 @@ async function runChecks(browser, open) {
       undefined,
       'two toasts',
     );
-    const two = (await toasts()).sort();
+    const two = (await toasts()).toSorted();
     // A real click on the Undo of the toast that shows.
     await kit.clickPoint(
       await kit.run(() => {
@@ -571,7 +572,7 @@ async function inZen() {
   });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const origin = `http://127.0.0.1:${server.address().port}`;
-  const browser = await puppeteer.launch({
+  const browser = await launch({
     browser: 'firefox',
     executablePath: FIREFOX,
     headless: !process.env.HEADED,

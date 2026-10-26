@@ -28,22 +28,20 @@ export function CodeEditor({
   ...props
 }: CodeEditorProps) {
   const slot = useRef<HTMLDivElement>(null);
-  const onChangeRef = useRef(onChange);
-  useEffect(() => {
-    onChangeRef.current = onChange;
-  });
-  const [editor] = useState(() =>
-    createCodeEditor({
-      value,
-      language,
-      onChange: (text) => onChangeRef.current?.(text),
-    }),
-  );
+  const [editor] = useState(() => createCodeEditor({ value, language }));
   useImperativeHandle(ref, () => editor, [editor]);
   useEffect(() => {
     slot.current!.append(editor.root);
     return () => editor.root.remove();
   }, [editor]);
+  // Every edit reaches the textarea as an input event, whether it's typed, made with vim's keys
+  // or by Format. The editor's own listener has redrawn the highlighting by then.
+  useEffect(() => {
+    if (!onChange) return undefined;
+    const changed = () => onChange(editor.value);
+    editor.textarea.addEventListener('input', changed);
+    return () => editor.textarea.removeEventListener('input', changed);
+  }, [editor, onChange]);
   return <div data-slot="code-editor" ref={slot} className={className} {...props} />;
 }
 

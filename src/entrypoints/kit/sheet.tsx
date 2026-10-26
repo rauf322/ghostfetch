@@ -517,7 +517,7 @@ export function Sheet({ open }: { open: boolean }) {
             placeholder="Paste a URL to test the pattern"
             aria-label="Test URL"
           />
-          <label className="relative flex h-[42px] items-center border border-border">
+          <div className="relative flex h-[42px] items-center border border-border">
             <span className="pointer-events-none absolute left-3.5 flex text-t30">
               <Icon name="search" size={14} />
             </span>
@@ -528,7 +528,7 @@ export function Sheet({ open }: { open: boolean }) {
               aria-label="Search rules"
               className="flex-1 pl-9"
             />
-          </label>
+          </div>
           <div className="flex h-11 border border-border">
             <Input
               variant="bare"

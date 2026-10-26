@@ -172,8 +172,11 @@ export function RulesView({ selectedId, onSelect, onImport, onExport }: RulesVie
                 <strong>No rules yet.</strong> Pick what you want to do:
               </p>
               <TypeCards onPick={createOfType} />
+              {/* Text that ends at a line break is a string, which oxfmt can't split at a space:
+                  each piece stays one run of text, so it lines up to the pixel as in 0.5.1. */}
               <p className="text-meta leading-[1.55] text-t40">
-                Or open <b>Traffic</b>, click a request and choose{' '}
+                Or open <b>Traffic</b>
+                {', click a request and choose '}
                 <b>Mock this response</b>.
               </p>
             </ListEmpty>
@@ -205,7 +208,12 @@ export function RulesView({ selectedId, onSelect, onImport, onExport }: RulesVie
                   drag?.over === rule.id ? (drag.after ? 'after' : 'before') : undefined
                 }
                 className={cn(DROP_MARK, drag?.id === rule.id && 'opacity-40')}
-                onClick={() => select(rule.id)}
+                // A click on the rule's switch (or on the hidden checkbox Base UI clicks for it)
+                // turns the rule on or off without opening it.
+                onClick={(event) => {
+                  if (!(event.target as Element).closest('[data-slot="switch"], input'))
+                    select(rule.id);
+                }}
                 // Drag to reorder: response rules are tried top to bottom and the first match wins.
                 onDragStart={(event) => {
                   event.dataTransfer.effectAllowed = 'move';
@@ -253,18 +261,15 @@ export function RulesView({ selectedId, onSelect, onImport, onExport }: RulesVie
                 {error && (
                   <span title={error} className="size-2 flex-none bg-foreground" />
                 )}
-                {/* A click on the switch, or on its hidden input, doesn't open the rule. */}
-                <span className="contents" onClick={(event) => event.stopPropagation()}>
-                  <Switch
-                    size="sm"
-                    checked={rule.enabled}
-                    title={`Turn this rule ${rule.enabled ? 'off' : 'on'}`}
-                    onCheckedChange={(on) => {
-                      rule.enabled = on;
-                      touchRule(rule);
-                    }}
-                  />
-                </span>
+                <Switch
+                  size="sm"
+                  checked={rule.enabled}
+                  title={`Turn this rule ${rule.enabled ? 'off' : 'on'}`}
+                  onCheckedChange={(on) => {
+                    rule.enabled = on;
+                    touchRule(rule);
+                  }}
+                />
               </Item>
             );
           })}
@@ -303,7 +308,8 @@ export function RulesView({ selectedId, onSelect, onImport, onExport }: RulesVie
             </EmptyTitle>
             <EmptyDescription>
               Rules apply on every site Ghostfetch runs on while it's switched on. The
-              quickest start: open <b>Traffic</b>, click a request and choose{' '}
+              quickest start: open <b>Traffic</b>
+              {', click a request and choose '}
               <b>Mock this response</b>.
             </EmptyDescription>
             <TypeCards onPick={createOfType} />

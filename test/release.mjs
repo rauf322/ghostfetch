@@ -66,7 +66,7 @@ const files = (dir) =>
   fs
     .readdirSync(dir, { recursive: true })
     .filter((file) => fs.statSync(path.join(dir, file)).isFile())
-    .sort();
+    .toSorted();
 const read = (browser, file) => fs.readFileSync(path.join(builds[browser], file), 'utf8');
 
 // The file names in a zip, read from its central directory.
@@ -86,7 +86,7 @@ function zipEntries(file) {
     names.push(zip.toString('utf8', at + 46, at + 46 + nameLength));
     at += 46 + nameLength + zip.readUInt16LE(at + 30) + zip.readUInt16LE(at + 32);
   }
-  return names.filter((name) => !name.endsWith('/')).sort();
+  return names.filter((name) => !name.endsWith('/')).toSorted();
 }
 const artifact = (suffix) =>
   path.join(ROOT, '.output', `ghostfetch-${version}-${suffix}`);

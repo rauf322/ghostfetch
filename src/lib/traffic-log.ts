@@ -133,7 +133,7 @@ export function createTrafficLog({ followActiveTab, preserve }: TrafficLogOption
     if (!isWebUrl(tab?.url)) {
       tab =
         found.find((candidate) => candidate.id === targetId) ||
-        [...found].sort((a, b) => (b.lastAccessed || 0) - (a.lastAccessed || 0))[0];
+        found.toSorted((a, b) => (b.lastAccessed || 0) - (a.lastAccessed || 0))[0];
     }
     setTarget(tab?.id ?? null);
   }

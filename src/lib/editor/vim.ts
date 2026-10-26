@@ -273,9 +273,11 @@ function wordForward(
     const start = charClass(text, cursor.pos, big);
     let step = inc(text, cursor);
     if (step === -1 || (step >= 1 && stop)) return cursor.pos;
-    while (start !== 0 && charClass(text, cursor.pos, big) === start) {
-      step = inc(text, cursor);
-      if (step === -1 || (step >= 1 && stop)) return cursor.pos;
+    if (start !== 0) {
+      while (charClass(text, cursor.pos, big) === start) {
+        step = inc(text, cursor);
+        if (step === -1 || (step >= 1 && stop)) return cursor.pos;
+      }
     }
     while (charClass(text, cursor.pos, big) === 0 && !onEmptyLine(text, cursor.pos)) {
       step = inc(text, cursor);
@@ -329,8 +331,10 @@ function wordEndBackward(text: string, pos: number, count: number, big: boolean)
   for (let left = count; left > 0; left--) {
     const start = charClass(text, cursor.pos, big);
     if (dec(text, cursor) === -1) return cursor.pos;
-    while (start !== 0 && charClass(text, cursor.pos, big) === start) {
-      if (dec(text, cursor) === -1) return cursor.pos;
+    if (start !== 0) {
+      while (charClass(text, cursor.pos, big) === start) {
+        if (dec(text, cursor) === -1) return cursor.pos;
+      }
     }
     while (charClass(text, cursor.pos, big) === 0 && !onEmptyLine(text, cursor.pos)) {
       if (dec(text, cursor) === -1) return cursor.pos;
@@ -1005,15 +1009,15 @@ export function createVim({
   function findCharacter(
     { text: value, pos, count }: MotionContext,
     target: FindTarget,
-    repeat = false,
+    repeated = false,
   ): MotionResult | null {
-    if (!repeat) lastFind = target;
+    if (!repeated) lastFind = target;
     const { char, forward, till } = target;
     const start = lineStart(value, pos);
     const end = lineEnd(value, pos);
     let at = pos;
     // Repeating t from right before its character would stay put, so it looks one further.
-    if (repeat && till && count === 1) at += forward ? 1 : -1;
+    if (repeated && till && count === 1) at += forward ? 1 : -1;
     for (let n = 0; n < count; n++) {
       at = forward
         ? value.indexOf(char, at + 1)
@@ -1298,7 +1302,7 @@ export function createVim({
       );
   }
 
-  function put(after: boolean, count: number) {
+  function put(afterCursor: boolean, count: number) {
     if (!register.text) {
       message = 'Nothing to put';
       return;
@@ -1310,7 +1314,7 @@ export function createVim({
     const value = text();
     const content = register.text.repeat(count);
     if (register.linewise) {
-      if (!after) {
+      if (!afterCursor) {
         const start = lineStart(value, head);
         edit(start, start, content);
         head = firstNonBlank(text(), start);
@@ -1323,7 +1327,7 @@ export function createVim({
       head = firstNonBlank(text(), end + 1);
       return;
     }
-    const at = after && !atLineEnd(value, head) ? next(value, head) : head;
+    const at = afterCursor && !atLineEnd(value, head) ? next(value, head) : head;
     edit(at, at, content);
     // On the last character put, or at the start of what was put when it spans lines.
     head = content.includes('\n') ? at : at + content.length - 1;
@@ -1493,9 +1497,9 @@ export function createVim({
   // One step of the browser's history. Chrome keeps one history for the whole page, so a step
   // that turns out to belong to another field is put back. False if the body didn't change.
   function browserStep(name: 'undo' | 'redo') {
-    const before = text();
+    const previous = text();
     if (!exec(name)) return false;
-    if (text() !== before) return true;
+    if (text() !== previous) return true;
     exec(name === 'undo' ? 'redo' : 'undo');
     textarea.focus({ preventScroll: true });
     return false;
@@ -1586,9 +1590,9 @@ export function createVim({
 
   // ---------------------------------------------------------- modes
 
-  function setMode(next: Mode) {
-    mode = next;
-    root.dataset.vim = next;
+  function setMode(to: Mode) {
+    mode = to;
+    root.dataset.vim = to;
   }
 
   // `indented`: the command put in the indentation (o, O, cc, S), which goes again at Esc if
@@ -1862,9 +1866,10 @@ export function createVim({
         return edit(
           range.start,
           range.end,
-          [...value.slice(range.start, range.end)]
-            .map((char) => (char === '\n' ? char : command.arg))
-            .join(''),
+          // Array.from() splits it into characters, not UTF-16 units, so an emoji is one.
+          Array.from(value.slice(range.start, range.end), (char) =>
+            char === '\n' ? char : command.arg,
+          ).join(''),
         );
       case 'o':
       case 'O':
@@ -1933,7 +1938,7 @@ export function createVim({
       const { start, end } = selection();
       const lines =
         lineIndex(value, Math.max(start, end - 1)) - lineIndex(value, start) + 1;
-      const chars = [...value.slice(start, end)].length;
+      const chars = Array.from(value.slice(start, end)).length;
       detail =
         mode === 'visual-line' || lines > 1
           ? `${lines} ${lines === 1 ? 'line' : 'lines'}`
@@ -1955,11 +1960,12 @@ export function createVim({
     if (top - margin < textarea.scrollTop) textarea.scrollTop = top - margin;
     else if (top + lineHeight + margin > textarea.scrollTop + textarea.clientHeight)
       textarea.scrollTop = top + lineHeight + margin - textarea.clientHeight;
-    const left = block.offsetLeft - parseFloat(style.paddingLeft);
-    const right = block.offsetLeft + block.offsetWidth + parseFloat(style.paddingRight);
-    if (left < textarea.scrollLeft) textarea.scrollLeft = left;
-    else if (right > textarea.scrollLeft + textarea.clientWidth)
-      textarea.scrollLeft = right - textarea.clientWidth;
+    const leftEdge = block.offsetLeft - parseFloat(style.paddingLeft);
+    const rightEdge =
+      block.offsetLeft + block.offsetWidth + parseFloat(style.paddingRight);
+    if (leftEdge < textarea.scrollLeft) textarea.scrollLeft = leftEdge;
+    else if (rightEdge > textarea.scrollLeft + textarea.clientWidth)
+      textarea.scrollLeft = rightEdge - textarea.clientWidth;
     sync();
   }
 

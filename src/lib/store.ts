@@ -370,8 +370,8 @@ function pathOf(url: string) {
   }
 }
 
-function escapeRegex(text: string) {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+function escapeRegex(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 export async function loadState(): Promise<StoredState> {

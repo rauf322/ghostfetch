@@ -53,7 +53,7 @@ try {
     fs
       .readdirSync(base, { recursive: true })
       .filter((file) => fs.statSync(path.join(base, file)).isFile())
-      .sort();
+      .toSorted();
   const rebuilt = path.join(dir, '.output', 'firefox-mv3');
   const ours = list(BUILD);
   const theirs = list(rebuilt);

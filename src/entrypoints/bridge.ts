@@ -51,31 +51,37 @@ export default defineUnlistedScript(() => {
   const isTop = window === window.top;
   const log: LogEntry[] = [];
   const viewers = new Set<chrome.runtime.Port>();
+  // To one Traffic view. A chrome.runtime.Port takes no target origin, unlike window.postMessage().
+  const send = (viewer: chrome.runtime.Port, message: LogPortMessage) =>
+    // oxlint-disable-next-line unicorn/require-post-message-target-origin
+    viewer.postMessage(message);
   let recording = true;
   let sequence = 0;
 
   const channel = new MessageChannel();
   const port = channel.port1;
-  port.onmessage = ({ data }) => {
+  port.addEventListener('message', ({ data }) => {
     if (data?.type === 'log') record(data.entry);
-  };
+  });
+  // Setting onmessage starts a port; with addEventListener, start() does.
+  port.start();
   window.postMessage({ mocktail: 'port' }, '*', [channel.port2]);
   sendState();
 
   async function sendState() {
     try {
-      const { enabled, record, rules } = (await chrome.storage.local.get({
+      const stored = (await chrome.storage.local.get({
         enabled: true,
         record: true,
         rules: [],
       })) as { enabled: boolean; record: boolean; rules: unknown };
-      recording = record;
+      recording = stored.record;
       port.postMessage({
         type: 'state',
-        enabled,
-        record,
-        rules: Array.isArray(rules)
-          ? rules.filter((rule) => rule?.type === 'response' && rule.enabled)
+        enabled: stored.enabled,
+        record: stored.record,
+        rules: Array.isArray(stored.rules)
+          ? stored.rules.filter((rule) => rule?.type === 'response' && rule.enabled)
           : [],
       } satisfies PageState);
     } catch {
@@ -127,8 +133,7 @@ export default defineUnlistedScript(() => {
     }
     log.push(entry);
     if (log.length > MAX_LOG) log.splice(0, log.length - MAX_LOG);
-    for (const viewer of viewers)
-      viewer.postMessage({ type: 'entry', entry } satisfies LogPortMessage);
+    for (const viewer of viewers) send(viewer, { type: 'entry', entry });
   }
 
   chrome.storage.onChanged.addListener((changes, area) => {
@@ -151,10 +156,6 @@ export default defineUnlistedScript(() => {
     viewer.onMessage.addListener((message: LogViewerMessage | undefined) => {
       if (message?.type === 'clear') log.length = 0;
     });
-    viewer.postMessage({
-      type: 'snapshot',
-      entries: log,
-      url: location.href,
-    } satisfies LogPortMessage);
+    send(viewer, { type: 'snapshot', entries: log, url: location.href });
   });
 });

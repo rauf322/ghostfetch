@@ -192,11 +192,13 @@ export function RuleEditor({ rule, focusUrl, revision, onSelect }: RuleEditorPro
           }
           className="flex-1 px-3.5 text-title font-medium text-white placeholder:text-t40 hover:bg-hover focus:bg-pressed"
         />
-        {/* The rule's own switch fills a cell, so the whole cell is clickable. */}
+        {/* The rule's own switch fills a cell, so the whole cell is clickable. The words are
+            for screen readers; the title is the same words on hover. */}
         <label
           title="Turn this rule on or off"
           className="flex w-14 flex-none cursor-pointer items-center justify-center border-l border-border"
         >
+          <span className="sr-only">Turn this rule on or off</span>
           <Switch
             checked={rule.enabled}
             onCheckedChange={(on) =>
@@ -270,7 +272,8 @@ export function RuleEditor({ rule, focusUrl, revision, onSelect }: RuleEditorPro
               </SegmentedItem>
             ))}
           </Segmented>
-          {/* Each sentence is one run of text, as before, so the browser lays it out the same. */}
+          {/* Each piece of text is one run, so it lines up to the pixel as in 0.5.1. Text that
+              ends at a line break is a string, which oxfmt can't split at a space. */}
           <CardHint>
             {rule.type === 'response' ? (
               <>
@@ -346,7 +349,7 @@ export function RuleEditor({ rule, focusUrl, revision, onSelect }: RuleEditorPro
           {rule.type === 'response' && (
             <label className="flex min-w-0 flex-col gap-[5px]">
               <FieldLabel>
-                GraphQL operation{' '}
+                {'GraphQL operation '}
                 <em className="tracking-mono text-t30 not-italic normal-case">
                   optional
                 </em>
@@ -554,9 +557,12 @@ export function RuleEditor({ rule, focusUrl, revision, onSelect }: RuleEditorPro
               }
             />
             <CardHint>
-              A full URL, including <code>http://</code> or <code>https://</code>. With{' '}
-              <b>URL regex</b> you can reuse capture groups: match{' '}
-              <code>{'^https://api\\.example\\.com/(.*)'}</code> and redirect to{' '}
+              A full URL, including <code>http://</code> or <code>https://</code>
+              {'. With '}
+              <b>URL regex</b>
+              {' you can reuse capture groups: match '}
+              <code>{'^https://api\\.example\\.com/(.*)'}</code>
+              {' and redirect to '}
               <code>{'http://localhost:4000/\\1'}</code>.
             </CardHint>
           </Card>
@@ -744,7 +750,7 @@ function Verdict({
 function regexError({ match }: Rule) {
   if (match.mode !== 'regex' || !match.url.trim()) return '';
   try {
-    new RegExp(match.url.trim());
+    RegExp(match.url.trim()); // throws a SyntaxError if the pattern doesn't compile
     return '';
   } catch (error) {
     return (error as Error).message;

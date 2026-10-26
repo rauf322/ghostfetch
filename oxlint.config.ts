@@ -17,6 +17,15 @@ export default defineConfig({
     react: {
       version: '19.0.0',
     },
+    // The kit's form controls, as the elements they render, so the accessibility rules can see
+    // that a <label> around one labels it. A Switch is a <span role="switch"> next to a hidden
+    // checkbox, which is what a label around it clicks.
+    'jsx-a11y': {
+      components: {
+        Input: 'input',
+        Switch: 'input',
+      },
+    },
   },
   rules: {
     'import/no-unassigned-import': 'off',

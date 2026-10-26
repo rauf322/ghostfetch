@@ -148,10 +148,11 @@ export function BackButton({ className, ...props }: ComponentProps<typeof Button
   );
 }
 
-// A search field filling a cell of a toolbar, with the magnifier inside it.
+// A search field filling a cell of a toolbar, with the magnifier inside it. The field covers the
+// whole cell, magnifier included, so a click anywhere in it goes to the field.
 export function SearchField({ className, ...props }: ComponentProps<typeof Input>) {
   return (
-    <label className="relative flex min-w-0 flex-1 items-center">
+    <div className="relative flex min-w-0 flex-1 items-center">
       <span
         aria-hidden="true"
         className="pointer-events-none absolute left-3.5 flex text-t30"
@@ -164,7 +165,7 @@ export function SearchField({ className, ...props }: ComponentProps<typeof Input
         className={cn('flex-1 pl-9', className)}
         {...props}
       />
-    </label>
+    </div>
   );
 }
 

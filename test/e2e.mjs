@@ -192,10 +192,14 @@ try {
           let loadFired = false;
           request.open(verb, target);
           request.responseType = type;
+          // Apps listen both ways, so a mocked request has to fire both: the on… handlers
+          // here, addEventListener() for load.
+          // oxlint-disable-next-line unicorn/prefer-add-event-listener
           request.onreadystatechange = () => states.push(request.readyState);
           request.addEventListener('load', () => {
             loadFired = true;
           });
+          // oxlint-disable-next-line unicorn/prefer-add-event-listener
           request.onloadend = () =>
             resolve({
               status: request.status,
@@ -724,9 +728,8 @@ try {
       await app.inputValue('[data-testid="match-url"]'),
       '/api/user?case=live-check',
     );
-    const body = await app.locator('.code textarea').inputValue();
-    expect(JSON.parse(body).name, 'Real');
-    await app.locator('.code textarea').fill('{"fromTraffic": true}');
+    expect(JSON.parse(await body.inputValue()).name, 'Real');
+    await body.fill('{"fromTraffic": true}');
     await sleep(500);
     expect((await call('/api/user?case=live-check')).body, { fromTraffic: true });
   });
@@ -758,6 +761,8 @@ try {
     await app.click('[data-testid="tab-rules"]');
     await app.locator('[data-testid="rule"]').nth(3).click();
     await app.screenshot({ path: `${SHOTS}/narrow-dark.png` });
+    // Back to the size the checks below expect, with the list and the editor side by side.
+    await app.setViewportSize({ width: 1280, height: 820 });
   }
 
   const popup = await context.newPage();
@@ -794,8 +799,11 @@ try {
             if (event.data?.mocktail !== 'port' || !event.ports[0]) return;
             event.stopImmediatePropagation();
             got.push('port');
-            event.ports[0].onmessage = ({ data }) =>
-              got.push(`${data?.type}: ${data?.rules?.length ?? 0} rules`);
+            const [port] = event.ports;
+            port.addEventListener('message', ({ data }) =>
+              got.push(`${data?.type}: ${data?.rules?.length ?? 0} rules`),
+            );
+            port.start();
           };
           window.addEventListener('message', steal, true);
           // Pretend to be the interceptor asking for a channel.
@@ -804,10 +812,10 @@ try {
         }),
     );
     expect(stolen, []);
-    const body = await probe.evaluate(() =>
+    const response = await probe.evaluate(() =>
       fetch('/api/user?case=replace').then((r) => r.json()),
     );
-    expect(body, { name: 'Mocked' }, 'mocking still works afterwards');
+    expect(response, { name: 'Mocked' }, 'mocking still works afterwards');
     await probe.close();
   });
   await check('a page cannot steal the rule channel while it loads', async () => {
@@ -882,28 +890,28 @@ try {
     const probe = await context.newPage();
     await probe.goto(`${ORIGIN}${pathname}`);
     await sleep(600);
-    const body = await probe.evaluate(() =>
+    const response = await probe.evaluate(() =>
       fetch('/api/user?case=replace').then((r) => r.json()),
     );
     await sleep(200);
     const stolen = await probe.evaluate(() => window.stolen);
     await probe.close();
-    return { body, stolen };
+    return { response, stolen };
   }
   await check(
     'a page that patches the message plumbing still cannot get the channel',
     async () => {
-      const { body, stolen } = await probeChannel('/steal-patched');
+      const { response, stolen } = await probeChannel('/steal-patched');
       expect(stolen, []);
-      expect(body, { name: 'Mocked' }, 'mocking still works');
+      expect(response, { name: 'Mocked' }, 'mocking still works');
     },
   );
   await check(
     'a page cannot slip the interceptor a forged channel with dispatchEvent()',
     async () => {
-      const { body, stolen } = await probeChannel('/steal-forged');
+      const { response, stolen } = await probeChannel('/steal-forged');
       expect(stolen, []);
-      expect(body, { name: 'Mocked' }, 'mocking still works');
+      expect(response, { name: 'Mocked' }, 'mocking still works');
     },
   );
   await check('local.* hosts get mocks and, once opened, header rules too', async () => {
@@ -984,24 +992,25 @@ try {
     },
   );
   await check('the popup lists the sites you added and removes one with ×', async () => {
-    const popup = await context.newPage();
-    popup.on('pageerror', (error) => errors.push(`popup: ${error.message}`));
-    popup.on(
+    // A new popup, which lists the site added in the check before.
+    const sitesPopup = await context.newPage();
+    sitesPopup.on('pageerror', (error) => errors.push(`popup: ${error.message}`));
+    sitesPopup.on(
       'console',
       (message) =>
         message.type() === 'error' && errors.push(`popup console: ${message.text()}`),
     );
-    await popup.goto(`chrome-extension://${extensionId}/popup.html`);
-    await popup.waitForSelector('[data-testid="site-chip"]');
-    expect(await popup.locator('[data-testid="site-chip"]').allTextContents(), [
+    await sitesPopup.goto(`chrome-extension://${extensionId}/popup.html`);
+    await sitesPopup.waitForSelector('[data-testid="site-chip"]');
+    expect(await sitesPopup.locator('[data-testid="site-chip"]').allTextContents(), [
       'evil.test×',
     ]);
-    await popup.click('[data-testid="site-chip"]:has-text("evil.test") button');
-    await popup.waitForFunction(
+    await sitesPopup.click('[data-testid="site-chip"]:has-text("evil.test") button');
+    await sitesPopup.waitForFunction(
       () => !document.querySelector('[data-testid="site-chip"]'),
     );
     const { sites } = await worker.evaluate(() => chrome.storage.local.get('sites'));
-    await popup.close();
+    await sitesPopup.close();
     expect(sites, []);
   });
 
@@ -1091,6 +1100,29 @@ try {
       { timeout: 3000 },
     );
   });
+  await check(
+    "a rule's switch in the list turns it off and on, and doesn't open it",
+    async () => {
+      const row = app.locator('[data-testid="rule"]', { hasText: 'case=merge' }).first();
+      const state = async () => [
+        (await storedRules()).find((r) => r.match.url === 'case=merge').enabled,
+        await app.inputValue('[data-testid="match-url"]'),
+      ];
+      await row.getByRole('switch').click();
+      await sleep(400);
+      const off = await state();
+      await row.getByRole('switch').click();
+      await sleep(400);
+      // The editor still shows the rule opened in the check before.
+      expect(
+        [off, await state()],
+        [
+          [false, 'case=delay'],
+          [true, 'case=delay'],
+        ],
+      );
+    },
+  );
   await check(
     'Traffic: Matched hides what no rule matched, Preserve keeps the log over a reload, Clear empties it',
     async () => {

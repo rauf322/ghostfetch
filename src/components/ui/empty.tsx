@@ -22,13 +22,15 @@ export function EmptyMedia({ className, ...props }: ComponentProps<'div'>) {
   );
 }
 
-export function EmptyTitle({ className, ...props }: ComponentProps<'h2'>) {
+export function EmptyTitle({ className, children, ...props }: ComponentProps<'h2'>) {
   return (
     <h2
       data-slot="empty-title"
       className={cn('mt-4 mb-1.5 text-title font-medium text-foreground', className)}
       {...props}
-    />
+    >
+      {children}
+    </h2>
   );
 }
 

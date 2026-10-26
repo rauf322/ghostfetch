@@ -103,12 +103,13 @@ export function SelectItem({
       <SelectPrimitive.ItemText className="min-w-0 flex-1 truncate">
         {children}
       </SelectPrimitive.ItemText>
-      {/* The square alone: left without children, Base UI puts a ✔️ in it. */}
+      {/* The square alone: Base UI puts a ✔️ in it unless its children are null. */}
       <SelectPrimitive.ItemIndicator
         data-slot="select-item-indicator"
         className="size-1.5 flex-none bg-foreground"
-        children={null}
-      />
+      >
+        {null}
+      </SelectPrimitive.ItemIndicator>
     </SelectPrimitive.Item>
   );
 }

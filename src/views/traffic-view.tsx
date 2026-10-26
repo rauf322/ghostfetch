@@ -125,16 +125,18 @@ export const TrafficView = memo(function TrafficView({
             .toLowerCase()
             .includes(query)),
     )
-    .reverse();
+    .toReversed();
   const hits = entries.filter((entry) => entry.action).length;
 
   let waiting: ReactNode = null;
   if (entries.length) waiting = 'No requests match the filter.';
   else if (traffic.connected && record)
+    // Text that ends at a line break is a string, which oxfmt can't split at a space: each piece
+    // stays one run of text, so it lines up to the pixel as in 0.5.1.
     waiting = (
       <>
-        Waiting for requests… Use your app and its <code>fetch</code> and <code>XHR</code>{' '}
-        calls show up here.
+        Waiting for requests… Use your app and its <code>fetch</code> and <code>XHR</code>
+        {' calls show up here.'}
       </>
     );
 
@@ -304,7 +306,7 @@ export const TrafficView = memo(function TrafficView({
           <Empty>
             <EmptyTitle className="mt-0">Select a request</EmptyTitle>
             <EmptyDescription>
-              Click a request to see its response, then turn it into a rule with{' '}
+              {'Click a request to see its response, then turn it into a rule with '}
               <b>Mock this response</b>.
             </EmptyDescription>
           </Empty>

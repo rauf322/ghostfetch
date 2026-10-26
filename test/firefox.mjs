@@ -17,7 +17,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import puppeteer from 'puppeteer-core';
+import { launch } from 'puppeteer-core';
 import {
   FIREFOX_BUILD,
   VIM_START,
@@ -88,7 +88,7 @@ function makeTestCopy() {
 const { server, ORIGIN, EVIL_ORIGIN, LOCAL_ORIGIN } = await startServer();
 const RULES = testRules(ORIGIN);
 const COPY = makeTestCopy();
-const browser = await puppeteer.launch({
+const browser = await launch({
   browser: 'firefox',
   executablePath: FIREFOX,
   headless: !process.env.HEADED,
@@ -170,7 +170,10 @@ try {
           const states = [];
           request.open('GET', target);
           request.responseType = type;
+          // The on… handlers, as many apps use them: a mocked request has to fire them too.
+          // oxlint-disable-next-line unicorn/prefer-add-event-listener
           request.onreadystatechange = () => states.push(request.readyState);
+          // oxlint-disable-next-line unicorn/prefer-add-event-listener
           request.onloadend = () =>
             resolve({
               status: request.status,

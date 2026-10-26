@@ -262,16 +262,20 @@ export function App({ inTab, windowId }: { inTab: boolean; windowId: number }) {
           if (file) importFile(file);
         }}
       />
-      <datalist id="content-types">
-        {CONTENT_TYPES.map((type) => (
-          <option key={type} value={type} />
-        ))}
-      </datalist>
-      <datalist id="header-names">
-        {HEADER_NAMES.map((name) => (
-          <option key={name} value={name} />
-        ))}
-      </datalist>
+      <Suggestions id="content-types" values={CONTENT_TYPES} />
+      <Suggestions id="header-names" values={HEADER_NAMES} />
     </Tabs>
+  );
+}
+
+// What a field with list="<id>" offers as you type: the Content-Type and header name fields.
+function Suggestions({ id, values }: { id: string; values: string[] }) {
+  return (
+    <datalist id={id}>
+      {values.map((value) => (
+        // oxlint-disable-next-line jsx-a11y/control-has-associated-label -- its value is the label
+        <option key={value} value={value} />
+      ))}
+    </datalist>
   );
 }

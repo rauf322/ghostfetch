@@ -6,11 +6,19 @@ import { cn } from '../../lib/utils.ts';
 // to the label dims with its tab. Base UI does the keyboard: the arrow keys move between tabs,
 // Enter or Space opens one.
 export function Tabs({ className, ...props }: TabsPrimitive.Root.Props) {
-  return <TabsPrimitive.Root data-slot="tabs" className={cn('flex', className)} {...props} />;
+  return (
+    <TabsPrimitive.Root data-slot="tabs" className={cn('flex', className)} {...props} />
+  );
 }
 
 export function TabsList({ className, ...props }: TabsPrimitive.List.Props) {
-  return <TabsPrimitive.List data-slot="tabs-list" className={cn('flex h-full', className)} {...props} />;
+  return (
+    <TabsPrimitive.List
+      data-slot="tabs-list"
+      className={cn('flex h-full', className)}
+      {...props}
+    />
+  );
 }
 
 export function TabsTrigger({ className, ...props }: TabsPrimitive.Tab.Props) {
@@ -27,9 +35,24 @@ export function TabsTrigger({ className, ...props }: TabsPrimitive.Tab.Props) {
 }
 
 export function TabsCount({ className, ...props }: ComponentProps<'span'>) {
-  return <span data-slot="tabs-count" className={cn('tracking-normal text-t30 group-data-active/tab:text-t50 empty:hidden', className)} {...props} />;
+  return (
+    <span
+      data-slot="tabs-count"
+      className={cn(
+        'tracking-normal text-t30 group-data-active/tab:text-t50 empty:hidden',
+        className,
+      )}
+      {...props}
+    />
+  );
 }
 
 export function TabsContent({ className, ...props }: TabsPrimitive.Panel.Props) {
-  return <TabsPrimitive.Panel data-slot="tabs-content" className={cn('outline-none', className)} {...props} />;
+  return (
+    <TabsPrimitive.Panel
+      data-slot="tabs-content"
+      className={cn('outline-none', className)}
+      {...props}
+    />
+  );
 }

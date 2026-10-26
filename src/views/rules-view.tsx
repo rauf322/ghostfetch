@@ -1,7 +1,7 @@
 // Rules tab: the rule list and the rule editor. In a narrow side panel only one of the
 // two is visible at a time; from 760px wide they sit side by side.
-import { useEffect, useRef, useState } from "react";
-import type { ComponentProps } from "react";
+import { useEffect, useRef, useState } from 'react';
+import type { ComponentProps } from 'react';
 import {
   DetailPane,
   List,
@@ -12,33 +12,33 @@ import {
   SearchField,
   SectionRow,
   Split,
-} from "../components/layout.tsx";
-import { Badge } from "../components/ui/badge.tsx";
-import { Button } from "../components/ui/button.tsx";
+} from '../components/layout.tsx';
+import { Badge } from '../components/ui/badge.tsx';
+import { Button } from '../components/ui/button.tsx';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "../components/ui/dropdown-menu.tsx";
+} from '../components/ui/dropdown-menu.tsx';
 import {
   Empty,
   EmptyDescription,
   EmptyMedia,
   EmptyTitle,
-} from "../components/ui/empty.tsx";
-import { Icon } from "../components/ui/icon.tsx";
+} from '../components/ui/empty.tsx';
+import { Icon } from '../components/ui/icon.tsx';
 import {
   Item,
   ItemContent,
   ItemDescription,
   ItemNumber,
   ItemTitle,
-} from "../components/ui/item.tsx";
-import { Label } from "../components/ui/label.tsx";
-import { Switch } from "../components/ui/switch.tsx";
-import { BODY_MODES, TYPES, createRule, ruleTitle } from "../lib/store.ts";
-import type { Rule, RuleType } from "../lib/store.ts";
+} from '../components/ui/item.tsx';
+import { Label } from '../components/ui/label.tsx';
+import { Switch } from '../components/ui/switch.tsx';
+import { BODY_MODES, TYPES, createRule, ruleTitle } from '../lib/store.ts';
+import type { Rule, RuleType } from '../lib/store.ts';
 import {
   addRule,
   findRule,
@@ -46,9 +46,9 @@ import {
   subscribe,
   touchRule,
   useUiState,
-} from "../lib/state.ts";
-import { cn } from "../lib/utils.ts";
-import { RuleEditor } from "./rule-editor.tsx";
+} from '../lib/state.ts';
+import { cn } from '../lib/utils.ts';
+import { RuleEditor } from './rule-editor.tsx';
 
 interface RulesViewProps {
   selectedId: string | null;
@@ -70,14 +70,9 @@ const DROP_MARK = cn(
   "data-[drop=after]:after:absolute data-[drop=after]:after:inset-x-0 data-[drop=after]:after:-bottom-px data-[drop=after]:after:h-0.5 data-[drop=after]:after:bg-foreground data-[drop=after]:after:content-['']",
 );
 
-export function RulesView({
-  selectedId,
-  onSelect,
-  onImport,
-  onExport,
-}: RulesViewProps) {
+export function RulesView({ selectedId, onSelect, onImport, onExport }: RulesViewProps) {
   const { rules, dnrErrors } = useUiState();
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState('');
   // A rule that was just created, whose URL field gets the cursor.
   const [created, setCreated] = useState<string | null>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
@@ -93,10 +88,7 @@ export function RulesView({
   useEffect(
     () =>
       subscribe((kind) => {
-        if (
-          kind === "rules" &&
-          !editorPane.current?.contains(document.activeElement)
-        )
+        if (kind === 'rules' && !editorPane.current?.contains(document.activeElement))
           setRevision((count) => count + 1);
       }),
     [],
@@ -108,7 +100,7 @@ export function RulesView({
   }
 
   function createOfType(type: RuleType) {
-    setQuery("");
+    setQuery('');
     const rule = addRule(createRule(type), 0);
     onSelect(rule.id);
     setCreated(rule.id);
@@ -124,7 +116,7 @@ export function RulesView({
         rule.match.graphqlOperation,
         TYPES[rule.type].label,
       ]
-        .join(" ")
+        .join(' ')
         .toLowerCase()
         .includes(term),
   );
@@ -144,11 +136,7 @@ export function RulesView({
             <DropdownMenu>
               <DropdownMenuTrigger
                 render={
-                  <Button
-                    variant="primary"
-                    data-testid="new-rule"
-                    className="mr-2 h-7"
-                  />
+                  <Button variant="primary" data-testid="new-rule" className="mr-2 h-7" />
                 }
               >
                 <Icon name="plus" size={14} />
@@ -172,7 +160,7 @@ export function RulesView({
         <SectionRow>
           <Label>Rules</Label>
           <Label className="tracking-wider">
-            {rules.length ? `${active} / ${rules.length} on` : ""}
+            {rules.length ? `${active} / ${rules.length} on` : ''}
           </Label>
         </SectionRow>
 
@@ -185,7 +173,7 @@ export function RulesView({
               </p>
               <TypeCards onPick={createOfType} />
               <p className="text-meta leading-[1.55] text-t40">
-                Or open <b>Traffic</b>, click a request and choose{" "}
+                Or open <b>Traffic</b>, click a request and choose{' '}
                 <b>Mock this response</b>.
               </p>
             </ListEmpty>
@@ -198,13 +186,11 @@ export function RulesView({
           {visible.map((rule) => {
             // The number is the rule's place in the whole list, which is its priority, even while a
             // search hides some rules.
-            const position = String(rules.indexOf(rule) + 1).padStart(2, "0");
+            const position = String(rules.indexOf(rule) + 1).padStart(2, '0');
             // An unnamed rule already shows its URL as the title.
             const pattern = rule.name.trim()
-              ? [rule.match.url, rule.match.graphqlOperation]
-                  .filter(Boolean)
-                  .join(" ")
-              : "";
+              ? [rule.match.url, rule.match.graphqlOperation].filter(Boolean).join(' ')
+              : '';
             const error = dnrErrors[rule.id];
             return (
               <Item
@@ -216,18 +202,14 @@ export function RulesView({
                 title={rule.match.url}
                 draggable
                 data-drop={
-                  drag?.over === rule.id
-                    ? drag.after
-                      ? "after"
-                      : "before"
-                    : undefined
+                  drag?.over === rule.id ? (drag.after ? 'after' : 'before') : undefined
                 }
-                className={cn(DROP_MARK, drag?.id === rule.id && "opacity-40")}
+                className={cn(DROP_MARK, drag?.id === rule.id && 'opacity-40')}
                 onClick={() => select(rule.id)}
                 // Drag to reorder: response rules are tried top to bottom and the first match wins.
                 onDragStart={(event) => {
-                  event.dataTransfer.effectAllowed = "move";
-                  event.dataTransfer.setData("text/plain", rule.id);
+                  event.dataTransfer.effectAllowed = 'move';
+                  event.dataTransfer.setData('text/plain', rule.id);
                   setDrag({ id: rule.id, over: null, after: false });
                 }}
                 onDragOver={(event) => {
@@ -252,7 +234,7 @@ export function RulesView({
                   <ItemTitle>{ruleTitle(rule)}</ItemTitle>
                   <ItemDescription>
                     <Badge>{TYPES[rule.type].short}</Badge>
-                    {rule.match.method !== "ANY" && (
+                    {rule.match.method !== 'ANY' && (
                       <span className="flex-none text-control font-medium tracking-[0.04em] text-t80">
                         {rule.match.method}
                       </span>
@@ -269,20 +251,14 @@ export function RulesView({
                   </ItemDescription>
                 </ItemContent>
                 {error && (
-                  <span
-                    title={error}
-                    className="size-2 flex-none bg-foreground"
-                  />
+                  <span title={error} className="size-2 flex-none bg-foreground" />
                 )}
                 {/* A click on the switch, or on its hidden input, doesn't open the rule. */}
-                <span
-                  className="contents"
-                  onClick={(event) => event.stopPropagation()}
-                >
+                <span className="contents" onClick={(event) => event.stopPropagation()}>
                   <Switch
                     size="sm"
                     checked={rule.enabled}
-                    title={`Turn this rule ${rule.enabled ? "off" : "on"}`}
+                    title={`Turn this rule ${rule.enabled ? 'off' : 'on'}`}
                     onCheckedChange={(on) => {
                       rule.enabled = on;
                       touchRule(rule);
@@ -323,14 +299,12 @@ export function RulesView({
               <img src="/icons/icon128.png" width={56} height={56} alt="" />
             </EmptyMedia>
             <EmptyTitle>
-              {rules.length
-                ? "Select a rule to edit it"
-                : "Create your first rule"}
+              {rules.length ? 'Select a rule to edit it' : 'Create your first rule'}
             </EmptyTitle>
             <EmptyDescription>
-              Rules apply on every site Ghostfetch runs on while it's switched
-              on. The quickest start: open <b>Traffic</b>, click a request and
-              choose <b>Mock this response</b>.
+              Rules apply on every site Ghostfetch runs on while it's switched on. The
+              quickest start: open <b>Traffic</b>, click a request and choose{' '}
+              <b>Mock this response</b>.
             </EmptyDescription>
             <TypeCards onPick={createOfType} />
           </Empty>
@@ -359,14 +333,11 @@ function TypeCards({
   onPick,
   className,
   ...props
-}: Omit<ComponentProps<"div">, "onClick"> & {
+}: Omit<ComponentProps<'div'>, 'onClick'> & {
   onPick: (type: RuleType) => void;
 }) {
   return (
-    <div
-      className={cn("grid border border-input text-left", className)}
-      {...props}
-    >
+    <div className={cn('grid border border-input text-left', className)} {...props}>
       {(Object.keys(TYPES) as RuleType[]).map((type) => (
         <button
           key={type}
@@ -382,15 +353,14 @@ function TypeCards({
 }
 
 function summary(rule: Rule) {
-  if (rule.type === "redirect")
-    return `→ ${rule.redirect.to || "no destination yet"}`;
-  if (rule.type === "block") return "Requests fail";
-  if (rule.type === "headers") {
+  if (rule.type === 'redirect') return `→ ${rule.redirect.to || 'no destination yet'}`;
+  if (rule.type === 'block') return 'Requests fail';
+  if (rule.type === 'headers') {
     const count = rule.headers.request.length + rule.headers.response.length;
-    return `${count} header${count === 1 ? "" : "s"}`;
+    return `${count} header${count === 1 ? '' : 's'}`;
   }
   const { bodyMode, status, delay } = rule.response;
-  return [BODY_MODES[bodyMode].label, status, delay ? `${delay} ms` : ""]
+  return [BODY_MODES[bodyMode].label, status, delay ? `${delay} ms` : '']
     .filter(Boolean)
-    .join(" · ");
+    .join(' · ');
 }

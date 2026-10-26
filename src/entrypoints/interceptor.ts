@@ -57,11 +57,15 @@ export default defineUnlistedScript(() => {
   // The channel handoff below only ever calls these copies, never a property looked up later,
   // so a page that patches MessageEvent, EventTarget or MessagePort can't intercept it.
   const { apply } = Reflect;
-  const getter = (proto: object, key: string) => Object.getOwnPropertyDescriptor(proto, key)!.get!;
+  const getter = (proto: object, key: string) =>
+    Object.getOwnPropertyDescriptor(proto, key)!.get!;
   const eventData = getter(MessageEvent.prototype, 'data');
   const eventPorts = getter(MessageEvent.prototype, 'ports');
   const eventSource = getter(MessageEvent.prototype, 'source');
-  const setOnMessage = Object.getOwnPropertyDescriptor(MessagePort.prototype, 'onmessage')!.set!;
+  const setOnMessage = Object.getOwnPropertyDescriptor(
+    MessagePort.prototype,
+    'onmessage',
+  )!.set!;
   const stopImmediate = Event.prototype.stopImmediatePropagation;
   const listen = EventTarget.prototype.addEventListener;
   const unlisten = EventTarget.prototype.removeEventListener;
@@ -73,10 +77,27 @@ export default defineUnlistedScript(() => {
   const NULL_BODY_STATUS = new Set([101, 103, 204, 205, 304]);
   const TEXT_TYPE = /json|text|xml|javascript|graphql|x-www-form-urlencoded/i;
   const STATUS_TEXT: Record<number, string> = {
-    200: 'OK', 201: 'Created', 202: 'Accepted', 204: 'No Content', 301: 'Moved Permanently', 302: 'Found',
-    304: 'Not Modified', 400: 'Bad Request', 401: 'Unauthorized', 403: 'Forbidden', 404: 'Not Found',
-    405: 'Method Not Allowed', 409: 'Conflict', 410: 'Gone', 422: 'Unprocessable Content', 429: 'Too Many Requests',
-    500: 'Internal Server Error', 501: 'Not Implemented', 502: 'Bad Gateway', 503: 'Service Unavailable', 504: 'Gateway Timeout',
+    200: 'OK',
+    201: 'Created',
+    202: 'Accepted',
+    204: 'No Content',
+    301: 'Moved Permanently',
+    302: 'Found',
+    304: 'Not Modified',
+    400: 'Bad Request',
+    401: 'Unauthorized',
+    403: 'Forbidden',
+    404: 'Not Found',
+    405: 'Method Not Allowed',
+    409: 'Conflict',
+    410: 'Gone',
+    422: 'Unprocessable Content',
+    429: 'Too Many Requests',
+    500: 'Internal Server Error',
+    501: 'Not Implemented',
+    502: 'Bad Gateway',
+    503: 'Service Unavailable',
+    504: 'Gateway Timeout',
   };
 
   const nativeFetch = window.fetch;
@@ -89,7 +110,12 @@ export default defineUnlistedScript(() => {
   };
 
   let port: MessagePort | null = null;
-  let state: { enabled: boolean; record: boolean; rules: Compiled[]; needsBody: boolean } = { enabled: false, record: false, rules: [], needsBody: false };
+  let state: {
+    enabled: boolean;
+    record: boolean;
+    rules: Compiled[];
+    needsBody: boolean;
+  } = { enabled: false, record: false, rules: [], needsBody: false };
   let isReady = false;
   let markReady!: () => void;
   const ready = new Promise<void>((resolve) => {
@@ -117,18 +143,22 @@ export default defineUnlistedScript(() => {
     apply(stopImmediate, event, []);
     apply(unlisten, window, ['message', receivePort, true]);
     port = ports[0];
-    apply(setOnMessage, port, [(message: MessageEvent) => {
-      const data = apply(eventData, message, []);
-      if (data?.type !== 'state') return;
-      const rules = compile(data.rules || []);
-      state = {
-        enabled: Boolean(data.enabled),
-        record: Boolean(data.record),
-        rules,
-        needsBody: Boolean(data.record) || rules.some(({ rule }) => rule.match?.graphqlOperation?.trim()),
-      };
-      markReady();
-    }]);
+    apply(setOnMessage, port, [
+      (message: MessageEvent) => {
+        const data = apply(eventData, message, []);
+        if (data?.type !== 'state') return;
+        const rules = compile(data.rules || []);
+        state = {
+          enabled: Boolean(data.enabled),
+          record: Boolean(data.record),
+          rules,
+          needsBody:
+            Boolean(data.record) ||
+            rules.some(({ rule }) => rule.match?.graphqlOperation?.trim()),
+        };
+        markReady();
+      },
+    ]);
   }
   apply(listen, window, ['message', receivePort, true]);
 
@@ -146,7 +176,11 @@ export default defineUnlistedScript(() => {
     return compiled;
   }
 
-  function urlTester({ url = '', mode = 'contains', graphqlOperation = '' }: Partial<Rule['match']>): (candidate: string) => boolean {
+  function urlTester({
+    url = '',
+    mode = 'contains',
+    graphqlOperation = '',
+  }: Partial<Rule['match']>): (candidate: string) => boolean {
     const pattern = url.trim();
     if (!pattern) return () => Boolean(graphqlOperation.trim());
     if (mode === 'regex') {
@@ -158,7 +192,9 @@ export default defineUnlistedScript(() => {
       return (candidate) => regex.test(candidate);
     }
     if (mode === 'equals') {
-      return (candidate) => candidate === pattern || (pattern.startsWith('/') && pathOf(candidate) === pattern);
+      return (candidate) =>
+        candidate === pattern ||
+        (pattern.startsWith('/') && pathOf(candidate) === pattern);
     }
     return (candidate) => candidate.includes(pattern);
   }
@@ -166,10 +202,12 @@ export default defineUnlistedScript(() => {
   function findRule(request: PageRequest) {
     if (!state.enabled) return null;
     for (const { rule, test } of state.rules) {
-      const { method = 'ANY', graphqlOperation = '' }: Partial<Rule['match']> = rule.match || {};
+      const { method = 'ANY', graphqlOperation = '' }: Partial<Rule['match']> =
+        rule.match || {};
       if (method !== 'ANY' && method !== request.method) continue;
       if (!test(request.url)) continue;
-      if (graphqlOperation.trim() && operationName(request) !== graphqlOperation.trim()) continue;
+      if (graphqlOperation.trim() && operationName(request) !== graphqlOperation.trim())
+        continue;
       return rule;
     }
     return null;
@@ -181,7 +219,9 @@ export default defineUnlistedScript(() => {
         const parsed = JSON.parse(body);
         const first = Array.isArray(parsed) ? parsed[0] : parsed;
         if (first?.operationName) return first.operationName;
-        const named = /^\s*(?:query|mutation|subscription)\s+(\w+)/.exec(first?.query || '');
+        const named = /^\s*(?:query|mutation|subscription)\s+(\w+)/.exec(
+          first?.query || '',
+        );
         if (named) return named[1];
       } catch {
         // Not JSON, fall through to the query string.
@@ -200,7 +240,12 @@ export default defineUnlistedScript(() => {
 
   // Resolves to { status, statusText, headers, body, action, error } for a matched rule.
   // `sendReal` performs the real request and resolves to a fetch Response.
-  async function applyRule(rule: Rule, request: PageRequest, sendReal: () => Promise<Response>, signal?: AbortSignal | null): Promise<RuleResult> {
+  async function applyRule(
+    rule: Rule,
+    request: PageRequest,
+    sendReal: () => Promise<Response>,
+    signal?: AbortSignal | null,
+  ): Promise<RuleResult> {
     const options: Partial<Rule['response']> = rule.response || {};
     const mode = options.bodyMode || 'replace';
     const delay = Math.max(0, Number(options.delay) || 0);
@@ -226,7 +271,10 @@ export default defineUnlistedScript(() => {
       headers.delete('content-encoding');
       try {
         if (mode === 'merge') {
-          const merged = deepMerge(parseJson(text, 'The server response'), parseJson(options.merge!, 'The merge JSON'));
+          const merged = deepMerge(
+            parseJson(text, 'The server response'),
+            parseJson(options.merge!, 'The merge JSON'),
+          );
           body = JSON.stringify(merged);
         } else if (mode === 'script') {
           body = await runScript(options.script || '', text, request, status);
@@ -237,7 +285,10 @@ export default defineUnlistedScript(() => {
         // Fall back to the untouched response so the page keeps working, and say why.
         body = text;
         action = 'error';
-        error = problem instanceof RuleError ? problem.message : `Rule failed: ${(problem as Error).message}`;
+        error =
+          problem instanceof RuleError
+            ? problem.message
+            : `Rule failed: ${(problem as Error).message}`;
       }
     }
 
@@ -282,7 +333,12 @@ export default defineUnlistedScript(() => {
     return merged;
   }
 
-  async function runScript(code: string, text: string, request: PageRequest, status: number) {
+  async function runScript(
+    code: string,
+    text: string,
+    request: PageRequest,
+    status: number,
+  ) {
     let response: unknown;
     try {
       response = JSON.parse(text);
@@ -292,18 +348,31 @@ export default defineUnlistedScript(() => {
     let transform: Function;
     try {
       // eslint-disable-next-line no-new-func
-      transform = new Function('response', 'request', `return (async () => {\n${code}\n})();`);
+      transform = new Function(
+        'response',
+        'request',
+        `return (async () => {\n${code}\n})();`,
+      );
     } catch (problem) {
       if (problem instanceof EvalError) {
-        throw new RuleError("This page's Content-Security-Policy blocks scripts. Use Merge JSON or Replace instead.");
+        throw new RuleError(
+          "This page's Content-Security-Policy blocks scripts. Use Merge JSON or Replace instead.",
+        );
       }
       throw new RuleError(`Script has a syntax error: ${(problem as Error).message}`);
     }
     let result: unknown;
     try {
-      result = await transform(response, { url: request.url, method: request.method, body: request.body, status });
+      result = await transform(response, {
+        url: request.url,
+        method: request.method,
+        body: request.body,
+        status,
+      });
     } catch (problem) {
-      throw new RuleError(`Script threw an error: ${(problem as Error | undefined)?.message ?? problem}`);
+      throw new RuleError(
+        `Script threw an error: ${(problem as Error | undefined)?.message ?? problem}`,
+      );
     }
     if (result === undefined) result = response;
     return typeof result === 'string' ? result : JSON.stringify(result);
@@ -311,12 +380,17 @@ export default defineUnlistedScript(() => {
 
   function wait(ms: number, signal?: AbortSignal | null) {
     return new Promise<void>((resolve, reject) => {
-      if (signal?.aborted) return reject(signal.reason ?? new DOMException('Aborted', 'AbortError'));
+      if (signal?.aborted)
+        return reject(signal.reason ?? new DOMException('Aborted', 'AbortError'));
       const timer = setTimeout(resolve, ms);
-      signal?.addEventListener('abort', () => {
-        clearTimeout(timer);
-        reject(signal!.reason ?? new DOMException('Aborted', 'AbortError'));
-      }, { once: true });
+      signal?.addEventListener(
+        'abort',
+        () => {
+          clearTimeout(timer);
+          reject(signal!.reason ?? new DOMException('Aborted', 'AbortError'));
+        },
+        { once: true },
+      );
     });
   }
 
@@ -342,7 +416,12 @@ export default defineUnlistedScript(() => {
 
     const signal = init?.signal ?? (input instanceof Request ? input.signal : undefined);
     try {
-      const result = await applyRule(rule, request, () => nativeFetch.call(window, input, init), signal);
+      const result = await applyRule(
+        rule,
+        request,
+        () => nativeFetch.call(window, input, init),
+        signal,
+      );
       const response = new Response(result.body, {
         status: result.status,
         statusText: result.statusText,
@@ -352,15 +431,26 @@ export default defineUnlistedScript(() => {
       report(ruleEntry('fetch', request, started, rule, result));
       return response;
     } catch (problem) {
-      report(makeEntry('fetch', request, started, { ...ruleFields(rule), action: 'error', error: errorText(problem) }));
+      report(
+        makeEntry('fetch', request, started, {
+          ...ruleFields(rule),
+          action: 'error',
+          error: errorText(problem),
+        }),
+      );
       throw problem;
     }
   };
 
-  async function describeFetch(input: RequestInfo | URL, init?: RequestInit): Promise<PageRequest> {
+  async function describeFetch(
+    input: RequestInfo | URL,
+    init?: RequestInit,
+  ): Promise<PageRequest> {
     const isRequest = input instanceof Request;
     const url = absoluteUrl(isRequest ? input.url : input);
-    const method = String(init?.method || (isRequest ? input.method : 'GET')).toUpperCase();
+    const method = String(
+      init?.method || (isRequest ? input.method : 'GET'),
+    ).toUpperCase();
     let body = '';
     if (init?.body != null) {
       body = describeBody(init.body);
@@ -379,21 +469,44 @@ export default defineUnlistedScript(() => {
   const META = Symbol('mocktail.xhr');
   type Tracked = XMLHttpRequest & { [META]?: XhrMeta };
   const OVERRIDES = [
-    'readyState', 'status', 'statusText', 'responseURL', 'response', 'responseText', 'responseXML',
-    'getResponseHeader', 'getAllResponseHeaders',
+    'readyState',
+    'status',
+    'statusText',
+    'responseURL',
+    'response',
+    'responseText',
+    'responseXML',
+    'getResponseHeader',
+    'getAllResponseHeaders',
   ];
 
-  xhrProto.open = function open(this: Tracked, method: string, url: string | URL, async: boolean = true, ...credentials: [username?: string | null, password?: string | null]) {
+  xhrProto.open = function open(
+    this: Tracked,
+    method: string,
+    url: string | URL,
+    async: boolean = true,
+    ...credentials: [username?: string | null, password?: string | null]
+  ) {
     const previous = this[META];
     if (previous?.simulated) {
       previous.aborted = true;
-      for (const name of OVERRIDES) delete (this as unknown as Record<string, unknown>)[name];
+      for (const name of OVERRIDES)
+        delete (this as unknown as Record<string, unknown>)[name];
     }
-    this[META] = { method: String(method).toUpperCase(), url: absoluteUrl(url), async: async !== false, headers: [] };
+    this[META] = {
+      method: String(method).toUpperCase(),
+      url: absoluteUrl(url),
+      async: async !== false,
+      headers: [],
+    };
     return nativeXhr.open.call(this, method, url, async, ...credentials);
   } as typeof xhrProto.open;
 
-  xhrProto.setRequestHeader = function setRequestHeader(this: Tracked, name: string, value: string) {
+  xhrProto.setRequestHeader = function setRequestHeader(
+    this: Tracked,
+    name: string,
+    value: string,
+  ) {
     this[META]?.headers.push([name, value]);
     return nativeXhr.setRequestHeader.call(this, name, value);
   };
@@ -428,29 +541,43 @@ export default defineUnlistedScript(() => {
 
   function watchXhr(xhr: XMLHttpRequest, request: PageRequest) {
     const started = performance.now();
-    xhr.addEventListener('loadend', () => {
-      const contentType = xhr.getResponseHeader('content-type') || '';
-      let responseBody = '';
-      if (canCapture(contentType)) {
-        try {
-          if (xhr.responseType === '' || xhr.responseType === 'text') responseBody = xhr.responseText;
-          else if (xhr.responseType === 'json') responseBody = JSON.stringify(xhr.response);
-        } catch {
-          responseBody = '';
+    xhr.addEventListener(
+      'loadend',
+      () => {
+        const contentType = xhr.getResponseHeader('content-type') || '';
+        let responseBody = '';
+        if (canCapture(contentType)) {
+          try {
+            if (xhr.responseType === '' || xhr.responseType === 'text')
+              responseBody = xhr.responseText;
+            else if (xhr.responseType === 'json')
+              responseBody = JSON.stringify(xhr.response);
+          } catch {
+            responseBody = '';
+          }
         }
-      }
-      report(makeEntry('xhr', request, started, {
-        status: xhr.status || null,
-        contentType,
-        ...clipBody(responseBody),
-        error: xhr.status ? '' : 'Request failed or was aborted',
-      }));
-    }, { once: true });
+        report(
+          makeEntry('xhr', request, started, {
+            status: xhr.status || null,
+            contentType,
+            ...clipBody(responseBody),
+            error: xhr.status ? '' : 'Request failed or was aborted',
+          }),
+        );
+      },
+      { once: true },
+    );
   }
 
   // Answers the XHR ourselves: the real request (if the rule needs it) goes through fetch,
   // and the XHR's state, response getters and events are played back from the result.
-  function simulateXhr(xhr: Tracked, meta: XhrMeta, rule: Rule, request: PageRequest, rawBody: XhrBody) {
+  function simulateXhr(
+    xhr: Tracked,
+    meta: XhrMeta,
+    rule: Rule,
+    request: PageRequest,
+    rawBody: XhrBody,
+  ) {
     const started = performance.now();
     const controller = new AbortController();
     let readyState = 1;
@@ -458,7 +585,8 @@ export default defineUnlistedScript(() => {
     let converted: unknown;
     meta.simulated = true;
 
-    const define = (name: string, get: () => unknown) => Object.defineProperty(xhr, name, { configurable: true, get });
+    const define = (name: string, get: () => unknown) =>
+      Object.defineProperty(xhr, name, { configurable: true, get });
     const done = () => readyState === 4 && result;
     define('readyState', () => readyState);
     define('status', () => (readyState >= 2 && result ? result.status : 0));
@@ -466,34 +594,56 @@ export default defineUnlistedScript(() => {
     define('responseURL', () => (result ? request.url : ''));
     define('responseText', () => {
       if (xhr.responseType !== '' && xhr.responseType !== 'text') {
-        throw new DOMException("responseText is only available if responseType is '' or 'text'.", 'InvalidStateError');
+        throw new DOMException(
+          "responseText is only available if responseType is '' or 'text'.",
+          'InvalidStateError',
+        );
       }
-      return done() ? result!.body ?? '' : '';
+      return done() ? (result!.body ?? '') : '';
     });
     define('response', () => {
-      if (!done()) return xhr.responseType === '' || xhr.responseType === 'text' ? '' : null;
-      if (converted === undefined) converted = convertBody(result!.body ?? '', result!.headers.get('content-type') || '', xhr.responseType);
+      if (!done())
+        return xhr.responseType === '' || xhr.responseType === 'text' ? '' : null;
+      if (converted === undefined)
+        converted = convertBody(
+          result!.body ?? '',
+          result!.headers.get('content-type') || '',
+          xhr.responseType,
+        );
       return converted;
     });
     define('responseXML', () => {
-      if (!done() || (xhr.responseType !== '' && xhr.responseType !== 'document')) return null;
+      if (!done() || (xhr.responseType !== '' && xhr.responseType !== 'document'))
+        return null;
       const type = result!.headers.get('content-type') || '';
-      return /xml|html/.test(type) ? convertBody(result!.body ?? '', type, 'document') : null;
+      return /xml|html/.test(type)
+        ? convertBody(result!.body ?? '', type, 'document')
+        : null;
     });
     Object.defineProperty(xhr, 'getResponseHeader', {
       configurable: true,
-      value: (name: string) => (readyState >= 2 && result ? result.headers.get(name) : null),
+      value: (name: string) =>
+        readyState >= 2 && result ? result.headers.get(name) : null,
     });
     Object.defineProperty(xhr, 'getAllResponseHeaders', {
       configurable: true,
       value: () => {
         if (readyState < 2 || !result) return '';
-        return [...result.headers].map(([name, value]) => `${name}: ${value}\r\n`).join('');
+        return [...result.headers]
+          .map(([name, value]) => `${name}: ${value}\r\n`)
+          .join('');
       },
     });
 
     const fire = (type: string) => xhr.dispatchEvent(new Event(type));
-    const progress = (type: string, size = 0) => xhr.dispatchEvent(new ProgressEvent(type, { lengthComputable: size > 0, loaded: size, total: size }));
+    const progress = (type: string, size = 0) =>
+      xhr.dispatchEvent(
+        new ProgressEvent(type, {
+          lengthComputable: size > 0,
+          loaded: size,
+          total: size,
+        }),
+      );
 
     meta.abortSimulation = () => {
       if (meta.aborted || meta.finished) return;
@@ -508,44 +658,62 @@ export default defineUnlistedScript(() => {
     };
 
     const sendReal = () => {
-      const hasBody = request.method !== 'GET' && request.method !== 'HEAD' && rawBody != null;
+      const hasBody =
+        request.method !== 'GET' && request.method !== 'HEAD' && rawBody != null;
       return nativeFetch.call(window, request.url, {
         method: request.method,
         headers: meta.headers,
-        body: hasBody ? (rawBody instanceof Document ? new XMLSerializer().serializeToString(rawBody) : rawBody) : undefined,
+        body: hasBody
+          ? rawBody instanceof Document
+            ? new XMLSerializer().serializeToString(rawBody)
+            : rawBody
+          : undefined,
         credentials: xhr.withCredentials ? 'include' : 'same-origin',
         signal: controller.signal,
       });
     };
 
     progress('loadstart');
-    applyRule(rule, request, sendReal, controller.signal).then((outcome) => {
-      if (meta.aborted) return;
-      meta.finished = true;
-      result = outcome;
-      const size = outcome.body?.length ?? 0;
-      readyState = 2;
-      fire('readystatechange');
-      readyState = 3;
-      fire('readystatechange');
-      progress('progress', size);
-      readyState = 4;
-      fire('readystatechange');
-      progress('load', size);
-      progress('loadend', size);
-      report(ruleEntry('xhr', request, started, rule, outcome));
-    }, (problem) => {
-      if (meta.aborted) return;
-      meta.finished = true;
-      readyState = 4;
-      fire('readystatechange');
-      progress('error');
-      progress('loadend');
-      report(makeEntry('xhr', request, started, { ...ruleFields(rule), action: 'error', error: errorText(problem) }));
-    });
+    applyRule(rule, request, sendReal, controller.signal).then(
+      (outcome) => {
+        if (meta.aborted) return;
+        meta.finished = true;
+        result = outcome;
+        const size = outcome.body?.length ?? 0;
+        readyState = 2;
+        fire('readystatechange');
+        readyState = 3;
+        fire('readystatechange');
+        progress('progress', size);
+        readyState = 4;
+        fire('readystatechange');
+        progress('load', size);
+        progress('loadend', size);
+        report(ruleEntry('xhr', request, started, rule, outcome));
+      },
+      (problem) => {
+        if (meta.aborted) return;
+        meta.finished = true;
+        readyState = 4;
+        fire('readystatechange');
+        progress('error');
+        progress('loadend');
+        report(
+          makeEntry('xhr', request, started, {
+            ...ruleFields(rule),
+            action: 'error',
+            error: errorText(problem),
+          }),
+        );
+      },
+    );
   }
 
-  function convertBody(body: string, contentType: string, responseType: XMLHttpRequestResponseType) {
+  function convertBody(
+    body: string,
+    contentType: string,
+    responseType: XMLHttpRequestResponseType,
+  ) {
     switch (responseType) {
       case 'json':
         try {
@@ -558,7 +726,10 @@ export default defineUnlistedScript(() => {
       case 'blob':
         return new Blob([body], { type: contentType });
       case 'document': {
-        const type = /html/.test(contentType) || !/xml/.test(contentType) ? 'text/html' : 'application/xml';
+        const type =
+          /html/.test(contentType) || !/xml/.test(contentType)
+            ? 'text/html'
+            : 'application/xml';
         return new DOMParser().parseFromString(body, type);
       }
       default:
@@ -570,7 +741,12 @@ export default defineUnlistedScript(() => {
 
   let sequence = 0;
 
-  function makeEntry(kind: 'fetch' | 'xhr', request: PageRequest, started: number, extra: Partial<LogEntry> = {}): LogEntry {
+  function makeEntry(
+    kind: 'fetch' | 'xhr',
+    request: PageRequest,
+    started: number,
+    extra: Partial<LogEntry> = {},
+  ): LogEntry {
     return {
       id: `${Date.now().toString(36)}-${(sequence++).toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
       time: Date.now(),
@@ -578,7 +754,10 @@ export default defineUnlistedScript(() => {
       method: request.method,
       url: request.url,
       frame: window === window.top ? '' : location.origin,
-      requestBody: request.body.length > MAX_REQUEST_BODY ? request.body.slice(0, MAX_REQUEST_BODY) : request.body,
+      requestBody:
+        request.body.length > MAX_REQUEST_BODY
+          ? request.body.slice(0, MAX_REQUEST_BODY)
+          : request.body,
       duration: Math.round(performance.now() - started),
       status: null,
       contentType: '',
@@ -593,10 +772,23 @@ export default defineUnlistedScript(() => {
   }
 
   function ruleFields(rule: Rule) {
-    return { ruleId: rule.id, ruleName: rule.name?.trim() || rule.match?.graphqlOperation || rule.match?.url || 'Untitled rule' };
+    return {
+      ruleId: rule.id,
+      ruleName:
+        rule.name?.trim() ||
+        rule.match?.graphqlOperation ||
+        rule.match?.url ||
+        'Untitled rule',
+    };
   }
 
-  function ruleEntry(kind: 'fetch' | 'xhr', request: PageRequest, started: number, rule: Rule, result: RuleResult) {
+  function ruleEntry(
+    kind: 'fetch' | 'xhr',
+    request: PageRequest,
+    started: number,
+    rule: Rule,
+    result: RuleResult,
+  ) {
     return makeEntry(kind, request, started, {
       ...ruleFields(rule),
       status: result.status,
@@ -607,7 +799,12 @@ export default defineUnlistedScript(() => {
     });
   }
 
-  function logResponse(kind: 'fetch', request: PageRequest, response: Response, started: number) {
+  function logResponse(
+    kind: 'fetch',
+    request: PageRequest,
+    response: Response,
+    started: number,
+  ) {
     const contentType = response.headers.get('content-type') || '';
     const size = Number(response.headers.get('content-length')) || 0;
     // Clone before handing the response back, so the page can still read its body.
@@ -635,7 +832,9 @@ export default defineUnlistedScript(() => {
   // ---------------------------------------------------------------- helpers
 
   function canCapture(contentType: string) {
-    return !/event-stream/i.test(contentType) && (!contentType || TEXT_TYPE.test(contentType));
+    return (
+      !/event-stream/i.test(contentType) && (!contentType || TEXT_TYPE.test(contentType))
+    );
   }
 
   function clipBody(text: unknown) {
@@ -650,7 +849,12 @@ export default defineUnlistedScript(() => {
     if (typeof body === 'string') return body;
     if (body instanceof URLSearchParams) return body.toString();
     if (body instanceof FormData) {
-      return [...body].map(([key, value]) => `${key}=${typeof value === 'string' ? value : `[file ${value.name}]`}`).join('\n');
+      return [...body]
+        .map(
+          ([key, value]) =>
+            `${key}=${typeof value === 'string' ? value : `[file ${value.name}]`}`,
+        )
+        .join('\n');
     }
     if (body instanceof Blob) return `[Blob, ${body.size} bytes]`;
     if (body instanceof ArrayBuffer || ArrayBuffer.isView(body)) {
@@ -687,6 +891,8 @@ export default defineUnlistedScript(() => {
   }
 
   function errorText(problem: unknown) {
-    return (problem as Error | undefined)?.name === 'AbortError' ? 'Aborted' : String((problem as Error | undefined)?.message || problem);
+    return (problem as Error | undefined)?.name === 'AbortError'
+      ? 'Aborted'
+      : String((problem as Error | undefined)?.message || problem);
   }
 });

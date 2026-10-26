@@ -4,12 +4,22 @@ import { setFlag, useUiState } from '../lib/state.ts';
 import { cn } from '../lib/utils.ts';
 import { Switch } from './ui/switch.tsx';
 
-export function MasterSwitch({ className, title }: { className?: string; title: string }) {
+export function MasterSwitch({
+  className,
+  title,
+}: {
+  className?: string;
+  title: string;
+}) {
   const { enabled } = useUiState();
   return (
     <label
       title={title}
-      className={cn('flex cursor-pointer items-center gap-2 px-[9px] text-control whitespace-nowrap uppercase tracking-wider', enabled ? 'text-t80' : 'text-t40', className)}
+      className={cn(
+        'flex cursor-pointer items-center gap-2 px-[9px] text-control whitespace-nowrap uppercase tracking-wider',
+        enabled ? 'text-t80' : 'text-t40',
+        className,
+      )}
     >
       <Switch checked={enabled} onCheckedChange={(on) => setFlag('enabled', on)} />
       <span className="max-[330px]:hidden">{enabled ? 'On' : 'Off'}</span>

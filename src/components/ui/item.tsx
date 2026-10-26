@@ -13,7 +13,8 @@ const itemVariants = cva(
     variants: {
       variant: {
         rule: 'grid-cols-[22px_minmax(0,1fr)_auto_auto] gap-2.5 border-border px-3.5 py-[11px]',
-        request: 'grid-cols-[46px_minmax(0,1fr)_auto_52px] gap-2 border-line-soft px-3.5 py-[7px] data-hit:bg-code data-hit:data-selected:bg-pressed',
+        request:
+          'grid-cols-[46px_minmax(0,1fr)_auto_52px] gap-2 border-line-soft px-3.5 py-[7px] data-hit:bg-code data-hit:data-selected:bg-pressed',
       },
     },
     defaultVariants: { variant: 'rule' },
@@ -28,7 +29,12 @@ export function Item({
   hit,
   render,
   ...props
-}: useRender.ComponentProps<'li'> & VariantProps<typeof itemVariants> & { selected?: boolean; off?: boolean; hit?: boolean }) {
+}: useRender.ComponentProps<'li'> &
+  VariantProps<typeof itemVariants> & {
+    selected?: boolean;
+    off?: boolean;
+    hit?: boolean;
+  }) {
   return useRender({
     defaultTagName: 'li',
     props: mergeProps<'li'>(
@@ -46,7 +52,13 @@ export function Item({
 }
 
 export function ItemNumber({ className, ...props }: ComponentProps<'span'>) {
-  return <span data-slot="item-number" className={cn('self-start pt-0.5 text-control text-t30 tabular-nums', className)} {...props} />;
+  return (
+    <span
+      data-slot="item-number"
+      className={cn('self-start pt-0.5 text-control text-t30 tabular-nums', className)}
+      {...props}
+    />
+  );
 }
 
 export function ItemContent({ className, ...props }: ComponentProps<'div'>) {
@@ -54,19 +66,37 @@ export function ItemContent({ className, ...props }: ComponentProps<'div'>) {
 }
 
 export function ItemTitle({ className, ...props }: ComponentProps<'div'>) {
-  return <div data-slot="item-title" className={cn('truncate text-title font-medium text-white group-data-off/item:text-t50', className)} {...props} />;
+  return (
+    <div
+      data-slot="item-title"
+      className={cn(
+        'truncate text-title font-medium text-white group-data-off/item:text-t50',
+        className,
+      )}
+      {...props}
+    />
+  );
 }
 
 export function ItemDescription({ className, ...props }: ComponentProps<'div'>) {
   return (
     <div
       data-slot="item-description"
-      className={cn('mt-[3px] flex min-w-0 items-baseline gap-2 overflow-hidden text-meta whitespace-nowrap text-t50 group-data-off/item:opacity-60', className)}
+      className={cn(
+        'mt-[3px] flex min-w-0 items-baseline gap-2 overflow-hidden text-meta whitespace-nowrap text-t50 group-data-off/item:opacity-60',
+        className,
+      )}
       {...props}
     />
   );
 }
 
 export function ItemActions({ className, ...props }: ComponentProps<'div'>) {
-  return <div data-slot="item-actions" className={cn('flex items-center gap-2', className)} {...props} />;
+  return (
+    <div
+      data-slot="item-actions"
+      className={cn('flex items-center gap-2', className)}
+      {...props}
+    />
+  );
 }

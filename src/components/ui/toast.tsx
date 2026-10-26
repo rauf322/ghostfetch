@@ -19,7 +19,10 @@ interface NotifyOptions {
   duration?: number;
 }
 
-export function notify(message: string, { action, onAction, kind = 'info', duration = 2600 }: NotifyOptions = {}) {
+export function notify(
+  message: string,
+  { action, onAction, kind = 'info', duration = 2600 }: NotifyOptions = {},
+) {
   const id = toast.add({
     title: message,
     type: kind === 'error' ? 'error' : undefined,
@@ -63,13 +66,22 @@ export function Toaster({
   const viewport = (
     <ToastPrimitive.Viewport
       data-slot="toast-viewport"
-      className={cn(inline ? 'relative w-max outline-none' : 'fixed bottom-[52px] left-1/2 z-50 w-max max-w-[calc(100%-24px)] -translate-x-1/2 outline-none')}
+      className={cn(
+        inline
+          ? 'relative w-max outline-none'
+          : 'fixed bottom-[52px] left-1/2 z-50 w-max max-w-[calc(100%-24px)] -translate-x-1/2 outline-none',
+      )}
     >
       <ToastList />
     </ToastPrimitive.Viewport>
   );
   return (
-    <ToastPrimitive.Provider toastManager={toastManager} limit={1} timeout={2600} {...props}>
+    <ToastPrimitive.Provider
+      toastManager={toastManager}
+      limit={1}
+      timeout={2600}
+      {...props}
+    >
       {children}
       {inline ? viewport : <ToastPrimitive.Portal>{viewport}</ToastPrimitive.Portal>}
     </ToastPrimitive.Provider>

@@ -7,14 +7,24 @@ import { toggleVariants } from './toggle.tsx';
 // white, and clicking it again clears it. The arrow keys move between them. For a choice that
 // always needs an answer, use Segmented.
 export function ToggleGroup({ className, ...props }: ToggleGroupPrimitive.Props) {
-  return <ToggleGroupPrimitive data-slot="toggle-group" className={cn('flex border border-input', className)} {...props} />;
+  return (
+    <ToggleGroupPrimitive
+      data-slot="toggle-group"
+      className={cn('flex border border-input', className)}
+      {...props}
+    />
+  );
 }
 
 export function ToggleGroupItem({ className, ...props }: TogglePrimitive.Props) {
   return (
     <TogglePrimitive
       data-slot="toggle-group-item"
-      className={cn(toggleVariants({ variant: 'segment', size: 'segment' }), 'not-first:border-l not-first:border-input', className)}
+      className={cn(
+        toggleVariants({ variant: 'segment', size: 'segment' }),
+        'not-first:border-l not-first:border-input',
+        className,
+      )}
       {...props}
     />
   );

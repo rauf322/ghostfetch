@@ -51,7 +51,14 @@ export function createTrafficLog({ followActiveTab, preserve }: TrafficLogOption
   let current = snapshot();
 
   function snapshot(): TrafficSnapshot {
-    return { entries: [...entries.values()], tabs, targetId, targetUrl, connected, connecting: Boolean(port) || retryTimer !== undefined };
+    return {
+      entries: [...entries.values()],
+      tabs,
+      targetId,
+      targetUrl,
+      connected,
+      connecting: Boolean(port) || retryTimer !== undefined,
+    };
   }
 
   function changed() {
@@ -105,7 +112,11 @@ export function createTrafficLog({ followActiveTab, preserve }: TrafficLogOption
   async function refreshTabs() {
     // Every web page is offered, so you can pick one Ghostfetch is off on and turn it on.
     const found = (await chrome.tabs.query({})).filter((tab) => isWebUrl(tab.url));
-    tabs = found.map((tab) => ({ id: tab.id!, title: tab.title || tab.url!, url: tab.url! }));
+    tabs = found.map((tab) => ({
+      id: tab.id!,
+      title: tab.title || tab.url!,
+      url: tab.url!,
+    }));
     changed();
     return found;
   }
@@ -113,11 +124,16 @@ export function createTrafficLog({ followActiveTab, preserve }: TrafficLogOption
   async function pickTarget() {
     const found = await refreshTabs();
     let tab: chrome.tabs.Tab | undefined;
-    if (followActiveTab) [tab] = await chrome.tabs.query({ active: true, windowId } as chrome.tabs.QueryInfo);
+    if (followActiveTab)
+      [tab] = await chrome.tabs.query({
+        active: true,
+        windowId,
+      } as chrome.tabs.QueryInfo);
     if (!running) return;
     if (!isWebUrl(tab?.url)) {
-      tab = found.find((candidate) => candidate.id === targetId)
-        || [...found].sort((a, b) => (b.lastAccessed || 0) - (a.lastAccessed || 0))[0];
+      tab =
+        found.find((candidate) => candidate.id === targetId) ||
+        [...found].sort((a, b) => (b.lastAccessed || 0) - (a.lastAccessed || 0))[0];
     }
     setTarget(tab?.id ?? null);
   }
@@ -145,7 +161,8 @@ export function createTrafficLog({ followActiveTab, preserve }: TrafficLogOption
       targetUrl = info.url;
       changed();
     }
-    if (tabId === targetId && info.status === 'complete' && !port && !connected) connect();
+    if (tabId === targetId && info.status === 'complete' && !port && !connected)
+      connect();
   };
   const onRemoved = (tabId: number) => {
     if (tabId === targetId) {

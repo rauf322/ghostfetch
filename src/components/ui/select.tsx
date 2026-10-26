@@ -8,7 +8,13 @@ import { cn } from '../../lib/utils.ts';
 export const Select = SelectPrimitive.Root;
 
 export function SelectValue({ className, ...props }: SelectPrimitive.Value.Props) {
-  return <SelectPrimitive.Value data-slot="select-value" className={cn('min-w-0 flex-1 truncate text-left', className)} {...props} />;
+  return (
+    <SelectPrimitive.Value
+      data-slot="select-value"
+      className={cn('min-w-0 flex-1 truncate text-left', className)}
+      {...props}
+    />
+  );
 }
 
 // The text stops 28px from the right edge, short of the triangle. "sm" is the size of a header
@@ -19,7 +25,10 @@ export function SelectTrigger({
   size = 'default',
   children,
   ...props
-}: SelectPrimitive.Trigger.Props & { variant?: 'default' | 'bare'; size?: 'default' | 'sm' }) {
+}: SelectPrimitive.Trigger.Props & {
+  variant?: 'default' | 'bare';
+  size?: 'default' | 'sm';
+}) {
   return (
     <SelectPrimitive.Trigger
       data-slot="select-trigger"
@@ -48,13 +57,26 @@ export function SelectContent({
   align = 'start',
   alignItemWithTrigger = true,
   ...props
-}: SelectPrimitive.Popup.Props & Pick<SelectPrimitive.Positioner.Props, 'align' | 'side' | 'sideOffset' | 'alignItemWithTrigger'>) {
+}: SelectPrimitive.Popup.Props &
+  Pick<
+    SelectPrimitive.Positioner.Props,
+    'align' | 'side' | 'sideOffset' | 'alignItemWithTrigger'
+  >) {
   return (
     <SelectPrimitive.Portal>
-      <SelectPrimitive.Positioner side={side} sideOffset={sideOffset} align={align} alignItemWithTrigger={alignItemWithTrigger} className="isolate z-50 outline-none">
+      <SelectPrimitive.Positioner
+        side={side}
+        sideOffset={sideOffset}
+        align={align}
+        alignItemWithTrigger={alignItemWithTrigger}
+        className="isolate z-50 outline-none"
+      >
         <SelectPrimitive.Popup
           data-slot="select-content"
-          className={cn('max-h-(--available-height) min-w-(--anchor-width) overflow-y-auto border border-input bg-background shadow-menu outline-none scroll-thin', className)}
+          className={cn(
+            'max-h-(--available-height) min-w-(--anchor-width) overflow-y-auto border border-input bg-background shadow-menu outline-none scroll-thin',
+            className,
+          )}
           {...props}
         >
           <SelectPrimitive.List>{children}</SelectPrimitive.List>
@@ -64,7 +86,11 @@ export function SelectContent({
   );
 }
 
-export function SelectItem({ className, children, ...props }: SelectPrimitive.Item.Props) {
+export function SelectItem({
+  className,
+  children,
+  ...props
+}: SelectPrimitive.Item.Props) {
   return (
     <SelectPrimitive.Item
       data-slot="select-item"
@@ -74,9 +100,15 @@ export function SelectItem({ className, children, ...props }: SelectPrimitive.It
       )}
       {...props}
     >
-      <SelectPrimitive.ItemText className="min-w-0 flex-1 truncate">{children}</SelectPrimitive.ItemText>
+      <SelectPrimitive.ItemText className="min-w-0 flex-1 truncate">
+        {children}
+      </SelectPrimitive.ItemText>
       {/* The square alone: left without children, Base UI puts a ✔️ in it. */}
-      <SelectPrimitive.ItemIndicator data-slot="select-item-indicator" className="size-1.5 flex-none bg-foreground" children={null} />
+      <SelectPrimitive.ItemIndicator
+        data-slot="select-item-indicator"
+        className="size-1.5 flex-none bg-foreground"
+        children={null}
+      />
     </SelectPrimitive.Item>
   );
 }

@@ -1,9 +1,30 @@
 // Traffic tab: live log of the fetch/XHR calls in a tab, with a detail pane and
 // "Mock this response", which turns a captured response into an editable rule.
-import { memo, useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import type { ReactNode } from 'react';
 import { CodeView } from '../components/code-editor.tsx';
-import { BackButton, DetailPane, List, ListEmpty, ListPane, Method, PaneFooter, PaneHead, PaneScroll, PaneToolbar, SearchField, SectionRow, Split } from '../components/layout.tsx';
+import {
+  BackButton,
+  DetailPane,
+  List,
+  ListEmpty,
+  ListPane,
+  Method,
+  PaneFooter,
+  PaneHead,
+  PaneScroll,
+  PaneToolbar,
+  SearchField,
+  SectionRow,
+  Split,
+} from '../components/layout.tsx';
 import { Alert } from '../components/ui/alert.tsx';
 import { Badge, StatusCode } from '../components/ui/badge.tsx';
 import { Button } from '../components/ui/button.tsx';
@@ -12,23 +33,49 @@ import { Empty, EmptyDescription, EmptyTitle } from '../components/ui/empty.tsx'
 import { Icon } from '../components/ui/icon.tsx';
 import { Item } from '../components/ui/item.tsx';
 import { Label } from '../components/ui/label.tsx';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select.tsx';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../components/ui/select.tsx';
 import { notify } from '../components/ui/toast.tsx';
 import { Toggle } from '../components/ui/toggle.tsx';
 import { formatJson, splitUrl } from '../lib/dom.ts';
 import type { LogEntry } from '../lib/messages.ts';
-import { METHODS, createRule, isSiteEnabled, normalizeSite, siteOf } from '../lib/store.ts';
+import {
+  METHODS,
+  createRule,
+  isSiteEnabled,
+  normalizeSite,
+  siteOf,
+} from '../lib/store.ts';
 import type { Method as HttpMethod, Rule } from '../lib/store.ts';
 import { setFlag, setSites, state, subscribe } from '../lib/state.ts';
 import { createTrafficLog } from '../lib/traffic-log.ts';
 import { cn } from '../lib/utils.ts';
 
 const PRESERVE = 'mocktail.preserveLog';
-const ACTION_LABELS: Record<string, string> = { mocked: 'Mocked', modified: 'Modified', error: 'Rule error', redirect: 'Redirected', headers: 'Headers', block: 'Blocked' };
-const KIND_LABELS: Record<string, string> = { fetch: 'fetch()', xhr: 'XMLHttpRequest', xmlhttprequest: 'XHR / fetch', main_frame: 'Page', sub_frame: 'Iframe' };
+const ACTION_LABELS: Record<string, string> = {
+  mocked: 'Mocked',
+  modified: 'Modified',
+  error: 'Rule error',
+  redirect: 'Redirected',
+  headers: 'Headers',
+  block: 'Blocked',
+};
+const KIND_LABELS: Record<string, string> = {
+  fetch: 'fetch()',
+  xhr: 'XMLHttpRequest',
+  xmlhttprequest: 'XHR / fetch',
+  main_frame: 'Page',
+  sub_frame: 'Iframe',
+};
 // The row of secondary actions under Mock this response: cells in one hairline box, quieter than
 // other buttons (their words stay grey under the pointer).
-const SECONDARY = 'h-[30px] min-w-0 border-0 px-1.5 text-label tracking-[0.08em] text-t65 not-first:border-l not-first:border-input hover:text-t65';
+const SECONDARY =
+  'h-[30px] min-w-0 border-0 px-1.5 text-label tracking-[0.08em] text-t65 not-first:border-l not-first:border-input hover:text-t65';
 
 interface TrafficViewProps {
   // The side panel follows the active tab; the editor in a tab keeps the tab it picked.
@@ -39,8 +86,18 @@ interface TrafficViewProps {
 }
 
 // Memoized: it only draws again when its own log or settings change, not on every rule edit.
-export const TrafficView = memo(function TrafficView({ followActiveTab, onMock, onOpenRule, onCount }: TrafficViewProps) {
-  const [log] = useState(() => createTrafficLog({ followActiveTab, preserve: () => localStorage.getItem(PRESERVE) === '1' }));
+export const TrafficView = memo(function TrafficView({
+  followActiveTab,
+  onMock,
+  onOpenRule,
+  onCount,
+}: TrafficViewProps) {
+  const [log] = useState(() =>
+    createTrafficLog({
+      followActiveTab,
+      preserve: () => localStorage.getItem(PRESERVE) === '1',
+    }),
+  );
   useEffect(() => {
     log.start();
     return () => log.stop();
@@ -60,14 +117,26 @@ export const TrafficView = memo(function TrafficView({ followActiveTab, onMock, 
 
   const query = filter.trim().toLowerCase();
   const visible = entries
-    .filter((entry) => (!onlyMatched || entry.ruleId)
-      && (!query || `${entry.method} ${entry.url} ${entry.status ?? ''} ${entry.ruleName}`.toLowerCase().includes(query)))
+    .filter(
+      (entry) =>
+        (!onlyMatched || entry.ruleId) &&
+        (!query ||
+          `${entry.method} ${entry.url} ${entry.status ?? ''} ${entry.ruleName}`
+            .toLowerCase()
+            .includes(query)),
+    )
     .reverse();
   const hits = entries.filter((entry) => entry.action).length;
 
   let waiting: ReactNode = null;
   if (entries.length) waiting = 'No requests match the filter.';
-  else if (traffic.connected && record) waiting = <>Waiting for requests… Use your app and its <code>fetch</code> and <code>XHR</code> calls show up here.</>;
+  else if (traffic.connected && record)
+    waiting = (
+      <>
+        Waiting for requests… Use your app and its <code>fetch</code> and <code>XHR</code>{' '}
+        calls show up here.
+      </>
+    );
 
   const host = siteOf(targetUrl);
   let notice: ReactNode = null;
@@ -76,14 +145,16 @@ export const TrafficView = memo(function TrafficView({ followActiveTab, onMock, 
   } else if (!traffic.connected && host && !isSiteEnabled(sites, targetUrl)) {
     notice = (
       <>
-        Ghostfetch is off on <b>{host}</b>{", so it doesn't capture or change anything there. "}
+        Ghostfetch is off on <b>{host}</b>
+        {", so it doesn't capture or change anything there. "}
         <Button
           variant="link"
           size="inline"
           data-testid="enable-site"
           onClick={() => {
             const site = normalizeSite(host);
-            if (site) setSites([...state.sites, site]).then(() => chrome.tabs.reload(targetId));
+            if (site)
+              setSites([...state.sites, site]).then(() => chrome.tabs.reload(targetId));
           }}
         >
           {`Turn on for ${host}`}
@@ -93,8 +164,12 @@ export const TrafficView = memo(function TrafficView({ followActiveTab, onMock, 
   } else if (!traffic.connecting && !traffic.connected) {
     notice = (
       <>
-        {"Ghostfetch isn't running in this tab yet. That happens when the page was opened before Ghostfetch was installed or turned on for this site. "}
-        <Button variant="link" size="inline" onClick={() => chrome.tabs.reload(targetId)}>Reload the page</Button>
+        {
+          "Ghostfetch isn't running in this tab yet. That happens when the page was opened before Ghostfetch was installed or turned on for this site. "
+        }
+        <Button variant="link" size="inline" onClick={() => chrome.tabs.reload(targetId)}>
+          Reload the page
+        </Button>
       </>
     );
   } else if (!record) {
@@ -108,18 +183,30 @@ export const TrafficView = memo(function TrafficView({ followActiveTab, onMock, 
           <div className="flex min-w-0 flex-1 items-center gap-2.5 pl-3.5">
             <Label>Tab</Label>
             <Select
-              items={traffic.tabs.map((tab) => ({ value: String(tab.id), label: tab.title }))}
+              items={traffic.tabs.map((tab) => ({
+                value: String(tab.id),
+                label: tab.title,
+              }))}
               value={targetId == null ? null : String(targetId)}
               onValueChange={(value) => {
                 setSelectedId(null);
                 log.setTarget(value ? Number(value) : null);
               }}
             >
-              <SelectTrigger variant="bare" data-testid="traffic-tab" aria-label="Tab to inspect" className="flex-1">
+              <SelectTrigger
+                variant="bare"
+                data-testid="traffic-tab"
+                aria-label="Tab to inspect"
+                className="flex-1"
+              >
                 <SelectValue placeholder="No web pages open" />
               </SelectTrigger>
               <SelectContent>
-                {traffic.tabs.map((tab) => <SelectItem key={tab.id} value={String(tab.id)}>{tab.title}</SelectItem>)}
+                {traffic.tabs.map((tab) => (
+                  <SelectItem key={tab.id} value={String(tab.id)}>
+                    {tab.title}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -144,11 +231,30 @@ export const TrafficView = memo(function TrafficView({ followActiveTab, onMock, 
         </SectionRow>
 
         <List>
-          {visible.length ? visible.map((entry) => <RequestRow key={entry.id} entry={entry} selected={entry.id === selectedId} onSelect={setSelectedId} />) : waiting && <ListEmpty><p>{waiting}</p></ListEmpty>}
+          {visible.length
+            ? visible.map((entry) => (
+                <RequestRow
+                  key={entry.id}
+                  entry={entry}
+                  selected={entry.id === selectedId}
+                  onSelect={setSelectedId}
+                />
+              ))
+            : waiting && (
+                <ListEmpty>
+                  <p>{waiting}</p>
+                </ListEmpty>
+              )}
         </List>
 
         <PaneFooter>
-          <Toggle size="cell" pressed={record} onPressedChange={(on) => setFlag('record', on)} title="Capture requests. Rules apply either way." className="border-l-0">
+          <Toggle
+            size="cell"
+            pressed={record}
+            onPressedChange={(on) => setFlag('record', on)}
+            title="Capture requests. Rules apply either way."
+            className="border-l-0"
+          >
             Rec
           </Toggle>
           <Toggle
@@ -162,7 +268,12 @@ export const TrafficView = memo(function TrafficView({ followActiveTab, onMock, 
           >
             Preserve
           </Toggle>
-          <Toggle size="cell" pressed={onlyMatched} onPressedChange={setOnlyMatched} title="Only show requests a rule matched">
+          <Toggle
+            size="cell"
+            pressed={onlyMatched}
+            onPressedChange={setOnlyMatched}
+            title="Only show requests a rule matched"
+          >
             Matched
           </Toggle>
           <Button
@@ -183,12 +294,18 @@ export const TrafficView = memo(function TrafficView({ followActiveTab, onMock, 
 
       <DetailPane picked={Boolean(selected)}>
         {selected ? (
-          <RequestDetail entry={selected} onBack={back} onMock={onMock} onOpenRule={onOpenRule} />
+          <RequestDetail
+            entry={selected}
+            onBack={back}
+            onMock={onMock}
+            onOpenRule={onOpenRule}
+          />
         ) : (
           <Empty>
             <EmptyTitle className="mt-0">Select a request</EmptyTitle>
             <EmptyDescription>
-              Click a request to see its response, then turn it into a rule with <b>Mock this response</b>.
+              Click a request to see its response, then turn it into a rule with{' '}
+              <b>Mock this response</b>.
             </EmptyDescription>
           </Empty>
         )}
@@ -199,13 +316,30 @@ export const TrafficView = memo(function TrafficView({ followActiveTab, onMock, 
 
 // Entries come from the page, so everything in them is shown as text, never as HTML. The second
 // line says which rule fired, or else where the request went.
-const RequestRow = memo(function RequestRow({ entry, selected, onSelect }: { entry: LogEntry; selected: boolean; onSelect: (id: string) => void }) {
+const RequestRow = memo(function RequestRow({
+  entry,
+  selected,
+  onSelect,
+}: {
+  entry: LogEntry;
+  selected: boolean;
+  onSelect: (id: string) => void;
+}) {
   const { host, path } = splitUrl(entry.url);
   return (
-    <Item variant="request" data-testid="request" hit={Boolean(entry.action)} selected={selected} title={entry.url} onClick={() => onSelect(entry.id)}>
+    <Item
+      variant="request"
+      data-testid="request"
+      hit={Boolean(entry.action)}
+      selected={selected}
+      title={entry.url}
+      onClick={() => onSelect(entry.id)}
+    >
       <Method>{entry.method}</Method>
       <span className="flex min-w-0 flex-col">
-        <span data-testid="request-path" className="truncate text-foreground">{path}</span>
+        <span data-testid="request-path" className="truncate text-foreground">
+          {path}
+        </span>
         <span className="flex min-w-0 items-center gap-[7px] overflow-hidden text-control whitespace-nowrap text-t30">
           {entry.action ? (
             <>
@@ -218,13 +352,25 @@ const RequestRow = memo(function RequestRow({ entry, selected, onSelect }: { ent
         </span>
       </span>
       <StatusCode status={entry.status} failed={Boolean(entry.error)} />
-      <span className="text-right text-control text-t30 tabular-nums">{entry.duration != null ? `${entry.duration} ms` : ''}</span>
+      <span className="text-right text-control text-t30 tabular-nums">
+        {entry.duration != null ? `${entry.duration} ms` : ''}
+      </span>
     </Item>
   );
 });
 
 // Memoized on the entry, which never changes: a long body is only formatted once.
-const RequestDetail = memo(function RequestDetail({ entry, onBack, onMock, onOpenRule }: { entry: LogEntry; onBack: () => void; onMock: (draft: Rule) => void; onOpenRule: (id: string) => void }) {
+const RequestDetail = memo(function RequestDetail({
+  entry,
+  onBack,
+  onMock,
+  onOpenRule,
+}: {
+  entry: LogEntry;
+  onBack: () => void;
+  onMock: (draft: Rule) => void;
+  onOpenRule: (id: string) => void;
+}) {
   const { path } = splitUrl(entry.url);
   const pretty = useMemo(() => formatJson(entry.responseBody), [entry.responseBody]);
   const requestPretty = useMemo(() => formatJson(entry.requestBody), [entry.requestBody]);
@@ -240,11 +386,24 @@ const RequestDetail = memo(function RequestDetail({ entry, onBack, onMock, onOpe
       <PaneHead>
         <BackButton title="All requests" data-testid="request-back" onClick={onBack} />
         <Method className="self-center pl-3.5">{entry.method}</Method>
-        <span title={entry.url} className="min-w-0 flex-1 self-center truncate px-2.5 text-title font-medium text-white">{path}</span>
-        <StatusCode status={entry.status} failed={Boolean(entry.error)} className="mx-3.5 self-center" />
+        <span
+          title={entry.url}
+          className="min-w-0 flex-1 self-center truncate px-2.5 text-title font-medium text-white"
+        >
+          {path}
+        </span>
+        <StatusCode
+          status={entry.status}
+          failed={Boolean(entry.error)}
+          className="mx-3.5 self-center"
+        />
       </PaneHead>
       <PaneScroll>
-        {entry.error && <Alert variant="error" className="mx-3.5 mt-3.5">{entry.error}</Alert>}
+        {entry.error && (
+          <Alert variant="error" className="mx-3.5 mt-3.5">
+            {entry.error}
+          </Alert>
+        )}
         <div className="flex flex-col gap-2 border-b border-border px-3.5 py-3">
           {canMock && (
             <Button
@@ -254,7 +413,11 @@ const RequestDetail = memo(function RequestDetail({ entry, onBack, onMock, onOpe
               className="w-full"
               onClick={() => {
                 onMock(ruleFromEntry(entry));
-                if (entry.truncated) notify('The response was over 1 MB, so the mock only has the first 1 MB', { kind: 'error', duration: 5000 });
+                if (entry.truncated)
+                  notify(
+                    'The response was over 1 MB, so the mock only has the first 1 MB',
+                    { kind: 'error', duration: 5000 },
+                  );
               }}
             >
               <Icon name="wand" />
@@ -273,7 +436,10 @@ const RequestDetail = memo(function RequestDetail({ entry, onBack, onMock, onOpe
               Copy URL
             </Button>
             {entry.responseBody && (
-              <Button className={SECONDARY} onClick={() => copy(pretty ?? entry.responseBody)}>
+              <Button
+                className={SECONDARY}
+                onClick={() => copy(pretty ?? entry.responseBody)}
+              >
                 <Icon name="copy" size={13} />
                 Copy response
               </Button>
@@ -281,9 +447,13 @@ const RequestDetail = memo(function RequestDetail({ entry, onBack, onMock, onOpe
           </div>
         </div>
         <dl className="grid grid-cols-2 gap-x-4 px-3.5 pt-1 pb-3">
-          <Meta label="URL" wide className="break-all">{entry.url}</Meta>
+          <Meta label="URL" wide className="break-all">
+            {entry.url}
+          </Meta>
           <Meta label="Type">{`${KIND_LABELS[entry.kind] || entry.kind}${entry.frame ? ` in iframe ${entry.frame}` : ''}`}</Meta>
-          {entry.duration != null && <Meta label="Duration">{`${entry.duration} ms`}</Meta>}
+          {entry.duration != null && (
+            <Meta label="Duration">{`${entry.duration} ms`}</Meta>
+          )}
           <Meta label="Time">{new Date(entry.time).toLocaleTimeString()}</Meta>
           {entry.contentType && <Meta label="Content-Type">{entry.contentType}</Meta>}
           {entry.ruleId && (
@@ -294,17 +464,26 @@ const RequestDetail = memo(function RequestDetail({ entry, onBack, onMock, onOpe
           )}
         </dl>
         <Card>
-          <CardTitle note={entry.truncated ? 'first 1 MB only' : undefined}>Response body</CardTitle>
+          <CardTitle note={entry.truncated ? 'first 1 MB only' : undefined}>
+            Response body
+          </CardTitle>
           {entry.responseBody ? (
             <CodeView text={pretty ?? entry.responseBody} highlight={pretty !== null} />
           ) : (
-            <CardHint>{canMock ? 'No body captured (empty, binary, or a streaming response).' : 'Chrome handled this request directly, so its body isn’t available.'}</CardHint>
+            <CardHint>
+              {canMock
+                ? 'No body captured (empty, binary, or a streaming response).'
+                : 'Chrome handled this request directly, so its body isn’t available.'}
+            </CardHint>
           )}
         </Card>
         {entry.requestBody && (
           <Card>
             <CardTitle>Request body</CardTitle>
-            <CodeView text={requestPretty ?? entry.requestBody} highlight={requestPretty !== null} />
+            <CodeView
+              text={requestPretty ?? entry.requestBody}
+              highlight={requestPretty !== null}
+            />
           </Card>
         )}
       </PaneScroll>
@@ -313,11 +492,30 @@ const RequestDetail = memo(function RequestDetail({ entry, onBack, onMock, onOpe
 });
 
 // One fact about a request: a small label over its value.
-function Meta({ label, wide, className, children }: { label: string; wide?: boolean; className?: string; children: ReactNode }) {
+function Meta({
+  label,
+  wide,
+  className,
+  children,
+}: {
+  label: string;
+  wide?: boolean;
+  className?: string;
+  children: ReactNode;
+}) {
   return (
-    <div className={cn('min-w-0 border-b border-line-soft py-2', wide && 'col-span-full')}>
+    <div
+      className={cn('min-w-0 border-b border-line-soft py-2', wide && 'col-span-full')}
+    >
       <dt className="mb-[3px] text-micro uppercase tracking-badge text-t40">{label}</dt>
-      <dd className={cn('flex min-w-0 flex-wrap items-center gap-2 text-foreground', className)}>{children}</dd>
+      <dd
+        className={cn(
+          'flex min-w-0 flex-wrap items-center gap-2 text-foreground',
+          className,
+        )}
+      >
+        {children}
+      </dd>
     </div>
   );
 }
@@ -326,7 +524,11 @@ function Meta({ label, wide, className, children }: { label: string; wide?: bool
 function ActionBadge({ entry, title }: { entry: LogEntry; title?: string }) {
   if (!Object.hasOwn(ACTION_LABELS, entry.action)) return null;
   return (
-    <Badge variant={entry.action === 'error' ? 'error' : 'fired'} data-testid="request-action" title={title}>
+    <Badge
+      variant={entry.action === 'error' ? 'error' : 'fired'}
+      data-testid="request-action"
+      title={title}
+    >
       {ACTION_LABELS[entry.action]}
     </Badge>
   );
@@ -336,13 +538,16 @@ function ruleFromEntry(entry: LogEntry) {
   const rule = createRule('response');
   const { path, pathname } = splitUrl(entry.url);
   const operation = graphqlOperation(entry.requestBody);
-  rule.match.method = (METHODS as readonly string[]).includes(entry.method) ? (entry.method as HttpMethod) : 'ANY';
+  rule.match.method = (METHODS as readonly string[]).includes(entry.method)
+    ? (entry.method as HttpMethod)
+    : 'ANY';
   rule.match.mode = 'equals';
   rule.match.url = operation ? pathname : path;
   rule.match.graphqlOperation = operation;
   rule.response.body = formatJson(entry.responseBody) ?? entry.responseBody;
   rule.response.status = entry.status && entry.status !== 200 ? String(entry.status) : '';
-  if (entry.contentType) rule.response.contentType = entry.contentType.split(';')[0].trim();
+  if (entry.contentType)
+    rule.response.contentType = entry.contentType.split(';')[0].trim();
   return rule;
 }
 
@@ -350,7 +555,11 @@ function graphqlOperation(body: string) {
   try {
     const parsed = JSON.parse(body);
     const first = Array.isArray(parsed) ? parsed[0] : parsed;
-    return first?.operationName || /^\s*(?:query|mutation|subscription)\s+(\w+)/.exec(first?.query || '')?.[1] || '';
+    return (
+      first?.operationName ||
+      /^\s*(?:query|mutation|subscription)\s+(\w+)/.exec(first?.query || '')?.[1] ||
+      ''
+    );
   } catch {
     return '';
   }

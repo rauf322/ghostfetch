@@ -14,7 +14,9 @@ export const CHROME_BUILD = path.join(ROOT, '.output', 'chrome-mv3');
 export const FIREFOX_BUILD = path.join(ROOT, '.output', 'firefox-mv3');
 export function requireBuild(dir) {
   if (!fs.existsSync(path.join(dir, 'manifest.json'))) {
-    throw new Error(`No build in ${path.relative(ROOT, dir)}. Run the tests through npm (npm test, npm run test:firefox, npm run test:kit), which builds first.`);
+    throw new Error(
+      `No build in ${path.relative(ROOT, dir)}. Run the tests through npm (npm test, npm run test:firefox, npm run test:kit), which builds first.`,
+    );
   }
   return dir;
 }
@@ -22,13 +24,25 @@ export function requireBuild(dir) {
 // The editor's own sources, for the /editor page: /src/... from src/ (TypeScript with its types
 // stripped, as Node runs it) and /fonts/... from public/fonts/. Returns false for any other path.
 // (URL parsing has already resolved any "..".)
-const SOURCE_TYPES = { '.ts': 'text/javascript', '.css': 'text/css', '.woff2': 'font/woff2' };
+const SOURCE_TYPES = {
+  '.ts': 'text/javascript',
+  '.css': 'text/css',
+  '.woff2': 'font/woff2',
+};
 export function sendSource(pathname, res) {
-  const [dir, rest] = pathname.startsWith('/src/') ? [path.join(ROOT, 'src'), pathname.slice(5)]
-    : pathname.startsWith('/fonts/') ? [path.join(ROOT, 'public', 'fonts'), pathname.slice(7)] : [];
+  const [dir, rest] = pathname.startsWith('/src/')
+    ? [path.join(ROOT, 'src'), pathname.slice(5)]
+    : pathname.startsWith('/fonts/')
+      ? [path.join(ROOT, 'public', 'fonts'), pathname.slice(7)]
+      : [];
   const file = dir && path.join(dir, rest);
   const type = file && SOURCE_TYPES[path.extname(file)];
-  if (!type || !file.startsWith(dir + path.sep) || !fs.statSync(file, { throwIfNoEntry: false })?.isFile()) return false;
+  if (
+    !type ||
+    !file.startsWith(dir + path.sep) ||
+    !fs.statSync(file, { throwIfNoEntry: false })?.isFile()
+  )
+    return false;
   const body = fs.readFileSync(file);
   res.writeHead(200, { 'content-type': type });
   res.end(file.endsWith('.ts') ? stripTypeScriptTypes(body.toString('utf8')) : body);
@@ -44,7 +58,9 @@ export async function startServer() {
   const server = http.createServer((req, res) => {
     const url = new URL(req.url, 'http://localhost');
     let body = '';
-    req.on('data', (chunk) => { body += chunk; });
+    req.on('data', (chunk) => {
+      body += chunk;
+    });
     req.on('end', () => {
       const json = (status, data) => {
         res.writeHead(status, { 'content-type': 'application/json', 'x-real': 'yes' });
@@ -53,7 +69,9 @@ export async function startServer() {
       if (url.pathname === '/') {
         res.writeHead(200, { 'content-type': 'text/html' });
         // The host is in the title so the tab picker test can tell localhost and evil.test apart.
-        res.end(`<!doctype html><title>Test app on ${req.headers.host}</title><h1>Test app</h1><script>window.early = fetch("/api/early").then((r) => r.json());</script>`);
+        res.end(
+          `<!doctype html><title>Test app on ${req.headers.host}</title><h1>Test app</h1><script>window.early = fetch("/api/early").then((r) => r.json());</script>`,
+        );
       } else if (url.pathname === '/steal') {
         // A hostile page whose first inline script tries to grab Ghostfetch's rule channel.
         res.writeHead(200, { 'content-type': 'text/html' });
@@ -132,9 +150,17 @@ export async function startServer() {
           </script>`);
       } else if (sendSource(url.pathname, res)) {
         // served
-      } else if (url.pathname === '/api/user') json(200, { id: 1, name: 'Real', role: 'user', profile: { city: 'Riga', age: 30 }, tags: ['a', 'b'] });
+      } else if (url.pathname === '/api/user')
+        json(200, {
+          id: 1,
+          name: 'Real',
+          role: 'user',
+          profile: { city: 'Riga', age: 30 },
+          tags: ['a', 'b'],
+        });
       else if (url.pathname === '/api/early') json(200, { early: 'real' });
-      else if (url.pathname === '/api/echo') json(200, { method: req.method, headers: req.headers, body });
+      else if (url.pathname === '/api/echo')
+        json(200, { method: req.method, headers: req.headers, body });
       else if (url.pathname === '/api/new-home') json(200, { redirected: true });
       else if (url.pathname === '/graphql') json(200, { data: { real: true } });
       else json(404, { error: 'not found' });
@@ -163,26 +189,91 @@ function rule(type, match, patch = {}) {
 export function testRules(origin) {
   return [
     rule('response', { url: '/api/early' }, { response: { body: '{"early":"mocked"}' } }),
-    rule('response', { url: '/api/user?case=replace', mode: 'equals' }, {
-      response: { body: '{"name":"Mocked"}', status: '404', headers: [{ op: 'set', name: 'X-Mock', value: 'yes' }] },
-    }),
-    rule('response', { url: 'case=merge' }, {
-      response: { bodyMode: 'merge', merge: '{"role":"admin","profile":{"city":"Berlin"},"tags":["z"]}' },
-    }),
-    rule('response', { url: 'case=script' }, {
-      response: { bodyMode: 'script', script: 'response.name = response.name.toUpperCase();\nresponse.sawUrl = request.url.includes("case=script");\nreturn response;' },
-    }),
-    rule('response', { url: 'case=badmerge' }, { response: { bodyMode: 'merge', merge: '{oops' } }),
-    rule('response', { url: 'case=delay' }, { response: { bodyMode: 'original', delay: 600, status: '503' } }),
-    rule('response', { url: '/graphql', graphqlOperation: 'GetUser' }, { response: { body: '{"data":{"user":"mocked"}}' } }),
-    rule('response', { url: 'case=method', method: 'POST' }, { response: { body: '{"post":"mocked"}' } }),
-    rule('response', { url: '*/api/user?case=wild*', mode: 'wildcard' }, { response: { body: '{"wild":true}' } }),
-    rule('response', { url: 'case=regex\\d+$', mode: 'regex' }, { response: { body: '{"regex":true}' } }),
-    { ...rule('response', { url: 'case=disabled' }, { response: { body: '{"disabled":"mocked"}' } }), enabled: false },
-    rule('redirect', { url: '/api/old-home' }, { redirect: { to: `${origin}/api/new-home` } }),
-    rule('headers', { url: '/api/echo' }, {
-      headers: { request: [{ op: 'set', name: 'X-Debug', value: '1' }], response: [{ op: 'set', name: 'X-Resp', value: 'ok' }] },
-    }),
+    rule(
+      'response',
+      { url: '/api/user?case=replace', mode: 'equals' },
+      {
+        response: {
+          body: '{"name":"Mocked"}',
+          status: '404',
+          headers: [{ op: 'set', name: 'X-Mock', value: 'yes' }],
+        },
+      },
+    ),
+    rule(
+      'response',
+      { url: 'case=merge' },
+      {
+        response: {
+          bodyMode: 'merge',
+          merge: '{"role":"admin","profile":{"city":"Berlin"},"tags":["z"]}',
+        },
+      },
+    ),
+    rule(
+      'response',
+      { url: 'case=script' },
+      {
+        response: {
+          bodyMode: 'script',
+          script:
+            'response.name = response.name.toUpperCase();\nresponse.sawUrl = request.url.includes("case=script");\nreturn response;',
+        },
+      },
+    ),
+    rule(
+      'response',
+      { url: 'case=badmerge' },
+      { response: { bodyMode: 'merge', merge: '{oops' } },
+    ),
+    rule(
+      'response',
+      { url: 'case=delay' },
+      { response: { bodyMode: 'original', delay: 600, status: '503' } },
+    ),
+    rule(
+      'response',
+      { url: '/graphql', graphqlOperation: 'GetUser' },
+      { response: { body: '{"data":{"user":"mocked"}}' } },
+    ),
+    rule(
+      'response',
+      { url: 'case=method', method: 'POST' },
+      { response: { body: '{"post":"mocked"}' } },
+    ),
+    rule(
+      'response',
+      { url: '*/api/user?case=wild*', mode: 'wildcard' },
+      { response: { body: '{"wild":true}' } },
+    ),
+    rule(
+      'response',
+      { url: 'case=regex\\d+$', mode: 'regex' },
+      { response: { body: '{"regex":true}' } },
+    ),
+    {
+      ...rule(
+        'response',
+        { url: 'case=disabled' },
+        { response: { body: '{"disabled":"mocked"}' } },
+      ),
+      enabled: false,
+    },
+    rule(
+      'redirect',
+      { url: '/api/old-home' },
+      { redirect: { to: `${origin}/api/new-home` } },
+    ),
+    rule(
+      'headers',
+      { url: '/api/echo' },
+      {
+        headers: {
+          request: [{ op: 'set', name: 'X-Debug', value: '1' }],
+          response: [{ op: 'set', name: 'X-Resp', value: 'ok' }],
+        },
+      },
+    ),
     rule('block', { url: '/api/blocked' }),
   ];
 }
@@ -194,27 +285,81 @@ export function testRules(origin) {
 // the keys typed, the body after it (null: unchanged), the cursor (line:column) and the status
 // line's message. The same keys typed into vim 9.1 give the same bodies and cursors.
 const lines = (...rows) => rows.join('\n');
-export const VIM_START = lines('{', '  "name": "Ada",', '  "role": "admin",', '  "tags": [1, 2, 3]', '}');
-const renamed = lines('{', '  "full_name": "Ada",', '  "role": "owner",', '  "tags": [1, 2, 3]', '}');
-const shifted = lines('{', '  "full_name": "Ada",', '    "role": "owner",', '      "tags": [1, 2, 3]', '}');
+export const VIM_START = lines(
+  '{',
+  '  "name": "Ada",',
+  '  "role": "admin",',
+  '  "tags": [1, 2, 3]',
+  '}',
+);
+const renamed = lines(
+  '{',
+  '  "full_name": "Ada",',
+  '  "role": "owner",',
+  '  "tags": [1, 2, 3]',
+  '}',
+);
+const shifted = lines(
+  '{',
+  '  "full_name": "Ada",',
+  '    "role": "owner",',
+  '      "tags": [1, 2, 3]',
+  '}',
+);
 export const VIM_STEPS = [
   ['gg', null, '1:1'],
   ['jw', null, '2:3'],
-  ['ci"full_name<Esc>', lines('{', '  "full_name": "Ada",', '  "role": "admin",', '  "tags": [1, 2, 3]', '}'), '2:12'],
+  [
+    'ci"full_name<Esc>',
+    lines('{', '  "full_name": "Ada",', '  "role": "admin",', '  "tags": [1, 2, 3]', '}'),
+    '2:12',
+  ],
   ['j0fa', null, '3:12'],
   ['ci"owner<Esc>', renamed, '3:16'],
   // A change and its Insert mode are one undo step, though Chrome makes one per letter typed.
-  ['u', lines('{', '  "full_name": "Ada",', '  "role": "admin",', '  "tags": [1, 2, 3]', '}'), '3:12'],
+  [
+    'u',
+    lines('{', '  "full_name": "Ada",', '  "role": "admin",', '  "tags": [1, 2, 3]', '}'),
+    '3:12',
+  ],
   ['<C-r>', renamed, '3:12'],
   ['j$', null, '4:19'],
-  ['di[', lines('{', '  "full_name": "Ada",', '  "role": "owner",', '  "tags": []', '}'), '4:12'],
+  [
+    'di[',
+    lines('{', '  "full_name": "Ada",', '  "role": "owner",', '  "tags": []', '}'),
+    '4:12',
+  ],
   ['u', renamed, '4:12'],
-  ['<C-r>', lines('{', '  "full_name": "Ada",', '  "role": "owner",', '  "tags": []', '}'), '4:12'],
+  [
+    '<C-r>',
+    lines('{', '  "full_name": "Ada",', '  "role": "owner",', '  "tags": []', '}'),
+    '4:12',
+  ],
   ['u', renamed, '4:12'],
   ['ggyyGp', `${renamed}\n{`, '6:1'],
   ['dd', renamed, '5:1'],
-  ['kVk>', lines('{', '  "full_name": "Ada",', '    "role": "owner",', '    "tags": [1, 2, 3]', '}'), '3:5'],
-  ['.', lines('{', '  "full_name": "Ada",', '      "role": "owner",', '      "tags": [1, 2, 3]', '}'), '3:7'],
+  [
+    'kVk>',
+    lines(
+      '{',
+      '  "full_name": "Ada",',
+      '    "role": "owner",',
+      '    "tags": [1, 2, 3]',
+      '}',
+    ),
+    '3:5',
+  ],
+  [
+    '.',
+    lines(
+      '{',
+      '  "full_name": "Ada",',
+      '      "role": "owner",',
+      '      "tags": [1, 2, 3]',
+      '}',
+    ),
+    '3:7',
+  ],
   ['<<', shifted, '3:5'],
   ['/own<CR>', null, '3:14'],
   ['n', null, '3:14', 'Search hit the bottom, continuing at the top'],
@@ -243,7 +388,11 @@ export async function check(name, fn) {
     console.log(`  ✓ ${name}`);
   } catch (error) {
     results.push([false, name]);
-    console.log(`  ✗ ${name}\n      ${String(error.message || error).split('\n').join('\n      ')}`);
+    console.log(
+      `  ✗ ${name}\n      ${String(error.message || error)
+        .split('\n')
+        .join('\n      ')}`,
+    );
   }
 }
 

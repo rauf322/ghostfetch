@@ -17,8 +17,10 @@ const MAX_HIGHLIGHT = 200_000;
 const MAX_MATCHES = 1000;
 const MODIFIERS = new Set(['Shift', 'Control', 'Alt', 'Meta', 'CapsLock']);
 const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-const JSON_TOKEN = /("(?:\\.|[^"\\\n])*")(\s*:)?|(-?\b\d+(?:\.\d+)?(?:[eE][+-]?\d+)?\b)|\b(true|false|null)\b/g;
-const JS_TOKEN = /(\/\/[^\n]*|\/\*[\s\S]*?\*\/)|("(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|`(?:\\.|[^`\\])*`)|\b(\d+(?:\.\d+)?)\b|\b(const|let|var|return|if|else|for|of|in|while|function|async|await|new|true|false|null|undefined|typeof|this|try|catch|throw|delete)\b/g;
+const JSON_TOKEN =
+  /("(?:\\.|[^"\\\n])*")(\s*:)?|(-?\b\d+(?:\.\d+)?(?:[eE][+-]?\d+)?\b)|\b(true|false|null)\b/g;
+const JS_TOKEN =
+  /(\/\/[^\n]*|\/\*[\s\S]*?\*\/)|("(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|`(?:\\.|[^`\\])*`)|\b(\d+(?:\.\d+)?)\b|\b(const|let|var|return|if|else|for|of|in|while|function|async|await|new|true|false|null|undefined|typeof|this|try|catch|throw|delete)\b/g;
 
 // The text cut into [kind, text] pieces, in order, for syntax highlighting. Past MAX_HIGHLIGHT
 // characters it's one plain piece.
@@ -53,7 +55,11 @@ export function tokens(text: string, language: Language = 'json') {
 
 // The same pieces as HTML, every one of them escaped, for the editor's highlight layer.
 export function highlight(text: string, language: Language = 'json') {
-  return tokens(text, language).map(([kind, part]) => (kind ? `<span class="tk-${kind}">${escapeHtml(part)}</span>` : escapeHtml(part))).join('');
+  return tokens(text, language)
+    .map(([kind, part]) =>
+      kind ? `<span class="tk-${kind}">${escapeHtml(part)}</span>` : escapeHtml(part),
+    )
+    .join('');
 }
 
 interface CodeEditorOptions {
@@ -63,7 +69,12 @@ interface CodeEditorOptions {
   onChange?: (value: string) => void;
 }
 
-export function createCodeEditor({ value = '', language = 'json', placeholder = '', onChange }: CodeEditorOptions = {}) {
+export function createCodeEditor({
+  value = '',
+  language = 'json',
+  placeholder = '',
+  onChange,
+}: CodeEditorOptions = {}) {
   const root = document.createElement('div');
   root.className = 'code';
   // The find marks sit on their own layer under the highlighted text, so they never interfere
@@ -111,10 +122,13 @@ export function createCodeEditor({ value = '', language = 'json', placeholder = 
     const count = textarea.value.split('\n').length;
     if (count !== lineCount) {
       lineCount = count;
-      lines.textContent = Array.from({ length: count }, (_, index) => index + 1).join('\n');
+      lines.textContent = Array.from({ length: count }, (_, index) => index + 1).join(
+        '\n',
+      );
     }
     // Typing while the find bar is open keeps the matches up to date.
-    if (!findBar.hidden) search(matches[current]?.[0] ?? textarea.selectionStart, { scroll: false });
+    if (!findBar.hidden)
+      search(matches[current]?.[0] ?? textarea.selectionStart, { scroll: false });
     sync();
   }
 
@@ -140,16 +154,25 @@ export function createCodeEditor({ value = '', language = 'json', placeholder = 
         if (matches.length === MAX_MATCHES) break;
       }
     }
-    current = backward ? matches.findLastIndex(([start]) => start < from) : matches.findIndex(([start]) => start >= from);
+    current = backward
+      ? matches.findLastIndex(([start]) => start < from)
+      : matches.findIndex(([start]) => start >= from);
     if (current < 0) current = !matches.length ? -1 : backward ? matches.length - 1 : 0;
     showMatches(scroll);
   }
 
   // For vim's n, N, * and #: the next match after `from`, or the last one before it, wrapping
   // around the ends of the text. `word` matches whole words only.
-  function findFrom(query: string, from: number, { backward = false, word = false } = {}) {
+  function findFrom(
+    query: string,
+    from: number,
+    { backward = false, word = false } = {},
+  ) {
     const text = escapeRegExp(query);
-    const pattern = new RegExp(word ? `(?<![\\p{L}\\p{N}_])${text}(?![\\p{L}\\p{N}_])` : text, 'giu');
+    const pattern = new RegExp(
+      word ? `(?<![\\p{L}\\p{N}_])${text}(?![\\p{L}\\p{N}_])` : text,
+      'giu',
+    );
     let first: number | null = null;
     let last: number | null = null;
     let before: number | null = null;
@@ -159,7 +182,12 @@ export function createCodeEditor({ value = '', language = 'json', placeholder = 
       last = index;
       if (index < from) before = index;
     }
-    if (backward) return before !== null ? { index: before, wrapped: false } : last !== null ? { index: last, wrapped: true } : null;
+    if (backward)
+      return before !== null
+        ? { index: before, wrapped: false }
+        : last !== null
+          ? { index: last, wrapped: true }
+          : null;
     return first !== null ? { index: first, wrapped: true } : null;
   }
 
@@ -181,7 +209,9 @@ export function createCodeEditor({ value = '', language = 'json', placeholder = 
     const query = findInput.value;
     findCount.textContent = matches.length
       ? `${current + 1} / ${matches.length}${matches.length === MAX_MATCHES ? '+' : ''}`
-      : query ? 'No results' : '';
+      : query
+        ? 'No results'
+        : '';
     findBar.classList.toggle('none', Boolean(query) && !matches.length);
     if (scroll) scrollToCurrent();
   }
@@ -191,17 +221,24 @@ export function createCodeEditor({ value = '', language = 'json', placeholder = 
     const mark = marks.querySelector<HTMLElement>('mark.current');
     if (!mark) return;
     const { offsetTop, offsetLeft, offsetHeight, offsetWidth } = mark;
-    if (offsetTop < textarea.scrollTop || offsetTop + offsetHeight > textarea.scrollTop + textarea.clientHeight) {
+    if (
+      offsetTop < textarea.scrollTop ||
+      offsetTop + offsetHeight > textarea.scrollTop + textarea.clientHeight
+    ) {
       textarea.scrollTop = offsetTop - textarea.clientHeight / 3;
     }
-    if (offsetLeft < textarea.scrollLeft || offsetLeft + offsetWidth > textarea.scrollLeft + textarea.clientWidth) {
+    if (
+      offsetLeft < textarea.scrollLeft ||
+      offsetLeft + offsetWidth > textarea.scrollLeft + textarea.clientWidth
+    ) {
       textarea.scrollLeft = Math.max(0, offsetLeft - textarea.clientWidth / 3);
     }
     sync();
   }
 
   // Where the find bar searches from: the cursor, or just after it for vim's "/".
-  const searchStart = () => (vimSearch ? vimSearch.from + (vimSearch.backward ? 0 : 1) : textarea.selectionStart);
+  const searchStart = () =>
+    vimSearch ? vimSearch.from + (vimSearch.backward ? 0 : 1) : textarea.selectionStart;
 
   // With `vimLine` (like vimSearch) the bar is vim's "/" or "?" search line: it starts empty,
   // searches from the cursor, and Enter goes to the match.
@@ -213,7 +250,10 @@ export function createCodeEditor({ value = '', language = 'json', placeholder = 
       findInput.value = '';
     } else {
       // Like most editors, a word selected in the body becomes the query.
-      const selected = textarea.value.slice(textarea.selectionStart, textarea.selectionEnd);
+      const selected = textarea.value.slice(
+        textarea.selectionStart,
+        textarea.selectionEnd,
+      );
       if (selected && !selected.includes('\n')) findInput.value = selected;
     }
     findBar.hidden = false;
@@ -236,14 +276,19 @@ export function createCodeEditor({ value = '', language = 'json', placeholder = 
     vimSearch = null;
     textarea.focus({ preventScroll: true });
     if (!select || !match || wasVimLine) return;
-    if (vim.active && vim.mode !== 'insert') vim.searched(query, match[0], { quiet: true });
+    if (vim.active && vim.mode !== 'insert')
+      vim.searched(query, match[0], { quiet: true });
     else textarea.setSelectionRange(match[0], match[1]);
   }
 
-  const isShortcut = (event: KeyboardEvent, key: string) => (event.metaKey || event.ctrlKey) && !event.altKey && event.key.toLowerCase() === key;
+  const isShortcut = (event: KeyboardEvent, key: string) =>
+    (event.metaKey || event.ctrlKey) && !event.altKey && event.key.toLowerCase() === key;
 
   findInput.addEventListener('input', () => {
-    search(vimSearch ? searchStart() : matches[current]?.[0] ?? textarea.selectionStart, { backward: vimSearch?.backward });
+    search(
+      vimSearch ? searchStart() : (matches[current]?.[0] ?? textarea.selectionStart),
+      { backward: vimSearch?.backward },
+    );
   });
   findInput.addEventListener('keydown', (event) => {
     if (event.key === 'Enter' && vimSearch) {
@@ -265,7 +310,8 @@ export function createCodeEditor({ value = '', language = 'json', placeholder = 
     }
   });
   findBar.addEventListener('click', (event) => {
-    const action = (event.target as Element).closest<HTMLElement>('[data-find]')?.dataset.find;
+    const action = (event.target as Element).closest<HTMLElement>('[data-find]')?.dataset
+      .find;
     if (action === 'next') step(1);
     if (action === 'prev') step(-1);
     if (action === 'close') closeFind();
@@ -329,7 +375,10 @@ export function createCodeEditor({ value = '', language = 'json', placeholder = 
     if (!spaces) return;
     textarea.setSelectionRange(lineStart, lineStart + spaces);
     document.execCommand('delete');
-    textarea.setSelectionRange(Math.max(lineStart, selectionStart - spaces), Math.max(lineStart, selectionStart - spaces));
+    textarea.setSelectionRange(
+      Math.max(lineStart, selectionStart - spaces),
+      Math.max(lineStart, selectionStart - spaces),
+    );
   }
 
   render();

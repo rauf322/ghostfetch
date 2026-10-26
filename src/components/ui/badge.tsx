@@ -6,22 +6,34 @@ import { cn } from '../../lib/utils.ts';
 
 // Rule types and rule hits are words, not colours. "fired" puts the green square in front: a rule
 // fired. "error" is inverted white.
-const badgeVariants = cva('inline-flex flex-none items-center text-micro font-medium uppercase tracking-badge', {
-  variants: {
-    variant: {
-      default: 'text-t40',
-      strong: 'text-t80',
-      fired: "text-t80 before:mr-[7px] before:size-[7px] before:bg-signal before:content-['']",
-      error: 'bg-foreground px-1 tracking-caps text-black',
+const badgeVariants = cva(
+  'inline-flex flex-none items-center text-micro font-medium uppercase tracking-badge',
+  {
+    variants: {
+      variant: {
+        default: 'text-t40',
+        strong: 'text-t80',
+        fired:
+          "text-t80 before:mr-[7px] before:size-[7px] before:bg-signal before:content-['']",
+        error: 'bg-foreground px-1 tracking-caps text-black',
+      },
     },
+    defaultVariants: { variant: 'default' },
   },
-  defaultVariants: { variant: 'default' },
-});
+);
 
-export function Badge({ className, variant = 'default', render, ...props }: useRender.ComponentProps<'span'> & VariantProps<typeof badgeVariants>) {
+export function Badge({
+  className,
+  variant = 'default',
+  render,
+  ...props
+}: useRender.ComponentProps<'span'> & VariantProps<typeof badgeVariants>) {
   return useRender({
     defaultTagName: 'span',
-    props: mergeProps<'span'>({ className: cn(badgeVariants({ variant }), className) }, props),
+    props: mergeProps<'span'>(
+      { className: cn(badgeVariants({ variant }), className) },
+      props,
+    ),
     render,
     state: { slot: 'badge', variant },
   });
@@ -49,9 +61,20 @@ function statusTone(status: number | null | undefined, failed: boolean) {
   return '2xx';
 }
 
-export function StatusCode({ status, failed = false, className }: { status: number | null | undefined; failed?: boolean; className?: string }) {
+export function StatusCode({
+  status,
+  failed = false,
+  className,
+}: {
+  status: number | null | undefined;
+  failed?: boolean;
+  className?: string;
+}) {
   return (
-    <span data-slot="status" className={cn(statusVariants({ tone: statusTone(status, failed) }), className)}>
+    <span
+      data-slot="status"
+      className={cn(statusVariants({ tone: statusTone(status, failed) }), className)}
+    >
       {status || (failed ? 'ERR' : '—')}
     </span>
   );

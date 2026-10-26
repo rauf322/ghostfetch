@@ -19,7 +19,13 @@ export interface UiState {
 // errors, or an edit made in this view.
 export type Change = 'flags' | 'sites' | 'rules' | 'errors' | 'edit';
 
-export const state: UiState = { enabled: true, record: true, sites: [], rules: [], dnrErrors: {} };
+export const state: UiState = {
+  enabled: true,
+  record: true,
+  sites: [],
+  rules: [],
+  dnrErrors: {},
+};
 
 const listeners = new Set<(kind: Change) => void>();
 // Rules are edited in place, so a component can't tell a changed rule from the one it drew. This
@@ -52,10 +58,15 @@ export async function initState() {
       state.sites = normalizeSites(changes.sites.newValue);
       emit('sites');
     }
-    if (changes.rules && !(changes.rulesWriter?.newValue as string | undefined)?.startsWith(`${writer}:`)) {
+    if (
+      changes.rules &&
+      !(changes.rulesWriter?.newValue as string | undefined)?.startsWith(`${writer}:`)
+    ) {
       clearTimeout(saveTimer!);
       saveTimer = null;
-      state.rules = ((changes.rules.newValue as unknown[]) || []).map((rule) => normalizeRule(rule));
+      state.rules = ((changes.rules.newValue as unknown[]) || []).map((rule) =>
+        normalizeRule(rule),
+      );
       emit('rules');
     }
   });
@@ -90,7 +101,10 @@ function saveRules({ immediate = false } = {}) {
   clearTimeout(saveTimer!);
   const write = () => {
     saveTimer = null;
-    chrome.storage.local.set({ rules: state.rules, rulesWriter: `${writer}:${++writes}` });
+    chrome.storage.local.set({
+      rules: state.rules,
+      rulesWriter: `${writer}:${++writes}`,
+    });
   };
   if (immediate) write();
   else saveTimer = setTimeout(write, 250);

@@ -30,6 +30,17 @@ export const inputVariants = cva(
   },
 );
 
-export function Input({ className, variant, size, ...props }: Omit<ComponentProps<'input'>, 'size'> & VariantProps<typeof inputVariants>) {
-  return <InputPrimitive data-slot="input" className={cn(inputVariants({ variant, size }), className)} {...props} />;
+export function Input({
+  className,
+  variant,
+  size,
+  ...props
+}: Omit<ComponentProps<'input'>, 'size'> & VariantProps<typeof inputVariants>) {
+  return (
+    <InputPrimitive
+      data-slot="input"
+      className={cn(inputVariants({ variant, size }), className)}
+      {...props}
+    />
+  );
 }

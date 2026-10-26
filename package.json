@@ -2,8 +2,8 @@
   "name": "ghostfetch",
   "version": "0.6.0",
   "private": true,
-  "type": "module",
   "description": "Ghostfetch browser extension for Chrome and Firefox/Zen, built with WXT and TypeScript; its popup and editor are React, on Base UI and styled with Tailwind. See README.md for building, testing and packaging.",
+  "type": "module",
   "scripts": {
     "postinstall": "wxt prepare",
     "dev": "wxt",

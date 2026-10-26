@@ -11,7 +11,8 @@ export const buttonVariants = cva(
     variants: {
       variant: {
         outline: '',
-        primary: 'border-foreground bg-foreground text-black hover:border-white hover:bg-white hover:text-black',
+        primary:
+          'border-foreground bg-foreground text-black hover:border-white hover:bg-white hover:text-black',
         ghost: 'border-transparent text-t50 hover:text-foreground',
         // a cell in a bar, with a hairline on its left (Import, Export, Clear)
         cell: 'border-0 border-l border-border font-normal text-t50 hover:text-foreground',
@@ -32,6 +33,17 @@ export const buttonVariants = cva(
   },
 );
 
-export function Button({ className, variant = 'outline', size = 'default', ...props }: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
-  return <ButtonPrimitive data-slot="button" className={cn(buttonVariants({ variant, size, className }))} {...props} />;
+export function Button({
+  className,
+  variant = 'outline',
+  size = 'default',
+  ...props
+}: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
+  return (
+    <ButtonPrimitive
+      data-slot="button"
+      className={cn(buttonVariants({ variant, size, className }))}
+      {...props}
+    />
+  );
 }

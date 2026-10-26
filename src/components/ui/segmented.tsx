@@ -6,7 +6,13 @@ import { cn } from '../../lib/utils.ts';
 // A radio group: one option is always chosen, the arrow keys move between options and choose as
 // they go, and the group is one stop for Tab.
 export function Segmented({ className, ...props }: RadioGroup.Props) {
-  return <RadioGroup data-slot="segmented" className={cn('flex border border-input', className)} {...props} />;
+  return (
+    <RadioGroup
+      data-slot="segmented"
+      className={cn('flex border border-input', className)}
+      {...props}
+    />
+  );
 }
 
 // Each option is a <button>, so the browser centres its label as it does any button's.

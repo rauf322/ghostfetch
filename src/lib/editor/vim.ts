@@ -96,7 +96,11 @@ interface VimOptions {
   textarea: HTMLTextAreaElement;
   cursorLayer: HTMLElement;
   statusLine: HTMLElement;
-  find: (query: string, from: number, options?: { backward?: boolean; word?: boolean }) => { index: number; wrapped: boolean } | null;
+  find: (
+    query: string,
+    from: number,
+    options?: { backward?: boolean; word?: boolean },
+  ) => { index: number; wrapped: boolean } | null;
   openSearch: (line: SearchLine) => void;
   sync: () => void;
   active?: boolean;
@@ -106,7 +110,8 @@ const STORAGE_KEY = 'mocktail.vim';
 
 // The Vim switch is one setting for every body editor, remembered in this browser.
 export const vimPreferred = () => localStorage.getItem(STORAGE_KEY) === '1';
-export const rememberVim = (on: boolean) => localStorage.setItem(STORAGE_KEY, on ? '1' : '0');
+export const rememberVim = (on: boolean) =>
+  localStorage.setItem(STORAGE_KEY, on ? '1' : '0');
 
 // One unnamed register for every editor on the page: yank in one rule's body, put in another's.
 const register = { text: '', linewise: false };
@@ -117,20 +122,29 @@ const MAX_UNDO = 100;
 
 const isLow = (code: number) => code >= 0xdc00 && code <= 0xdfff;
 // Steps over whole characters, so the cursor never lands inside an emoji's surrogate pair.
-const next = (text: string, pos: number) => pos + (isLow(text.charCodeAt(pos + 1)) ? 2 : 1);
-const prev = (text: string, pos: number) => pos - (pos > 1 && isLow(text.charCodeAt(pos - 1)) ? 2 : 1);
+const next = (text: string, pos: number) =>
+  pos + (isLow(text.charCodeAt(pos + 1)) ? 2 : 1);
+const prev = (text: string, pos: number) =>
+  pos - (pos > 1 && isLow(text.charCodeAt(pos - 1)) ? 2 : 1);
 
-const lineStart = (text: string, pos: number) => (pos > 0 ? text.lastIndexOf('\n', pos - 1) + 1 : 0);
+const lineStart = (text: string, pos: number) =>
+  pos > 0 ? text.lastIndexOf('\n', pos - 1) + 1 : 0;
 function lineEnd(text: string, pos: number) {
   const end = text.indexOf('\n', pos);
   return end === -1 ? text.length : end;
 }
 const atLineEnd = (text: string, pos: number) => pos >= text.length || text[pos] === '\n';
-const onEmptyLine = (text: string, pos: number) => (pos === 0 || text[pos - 1] === '\n') && atLineEnd(text, pos);
+const onEmptyLine = (text: string, pos: number) =>
+  (pos === 0 || text[pos - 1] === '\n') && atLineEnd(text, pos);
 const column = (text: string, pos: number) => pos - lineStart(text, pos);
 function lineIndex(text: string, pos: number) {
   let index = 0;
-  for (let at = text.indexOf('\n'); at !== -1 && at < pos; at = text.indexOf('\n', at + 1)) index++;
+  for (
+    let at = text.indexOf('\n');
+    at !== -1 && at < pos;
+    at = text.indexOf('\n', at + 1)
+  )
+    index++;
   return index;
 }
 const lastLine = (text: string) => lineIndex(text, text.length);
@@ -161,7 +175,8 @@ function firstNonBlank(text: string, start: number) {
   return pos;
 }
 // Whether only blanks come before pos on its line.
-const inIndent = (text: string, pos: number) => /^[ \t]*$/.test(text.slice(lineStart(text, pos), pos));
+const inIndent = (text: string, pos: number) =>
+  /^[ \t]*$/.test(text.slice(lineStart(text, pos), pos));
 
 // The Normal-mode cursor sits on a character: never on a line's end, except on an empty line.
 function clamp(text: string, pos: number) {
@@ -173,7 +188,11 @@ function clamp(text: string, pos: number) {
 
 // Whole lines, from the line of `from` through the line of `to`, with their line breaks.
 function lineSpan(text: string, from: number, to: number): Range {
-  return { start: lineStart(text, from), end: Math.min(lineEnd(text, to) + 1, text.length), linewise: true };
+  return {
+    start: lineStart(text, from),
+    end: Math.min(lineEnd(text, to) + 1, text.length),
+    linewise: true,
+  };
 }
 
 // "dd", "yy", "cc" and ">>": this line and count - 1 below it. Like vim, a count fails on the
@@ -184,7 +203,12 @@ function linesFrom(text: string, pos: number, count: number): Range | null {
   return count > 1 && !moved ? null : { ...lineSpan(text, start, last), from: pos };
 }
 
-const swapCase = (part: string) => [...part].map((char) => (char === char.toUpperCase() ? char.toLowerCase() : char.toUpperCase())).join('');
+const swapCase = (part: string) =>
+  [...part]
+    .map((char) =>
+      char === char.toUpperCase() ? char.toLowerCase() : char.toUpperCase(),
+    )
+    .join('');
 
 // ------------------------------------------------------------ words, paragraphs, brackets
 
@@ -221,7 +245,13 @@ function dec(text: string, cursor: Cursor) {
 }
 
 // vim's skip_chars(): moves past a run of one class. True when it ran into an end of the text.
-function skipClass(text: string, cursor: Cursor, kind: number, big: boolean, forward: boolean) {
+function skipClass(
+  text: string,
+  cursor: Cursor,
+  kind: number,
+  big: boolean,
+  forward: boolean,
+) {
   while (charClass(text, cursor.pos, big) === kind) {
     if ((forward ? inc(text, cursor) : dec(text, cursor)) === -1) return true;
   }
@@ -230,7 +260,13 @@ function skipClass(text: string, cursor: Cursor, kind: number, big: boolean, for
 
 // w and W, after vim's fwd_word(). With an operator the last word stops at the end of its line,
 // so "dw" on a line's last word leaves the line break alone.
-function wordForward(text: string, pos: number, count: number, big: boolean, stopAtLineEnd: boolean) {
+function wordForward(
+  text: string,
+  pos: number,
+  count: number,
+  big: boolean,
+  stopAtLineEnd: boolean,
+) {
   const cursor = { pos };
   for (let left = count; left > 0; left--) {
     const stop = stopAtLineEnd && left === 1;
@@ -262,7 +298,8 @@ function wordEnd(text: string, pos: number, count: number, big: boolean, stay = 
       while (charClass(text, cursor.pos, big) === 0) {
         if (inc(text, cursor) === -1) return cursor.pos;
       }
-      if (skipClass(text, cursor, charClass(text, cursor.pos, big), big, true)) return cursor.pos;
+      if (skipClass(text, cursor, charClass(text, cursor.pos, big), big, true))
+        return cursor.pos;
     }
     dec(text, cursor);
     stay = false;
@@ -279,7 +316,8 @@ function wordBackward(text: string, pos: number, count: number, big: boolean) {
       if (onEmptyLine(text, cursor.pos)) continue words;
       if (dec(text, cursor) === -1) return cursor.pos;
     }
-    if (skipClass(text, cursor, charClass(text, cursor.pos, big), big, false)) return cursor.pos;
+    if (skipClass(text, cursor, charClass(text, cursor.pos, big), big, false))
+      return cursor.pos;
     inc(text, cursor);
   }
   return cursor.pos;
@@ -303,7 +341,12 @@ function wordEndBackward(text: string, pos: number, count: number, big: boolean)
 
 // } and {, after vim's findpar(): to the next (previous) empty line after some text, or else to
 // the end (start) of the text, where "}" lands on the last character, inclusively.
-function paragraph(text: string, pos: number, count: number, forward: boolean): MotionResult | null {
+function paragraph(
+  text: string,
+  pos: number,
+  count: number,
+  forward: boolean,
+): MotionResult | null {
   const lines = text.split('\n');
   let line = lineIndex(text, pos);
   for (let left = count; left > 0; left--) {
@@ -319,11 +362,19 @@ function paragraph(text: string, pos: number, count: number, forward: boolean): 
       line = following;
     }
   }
-  if (forward && line === lines.length - 1 && lines[line] !== '') return { pos: prev(text, text.length), inclusive: true };
+  if (forward && line === lines.length - 1 && lines[line] !== '')
+    return { pos: prev(text, text.length), inclusive: true };
   return { pos: stepLines(text, 0, line).start };
 }
 
-const PAIRS: Record<string, string> = { '(': ')', '[': ']', '{': '}', ')': '(', ']': '[', '}': '{' };
+const PAIRS: Record<string, string> = {
+  '(': ')',
+  '[': ']',
+  '{': '}',
+  ')': '(',
+  ']': '[',
+  '}': '{',
+};
 
 // %: the bracket under or after the cursor on its line, and the one it pairs with.
 function matchBracket(text: string, pos: number) {
@@ -346,7 +397,13 @@ function matchBracket(text: string, pos: number) {
 
 // iw aw iW aW: the word (or run of blanks) under the cursor. "a" adds the blanks after it, or the
 // ones before it when there are none after. A count takes in that many more.
-function wordObject(text: string, pos: number, count: number, big: boolean, around?: boolean): Range | null {
+function wordObject(
+  text: string,
+  pos: number,
+  count: number,
+  big: boolean,
+  around?: boolean,
+): Range | null {
   const start = lineStart(text, pos);
   const end = lineEnd(text, pos);
   if (start === end) return null;
@@ -380,7 +437,12 @@ function wordObject(text: string, pos: number, count: number, big: boolean, arou
 // (counted from the start of the line); elsewhere, from the nearest quote before the cursor to
 // the next one, or else the first string after the cursor. Quotes escaped with a backslash
 // don't close a string. "a" adds blanks the way aw does.
-function quoteObject(text: string, pos: number, quote: string, around?: boolean): Range | null {
+function quoteObject(
+  text: string,
+  pos: number,
+  quote: string,
+  around?: boolean,
+): Range | null {
   const start = lineStart(text, pos);
   const line = text.slice(start, lineEnd(text, pos));
   const col = pos - start;
@@ -407,7 +469,8 @@ function quoteObject(text: string, pos: number, quote: string, around?: boolean)
       if (col <= close) break;
     }
   } else {
-    for (let i = col - 1; i >= 0 && open < 0; i--) if (line[i] === quote && !escaped(i)) open = i;
+    for (let i = col - 1; i >= 0 && open < 0; i--)
+      if (line[i] === quote && !escaped(i)) open = i;
     if (open < 0) open = nextQuote(col, false);
     if (open < 0) return null;
     close = nextQuote(open + 1, true);
@@ -424,13 +487,28 @@ function quoteObject(text: string, pos: number, quote: string, around?: boolean)
   return { start: start + from, end: start + to };
 }
 
-const BLOCKS: Record<string, string> = { b: '(', '(': '(', ')': '(', '[': '[', ']': '[', B: '{', '{': '{', '}': '{' };
+const BLOCKS: Record<string, string> = {
+  b: '(',
+  '(': '(',
+  ')': '(',
+  '[': '[',
+  ']': '[',
+  B: '{',
+  '{': '{',
+  '}': '{',
+};
 
 // i{ a{ i[ a[ i( a(: the count-th bracket pair around the cursor; a bracket under the cursor
 // counts as around it. Outside any pair, like vim 9, the count-th one after the cursor. When the
 // brackets end and start their lines, as in formatted JSON, the inside is whole lines, so "di{"
 // leaves "{" and "}" on lines of their own.
-function blockObject(text: string, pos: number, open: string, count: number, around?: boolean): Range | null {
+function blockObject(
+  text: string,
+  pos: number,
+  open: string,
+  count: number,
+  around?: boolean,
+): Range | null {
   const close = PAIRS[open];
   let at = pos;
   if (open === '{') while (isBlank(text[at]) && inIndent(text, at)) at++;
@@ -464,7 +542,8 @@ function blockObject(text: string, pos: number, open: string, count: number, aro
   if (end < 0) return null;
   if (around) return { start, end: end + 1 };
   const openLineEnd = lineEnd(text, start);
-  const opensLine = openLineEnd < end && /^[ \t]*$/.test(text.slice(start + 1, openLineEnd));
+  const opensLine =
+    openLineEnd < end && /^[ \t]*$/.test(text.slice(start + 1, openLineEnd));
   const closesLine = inIndent(text, end) && lineStart(text, end) > start;
   const inner = opensLine ? openLineEnd + 1 : start + 1;
   const stop = closesLine ? Math.max(inner, lineStart(text, end)) : end;
@@ -474,7 +553,12 @@ function blockObject(text: string, pos: number, open: string, count: number, aro
 // ip ap, after vim's current_par(): the paragraph (or run of blank lines) under the cursor, as
 // whole lines. "a" adds the blank lines after it, or the ones before it when there are none
 // after. A count takes in that many more.
-function paragraphObject(text: string, pos: number, count: number, around?: boolean): Range | null {
+function paragraphObject(
+  text: string,
+  pos: number,
+  count: number,
+  around?: boolean,
+): Range | null {
   const lines = text.split('\n');
   const last = lines.length - 1;
   const blank = (index: number) => /^[ \t]*$/.test(lines[index]);
@@ -506,8 +590,10 @@ function paragraphObject(text: string, pos: number, count: number, around?: bool
 }
 
 function textObject(text: string, pos: number, { object, around, count }: Command) {
-  if (object === 'w' || object === 'W') return wordObject(text, pos, count, object === 'W', around);
-  if (object === '"' || object === "'" || object === '`') return quoteObject(text, pos, object, around);
+  if (object === 'w' || object === 'W')
+    return wordObject(text, pos, count, object === 'W', around);
+  if (object === '"' || object === "'" || object === '`')
+    return quoteObject(text, pos, object, around);
   if (object === 'p') return paragraphObject(text, pos, count, around);
   return blockObject(text, pos, BLOCKS[object!], count, around);
 }
@@ -515,9 +601,18 @@ function textObject(text: string, pos: number, { object, around, count }: Comman
 // ------------------------------------------------------------ keys and commands
 
 const NAMED_KEYS: Record<string, string> = {
-  Escape: '<Esc>', Enter: '<CR>', Backspace: '<BS>', Delete: '<Del>',
-  ArrowLeft: '<Left>', ArrowRight: '<Right>', ArrowUp: '<Up>', ArrowDown: '<Down>',
-  Home: '<Home>', End: '<End>', PageUp: '<PageUp>', PageDown: '<PageDown>',
+  Escape: '<Esc>',
+  Enter: '<CR>',
+  Backspace: '<BS>',
+  Delete: '<Del>',
+  ArrowLeft: '<Left>',
+  ArrowRight: '<Right>',
+  ArrowUp: '<Up>',
+  ArrowDown: '<Down>',
+  Home: '<Home>',
+  End: '<End>',
+  PageUp: '<PageUp>',
+  PageDown: '<PageDown>',
 };
 const CONTROL_KEYS = new Set(['r', 'd', 'u']);
 
@@ -543,22 +638,132 @@ const OPERATORS = new Set(['d', 'c', 'y', '>', '<']);
 const OBJECTS = new Set(['w', 'W', '"', "'", '`', 'p', ...Object.keys(BLOCKS)]);
 const TAKES_CHARACTER = new Set(['f', 'F', 't', 'T', 'r']);
 const MOTION_NAMES = new Set([
-  'h', 'l', 'j', 'k', '<Left>', '<Right>', '<Up>', '<Down>', '<BS>', ' ',
-  'w', 'W', 'b', 'B', 'e', 'E', 'ge', 'gE', '0', '^', '$', '<Home>', '<End>',
-  'gg', 'G', '+', '-', '_', '<CR>', '{', '}', '%', '|', 'f', 'F', 't', 'T', ';', ',', 'n', 'N', '*', '#',
+  'h',
+  'l',
+  'j',
+  'k',
+  '<Left>',
+  '<Right>',
+  '<Up>',
+  '<Down>',
+  '<BS>',
+  ' ',
+  'w',
+  'W',
+  'b',
+  'B',
+  'e',
+  'E',
+  'ge',
+  'gE',
+  '0',
+  '^',
+  '$',
+  '<Home>',
+  '<End>',
+  'gg',
+  'G',
+  '+',
+  '-',
+  '_',
+  '<CR>',
+  '{',
+  '}',
+  '%',
+  '|',
+  'f',
+  'F',
+  't',
+  'T',
+  ';',
+  ',',
+  'n',
+  'N',
+  '*',
+  '#',
 ]);
 const SCROLLING = new Set(['zz', 'zt', 'zb', '<C-d>', '<C-u>', '<PageDown>', '<PageUp>']);
 const ANYWHERE = [...SCROLLING, '/', '?', ':', '<Esc>'];
 const NORMAL_ACTIONS = new Set([
-  'i', 'a', 'I', 'A', 'o', 'O', 'v', 'V', 'x', '<Del>', 'X', 's', 'S', 'r', 'D', 'C', 'Y', 'J',
-  'p', 'P', 'u', '<C-r>', '.', '~', ...ANYWHERE,
+  'i',
+  'a',
+  'I',
+  'A',
+  'o',
+  'O',
+  'v',
+  'V',
+  'x',
+  '<Del>',
+  'X',
+  's',
+  'S',
+  'r',
+  'D',
+  'C',
+  'Y',
+  'J',
+  'p',
+  'P',
+  'u',
+  '<C-r>',
+  '.',
+  '~',
+  ...ANYWHERE,
 ]);
 const VISUAL_ACTIONS = new Set([
-  'd', 'x', '<Del>', 'X', 'D', 'y', 'Y', 'c', 's', 'C', 'S', 'R', '>', '<', '~', 'u', 'U', 'J',
-  'p', 'P', 'r', 'o', 'O', 'v', 'V', ...ANYWHERE,
+  'd',
+  'x',
+  '<Del>',
+  'X',
+  'D',
+  'y',
+  'Y',
+  'c',
+  's',
+  'C',
+  'S',
+  'R',
+  '>',
+  '<',
+  '~',
+  'u',
+  'U',
+  'J',
+  'p',
+  'P',
+  'r',
+  'o',
+  'O',
+  'v',
+  'V',
+  ...ANYWHERE,
 ]);
 // What "." repeats: everything that changes the text, but not yanks, undo or moves.
-const CHANGES = new Set(['d', 'c', '>', '<', 'i', 'a', 'I', 'A', 'o', 'O', 'x', '<Del>', 'X', 's', 'S', 'r', 'D', 'C', 'J', 'p', 'P', '~']);
+const CHANGES = new Set([
+  'd',
+  'c',
+  '>',
+  '<',
+  'i',
+  'a',
+  'I',
+  'A',
+  'o',
+  'O',
+  'x',
+  '<Del>',
+  'X',
+  's',
+  'S',
+  'r',
+  'D',
+  'C',
+  'J',
+  'p',
+  'P',
+  '~',
+]);
 
 // Reads a command from the keys typed so far: PENDING while it's incomplete, null when it can't
 // be one, else { operator, motion, object, around, lines, action, arg, count, hasCount }.
@@ -567,11 +772,15 @@ function parse(keys: string[], visual: boolean): Command | typeof PENDING | null
   const take = () => (at < keys.length ? keys[at++] : null);
   const readCount = () => {
     let digits = '';
-    while (at < keys.length && /^\d$/.test(keys[at]) && (digits || keys[at] !== '0')) digits += keys[at++];
+    while (at < keys.length && /^\d$/.test(keys[at]) && (digits || keys[at] !== '0'))
+      digits += keys[at++];
     return digits ? Math.min(Number(digits), 99_999) : null;
   };
   const first = readCount();
-  const counted = (second: number | null = null) => ({ count: (first ?? 1) * (second ?? 1), hasCount: first !== null || second !== null });
+  const counted = (second: number | null = null) => ({
+    count: (first ?? 1) * (second ?? 1),
+    hasCount: first !== null || second !== null,
+  });
   const readName = () => {
     const key = take();
     if (key !== 'g' && key !== 'z') return key;
@@ -583,7 +792,9 @@ function parse(keys: string[], visual: boolean): Command | typeof PENDING | null
     if (!TAKES_CHARACTER.has(command.motion ?? command.action!)) return command;
     const arg = take();
     if (arg === null) return PENDING;
-    return (arg === '<CR>' && command.action === 'r') || [...arg].length === 1 ? { ...command, arg } : null;
+    return (arg === '<CR>' && command.action === 'r') || [...arg].length === 1
+      ? { ...command, arg }
+      : null;
   };
   const readObject = (prefix: string, command: Command) => {
     const object = take();
@@ -612,38 +823,75 @@ function parse(keys: string[], visual: boolean): Command | typeof PENDING | null
     if (target === name) return { ...command, lines: true };
     if (target === 'i' || target === 'a') return readObject(target, command);
     if (target === '/' || target === '?') return { ...command, search: target };
-    return MOTION_NAMES.has(target) ? withCharacter({ ...command, motion: target }) : null;
+    return MOTION_NAMES.has(target)
+      ? withCharacter({ ...command, motion: target })
+      : null;
   }
   if (visual && (name === 'i' || name === 'a')) return readObject(name, counted());
   if (MOTION_NAMES.has(name)) return withCharacter({ motion: name, ...counted() });
-  if ((visual ? VISUAL_ACTIONS : NORMAL_ACTIONS).has(name)) return withCharacter({ action: name, ...counted() });
+  if ((visual ? VISUAL_ACTIONS : NORMAL_ACTIONS).has(name))
+    return withCharacter({ action: name, ...counted() });
   return null;
 }
 
 // What was typed during Insert mode, as the span around the insert point it replaced, so "."
 // can type it again: characters deleted before (back) and after (forward) it, and the new text.
-function typedSince({ start, value }: { start: number; value: string }, now: string): Typed {
+function typedSince(
+  { start, value }: { start: number; value: string },
+  now: string,
+): Typed {
   let prefix = 0;
   const maxPrefix = Math.min(start, now.length);
-  while (prefix < maxPrefix && value.charCodeAt(prefix) === now.charCodeAt(prefix)) prefix++;
+  while (prefix < maxPrefix && value.charCodeAt(prefix) === now.charCodeAt(prefix))
+    prefix++;
   let suffix = 0;
   const maxSuffix = Math.min(value.length - start, now.length - prefix);
-  while (suffix < maxSuffix && value.charCodeAt(value.length - 1 - suffix) === now.charCodeAt(now.length - 1 - suffix)) suffix++;
-  return { back: start - prefix, forward: value.length - suffix - start, text: now.slice(prefix, now.length - suffix) };
+  while (
+    suffix < maxSuffix &&
+    value.charCodeAt(value.length - 1 - suffix) ===
+      now.charCodeAt(now.length - 1 - suffix)
+  )
+    suffix++;
+  return {
+    back: start - prefix,
+    forward: value.length - suffix - start,
+    text: now.slice(prefix, now.length - suffix),
+  };
 }
 
 // ------------------------------------------------------------ the editor's vim
 
-const LABELS: Record<Mode, string> = { normal: 'Normal', insert: 'Insert', visual: 'Visual', 'visual-line': 'V-Line' };
+const LABELS: Record<Mode, string> = {
+  normal: 'Normal',
+  insert: 'Insert',
+  visual: 'Visual',
+  'visual-line': 'V-Line',
+};
 // Edits vim allows in Normal and Visual mode: the browser's paste, cut, drop and undo.
-const NATIVE_EDITS = new Set(['insertFromPaste', 'insertFromDrop', 'deleteByCut', 'deleteByDrag', 'historyUndo', 'historyRedo']);
+const NATIVE_EDITS = new Set([
+  'insertFromPaste',
+  'insertFromDrop',
+  'deleteByCut',
+  'deleteByDrag',
+  'historyUndo',
+  'historyRedo',
+]);
 
 // Wires vim into a code editor. The editor lends it its textarea, a <pre> above the highlighted
 // text for the block cursor, the status line, and three hooks: find(query, from, options) for
 // n, N, * and #; openSearch({ backward, from, then }) to open the find bar as vim's search line,
 // where `then` is an operator waiting for the match ("d/foo"); and sync() to bring the layers
 // along after vim scrolls the textarea.
-export function createVim({ root, textarea, cursorLayer, statusLine, find, openSearch, sync, active: startActive = false }: VimOptions) {
+export function createVim({
+  root,
+  textarea,
+  cursorLayer,
+  statusLine,
+  find,
+  openSearch,
+  sync,
+  active: startActive = false,
+}: VimOptions) {
   const [modeLabel, keysLabel, positionLabel] = statusLine.children;
   const before = document.createTextNode('');
   const block = document.createElement('span');
@@ -695,7 +943,8 @@ export function createVim({ root, textarea, cursorLayer, statusLine, find, openS
   // <BS> and <Space> also wrap to the previous or next line.
   function backspace({ text: value, pos, count }: MotionContext): MotionResult | null {
     let at = pos;
-    for (let n = 0; n < count && at > 0; n++) at = value[at - 1] === '\n' ? clamp(value, at - 1) : prev(value, at);
+    for (let n = 0; n < count && at > 0; n++)
+      at = value[at - 1] === '\n' ? clamp(value, at - 1) : prev(value, at);
     return at === pos ? null : { pos: at };
   }
   function space({ text: value, pos, count, op }: MotionContext): MotionResult | null {
@@ -708,11 +957,23 @@ export function createVim({ root, textarea, cursorLayer, statusLine, find, openS
     }
     return at === pos ? null : { pos: at };
   }
-  function vertical({ text: value, pos, count }: MotionContext, direction: number): MotionResult | null {
+  function vertical(
+    { text: value, pos, count }: MotionContext,
+    direction: number,
+  ): MotionResult | null {
     const { start, moved } = stepLines(value, lineStart(value, pos), direction * count);
-    return moved ? { pos: Math.min(start + want, lineEnd(value, start)), linewise: true, keepWant: true } : null;
+    return moved
+      ? {
+          pos: Math.min(start + want, lineEnd(value, start)),
+          linewise: true,
+          keepWant: true,
+        }
+      : null;
   }
-  function toLine({ text: value, pos }: MotionContext, delta: number): MotionResult | null {
+  function toLine(
+    { text: value, pos }: MotionContext,
+    delta: number,
+  ): MotionResult | null {
     const { start, moved } = stepLines(value, lineStart(value, pos), delta);
     return moved || !delta ? { pos: firstNonBlank(value, start), linewise: true } : null;
   }
@@ -721,17 +982,31 @@ export function createVim({ root, textarea, cursorLayer, statusLine, find, openS
     return { pos: firstNonBlank(value, start), linewise: true };
   }
   // Like vim's adjust_cursor(): a forward motion doesn't end on the end of a line.
-  function forwardTo(value: string, pos: number, to: number, inclusive: boolean): MotionResult {
-    if (to > pos && atLineEnd(value, to) && to > lineStart(value, to)) return { pos: prev(value, to), inclusive: true };
+  function forwardTo(
+    value: string,
+    pos: number,
+    to: number,
+    inclusive: boolean,
+  ): MotionResult {
+    if (to > pos && atLineEnd(value, to) && to > lineStart(value, to))
+      return { pos: prev(value, to), inclusive: true };
     return { pos: to, inclusive };
   }
-  function word({ text: value, pos, count, op }: MotionContext, big: boolean): MotionResult | null {
+  function word(
+    { text: value, pos, count, op }: MotionContext,
+    big: boolean,
+  ): MotionResult | null {
     // "cw" on a word changes to its end, like "ce", and only the rest of it on its last letter.
-    if (op === 'c' && charClass(value, pos, big) !== 0) return forwardTo(value, pos, wordEnd(value, pos, count, big, true), true);
+    if (op === 'c' && charClass(value, pos, big) !== 0)
+      return forwardTo(value, pos, wordEnd(value, pos, count, big, true), true);
     const to = wordForward(value, pos, count, big, Boolean(op));
     return to === pos ? null : forwardTo(value, pos, to, false);
   }
-  function findCharacter({ text: value, pos, count }: MotionContext, target: FindTarget, repeat = false): MotionResult | null {
+  function findCharacter(
+    { text: value, pos, count }: MotionContext,
+    target: FindTarget,
+    repeat = false,
+  ): MotionResult | null {
     if (!repeat) lastFind = target;
     const { char, forward, till } = target;
     const start = lineStart(value, pos);
@@ -740,13 +1015,21 @@ export function createVim({ root, textarea, cursorLayer, statusLine, find, openS
     // Repeating t from right before its character would stay put, so it looks one further.
     if (repeat && till && count === 1) at += forward ? 1 : -1;
     for (let n = 0; n < count; n++) {
-      at = forward ? value.indexOf(char, at + 1) : at > start ? value.lastIndexOf(char, at - 1) : -1;
+      at = forward
+        ? value.indexOf(char, at + 1)
+        : at > start
+          ? value.lastIndexOf(char, at - 1)
+          : -1;
       if (at === -1 || at >= end || at < start) return null;
     }
     if (till) at = forward ? prev(value, at) : next(value, at);
     return { pos: at, inclusive: forward };
   }
-  function searchFrom(from: number, count: number, reverse: boolean): MotionResult | null {
+  function searchFrom(
+    from: number,
+    count: number,
+    reverse: boolean,
+  ): MotionResult | null {
     if (!lastSearch) {
       message = 'No previous search';
       return null;
@@ -763,19 +1046,30 @@ export function createVim({ root, textarea, cursorLayer, statusLine, find, openS
       wrapped ||= found.wrapped;
       at = found.index;
     }
-    if (wrapped) message = backward ? 'Search hit the top, continuing at the bottom' : 'Search hit the bottom, continuing at the top';
+    if (wrapped)
+      message = backward
+        ? 'Search hit the top, continuing at the bottom'
+        : 'Search hit the bottom, continuing at the top';
     return { pos: at };
   }
   // * and #: the whole word under (or after) the cursor.
-  function wordSearch({ text: value, pos, count }: MotionContext, backward: boolean): MotionResult | null {
+  function wordSearch(
+    { text: value, pos, count }: MotionContext,
+    backward: boolean,
+  ): MotionResult | null {
     const end = lineEnd(value, pos);
     let start = pos;
-    while (start < end && charClass(value, start, false) !== 2) start = next(value, start);
+    while (start < end && charClass(value, start, false) !== 2)
+      start = next(value, start);
     if (start >= end) {
       message = 'No word under the cursor';
       return null;
     }
-    while (start > lineStart(value, start) && charClass(value, prev(value, start), false) === 2) start = prev(value, start);
+    while (
+      start > lineStart(value, start) &&
+      charClass(value, prev(value, start), false) === 2
+    )
+      start = prev(value, start);
     let stop = start;
     while (stop < end && charClass(value, stop, false) === 2) stop = next(value, stop);
     lastSearch = { query: value.slice(start, stop), backward, word: true };
@@ -783,28 +1077,51 @@ export function createVim({ root, textarea, cursorLayer, statusLine, find, openS
   }
 
   const MOTIONS: Record<string, (context: MotionContext) => MotionResult | null> = {
-    h: left, '<Left>': left, l: right, '<Right>': right, '<BS>': backspace, ' ': space,
-    j: (context) => vertical(context, 1), '<Down>': (context) => vertical(context, 1),
-    k: (context) => vertical(context, -1), '<Up>': (context) => vertical(context, -1),
-    '+': (context) => toLine(context, context.count), '<CR>': (context) => toLine(context, context.count),
-    '-': (context) => toLine(context, -context.count), _: (context) => toLine(context, context.count - 1),
-    w: (context) => word(context, false), W: (context) => word(context, true),
-    e: ({ text: value, pos, count }) => forwardTo(value, pos, wordEnd(value, pos, count, false), true),
-    E: ({ text: value, pos, count }) => forwardTo(value, pos, wordEnd(value, pos, count, true), true),
+    h: left,
+    '<Left>': left,
+    l: right,
+    '<Right>': right,
+    '<BS>': backspace,
+    ' ': space,
+    j: (context) => vertical(context, 1),
+    '<Down>': (context) => vertical(context, 1),
+    k: (context) => vertical(context, -1),
+    '<Up>': (context) => vertical(context, -1),
+    '+': (context) => toLine(context, context.count),
+    '<CR>': (context) => toLine(context, context.count),
+    '-': (context) => toLine(context, -context.count),
+    _: (context) => toLine(context, context.count - 1),
+    w: (context) => word(context, false),
+    W: (context) => word(context, true),
+    e: ({ text: value, pos, count }) =>
+      forwardTo(value, pos, wordEnd(value, pos, count, false), true),
+    E: ({ text: value, pos, count }) =>
+      forwardTo(value, pos, wordEnd(value, pos, count, true), true),
     b: ({ text: value, pos, count }) => ({ pos: wordBackward(value, pos, count, false) }),
     B: ({ text: value, pos, count }) => ({ pos: wordBackward(value, pos, count, true) }),
-    ge: ({ text: value, pos, count }) => ({ pos: wordEndBackward(value, pos, count, false), inclusive: true }),
-    gE: ({ text: value, pos, count }) => ({ pos: wordEndBackward(value, pos, count, true), inclusive: true }),
+    ge: ({ text: value, pos, count }) => ({
+      pos: wordEndBackward(value, pos, count, false),
+      inclusive: true,
+    }),
+    gE: ({ text: value, pos, count }) => ({
+      pos: wordEndBackward(value, pos, count, true),
+      inclusive: true,
+    }),
     0: ({ text: value, pos }) => ({ pos: lineStart(value, pos) }),
     '<Home>': ({ text: value, pos }) => ({ pos: lineStart(value, pos) }),
     '^': ({ text: value, pos }) => ({ pos: firstNonBlank(value, lineStart(value, pos)) }),
-    $: dollar, '<End>': dollar,
+    $: dollar,
+    '<End>': dollar,
     gg: ({ text: value, count, hasCount }) => toLineNumber(value, hasCount ? count : 1),
-    G: ({ text: value, count, hasCount }) => toLineNumber(value, hasCount ? count : Infinity),
+    G: ({ text: value, count, hasCount }) =>
+      toLineNumber(value, hasCount ? count : Infinity),
     '}': ({ text: value, pos, count }) => paragraph(value, pos, count, true),
     '{': ({ text: value, pos, count }) => paragraph(value, pos, count, false),
     '%': ({ text: value, pos, count, hasCount }) => {
-      if (hasCount) return count > 100 ? null : toLineNumber(value, Math.ceil((count * (lastLine(value) + 1)) / 100));
+      if (hasCount)
+        return count > 100
+          ? null
+          : toLineNumber(value, Math.ceil((count * (lastLine(value) + 1)) / 100));
       const to = matchBracket(value, pos);
       return to === null ? null : { pos: to, inclusive: true };
     },
@@ -812,14 +1129,23 @@ export function createVim({ root, textarea, cursorLayer, statusLine, find, openS
     '|': ({ text: value, pos, count }) => {
       const start = lineStart(value, pos);
       const end = lineEnd(value, pos);
-      return { pos: Math.min(start + count - 1, end > start ? prev(value, end) : start), want: count - 1 };
+      return {
+        pos: Math.min(start + count - 1, end > start ? prev(value, end) : start),
+        want: count - 1,
+      };
     },
-    f: (context) => findCharacter(context, { char: context.arg!, forward: true, till: false }),
-    F: (context) => findCharacter(context, { char: context.arg!, forward: false, till: false }),
-    t: (context) => findCharacter(context, { char: context.arg!, forward: true, till: true }),
-    T: (context) => findCharacter(context, { char: context.arg!, forward: false, till: true }),
+    f: (context) =>
+      findCharacter(context, { char: context.arg!, forward: true, till: false }),
+    F: (context) =>
+      findCharacter(context, { char: context.arg!, forward: false, till: false }),
+    t: (context) =>
+      findCharacter(context, { char: context.arg!, forward: true, till: true }),
+    T: (context) =>
+      findCharacter(context, { char: context.arg!, forward: false, till: true }),
     ';': (context) => lastFind && findCharacter(context, lastFind, true),
-    ',': (context) => lastFind && findCharacter(context, { ...lastFind, forward: !lastFind.forward }, true),
+    ',': (context) =>
+      lastFind &&
+      findCharacter(context, { ...lastFind, forward: !lastFind.forward }, true),
     n: ({ pos, count }) => searchFrom(pos, count, false),
     N: ({ pos, count }) => searchFrom(pos, count, true),
     '*': (context) => wordSearch(context, false),
@@ -830,12 +1156,22 @@ export function createVim({ root, textarea, cursorLayer, statusLine, find, openS
     const { start } = stepLines(value, lineStart(value, pos), count - 1);
     const end = lineEnd(value, start);
     if (mode !== 'normal' && !op) return { pos: end, want: Infinity, inclusive: true };
-    return { pos: end > start ? prev(value, end) : start, inclusive: end > start, want: Infinity };
+    return {
+      pos: end > start ? prev(value, end) : start,
+      inclusive: end > start,
+      want: Infinity,
+    };
   }
 
-  const motion = (command: Command, op: string | null = null) => MOTIONS[command.motion!]({
-    text: text(), pos: head, count: command.count, hasCount: command.hasCount, arg: command.arg, op,
-  });
+  const motion = (command: Command, op: string | null = null) =>
+    MOTIONS[command.motion!]({
+      text: text(),
+      pos: head,
+      count: command.count,
+      hasCount: command.hasCount,
+      arg: command.arg,
+      op,
+    });
 
   // The text an operator works on, from the cursor to where the motion goes.
   const motionRange = (command: Command) => rangeTo(motion(command, command.operator));
@@ -891,10 +1227,18 @@ export function createVim({ root, textarea, cursorLayer, statusLine, find, openS
     store(value, range);
     let { start } = range;
     // Deleting the last lines also takes the line break before them.
-    if (range.linewise && range.end === value.length && !value.slice(start, range.end).endsWith('\n') && start > 0) start -= 1;
+    if (
+      range.linewise &&
+      range.end === value.length &&
+      !value.slice(start, range.end).endsWith('\n') &&
+      start > 0
+    )
+      start -= 1;
     edit(start, range.end, '');
     const now = text();
-    head = range.linewise ? firstNonBlank(now, lineStart(now, Math.min(start, now.length))) : start;
+    head = range.linewise
+      ? firstNonBlank(now, lineStart(now, Math.min(start, now.length)))
+      : start;
   }
 
   function change(range: Range) {
@@ -923,13 +1267,15 @@ export function createVim({ root, textarea, cursorLayer, statusLine, find, openS
   function shift(range: Range, direction: number, times: number) {
     const part = text().slice(range.start, range.end);
     const lines = part.split('\n');
-    const shifted = lines.map((line, index) => {
-      if (index === lines.length - 1 && part.endsWith('\n')) return line;
-      if (direction > 0) return line ? '  '.repeat(times) + line : line;
-      let out = line;
-      for (let n = 0; n < times; n++) out = out.replace(/^(?: {1,2}|\t)/, '');
-      return out;
-    }).join('\n');
+    const shifted = lines
+      .map((line, index) => {
+        if (index === lines.length - 1 && part.endsWith('\n')) return line;
+        if (direction > 0) return line ? '  '.repeat(times) + line : line;
+        let out = line;
+        for (let n = 0; n < times; n++) out = out.replace(/^(?: {1,2}|\t)/, '');
+        return out;
+      })
+      .join('\n');
     edit(range.start, range.end, shifted);
     head = firstNonBlank(text(), range.start);
   }
@@ -942,7 +1288,14 @@ export function createVim({ root, textarea, cursorLayer, statusLine, find, openS
     else if (operator === 'c') change(range);
     else if (operator === 'y') yank(range);
     // > and < always shift whole lines, whatever the motion.
-    else shift(range.linewise ? range : lineSpan(text(), range.start, Math.max(range.start, range.end - 1)), operator === '>' ? 1 : -1, 1);
+    else
+      shift(
+        range.linewise
+          ? range
+          : lineSpan(text(), range.start, Math.max(range.start, range.end - 1)),
+        operator === '>' ? 1 : -1,
+        1,
+      );
   }
 
   function put(after: boolean, count: number) {
@@ -990,7 +1343,9 @@ export function createVim({ root, textarea, cursorLayer, statusLine, find, openS
     if (range.linewise && !replaced.endsWith('\n')) content = content.replace(/\n$/, '');
     edit(range.start, range.end, content);
     if (!keepRegister) store(value, range);
-    head = range.linewise ? firstNonBlank(text(), range.start) : range.start + Math.max(0, content.length - 1);
+    head = range.linewise
+      ? firstNonBlank(text(), range.start)
+      : range.start + Math.max(0, content.length - 1);
   }
 
   // J: joins count lines, dropping the next line's indentation and putting one space between,
@@ -1005,7 +1360,10 @@ export function createVim({ root, textarea, cursorLayer, statusLine, find, openS
     for (let n = 1; n < count && end < value.length; n++) {
       const nextEnd = lineEnd(value, end + 1);
       const following = value.slice(end + 1, nextEnd).replace(/^[ \t]+/, '');
-      const gap = following && !following.startsWith(')') && joined && !/[ \t]$/.test(joined) ? ' ' : '';
+      const gap =
+        following && !following.startsWith(')') && joined && !/[ \t]$/.test(joined)
+          ? ' '
+          : '';
       cursor = joined.length;
       joined += gap + following;
       end = nextEnd;
@@ -1072,7 +1430,10 @@ export function createVim({ root, textarea, cursorLayer, statusLine, find, openS
 
   // ---------------------------------------------------------- undo
 
-  const spot = (pos: number): Spot => ({ line: lineIndex(text(), pos), column: column(text(), pos) });
+  const spot = (pos: number): Spot => ({
+    line: lineIndex(text(), pos),
+    column: column(text(), pos),
+  });
 
   function beginChange() {
     ongoing = { value: text(), cursor: spot(head), inputs: 0 };
@@ -1091,7 +1452,9 @@ export function createVim({ root, textarea, cursorLayer, statusLine, find, openS
     let line = lineIndex(value, step.start);
     if (step.cursor.line + 1 === line) line = step.cursor.line;
     const start = stepLines(value, 0, line).start;
-    return line === step.cursor.line ? Math.min(start + step.cursor.column, lineEnd(value, start)) : firstNonBlank(value, start);
+    return line === step.cursor.line
+      ? Math.min(start + step.cursor.column, lineEnd(value, start))
+      : firstNonBlank(value, start);
   }
 
   // Records the change just made as one undo step, if it changed anything.
@@ -1104,8 +1467,18 @@ export function createVim({ root, textarea, cursorLayer, statusLine, find, openS
     let start = 0;
     while (start < value.length && value[start] === now[start]) start++;
     let same = 0;
-    while (same < Math.min(value.length, now.length) - start && value[value.length - 1 - same] === now[now.length - 1 - same]) same++;
-    undoSteps.push({ start, removed: value.slice(start, value.length - same), inserted: now.slice(start, now.length - same), cursor, inputs });
+    while (
+      same < Math.min(value.length, now.length) - start &&
+      value[value.length - 1 - same] === now[now.length - 1 - same]
+    )
+      same++;
+    undoSteps.push({
+      start,
+      removed: value.slice(start, value.length - same),
+      inserted: now.slice(start, now.length - same),
+      cursor,
+      inputs,
+    });
     if (undoSteps.length > MAX_UNDO) undoSteps.shift();
     redoSteps = [];
   }
@@ -1134,7 +1507,8 @@ export function createVim({ root, textarea, cursorLayer, statusLine, find, openS
     walking = true;
     let reached = false;
     try {
-      for (let n = 0; n < limit && !reached && browserStep(name); n++) reached = text() === target;
+      for (let n = 0; n < limit && !reached && browserStep(name); n++)
+        reached = text() === target;
     } finally {
       walking = false;
     }
@@ -1153,10 +1527,18 @@ export function createVim({ root, textarea, cursorLayer, statusLine, find, openS
     for (; done < count; done++) {
       const steps = undo ? undoSteps : redoSteps;
       const step = steps.at(-1);
-      const [from, to] = undo ? [step?.inserted, step?.removed] : [step?.removed, step?.inserted];
+      const [from, to] = undo
+        ? [step?.inserted, step?.removed]
+        : [step?.removed, step?.inserted];
       const now = text();
       if (step && now.startsWith(from!, step.start)) {
-        if (!walk(name, now.slice(0, step.start) + to + now.slice(step.start + from!.length), step.inputs + 1)) {
+        if (
+          !walk(
+            name,
+            now.slice(0, step.start) + to + now.slice(step.start + from!.length),
+            step.inputs + 1,
+          )
+        ) {
           forgetSteps();
           break;
         }
@@ -1219,7 +1601,8 @@ export function createVim({ root, textarea, cursorLayer, statusLine, find, openS
 
   // Esc: back to Normal mode, one character to the left, as in vim.
   function leaveInsert() {
-    if (insertion && lastChange && !replaying) lastChange.typed = typedSince(insertion, text());
+    if (insertion && lastChange && !replaying)
+      lastChange.typed = typedSince(insertion, text());
     let caret = textarea.selectionStart;
     if (insertion?.indented) {
       const start = lineStart(text(), caret);
@@ -1246,7 +1629,11 @@ export function createVim({ root, textarea, cursorLayer, statusLine, find, openS
     const from = Math.min(anchor, head);
     const to = Math.max(anchor, head);
     if (mode === 'visual-line') return lineSpan(value, from, to);
-    return { start: from, end: to < value.length ? next(value, to) : to, linewise: false };
+    return {
+      start: from,
+      end: to < value.length ? next(value, to) : to,
+      linewise: false,
+    };
   }
 
   // The lines a Visual selection touches, for X, D, Y, C, S, R, J, > and <.
@@ -1264,12 +1651,16 @@ export function createVim({ root, textarea, cursorLayer, statusLine, find, openS
       const top = parseFloat(style.paddingTop) + lineIndex(text(), head) * lineHeight;
       const margin = scrollMargin(lineHeight);
       if (name === 'zt') textarea.scrollTop = top - margin;
-      else if (name === 'zb') textarea.scrollTop = top + lineHeight + margin - textarea.clientHeight;
+      else if (name === 'zb')
+        textarea.scrollTop = top + lineHeight + margin - textarea.clientHeight;
       else textarea.scrollTop = top - (textarea.clientHeight - lineHeight) / 2;
       return sync();
     }
     // Ctrl+D and Ctrl+U move half a screen, PageDown and PageUp a whole one less two lines.
-    const lines = name === '<C-d>' || name === '<C-u>' ? Math.max(1, Math.floor(visible / 2)) : Math.max(1, visible - 2) * count;
+    const lines =
+      name === '<C-d>' || name === '<C-u>'
+        ? Math.max(1, Math.floor(visible / 2))
+        : Math.max(1, visible - 2) * count;
     const direction = name === '<C-d>' || name === '<PageDown>' ? 1 : -1;
     const result = vertical({ text: text(), pos: head, count: lines }, direction);
     if (!result) return undefined;
@@ -1289,13 +1680,21 @@ export function createVim({ root, textarea, cursorLayer, statusLine, find, openS
     }
     if (command.operator) {
       // "d/foo": the operator waits on the search line and runs when it's confirmed.
-      if (command.search) return openSearch({ backward: command.search === '?', from: head, then: command });
-      const range = command.lines ? linesFrom(value, head, command.count)
-        : command.object ? textObject(value, head, command)
+      if (command.search)
+        return openSearch({
+          backward: command.search === '?',
+          from: head,
+          then: command,
+        });
+      const range = command.lines
+        ? linesFrom(value, head, command.count)
+        : command.object
+          ? textObject(value, head, command)
           : motionRange(command);
       if (!range) return;
       // "dd", "cc", ">>" and "<<" start from the line's first non-blank, as in vim; "yy" stays put.
-      if (command.lines && command.operator !== 'y') range.from = firstNonBlank(value, range.start);
+      if (command.lines && command.operator !== 'y')
+        range.from = firstNonBlank(value, range.start);
       apply(command.operator, range);
     } else {
       const { count } = command;
@@ -1349,7 +1748,8 @@ export function createVim({ root, textarea, cursorLayer, statusLine, find, openS
     }
     // After an edit, j and k aim for the column the cursor ended up in.
     if (mode !== 'insert') want = column(text(), clamp(text(), head));
-    if (CHANGES.has(command.operator ?? command.action!) && !replaying) lastChange = { command, typed: null };
+    if (CHANGES.has(command.operator ?? command.action!) && !replaying)
+      lastChange = { command, typed: null };
     return undefined;
   }
 
@@ -1375,35 +1775,49 @@ export function createVim({ root, textarea, cursorLayer, statusLine, find, openS
       return;
     }
     visualAction(command, value);
-    if (mode !== 'insert' && !SCROLLING.has(command.action!)) want = column(text(), clamp(text(), head));
+    if (mode !== 'insert' && !SCROLLING.has(command.action!))
+      want = column(text(), clamp(text(), head));
   }
 
   function visualAction(command: Command, value: string) {
     const { action, count } = command;
     const range = selection();
     const lines = selectedLines();
-    const lineCount = lineIndex(value, Math.max(lines.start, lines.end - 1)) - lineIndex(value, lines.start) + 1;
+    const lineCount =
+      lineIndex(value, Math.max(lines.start, lines.end - 1)) -
+      lineIndex(value, lines.start) +
+      1;
     // Back to Normal mode at the start of the selection. For lines that's the first column of the
     // line the selection began on, unless it was extended upward, as in vim.
     const leave = (linewise = mode === 'visual-line') => {
-      head = linewise && head >= lineStart(value, anchor) ? lineStart(value, anchor) : Math.min(anchor, head);
+      head =
+        linewise && head >= lineStart(value, anchor)
+          ? lineStart(value, anchor)
+          : Math.min(anchor, head);
       setMode('normal');
       changeStartsAt(head);
     };
     // Linewise changes are remembered for "." as the same change on as many lines.
     const remember = (operator: string) => {
-      if (!replaying) lastChange = { command: { operator, lines: true, count: lineCount, hasCount: true }, typed: null };
+      if (!replaying)
+        lastChange = {
+          command: { operator, lines: true, count: lineCount, hasCount: true },
+          typed: null,
+        };
     };
     const recase = (convert: (part: string) => string) => {
       leave();
       edit(range.start, range.end, convert(value.slice(range.start, range.end)));
     };
     switch (action) {
-      case 'd': case 'x': case '<Del>':
+      case 'd':
+      case 'x':
+      case '<Del>':
         leave();
         if (range.linewise) remember('d');
         return remove(range);
-      case 'X': case 'D':
+      case 'X':
+      case 'D':
         leave(true);
         remember('d');
         return remove(lines);
@@ -1413,35 +1827,51 @@ export function createVim({ root, textarea, cursorLayer, statusLine, find, openS
       case 'Y':
         leave(true);
         return store(value, lines);
-      case 'c': case 's':
+      case 'c':
+      case 's':
         leave();
         if (range.linewise) remember('c');
         return change(range);
-      case 'C': case 'S': case 'R':
+      case 'C':
+      case 'S':
+      case 'R':
         leave(true);
         remember('c');
         return change(lines);
-      case '>': case '<':
+      case '>':
+      case '<':
         leave();
         remember(action);
         return shift(lines, action === '>' ? 1 : -1, count);
-      case '~': return recase(swapCase);
-      case 'u': return recase((part) => part.toLowerCase());
-      case 'U': return recase((part) => part.toUpperCase());
+      case '~':
+        return recase(swapCase);
+      case 'u':
+        return recase((part) => part.toLowerCase());
+      case 'U':
+        return recase((part) => part.toUpperCase());
       case 'J':
         leave();
         return join(lines.start, Math.max(2, lineCount));
-      case 'p': case 'P':
+      case 'p':
+      case 'P':
         leave();
         return putOver(range, action === 'P');
       case 'r':
         if (command.arg === '<CR>') return undefined;
         leave();
-        return edit(range.start, range.end, [...value.slice(range.start, range.end)].map((char) => (char === '\n' ? char : command.arg)).join(''));
-      case 'o': case 'O':
+        return edit(
+          range.start,
+          range.end,
+          [...value.slice(range.start, range.end)]
+            .map((char) => (char === '\n' ? char : command.arg))
+            .join(''),
+        );
+      case 'o':
+      case 'O':
         [anchor, head] = [head, anchor];
         return undefined;
-      case 'v': case 'V': {
+      case 'v':
+      case 'V': {
         const kind = action === 'v' ? 'visual' : 'visual-line';
         if (mode === kind) setMode('normal');
         else setMode(kind);
@@ -1453,7 +1883,8 @@ export function createVim({ root, textarea, cursorLayer, statusLine, find, openS
       case ':':
         setMode('normal');
         return exCommand(command.arg!);
-      case '/': case '?':
+      case '/':
+      case '?':
         return openSearch({ backward: action === '?', from: head });
       default:
         return scroll(action!, count);
@@ -1463,7 +1894,10 @@ export function createVim({ root, textarea, cursorLayer, statusLine, find, openS
   // ---------------------------------------------------------- showing it
 
   function scrollMargin(lineHeight: number) {
-    return Math.min(2 * lineHeight, Math.max(0, (textarea.clientHeight - lineHeight) / 2));
+    return Math.min(
+      2 * lineHeight,
+      Math.max(0, (textarea.clientHeight - lineHeight) / 2),
+    );
   }
 
   // Shows the cursor (Normal) or the selection (Visual) on the textarea itself.
@@ -1490,15 +1924,20 @@ export function createVim({ root, textarea, cursorLayer, statusLine, find, openS
       before.data = value.slice(0, head);
       block.textContent = size ? value.slice(head, head + size) : ' ';
       after.data = `${value.slice(head + size)}\n\n`;
-      if (block.parentNode !== cursorLayer) cursorLayer.replaceChildren(before, block, after);
+      if (block.parentNode !== cursorLayer)
+        cursorLayer.replaceChildren(before, block, after);
     }
     modeLabel.textContent = LABELS[mode];
     let detail = message || keys.join('');
     if (!detail && mode !== 'normal' && mode !== 'insert') {
       const { start, end } = selection();
-      const lines = lineIndex(value, Math.max(start, end - 1)) - lineIndex(value, start) + 1;
+      const lines =
+        lineIndex(value, Math.max(start, end - 1)) - lineIndex(value, start) + 1;
       const chars = [...value.slice(start, end)].length;
-      detail = mode === 'visual-line' || lines > 1 ? `${lines} ${lines === 1 ? 'line' : 'lines'}` : `${chars} ${chars === 1 ? 'char' : 'chars'}`;
+      detail =
+        mode === 'visual-line' || lines > 1
+          ? `${lines} ${lines === 1 ? 'line' : 'lines'}`
+          : `${chars} ${chars === 1 ? 'char' : 'chars'}`;
     }
     keysLabel.textContent = detail;
     keysLabel.classList.toggle('message', Boolean(message));
@@ -1514,11 +1953,13 @@ export function createVim({ root, textarea, cursorLayer, statusLine, find, openS
     const margin = scrollMargin(lineHeight);
     const top = parseFloat(style.paddingTop) + lineIndex(text(), head) * lineHeight;
     if (top - margin < textarea.scrollTop) textarea.scrollTop = top - margin;
-    else if (top + lineHeight + margin > textarea.scrollTop + textarea.clientHeight) textarea.scrollTop = top + lineHeight + margin - textarea.clientHeight;
+    else if (top + lineHeight + margin > textarea.scrollTop + textarea.clientHeight)
+      textarea.scrollTop = top + lineHeight + margin - textarea.clientHeight;
     const left = block.offsetLeft - parseFloat(style.paddingLeft);
     const right = block.offsetLeft + block.offsetWidth + parseFloat(style.paddingRight);
     if (left < textarea.scrollLeft) textarea.scrollLeft = left;
-    else if (right > textarea.scrollLeft + textarea.clientWidth) textarea.scrollLeft = right - textarea.clientWidth;
+    else if (right > textarea.scrollLeft + textarea.clientWidth)
+      textarea.scrollLeft = right - textarea.clientWidth;
     sync();
   }
 
@@ -1559,7 +2000,8 @@ export function createVim({ root, textarea, cursorLayer, statusLine, find, openS
     if (command) {
       // Every command but u and Ctrl+R may be a change: one undo step, ending at Esc if it
       // opens Insert mode.
-      const moving = mode === 'normal' && (command.action === 'u' || command.action === '<C-r>');
+      const moving =
+        mode === 'normal' && (command.action === 'u' || command.action === '<C-r>');
       if (!moving) beginChange();
       if (mode === 'normal') runNormal(command);
       else runVisual(command);
@@ -1632,7 +2074,8 @@ export function createVim({ root, textarea, cursorLayer, statusLine, find, openS
   // Keeps stray typing out of Normal and Visual mode: Mac's Ctrl text shortcuts (Ctrl+K, Ctrl+H)
   // and dead keys reach the textarea without a keydown vim could stop.
   textarea.addEventListener('beforeinput', (event) => {
-    if (active && mode !== 'insert' && !editing && !NATIVE_EDITS.has(event.inputType)) event.preventDefault();
+    if (active && mode !== 'insert' && !editing && !NATIVE_EDITS.has(event.inputType))
+      event.preventDefault();
   });
 
   function setActive(on: boolean) {
@@ -1658,7 +2101,15 @@ export function createVim({ root, textarea, cursorLayer, statusLine, find, openS
   // The find bar's search line closed with a match (Enter after / or ?), or the ⌘F bar closed in
   // Normal or Visual mode: go there, and let n and N carry on with that query. After "d/" and
   // the like (`then`), the operator runs up to the match instead, and "." repeats it as "dn".
-  function searched(query: string, index: number | null, { backward = false, quiet = false, then = null }: { backward?: boolean; quiet?: boolean; then?: Command | null } = {}) {
+  function searched(
+    query: string,
+    index: number | null,
+    {
+      backward = false,
+      quiet = false,
+      then = null,
+    }: { backward?: boolean; quiet?: boolean; then?: Command | null } = {},
+  ) {
     if (!active || mode === 'insert' || !query) return;
     lastSearch = { query, backward, word: false };
     keys = [];
@@ -1674,10 +2125,16 @@ export function createVim({ root, textarea, cursorLayer, statusLine, find, openS
         endChange();
         want = column(text(), clamp(text(), head));
       }
-      if (CHANGES.has(then.operator!)) lastChange = { command: { operator: then.operator, motion: 'n', count: 1, hasCount: false }, typed: null };
+      if (CHANGES.has(then.operator!))
+        lastChange = {
+          command: { operator: then.operator, motion: 'n', count: 1, hasCount: false },
+          typed: null,
+        };
     } else {
       if (!quiet && (backward ? index >= head : index <= head)) {
-        message = backward ? 'Search hit the top, continuing at the bottom' : 'Search hit the bottom, continuing at the top';
+        message = backward
+          ? 'Search hit the top, continuing at the bottom'
+          : 'Search hit the bottom, continuing at the top';
       }
       head = index;
       want = column(text(), index);

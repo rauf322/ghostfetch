@@ -5,14 +5,33 @@
 // themselves are applied inside the page by interceptor.ts.
 import { defineBackground } from 'wxt/utils/define-background';
 import type { RuntimeMessage } from '../lib/messages.ts';
-import { BUILT_IN_SITES, dnrUrlFilter, isLocalPrefixHost, loadState, ruleTitle, siteMatchPatterns, siteOf } from '../lib/store.ts';
+import {
+  BUILT_IN_SITES,
+  dnrUrlFilter,
+  isLocalPrefixHost,
+  loadState,
+  ruleTitle,
+  siteMatchPatterns,
+  siteOf,
+} from '../lib/store.ts';
 import type { HeaderRow, Rule, StoredState } from '../lib/store.ts';
 
 type DnrRule = chrome.declarativeNetRequest.Rule;
 
 const RESOURCE_TYPES = [
-  'main_frame', 'sub_frame', 'stylesheet', 'script', 'image', 'font', 'object',
-  'xmlhttprequest', 'ping', 'csp_report', 'media', 'websocket', 'other',
+  'main_frame',
+  'sub_frame',
+  'stylesheet',
+  'script',
+  'image',
+  'font',
+  'object',
+  'xmlhttprequest',
+  'ping',
+  'csp_report',
+  'media',
+  'websocket',
+  'other',
 ] as chrome.declarativeNetRequest.ResourceType[];
 const SCRIPT_IDS = ['mocktail-interceptor', 'mocktail-bridge'];
 const MAX_LOCAL_HOSTS = 50;
@@ -35,18 +54,38 @@ function scheduleSync(what = { scripts: true, rules: true }) {
 // on those sites; every other site never sees Ghostfetch. The files are the same two the
 // manifest declares for the built-in hosts.
 async function syncContentScripts({ sites }: StoredState) {
-  const registered = await chrome.scripting.getRegisteredContentScripts({ ids: SCRIPT_IDS });
-  if (registered.length) await chrome.scripting.unregisterContentScripts({ ids: registered.map((script) => script.id) });
+  const registered = await chrome.scripting.getRegisteredContentScripts({
+    ids: SCRIPT_IDS,
+  });
+  if (registered.length)
+    await chrome.scripting.unregisterContentScripts({
+      ids: registered.map((script) => script.id),
+    });
   if (!sites.length) return;
   const matches = siteMatchPatterns(sites);
   await chrome.scripting.registerContentScripts([
-    { id: SCRIPT_IDS[0]!, js: ['interceptor.js'], matches, runAt: 'document_start', allFrames: true, world: 'MAIN' },
-    { id: SCRIPT_IDS[1]!, js: ['bridge.js'], matches, runAt: 'document_start', allFrames: true },
+    {
+      id: SCRIPT_IDS[0]!,
+      js: ['interceptor.js'],
+      matches,
+      runAt: 'document_start',
+      allFrames: true,
+      world: 'MAIN',
+    },
+    {
+      id: SCRIPT_IDS[1]!,
+      js: ['bridge.js'],
+      matches,
+      runAt: 'document_start',
+      allFrames: true,
+    },
   ]);
 }
 
 async function syncRules({ enabled, sites, rules, localHosts }: StoredState) {
-  const active = enabled ? rules.filter((rule) => rule.enabled && rule.type !== 'response') : [];
+  const active = enabled
+    ? rules.filter((rule) => rule.enabled && rule.type !== 'response')
+    : [];
   const initiators = [...BUILT_IN_SITES, ...localHosts, ...sites];
   const errors: Record<string, string> = {};
   const idMap: Record<number, string> = {};
@@ -65,7 +104,10 @@ async function syncRules({ enabled, sites, rules, localHosts }: StoredState) {
   const existing = await chrome.declarativeNetRequest.getDynamicRules();
   const removeRuleIds = existing.map((rule) => rule.id);
   try {
-    await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds, addRules: candidates });
+    await chrome.declarativeNetRequest.updateDynamicRules({
+      removeRuleIds,
+      addRules: candidates,
+    });
   } catch {
     // One invalid rule (e.g. an unsupported regex) rejects the whole batch,
     // so add them one at a time to find out which rule is at fault.
@@ -90,40 +132,64 @@ function toDnrRule(rule: Rule, id: number, initiators: string[]): DnrRule {
   if (!pattern) throw new Error('Add a URL pattern first.');
 
   // Only requests started by pages Ghostfetch runs on are touched, never the rest of your browsing.
-  const condition: chrome.declarativeNetRequest.RuleCondition = { resourceTypes: RESOURCE_TYPES, initiatorDomains: initiators };
+  const condition: chrome.declarativeNetRequest.RuleCondition = {
+    resourceTypes: RESOURCE_TYPES,
+    initiatorDomains: initiators,
+  };
   if (mode === 'regex') condition.regexFilter = pattern;
   else condition.urlFilter = dnrUrlFilter(mode, pattern);
-  if (method && method !== 'ANY') condition.requestMethods = [method.toLowerCase() as chrome.declarativeNetRequest.RequestMethod];
+  if (method && method !== 'ANY')
+    condition.requestMethods = [
+      method.toLowerCase() as chrome.declarativeNetRequest.RequestMethod,
+    ];
 
   return { id, priority: 1, condition, action: toDnrAction(rule) };
 }
 
 function toDnrAction(rule: Rule): chrome.declarativeNetRequest.RuleAction {
-  if (rule.type === 'block') return { type: 'block' as chrome.declarativeNetRequest.RuleActionType };
+  if (rule.type === 'block')
+    return { type: 'block' as chrome.declarativeNetRequest.RuleActionType };
 
   if (rule.type === 'redirect') {
     const to = rule.redirect.to.trim();
     if (!to) throw new Error('Add a destination URL.');
     if (rule.match.mode === 'regex' && /\\\d/.test(to)) {
-      return { type: 'redirect' as chrome.declarativeNetRequest.RuleActionType, redirect: { regexSubstitution: to } };
+      return {
+        type: 'redirect' as chrome.declarativeNetRequest.RuleActionType,
+        redirect: { regexSubstitution: to },
+      };
     }
     let target;
     try {
       target = new URL(to).href;
     } catch {
-      throw new Error(`"${to}" is not a full URL. Include the scheme, e.g. http://localhost:3000/api`);
+      throw new Error(
+        `"${to}" is not a full URL. Include the scheme, e.g. http://localhost:3000/api`,
+      );
     }
-    return { type: 'redirect' as chrome.declarativeNetRequest.RuleActionType, redirect: { url: target } };
+    return {
+      type: 'redirect' as chrome.declarativeNetRequest.RuleActionType,
+      redirect: { url: target },
+    };
   }
 
-  const convert = (list: HeaderRow[]) => list
-    .filter((row) => row.name.trim())
-    .map((row) => (row.op === 'remove'
-      ? { header: row.name.trim(), operation: 'remove' }
-      : { header: row.name.trim(), operation: 'set', value: row.value ?? '' }) as chrome.declarativeNetRequest.ModifyHeaderInfo);
+  const convert = (list: HeaderRow[]) =>
+    list
+      .filter((row) => row.name.trim())
+      .map(
+        (row) =>
+          (row.op === 'remove'
+            ? { header: row.name.trim(), operation: 'remove' }
+            : {
+                header: row.name.trim(),
+                operation: 'set',
+                value: row.value ?? '',
+              }) as chrome.declarativeNetRequest.ModifyHeaderInfo,
+      );
   const requestHeaders = convert(rule.headers.request);
   const responseHeaders = convert(rule.headers.response);
-  if (!requestHeaders.length && !responseHeaders.length) throw new Error('Add at least one header.');
+  if (!requestHeaders.length && !responseHeaders.length)
+    throw new Error('Add at least one header.');
   return {
     type: 'modifyHeaders' as chrome.declarativeNetRequest.RuleActionType,
     ...(requestHeaders.length && { requestHeaders }),
@@ -139,7 +205,10 @@ function updateBadge(enabled: boolean, rules: Rule[]) {
 }
 
 // Only fires for unpacked extensions, which is exactly how Ghostfetch is meant to be installed.
-async function onRuleMatched({ request, rule }: chrome.declarativeNetRequest.MatchedRuleInfoDebug) {
+async function onRuleMatched({
+  request,
+  rule,
+}: chrome.declarativeNetRequest.MatchedRuleInfoDebug) {
   if (request.tabId < 0) return;
   const { dnrMap = {} } = await chrome.storage.session.get('dnrMap');
   const ruleId = (dnrMap as Record<number, string>)[rule.ruleId];
@@ -158,10 +227,16 @@ async function onRuleMatched({ request, rule }: chrome.declarativeNetRequest.Mat
     ruleName: ruleTitle(matched),
     action: matched.type,
   };
-  chrome.tabs.sendMessage(request.tabId, { type: 'mocktail:dnrHit', entry }, { frameId: 0 }).catch(() => {});
+  chrome.tabs
+    .sendMessage(request.tabId, { type: 'mocktail:dnrHit', entry }, { frameId: 0 })
+    .catch(() => {});
 }
 
-function onMessage(message: RuntimeMessage | undefined, sender: chrome.runtime.MessageSender, sendResponse: (response: boolean) => void) {
+function onMessage(
+  message: RuntimeMessage | undefined,
+  sender: chrome.runtime.MessageSender,
+  sendResponse: (response: boolean) => void,
+) {
   // Requests made inside iframes are reported by that frame's bridge; pass them on to the
   // top frame, which owns the tab's traffic log.
   if (message?.type === 'mocktail:frameEntry' && sender.tab && sender.frameId) {
@@ -187,7 +262,9 @@ function rememberLocalHost(url: string) {
     .then(async () => {
       const { localHosts } = await loadState();
       if (localHosts.includes(host)) return;
-      await chrome.storage.local.set({ localHosts: [...localHosts, host].slice(-MAX_LOCAL_HOSTS) });
+      await chrome.storage.local.set({
+        localHosts: [...localHosts, host].slice(-MAX_LOCAL_HOSTS),
+      });
     })
     .catch((error) => console.error('[Ghostfetch] could not remember host', error));
 }
@@ -214,7 +291,8 @@ export default defineBackground(() => {
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'local') return;
     if (changes.sites) scheduleSync();
-    else if (changes.rules || changes.enabled || changes.localHosts) scheduleSync({ scripts: false, rules: true });
+    else if (changes.rules || changes.enabled || changes.localHosts)
+      scheduleSync({ scripts: false, rules: true });
   });
   chrome.declarativeNetRequest.onRuleMatchedDebug?.addListener(onRuleMatched);
 });

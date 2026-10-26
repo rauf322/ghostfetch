@@ -10,9 +10,11 @@ export const toggleVariants = cva(
   {
     variants: {
       variant: {
-        square: "before:size-[7px] before:flex-none before:shadow-[inset_0_0_0_1px_var(--t40)] before:content-[''] data-pressed:text-white data-pressed:before:bg-signal data-pressed:before:shadow-none",
+        square:
+          "before:size-[7px] before:flex-none before:shadow-[inset_0_0_0_1px_var(--t40)] before:content-[''] data-pressed:text-white data-pressed:before:bg-signal data-pressed:before:shadow-none",
         // inverted white while chosen; a plain button, so the browser centres the label
-        segment: 'block min-w-0 flex-1 overflow-hidden text-ellipsis data-pressed:bg-foreground data-pressed:font-medium data-pressed:text-black',
+        segment:
+          'block min-w-0 flex-1 overflow-hidden text-ellipsis data-pressed:bg-foreground data-pressed:font-medium data-pressed:text-black',
       },
       size: {
         // the size of a small button, hairline included (give it border-input to show the hairline)
@@ -26,6 +28,17 @@ export const toggleVariants = cva(
   },
 );
 
-export function Toggle({ className, variant = 'square', size = 'sm', ...props }: TogglePrimitive.Props & VariantProps<typeof toggleVariants>) {
-  return <TogglePrimitive data-slot="toggle" className={cn(toggleVariants({ variant, size, className }))} {...props} />;
+export function Toggle({
+  className,
+  variant = 'square',
+  size = 'sm',
+  ...props
+}: TogglePrimitive.Props & VariantProps<typeof toggleVariants>) {
+  return (
+    <TogglePrimitive
+      data-slot="toggle"
+      className={cn(toggleVariants({ variant, size, className }))}
+      {...props}
+    />
+  );
 }

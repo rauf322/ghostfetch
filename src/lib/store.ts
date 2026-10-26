@@ -2,7 +2,15 @@
 // Everything lives in chrome.storage.local: { enabled, record, sites, rules, localHosts }.
 
 export type RuleType = 'response' | 'redirect' | 'headers' | 'block';
-export type Method = 'ANY' | 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'OPTIONS' | 'HEAD';
+export type Method =
+  | 'ANY'
+  | 'GET'
+  | 'POST'
+  | 'PUT'
+  | 'PATCH'
+  | 'DELETE'
+  | 'OPTIONS'
+  | 'HEAD';
 export type MatchMode = 'contains' | 'equals' | 'wildcard' | 'regex';
 export type BodyMode = 'replace' | 'merge' | 'script' | 'original';
 
@@ -44,13 +52,38 @@ export interface StoredState {
 }
 
 export const TYPES: Record<RuleType, { label: string; short: string; desc: string }> = {
-  response: { label: 'Modify response', short: 'Response', desc: 'Replace the body, merge JSON into it, or transform it with a script' },
-  redirect: { label: 'Redirect', short: 'Redirect', desc: 'Send matching requests to another URL, e.g. prod API to localhost' },
-  headers: { label: 'Modify headers', short: 'Headers', desc: 'Set or remove request and response headers' },
-  block: { label: 'Block', short: 'Block', desc: 'Make matching requests fail, to test error handling' },
+  response: {
+    label: 'Modify response',
+    short: 'Response',
+    desc: 'Replace the body, merge JSON into it, or transform it with a script',
+  },
+  redirect: {
+    label: 'Redirect',
+    short: 'Redirect',
+    desc: 'Send matching requests to another URL, e.g. prod API to localhost',
+  },
+  headers: {
+    label: 'Modify headers',
+    short: 'Headers',
+    desc: 'Set or remove request and response headers',
+  },
+  block: {
+    label: 'Block',
+    short: 'Block',
+    desc: 'Make matching requests fail, to test error handling',
+  },
 };
 
-export const METHODS: readonly Method[] = ['ANY', 'GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'];
+export const METHODS: readonly Method[] = [
+  'ANY',
+  'GET',
+  'POST',
+  'PUT',
+  'PATCH',
+  'DELETE',
+  'OPTIONS',
+  'HEAD',
+];
 
 export const MATCH_MODES: Record<MatchMode, string> = {
   contains: 'Contains',
@@ -61,16 +94,30 @@ export const MATCH_MODES: Record<MatchMode, string> = {
 
 export const MATCH_HINTS: Record<MatchMode, string> = {
   contains: 'Matches when the full URL contains this text, e.g. /api/users',
-  equals: 'The full URL. Response rules also accept just the path, e.g. /api/users?page=1',
+  equals:
+    'The full URL. Response rules also accept just the path, e.g. /api/users?page=1',
   wildcard: '* matches anything, e.g. https://api.example.com/users/*',
   regex: 'Regular expression tested against the full URL, e.g. /api/users/\\d+$',
 };
 
-export const BODY_MODES: Record<BodyMode, { label: string; short?: string; desc: string }> = {
+export const BODY_MODES: Record<
+  BodyMode,
+  { label: string; short?: string; desc: string }
+> = {
   replace: { label: 'Replace', desc: 'Return this body without calling the server.' },
-  merge: { label: 'Merge JSON', short: 'Merge', desc: 'Call the server, then deep-merge this JSON into its response. Objects merge key by key; arrays and plain values are replaced.' },
-  script: { label: 'Script', desc: 'Call the server, then transform its response with JavaScript. Needs a page without a strict Content-Security-Policy, which is the case for most dev servers.' },
-  original: { label: 'Original', desc: 'Keep the real body. Use this to change only the status, headers or delay.' },
+  merge: {
+    label: 'Merge JSON',
+    short: 'Merge',
+    desc: 'Call the server, then deep-merge this JSON into its response. Objects merge key by key; arrays and plain values are replaced.',
+  },
+  script: {
+    label: 'Script',
+    desc: 'Call the server, then transform its response with JavaScript. Needs a page without a strict Content-Security-Policy, which is the case for most dev servers.',
+  },
+  original: {
+    label: 'Original',
+    desc: 'Keep the real body. Use this to change only the status, headers or delay.',
+  },
 };
 
 export const SCRIPT_TEMPLATE = `// \`response\` is the real response: parsed JSON, or text if it isn't JSON.
@@ -94,7 +141,13 @@ export function isLocalPrefixHost(host: string) {
   return LOCAL_PREFIX.test(host);
 }
 
-const DEFAULTS: StoredState = { enabled: true, record: true, sites: [], rules: [], localHosts: [] };
+const DEFAULTS: StoredState = {
+  enabled: true,
+  record: true,
+  sites: [],
+  rules: [],
+  localHosts: [],
+};
 
 export function createRule(type: RuleType = 'response'): Rule {
   const now = Date.now();
@@ -129,7 +182,8 @@ function isKey<T extends object>(options: T, key: unknown): key is keyof T {
   return Object.hasOwn(options, key as PropertyKey);
 }
 
-const isMethod = (value: unknown): value is Method => (METHODS as readonly unknown[]).includes(value);
+const isMethod = (value: unknown): value is Method =>
+  (METHODS as readonly unknown[]).includes(value);
 
 // Rebuilds a rule field by field from known keys and types, so stored, older or imported
 // rules (which may come from an untrusted file) can't carry unexpected values into the UI.
@@ -140,7 +194,10 @@ export function normalizeRule(input: unknown, { newId = false } = {}): Rule {
   const response: Untrusted = isObject(raw?.response) ? raw.response : {};
   const status = String(response.status ?? '');
   return {
-    id: !newId && typeof raw?.id === 'string' && /^[\w-]{1,64}$/.test(raw.id) ? raw.id : base.id,
+    id:
+      !newId && typeof raw?.id === 'string' && /^[\w-]{1,64}$/.test(raw.id)
+        ? raw.id
+        : base.id,
     name: text(raw?.name),
     enabled: raw?.enabled !== false,
     type: base.type,
@@ -161,7 +218,10 @@ export function normalizeRule(input: unknown, { newId = false } = {}): Rule {
       headers: headerRows(response.headers),
     },
     redirect: { to: text(raw?.redirect?.to) },
-    headers: { request: headerRows(raw?.headers?.request), response: headerRows(raw?.headers?.response) },
+    headers: {
+      request: headerRows(raw?.headers?.request),
+      response: headerRows(raw?.headers?.response),
+    },
     createdAt: Number.isFinite(raw?.createdAt) ? raw!.createdAt : base.createdAt,
     updatedAt: Number.isFinite(raw?.updatedAt) ? raw!.updatedAt : base.updatedAt,
   };
@@ -198,13 +258,21 @@ const IPV4 = /^\d{1,3}(\.\d{1,3}){3}$/;
 
 // Always on: localhost (any port or *.localhost subdomain), 127.0.0.1 and local.* hosts.
 export function isBuiltInHost(host: string) {
-  return host === '127.0.0.1' || host === 'localhost' || host.endsWith('.localhost') || isLocalPrefixHost(host);
+  return (
+    host === '127.0.0.1' ||
+    host === 'localhost' ||
+    host.endsWith('.localhost') ||
+    isLocalPrefixHost(host)
+  );
 }
 
 // Turns "https://staging.example.com:8080/app", "*.example.com" or "Example.com" into a bare
 // hostname. Returns '' for anything that isn't a plain hostname or IPv4 address.
 export function normalizeSite(input: unknown): string {
-  const raw = String(input ?? '').trim().toLowerCase().replace(/^\*\./, '');
+  const raw = String(input ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/^\*\./, '');
   if (!raw) return '';
   let host;
   try {
@@ -218,7 +286,9 @@ export function normalizeSite(input: unknown): string {
 // The sites you added, cleaned up: plain hostnames, no duplicates, no built-in hosts
 // (they're always on anyway).
 export function normalizeSites(list: unknown): string[] {
-  return [...new Set((Array.isArray(list) ? list : []).map(normalizeSite))].filter((site) => site && !isBuiltInHost(site));
+  return [...new Set((Array.isArray(list) ? list : []).map(normalizeSite))].filter(
+    (site) => site && !isBuiltInHost(site),
+  );
 }
 
 // A site you added covers the host itself and its subdomains (IP addresses only themselves).
@@ -229,7 +299,9 @@ export function siteCovers(site: string, host: string) {
 // Whether Ghostfetch runs on this URL: a built-in host, or one covered by a site you added.
 export function isSiteEnabled(sites: string[], url: string | undefined) {
   const host = siteOf(url);
-  return Boolean(host) && (isBuiltInHost(host) || sites.some((site) => siteCovers(site, host)));
+  return (
+    Boolean(host) && (isBuiltInHost(host) || sites.some((site) => siteCovers(site, host)))
+  );
 }
 
 // Content-script match patterns for the sites you added.
@@ -238,7 +310,9 @@ export function siteMatchPatterns(sites: string[]) {
 }
 
 export function ruleTitle(rule: Rule) {
-  return rule.name.trim() || rule.match.graphqlOperation || rule.match.url || 'Untitled rule';
+  return (
+    rule.name.trim() || rule.match.graphqlOperation || rule.match.url || 'Untitled rule'
+  );
 }
 
 // The declarativeNetRequest urlFilter for redirect, header and block rules.
@@ -255,10 +329,14 @@ export function testUrl(rule: Rule, url: string) {
   const pattern = rule.match.url.trim();
   const { mode } = rule.match;
   if (!pattern) return false;
-  if (mode === 'regex') return new RegExp(pattern, rule.type === 'response' ? '' : 'i').test(url);
-  if (rule.type !== 'response') return urlFilterRegex(dnrUrlFilter(mode, pattern)).test(url);
-  if (mode === 'wildcard') return new RegExp(`^${pattern.split('*').map(escapeRegex).join('.*')}$`).test(url);
-  if (mode === 'equals') return url === pattern || (pattern.startsWith('/') && pathOf(url) === pattern);
+  if (mode === 'regex')
+    return new RegExp(pattern, rule.type === 'response' ? '' : 'i').test(url);
+  if (rule.type !== 'response')
+    return urlFilterRegex(dnrUrlFilter(mode, pattern)).test(url);
+  if (mode === 'wildcard')
+    return new RegExp(`^${pattern.split('*').map(escapeRegex).join('.*')}$`).test(url);
+  if (mode === 'equals')
+    return url === pattern || (pattern.startsWith('/') && pathOf(url) === pattern);
   return url.includes(pattern);
 }
 
@@ -303,8 +381,12 @@ export async function loadState(): Promise<StoredState> {
     enabled: stored.enabled,
     record: stored.record,
     sites: normalizeSites(stored.sites),
-    rules: (Array.isArray(stored.rules) ? stored.rules : []).map((rule) => normalizeRule(rule)),
+    rules: (Array.isArray(stored.rules) ? stored.rules : []).map((rule) =>
+      normalizeRule(rule),
+    ),
     // local.* hosts opened so far; background.ts adds them to the DNR initiator list.
-    localHosts: (Array.isArray(stored.localHosts) ? stored.localHosts : []).filter((host) => typeof host === 'string' && isLocalPrefixHost(host)),
+    localHosts: (Array.isArray(stored.localHosts) ? stored.localHosts : []).filter(
+      (host) => typeof host === 'string' && isLocalPrefixHost(host),
+    ),
   };
 }

@@ -5,11 +5,29 @@ import type { Rule, RuleType } from './store.ts';
 // What a logged request was: fetch() or XMLHttpRequest in the page, or the resource type
 // declarativeNetRequest reports for a redirect, header or block rule hit.
 export type EntryKind =
-  | 'fetch' | 'xhr' | 'main_frame' | 'sub_frame' | 'stylesheet' | 'script' | 'image' | 'font' | 'object'
-  | 'xmlhttprequest' | 'ping' | 'csp_report' | 'media' | 'websocket' | 'other';
+  | 'fetch'
+  | 'xhr'
+  | 'main_frame'
+  | 'sub_frame'
+  | 'stylesheet'
+  | 'script'
+  | 'image'
+  | 'font'
+  | 'object'
+  | 'xmlhttprequest'
+  | 'ping'
+  | 'csp_report'
+  | 'media'
+  | 'websocket'
+  | 'other';
 
 // What a rule did to the request; '' when no rule matched.
-export type EntryAction = '' | 'mocked' | 'modified' | 'error' | Exclude<RuleType, 'response'>;
+export type EntryAction =
+  | ''
+  | 'mocked'
+  | 'modified'
+  | 'error'
+  | Exclude<RuleType, 'response'>;
 
 // One request in a tab's traffic log, as the bridge rebuilds it from what the page reported
 // (see clean() in entrypoints/bridge.ts).
@@ -58,7 +76,9 @@ export type RuntimeMessage =
   | { type: 'mocktail:dnrHit'; entry: Partial<LogEntry> };
 
 // Over the "mocktail-log" port: a tab's top-frame bridge to the Traffic view, and back.
-export type LogPortMessage = { type: 'snapshot'; entries: LogEntry[]; url: string } | { type: 'entry'; entry: LogEntry };
+export type LogPortMessage =
+  | { type: 'snapshot'; entries: LogEntry[]; url: string }
+  | { type: 'entry'; entry: LogEntry };
 export interface LogViewerMessage {
   type: 'clear';
 }

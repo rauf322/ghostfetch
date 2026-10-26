@@ -21,13 +21,24 @@ export function DropdownMenuContent({
   anchor,
   className,
   ...props
-}: MenuPrimitive.Popup.Props & Pick<MenuPrimitive.Positioner.Props, 'align' | 'side' | 'sideOffset' | 'anchor'>) {
+}: MenuPrimitive.Popup.Props &
+  Pick<MenuPrimitive.Positioner.Props, 'align' | 'side' | 'sideOffset' | 'anchor'>) {
   return (
     <MenuPrimitive.Portal>
-      <MenuPrimitive.Positioner className="isolate z-50 outline-none" align={align} side={side} sideOffset={sideOffset} anchor={anchor} collisionPadding={0}>
+      <MenuPrimitive.Positioner
+        className="isolate z-50 outline-none"
+        align={align}
+        side={side}
+        sideOffset={sideOffset}
+        anchor={anchor}
+        collisionPadding={0}
+      >
         <MenuPrimitive.Popup
           data-slot="dropdown-menu-content"
-          className={cn('max-h-(--available-height) min-w-[210px] overflow-y-auto border border-input bg-background shadow-menu outline-none', className)}
+          className={cn(
+            'max-h-(--available-height) min-w-[210px] overflow-y-auto border border-input bg-background shadow-menu outline-none',
+            className,
+          )}
           {...props}
         />
       </MenuPrimitive.Positioner>
@@ -35,7 +46,11 @@ export function DropdownMenuContent({
   );
 }
 
-export function DropdownMenuItem({ className, variant = 'default', ...props }: MenuPrimitive.Item.Props & { variant?: 'default' | 'destructive' }) {
+export function DropdownMenuItem({
+  className,
+  variant = 'default',
+  ...props
+}: MenuPrimitive.Item.Props & { variant?: 'default' | 'destructive' }) {
   return (
     <MenuPrimitive.Item
       data-slot="dropdown-menu-item"
@@ -50,10 +65,28 @@ export function DropdownMenuItem({ className, variant = 'default', ...props }: M
   );
 }
 
-export function DropdownMenuSeparator({ className, ...props }: MenuPrimitive.Separator.Props) {
-  return <MenuPrimitive.Separator data-slot="dropdown-menu-separator" className={cn('h-px bg-input', className)} {...props} />;
+export function DropdownMenuSeparator({
+  className,
+  ...props
+}: MenuPrimitive.Separator.Props) {
+  return (
+    <MenuPrimitive.Separator
+      data-slot="dropdown-menu-separator"
+      className={cn('h-px bg-input', className)}
+      {...props}
+    />
+  );
 }
 
 export function DropdownMenuLabel({ className, ...props }: ComponentProps<'div'>) {
-  return <div data-slot="dropdown-menu-label" className={cn('border-b border-line-soft px-3 py-2 text-label text-t40 uppercase tracking-label', className)} {...props} />;
+  return (
+    <div
+      data-slot="dropdown-menu-label"
+      className={cn(
+        'border-b border-line-soft px-3 py-2 text-label text-t40 uppercase tracking-label',
+        className,
+      )}
+      {...props}
+    />
+  );
 }

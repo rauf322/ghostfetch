@@ -3,7 +3,11 @@ import { cn } from '../../lib/utils.ts';
 
 // Institute's square switch: a hairline box whose knob slides over and turns into the green square
 // when on.
-export function Switch({ className, size = 'default', ...props }: SwitchPrimitive.Root.Props & { size?: 'sm' | 'default' }) {
+export function Switch({
+  className,
+  size = 'default',
+  ...props
+}: SwitchPrimitive.Root.Props & { size?: 'sm' | 'default' }) {
   return (
     <SwitchPrimitive.Root
       data-slot="switch"

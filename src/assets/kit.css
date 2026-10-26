@@ -5,8 +5,8 @@
    Tailwind writes a rule for each class name it finds in src/ (source(".."), from this folder),
    and only there: not in .output/ or anything else in the project folder, so the same sources
    always give the same stylesheet. */
-@import "tailwindcss" source("..");
-@import "./theme.css";
+@import 'tailwindcss' source("..");
+@import './theme.css';
 
 :root {
   /* shadcn's names pointed at Institute's, so a component borrowed from shadcn or 21st.dev starts
@@ -36,18 +36,18 @@
   --radius-*: initial;
   --shadow-*: initial;
 
-  --font-sans: "Commit Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  --font-mono: "Commit Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --font-sans: 'Commit Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --font-mono: 'Commit Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 
   /* Institute's type sizes, named by what uses them */
-  --text-micro: 9.5px;    /* field labels, badges */
-  --text-label: 10px;     /* section labels, footer cells, segments */
+  --text-micro: 9.5px; /* field labels, badges */
+  --text-label: 10px; /* section labels, footer cells, segments */
   --text-control: 10.5px; /* buttons, tabs, section titles */
-  --text-meta: 11px;      /* rule meta, hints */
-  --text-small: 11.5px;   /* menus, toasts, banners */
-  --text-body: 12px;      /* inputs, body text */
-  --text-title: 13px;     /* rule titles */
-  --text-hero: 20px;      /* the popup's site name */
+  --text-meta: 11px; /* rule meta, hints */
+  --text-small: 11.5px; /* menus, toasts, banners */
+  --text-body: 12px; /* inputs, body text */
+  --text-title: 13px; /* rule titles */
+  --text-hero: 20px; /* the popup's site name */
 
   /* letter spacing: none (counts), the body's, and the uppercase labels' */
   --tracking-normal: 0;
@@ -100,7 +100,9 @@
 /* Outside the layers on purpose: Chrome adds body { font-family: system-ui, sans-serif } to
    extension pages as an unlayered style, which beats anything inside @layer, and a rule on body
    also beats the font Tailwind's base styles set on html. */
-body { font-family: var(--font-sans); }
+body {
+  font-family: var(--font-sans);
+}
 
 @layer base {
   body {
@@ -112,25 +114,69 @@ body { font-family: var(--font-sans); }
     -webkit-font-smoothing: antialiased;
     font-variant-ligatures: none;
   }
-  b, strong { font-weight: 600; }
-  code { font: inherit; font-size: 11px; padding: 0 4px; border: 1px solid var(--line-strong); background: var(--pressed); color: var(--t80); }
-  ::selection { background: rgba(255, 255, 255, 0.2); }
-  :focus-visible { outline: 1px solid var(--text); outline-offset: 2px; }
-  button:not(:disabled), [role="button"], [role="switch"], [role="tab"], [role="radio"], [role="combobox"], [role="option"], [role="menuitem"] { cursor: pointer; }
+  b,
+  strong {
+    font-weight: 600;
+  }
+  code {
+    font: inherit;
+    font-size: 11px;
+    padding: 0 4px;
+    border: 1px solid var(--line-strong);
+    background: var(--pressed);
+    color: var(--t80);
+  }
+  ::selection {
+    background: rgba(255, 255, 255, 0.2);
+  }
+  :focus-visible {
+    outline: 1px solid var(--text);
+    outline-offset: 2px;
+  }
+  button:not(:disabled),
+  [role='button'],
+  [role='switch'],
+  [role='tab'],
+  [role='radio'],
+  [role='combobox'],
+  [role='option'],
+  [role='menuitem'] {
+    cursor: pointer;
+  }
   /* The two rules Base UI would add in a <style> tag (for its select's list and scroll areas). The
      CSP blocks that tag, so every page sets CSPProvider's disableStyleElements and they're here. */
-  .base-ui-disable-scrollbar { scrollbar-width: none; }
-  .base-ui-disable-scrollbar::-webkit-scrollbar { display: none; }
+  .base-ui-disable-scrollbar {
+    scrollbar-width: none;
+  }
+  .base-ui-disable-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 /* effect.institute's dotted grid, behind empty space; a brighter one behind the popup's site */
-@utility bg-dots { background: var(--dots), var(--bg); }
-@utility bg-dots-strong { background: radial-gradient(circle, rgba(255, 255, 255, 0.16) 0.8px, transparent 1.2px) 7px 7px / 14px 14px, var(--bg); }
-@utility scroll-thin { scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+@utility bg-dots {
+  background: var(--dots), var(--bg);
+}
+@utility bg-dots-strong {
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, 0.16) 0.8px, transparent 1.2px) 7px 7px /
+      14px 14px,
+    var(--bg);
+}
+@utility scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
 /* A select's small solid triangle, 11px in from the right edge: two 5px tiles, each half filled */
 @utility select-arrow {
-  background-image: linear-gradient(45deg, transparent 50%, var(--t50) 50%), linear-gradient(135deg, var(--t50) 50%, transparent 50%);
-  background-position: calc(100% - 16px) 50%, calc(100% - 11px) 50%;
-  background-size: 5px 5px, 5px 5px;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--t50) 50%),
+    linear-gradient(135deg, var(--t50) 50%, transparent 50%);
+  background-position:
+    calc(100% - 16px) 50%,
+    calc(100% - 11px) 50%;
+  background-size:
+    5px 5px,
+    5px 5px;
   background-repeat: no-repeat;
 }

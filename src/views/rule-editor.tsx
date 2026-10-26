@@ -1,40 +1,37 @@
 // One rule's settings, in numbered sections like the site's chapters ("02 — Match requests").
 // Every change is saved as you make it (touchRule) and applies to open tabs right away.
-import { useEffect, useRef, useState } from "react";
-import type { ComponentProps, ReactNode } from "react";
-import { flushSync } from "react-dom";
-import { CodeEditor } from "../components/code-editor.tsx";
-import { BackButton, PaneHead, PaneScroll } from "../components/layout.tsx";
-import { Alert } from "../components/ui/alert.tsx";
-import { Button } from "../components/ui/button.tsx";
-import { Card, CardHint, CardTitle } from "../components/ui/card.tsx";
+import { useEffect, useRef, useState } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
+import { flushSync } from 'react-dom';
+import { CodeEditor } from '../components/code-editor.tsx';
+import { BackButton, PaneHead, PaneScroll } from '../components/layout.tsx';
+import { Alert } from '../components/ui/alert.tsx';
+import { Button } from '../components/ui/button.tsx';
+import { Card, CardHint, CardTitle } from '../components/ui/card.tsx';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "../components/ui/dropdown-menu.tsx";
-import { Icon } from "../components/ui/icon.tsx";
-import { Input } from "../components/ui/input.tsx";
-import { FieldLabel } from "../components/ui/label.tsx";
-import { Segmented, SegmentedItem } from "../components/ui/segmented.tsx";
+} from '../components/ui/dropdown-menu.tsx';
+import { Icon } from '../components/ui/icon.tsx';
+import { Input } from '../components/ui/input.tsx';
+import { FieldLabel } from '../components/ui/label.tsx';
+import { Segmented, SegmentedItem } from '../components/ui/segmented.tsx';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../components/ui/select.tsx";
-import { Switch } from "../components/ui/switch.tsx";
-import { notify } from "../components/ui/toast.tsx";
-import { Toggle } from "../components/ui/toggle.tsx";
-import {
-  ToggleGroup,
-  ToggleGroupItem,
-} from "../components/ui/toggle-group.tsx";
-import { download, formatJson, jsonProblem } from "../lib/dom.ts";
-import type { CodeEditor as Editor } from "../lib/editor/code-editor.ts";
-import { vimPreferred } from "../lib/editor/vim.ts";
+} from '../components/ui/select.tsx';
+import { Switch } from '../components/ui/switch.tsx';
+import { notify } from '../components/ui/toast.tsx';
+import { Toggle } from '../components/ui/toggle.tsx';
+import { ToggleGroup, ToggleGroupItem } from '../components/ui/toggle-group.tsx';
+import { download, formatJson, jsonProblem } from '../lib/dom.ts';
+import type { CodeEditor as Editor } from '../lib/editor/code-editor.ts';
+import { vimPreferred } from '../lib/editor/vim.ts';
 import {
   BODY_MODES,
   MATCH_HINTS,
@@ -44,7 +41,7 @@ import {
   normalizeRule,
   ruleTitle,
   testUrl,
-} from "../lib/store.ts";
+} from '../lib/store.ts';
 import type {
   BodyMode,
   HeaderRow,
@@ -52,7 +49,7 @@ import type {
   Method,
   Rule,
   RuleType,
-} from "../lib/store.ts";
+} from '../lib/store.ts';
 import {
   addRule,
   findRule,
@@ -60,42 +57,37 @@ import {
   state,
   touchRule,
   useUiState,
-} from "../lib/state.ts";
-import { cn } from "../lib/utils.ts";
+} from '../lib/state.ts';
+import { cn } from '../lib/utils.ts';
 
-const STATUS_PRESETS = [
-  200, 201, 204, 400, 401, 403, 404, 409, 422, 429, 500, 503,
-];
+const STATUS_PRESETS = [200, 201, 204, 400, 401, 403, 404, 409, 422, 429, 500, 503];
 // The body mode's text in the rule, and the language it's written in.
 const CODE_FIELDS: Partial<
-  Record<
-    BodyMode,
-    { field: "body" | "merge" | "script"; language: "json" | "js" }
-  >
+  Record<BodyMode, { field: 'body' | 'merge' | 'script'; language: 'json' | 'js' }>
 > = {
-  replace: { field: "body", language: "json" },
-  merge: { field: "merge", language: "json" },
-  script: { field: "script", language: "js" },
+  replace: { field: 'body', language: 'json' },
+  merge: { field: 'merge', language: 'json' },
+  script: { field: 'script', language: 'js' },
 };
 const CORS_HEADERS: HeaderRow[] = [
-  { op: "set", name: "Access-Control-Allow-Origin", value: "*" },
+  { op: 'set', name: 'Access-Control-Allow-Origin', value: '*' },
   {
-    op: "set",
-    name: "Access-Control-Allow-Methods",
-    value: "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+    op: 'set',
+    name: 'Access-Control-Allow-Methods',
+    value: 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
   },
-  { op: "set", name: "Access-Control-Allow-Headers", value: "*" },
+  { op: 'set', name: 'Access-Control-Allow-Headers', value: '*' },
 ];
 const METHOD_ITEMS = METHODS.map((method) => ({
   value: method,
-  label: method === "ANY" ? "Any method" : method,
+  label: method === 'ANY' ? 'Any method' : method,
 }));
 const MODE_ITEMS = (Object.entries(MATCH_MODES) as [MatchMode, string][]).map(
   ([value, label]) => ({ value, label: `URL ${label.toLowerCase()}` }),
 );
 const OP_ITEMS = [
-  { value: "set", label: "Set" },
-  { value: "remove", label: "Remove" },
+  { value: 'set', label: 'Set' },
+  { value: 'remove', label: 'Remove' },
 ];
 
 interface RuleEditorProps {
@@ -107,16 +99,11 @@ interface RuleEditorProps {
   onSelect: (id: string | null) => void;
 }
 
-export function RuleEditor({
-  rule,
-  focusUrl,
-  revision,
-  onSelect,
-}: RuleEditorProps) {
+export function RuleEditor({ rule, focusUrl, revision, onSelect }: RuleEditorProps) {
   const ui = useUiState();
   const code = useRef<Editor | null>(null);
   const urlField = useRef<HTMLInputElement>(null);
-  const [testedUrl, setTestedUrl] = useState("");
+  const [testedUrl, setTestedUrl] = useState('');
   const [vim, setVim] = useState(vimPreferred);
   const { match, response } = rule;
 
@@ -144,7 +131,7 @@ export function RuleEditor({
     const removed = removeRule(rule.id);
     onSelect(null);
     notify(`Deleted “${ruleTitle(rule)}”`, {
-      action: "Undo",
+      action: 'Undo',
       onAction: () => {
         addRule(removed!.rule, removed!.index);
         onSelect(removed!.rule.id);
@@ -158,7 +145,7 @@ export function RuleEditor({
     const formatted = formatJson(editor.value);
     if (formatted === null)
       return notify("Can't format: the body isn't valid JSON", {
-        kind: "error",
+        kind: 'error',
       });
     if (formatted !== editor.value) editor.replace(formatted);
     return undefined;
@@ -171,11 +158,10 @@ export function RuleEditor({
     code.current?.textarea.focus({ preventScroll: true });
   }
 
-  const dnrError = rule.enabled && ui.enabled ? ui.dnrErrors[rule.id] : "";
+  const dnrError = rule.enabled && ui.enabled ? ui.dnrErrors[rule.id] : '';
   const regexProblem = regexError(rule);
   const tested = testedUrl.trim() ? testResult(rule, testedUrl.trim()) : null;
-  const body =
-    rule.type === "response" ? CODE_FIELDS[response.bodyMode] : undefined;
+  const body = rule.type === 'response' ? CODE_FIELDS[response.bodyMode] : undefined;
   const status = body ? codeStatus(rule, response[body.field]) : null;
   // The sections are numbered as they come.
   let section = 0;
@@ -198,7 +184,7 @@ export function RuleEditor({
           data-testid="rule-name"
           aria-label="Rule name"
           value={rule.name}
-          placeholder={match.graphqlOperation || match.url || "Name this rule"}
+          placeholder={match.graphqlOperation || match.url || 'Name this rule'}
           onChange={(event) =>
             edit((current) => {
               current.name = event.target.value;
@@ -262,17 +248,13 @@ export function RuleEditor({
 
       <PaneScroll>
         {dnrError && (
-          <Alert
-            variant="error"
-            data-testid="dnr-error"
-            className="mx-3.5 mt-3.5"
-          >
+          <Alert variant="error" data-testid="dnr-error" className="mx-3.5 mt-3.5">
             {`Chrome rejected this rule: ${dnrError}`}
           </Alert>
         )}
 
         <Card>
-          {title("Rule type")}
+          {title('Rule type')}
           <Segmented
             aria-label="Rule type"
             value={rule.type}
@@ -290,11 +272,11 @@ export function RuleEditor({
           </Segmented>
           {/* Each sentence is one run of text, as before, so the browser lays it out the same. */}
           <CardHint>
-            {rule.type === "response" ? (
+            {rule.type === 'response' ? (
               <>
                 {`${TYPES.response.desc}. Applies to `}
-                <code>fetch()</code> and <code>XMLHttpRequest</code> calls made
-                by the page.
+                <code>fetch()</code> and <code>XMLHttpRequest</code> calls made by the
+                page.
               </>
             ) : (
               `${TYPES[rule.type].desc}.`
@@ -303,7 +285,7 @@ export function RuleEditor({
         </Card>
 
         <Card>
-          {title("Match requests")}
+          {title('Match requests')}
           <div className="flex gap-2">
             <Select
               items={METHOD_ITEMS}
@@ -358,13 +340,13 @@ export function RuleEditor({
               })
             }
           />
-          <CardHint tone={regexProblem ? "bad" : "default"}>
+          <CardHint tone={regexProblem ? 'bad' : 'default'}>
             {regexProblem || MATCH_HINTS[match.mode]}
           </CardHint>
-          {rule.type === "response" && (
+          {rule.type === 'response' && (
             <label className="flex min-w-0 flex-col gap-[5px]">
               <FieldLabel>
-                GraphQL operation{" "}
+                GraphQL operation{' '}
                 <em className="tracking-mono text-t30 not-italic normal-case">
                   optional
                 </em>
@@ -402,10 +384,10 @@ export function RuleEditor({
           </div>
         </Card>
 
-        {rule.type === "response" && (
+        {rule.type === 'response' && (
           <>
             <Card>
-              {title("Response body")}
+              {title('Response body')}
               <Segmented
                 aria-label="Response body"
                 value={response.bodyMode}
@@ -416,11 +398,7 @@ export function RuleEditor({
                 }
               >
                 {(Object.keys(BODY_MODES) as BodyMode[]).map((mode) => (
-                  <SegmentedItem
-                    key={mode}
-                    value={mode}
-                    title={BODY_MODES[mode].desc}
-                  >
+                  <SegmentedItem key={mode} value={mode} title={BODY_MODES[mode].desc}>
                     {BODY_MODES[mode].short || BODY_MODES[mode].label}
                   </SegmentedItem>
                 ))}
@@ -443,9 +421,7 @@ export function RuleEditor({
                     <Verdict
                       tone={status?.tone}
                       data-testid="code-status"
-                      className={
-                        status?.tone === "bad" ? "text-foreground" : "text-t40"
-                      }
+                      className={status?.tone === 'bad' ? 'text-foreground' : 'text-t40'}
                     >
                       {status?.text}
                     </Verdict>
@@ -459,7 +435,7 @@ export function RuleEditor({
                       >
                         Vim
                       </Toggle>
-                      {response.bodyMode !== "script" && (
+                      {response.bodyMode !== 'script' && (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -477,7 +453,7 @@ export function RuleEditor({
             </Card>
 
             <Card>
-              {title("Status, delay and headers")}
+              {title('Status, delay and headers')}
               <div className="grid grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-2">
                 <label className="flex min-w-0 flex-col gap-[5px]">
                   <FieldLabel>Status code</FieldLabel>
@@ -487,7 +463,7 @@ export function RuleEditor({
                     max={599}
                     value={response.status}
                     placeholder={
-                      response.bodyMode === "replace" ? "200" : "Keep original"
+                      response.bodyMode === 'replace' ? '200' : 'Keep original'
                     }
                     onChange={(event) =>
                       edit((current) => {
@@ -504,7 +480,7 @@ export function RuleEditor({
                     type="number"
                     min={0}
                     step={250}
-                    value={response.delay || ""}
+                    value={response.delay || ''}
                     placeholder="0"
                     onChange={(event) =>
                       edit((current) => {
@@ -517,7 +493,7 @@ export function RuleEditor({
                     className="tabular-nums"
                   />
                 </label>
-                {response.bodyMode === "replace" && (
+                {response.bodyMode === 'replace' && (
                   <label className="col-span-2 flex min-w-0 flex-col gap-[5px]">
                     <FieldLabel>Content-Type</FieldLabel>
                     <Input
@@ -538,7 +514,7 @@ export function RuleEditor({
                 value={[response.status]}
                 onValueChange={(values) =>
                   edit((current) => {
-                    current.response.status = (values as string[])[0] ?? "";
+                    current.response.status = (values as string[])[0] ?? '';
                   })
                 }
                 className="grid grid-cols-6 border-0 border-t border-l"
@@ -564,9 +540,9 @@ export function RuleEditor({
           </>
         )}
 
-        {rule.type === "redirect" && (
+        {rule.type === 'redirect' && (
           <Card>
-            {title("Redirect to")}
+            {title('Redirect to')}
             <Input
               data-testid="redirect-to"
               value={rule.redirect.to}
@@ -578,18 +554,18 @@ export function RuleEditor({
               }
             />
             <CardHint>
-              A full URL, including <code>http://</code> or{" "}
-              <code>https://</code>. With <b>URL regex</b> you can reuse capture
-              groups: match <code>{"^https://api\\.example\\.com/(.*)"}</code>{" "}
-              and redirect to <code>{"http://localhost:4000/\\1"}</code>.
+              A full URL, including <code>http://</code> or <code>https://</code>. With{' '}
+              <b>URL regex</b> you can reuse capture groups: match{' '}
+              <code>{'^https://api\\.example\\.com/(.*)'}</code> and redirect to{' '}
+              <code>{'http://localhost:4000/\\1'}</code>.
             </CardHint>
           </Card>
         )}
 
-        {rule.type === "headers" && (
+        {rule.type === 'headers' && (
           <>
             <Card>
-              {title("Request headers", "sent to the server")}
+              {title('Request headers', 'sent to the server')}
               <HeaderRows
                 rows={rule.headers.request}
                 pick={(current) => current.headers.request}
@@ -597,14 +573,14 @@ export function RuleEditor({
               />
             </Card>
             <Card>
-              {title("Response headers", "seen by the page")}
+              {title('Response headers', 'seen by the page')}
               <HeaderRows
                 rows={rule.headers.response}
                 pick={(current) => current.headers.response}
                 edit={edit}
               />
               <CardHint>
-                {"Fighting CORS against a local backend? "}
+                {'Fighting CORS against a local backend? '}
                 <Button
                   variant="link"
                   size="inline"
@@ -614,9 +590,7 @@ export function RuleEditor({
                       for (const header of CORS_HEADERS) {
                         if (
                           !rows.some(
-                            (row) =>
-                              row.name.toLowerCase() ===
-                              header.name.toLowerCase(),
+                            (row) => row.name.toLowerCase() === header.name.toLowerCase(),
                           )
                         )
                           rows.push({ ...header });
@@ -633,12 +607,11 @@ export function RuleEditor({
           </>
         )}
 
-        {rule.type === "block" && (
+        {rule.type === 'block' && (
           <Card>
             <CardHint>
-              Matching requests fail with{" "}
-              <code>net::ERR_BLOCKED_BY_CLIENT</code>, as if the server were
-              unreachable. Handy for testing offline and error states.
+              Matching requests fail with <code>net::ERR_BLOCKED_BY_CLIENT</code>, as if
+              the server were unreachable. Handy for testing offline and error states.
             </CardHint>
           </Card>
         )}
@@ -663,10 +636,10 @@ function HeaderRows({
     // Drawn at once, so the new row's name field is there to take the cursor.
     flushSync(() =>
       edit((rule) => {
-        pick(rule).push({ op: "set", name: "", value: "" });
+        pick(rule).push({ op: 'set', name: '', value: '' });
       }),
     );
-    [...list.current!.querySelectorAll<HTMLInputElement>("[data-row-name]")]
+    [...list.current!.querySelectorAll<HTMLInputElement>('[data-row-name]')]
       .at(-1)
       ?.focus();
   }
@@ -683,7 +656,7 @@ function HeaderRows({
             value={row.op}
             onValueChange={(op) =>
               edit((rule) => {
-                pick(rule)[index]!.op = op as HeaderRow["op"];
+                pick(rule)[index]!.op = op as HeaderRow['op'];
               })
             }
           >
@@ -710,9 +683,9 @@ function HeaderRows({
                 pick(rule)[index]!.name = event.target.value;
               })
             }
-            className={cn(row.op === "remove" && "col-span-2")}
+            className={cn(row.op === 'remove' && 'col-span-2')}
           />
-          {row.op !== "remove" && (
+          {row.op !== 'remove' && (
             <Input
               size="sm"
               aria-label="Header value"
@@ -752,12 +725,12 @@ function Verdict({
   tone,
   className,
   ...props
-}: ComponentProps<"span"> & { tone?: "good" | "bad" }) {
+}: ComponentProps<'span'> & { tone?: 'good' | 'bad' }) {
   return (
     <span
       data-tone={tone}
       className={cn(
-        "inline-flex items-center gap-[7px] text-meta",
+        'inline-flex items-center gap-[7px] text-meta',
         "data-[tone=good]:text-control data-[tone=good]:text-t80 data-[tone=good]:uppercase data-[tone=good]:tracking-caps data-[tone=good]:before:size-[7px] data-[tone=good]:before:flex-none data-[tone=good]:before:bg-signal data-[tone=good]:before:content-['']",
         "data-[tone=bad]:before:content-['✗']",
         className,
@@ -769,32 +742,29 @@ function Verdict({
 
 // A regex that doesn't compile, in the browser's words.
 function regexError({ match }: Rule) {
-  if (match.mode !== "regex" || !match.url.trim()) return "";
+  if (match.mode !== 'regex' || !match.url.trim()) return '';
   try {
     new RegExp(match.url.trim());
-    return "";
+    return '';
   } catch (error) {
     return (error as Error).message;
   }
 }
 
-function testResult(
-  rule: Rule,
-  url: string,
-): { tone: "good" | "bad"; text: string } {
+function testResult(rule: Rule, url: string): { tone: 'good' | 'bad'; text: string } {
   try {
     const matched = rule.match.url.trim()
       ? testUrl(rule, url)
       : Boolean(rule.match.graphqlOperation.trim());
-    if (!matched) return { tone: "bad", text: "No match" };
+    if (!matched) return { tone: 'bad', text: 'No match' };
     return {
-      tone: "good",
+      tone: 'good',
       text: rule.match.graphqlOperation.trim()
-        ? "URL matches (operation is checked at runtime)"
-        : "Matches",
+        ? 'URL matches (operation is checked at runtime)'
+        : 'Matches',
     };
   } catch (error) {
-    return { tone: "bad", text: (error as Error).message };
+    return { tone: 'bad', text: (error as Error).message };
   }
 }
 
@@ -802,26 +772,25 @@ function testResult(
 function codeStatus(
   rule: Rule,
   text: string,
-): { tone?: "good" | "bad"; text: string } | null {
+): { tone?: 'good' | 'bad'; text: string } | null {
   const mode = rule.response.bodyMode;
-  if (mode === "script")
+  if (mode === 'script')
     return {
-      text: "Runs in the page. Return the value the app should receive.",
+      text: 'Runs in the page. Return the value the app should receive.',
     };
-  if (mode === "replace" && !/json/i.test(rule.response.contentType))
-    return null;
+  if (mode === 'replace' && !/json/i.test(rule.response.contentType)) return null;
   let problem = jsonProblem(text);
-  if (!problem && mode === "merge" && !/^\s*\{/.test(text))
+  if (!problem && mode === 'merge' && !/^\s*\{/.test(text))
     problem = 'Merge JSON should be an object, e.g. { "role": "admin" }';
-  return { tone: problem ? "bad" : "good", text: problem || "Valid JSON" };
+  return { tone: problem ? 'bad' : 'good', text: problem || 'Valid JSON' };
 }
 
 function slug(text: string) {
   return (
     text
       .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "")
-      .slice(0, 40) || "rule"
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')
+      .slice(0, 40) || 'rule'
   );
 }

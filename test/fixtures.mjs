@@ -78,7 +78,7 @@ export async function startServer() {
         res.end(`<!doctype html><script>
           window.stolen = [];
           addEventListener('message', (e) => {
-            if (e.data?.mocktail !== 'port' || !e.ports[0]) return;
+            if (e.data?.ghostfetch !== 'port' || !e.ports[0]) return;
             e.stopImmediatePropagation();
             stolen.push('port');
             e.ports[0].onmessage = ({ data }) => stolen.push(data.type + ': ' + (data.rules || []).length + ' rules');
@@ -122,12 +122,12 @@ export async function startServer() {
           window.stolen = [];
           const fake = new MessageChannel();
           fake.port1.onmessage = ({ data }) => stolen.push('fake port received ' + data.type);
-          const forged = new MessageEvent('message', { data: { mocktail: 'port' }, source: window, ports: [fake.port2] });
+          const forged = new MessageEvent('message', { data: { ghostfetch: 'port' }, source: window, ports: [fake.port2] });
           try { Object.defineProperty(forged, 'isTrusted', { get: () => true }); } catch {}
           dispatchEvent(forged);
           dispatchEvent(new Event('message'));
           addEventListener('message', (e) => {
-            if (e.data?.mocktail !== 'port' || !e.ports[0]) return;
+            if (e.data?.ghostfetch !== 'port' || !e.ports[0]) return;
             stolen.push('real port');
             e.ports[0].onmessage = ({ data }) => stolen.push('real port received ' + data.type);
           });
@@ -143,7 +143,7 @@ export async function startServer() {
         res.end(`<!doctype html><title>editor</title><link rel="stylesheet" href="/src/assets/theme.css"><link rel="stylesheet" href="/src/lib/editor/code-editor.css"><div style="width:640px"></div>
           <script type="module">
             import { createCodeEditor } from '/src/lib/editor/code-editor.ts';
-            localStorage.setItem('mocktail.vim', '1');
+            localStorage.setItem('ghostfetch.vim', '1');
             window.editor = createCodeEditor({ value: ${JSON.stringify(VIM_START)} });
             document.querySelector('div').append(window.editor.root);
             window.editor.textarea.focus();
@@ -172,7 +172,7 @@ export async function startServer() {
     server,
     ORIGIN: `http://127.0.0.1:${port}`,
     EVIL_ORIGIN: `http://evil.test:${port}`,
-    LOCAL_ORIGIN: `http://local.mocktail.test:${port}`,
+    LOCAL_ORIGIN: `http://local.ghostfetch.test:${port}`,
   };
 }
 

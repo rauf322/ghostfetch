@@ -162,6 +162,6 @@ export function setFlag(key: 'enabled' | 'record', value: boolean) {
 export async function setSites(sites: string[]) {
   state.sites = normalizeSites(sites);
   await chrome.storage.local.set({ sites: state.sites });
-  await chrome.runtime.sendMessage({ type: 'mocktail:sync' });
+  await chrome.runtime.sendMessage({ type: 'ghostfetch:sync' });
   emit('sites');
 }

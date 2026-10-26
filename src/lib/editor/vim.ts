@@ -106,7 +106,7 @@ interface VimOptions {
   active?: boolean;
 }
 
-const STORAGE_KEY = 'mocktail.vim';
+const STORAGE_KEY = 'ghostfetch.vim';
 
 // The Vim switch is one setting for every body editor, remembered in this browser.
 export const vimPreferred = () => localStorage.getItem(STORAGE_KEY) === '1';

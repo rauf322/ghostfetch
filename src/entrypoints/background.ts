@@ -33,7 +33,7 @@ const RESOURCE_TYPES = [
   'websocket',
   'other',
 ] as chrome.declarativeNetRequest.ResourceType[];
-const SCRIPT_IDS = ['mocktail-interceptor', 'mocktail-bridge'];
+const SCRIPT_IDS = ['ghostfetch-interceptor', 'ghostfetch-bridge'];
 const MAX_LOCAL_HOSTS = 50;
 
 // Storage changes can arrive in bursts while typing; run syncs one at a time so
@@ -54,9 +54,10 @@ function scheduleSync(what = { scripts: true, rules: true }) {
 // on those sites; every other site never sees Ghostfetch. The files are the same two the
 // manifest declares for the built-in hosts.
 async function syncContentScripts({ sites }: StoredState) {
-  const registered = await chrome.scripting.getRegisteredContentScripts({
-    ids: SCRIPT_IDS,
-  });
+  // Every script registered so far, whatever its id: up to 0.6.0 they were "mocktail-interceptor"
+  // and "mocktail-bridge", which would otherwise outlive the update and keep running on sites
+  // you've since turned off.
+  const registered = await chrome.scripting.getRegisteredContentScripts();
   if (registered.length)
     await chrome.scripting.unregisterContentScripts({
       ids: registered.map((script) => script.id),
@@ -228,7 +229,7 @@ async function onRuleMatched({
     action: matched.type,
   };
   chrome.tabs
-    .sendMessage(request.tabId, { type: 'mocktail:dnrHit', entry }, { frameId: 0 })
+    .sendMessage(request.tabId, { type: 'ghostfetch:dnrHit', entry }, { frameId: 0 })
     .catch(() => {});
 }
 
@@ -239,11 +240,11 @@ function onMessage(
 ) {
   // Requests made inside iframes are reported by that frame's bridge; pass them on to the
   // top frame, which owns the tab's traffic log.
-  if (message?.type === 'mocktail:frameEntry' && sender.tab && sender.frameId) {
+  if (message?.type === 'ghostfetch:frameEntry' && sender.tab && sender.frameId) {
     chrome.tabs.sendMessage(sender.tab.id!, message, { frameId: 0 }).catch(() => {});
   }
   // The popup or editor turns a site on or off, then waits for this before reloading the tab.
-  if (message?.type === 'mocktail:sync' && !sender.tab) {
+  if (message?.type === 'ghostfetch:sync' && !sender.tab) {
     scheduleSync().then(() => sendResponse(true));
     return true;
   }

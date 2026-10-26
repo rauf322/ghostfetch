@@ -63,7 +63,7 @@ const pad = (count: number) => String(count).padStart(2, '0');
 export function App({ inTab, windowId }: { inTab: boolean; windowId: number }) {
   const { enabled, rules } = useUiState();
   const [view, setView] = useState<View>(() =>
-    localStorage.getItem('mocktail.view') === 'traffic' ? 'traffic' : 'rules',
+    localStorage.getItem('ghostfetch.view') === 'traffic' ? 'traffic' : 'rules',
   );
   const [selectedRule, setSelectedRule] = useState<string | null>(null);
   const [trafficCount, setTrafficCount] = useState(0);
@@ -71,7 +71,7 @@ export function App({ inTab, windowId }: { inTab: boolean; windowId: number }) {
 
   const showView = useCallback((name: View) => {
     setView(name);
-    localStorage.setItem('mocktail.view', name);
+    localStorage.setItem('ghostfetch.view', name);
   }, []);
 
   const openRule = useCallback(

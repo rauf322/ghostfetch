@@ -1,7 +1,7 @@
-// The Traffic view's live log: picks the tab to watch, connects to the "mocktail-log" port of that
-// tab's bridge (src/entrypoints/bridge.ts) and keeps the requests it reports. No DOM: the view
-// draws snapshot() and draws again when subscribe() says it changed, at most once a frame, however
-// many requests arrive.
+// The Traffic view's live log: picks the tab to watch, connects to the "ghostfetch-log" port of
+// that tab's bridge (src/entrypoints/bridge.ts) and keeps the requests it reports. No DOM: the
+// view draws snapshot() and draws again when subscribe() says it changed, at most once a frame,
+// however many requests arrive.
 import type { LogEntry, LogPortMessage, LogViewerMessage } from './messages.ts';
 
 const MAX_ENTRIES = 500;
@@ -81,7 +81,7 @@ export function createTrafficLog({ followActiveTab, preserve }: TrafficLogOption
     changed();
     if (targetId == null || !running) return;
 
-    const opened = chrome.tabs.connect(targetId, { name: 'mocktail-log', frameId: 0 });
+    const opened = chrome.tabs.connect(targetId, { name: 'ghostfetch-log', frameId: 0 });
     port = opened;
     opened.onMessage.addListener((message: LogPortMessage) => {
       if (opened !== port) return;

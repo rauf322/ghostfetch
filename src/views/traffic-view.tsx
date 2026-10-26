@@ -56,7 +56,7 @@ import { setFlag, setSites, state, subscribe } from '../lib/state.ts';
 import { createTrafficLog } from '../lib/traffic-log.ts';
 import { cn } from '../lib/utils.ts';
 
-const PRESERVE = 'mocktail.preserveLog';
+const PRESERVE = 'ghostfetch.preserveLog';
 const ACTION_LABELS: Record<string, string> = {
   mocked: 'Mocked',
   modified: 'Modified',

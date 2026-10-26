@@ -36,19 +36,19 @@ const FIREFOX = process.env.FIREFOX || '/Applications/Zen.app/Contents/MacOS/zen
 
 const CONTENT_HOOK = `
 window.addEventListener('message', async (event) => {
-  const request = event.data?.mocktailTest;
+  const request = event.data?.ghostfetchTest;
   if (event.source !== window || !request) return;
   const result = request.command === 'setStorage'
     ? await chrome.storage.local.set(request.values)
-    : await chrome.runtime.sendMessage({ mocktailTest: request });
-  window.postMessage({ mocktailTestReply: { id: request.id, result: result ?? null } }, '*');
+    : await chrome.runtime.sendMessage({ ghostfetchTest: request });
+  window.postMessage({ ghostfetchTestReply: { id: request.id, result: result ?? null } }, '*');
 });
 `;
 
 const BACKGROUND_HOOK = `
 // Test-only, added to a temporary copy by test/firefox.mjs.
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  const request = message?.mocktailTest;
+  const request = message?.ghostfetchTest;
   if (!request) return undefined;
   (async () => {
     if (request.command === 'apis') {
@@ -57,7 +57,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (request.command === 'traffic') {
       // Connects to the tab's log exactly like the editor's Traffic view does.
       const tab = (await chrome.tabs.query({})).find((candidate) => candidate.url === request.url);
-      const port = chrome.tabs.connect(tab.id, { name: 'mocktail-log', frameId: 0 });
+      const port = chrome.tabs.connect(tab.id, { name: 'ghostfetch-log', frameId: 0 });
       return new Promise((resolve) => port.onMessage.addListener((reply) => {
         if (reply.type !== 'snapshot') return;
         port.disconnect();
@@ -71,7 +71,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 `;
 
 function makeTestCopy() {
-  const copy = fs.mkdtempSync(path.join(os.tmpdir(), 'mocktail-firefox-'));
+  const copy = fs.mkdtempSync(path.join(os.tmpdir(), 'ghostfetch-firefox-'));
   fs.cpSync(requireBuild(FIREFOX_BUILD), copy, { recursive: true });
   const manifest = JSON.parse(fs.readFileSync(path.join(copy, 'manifest.json'), 'utf8'));
   manifest.content_scripts.push({
@@ -94,7 +94,7 @@ const browser = await launch({
   headless: !process.env.HEADED,
   extraPrefsFirefox: {
     // A non-localhost and a local.* hostname that still reach the test server.
-    'network.dns.localDomains': 'evil.test,local.mocktail.test',
+    'network.dns.localDomains': 'evil.test,local.ghostfetch.test',
     // Keep the plain-http test pages plain.
     'dom.security.https_first': false,
     'dom.security.https_first_schemeless': false,
@@ -123,12 +123,12 @@ try {
       (payload) =>
         new Promise((resolve) => {
           const onReply = (event) => {
-            if (event.data?.mocktailTestReply?.id !== payload.id) return;
+            if (event.data?.ghostfetchTestReply?.id !== payload.id) return;
             removeEventListener('message', onReply);
-            resolve(event.data.mocktailTestReply.result);
+            resolve(event.data.ghostfetchTestReply.result);
           };
           addEventListener('message', onReply);
-          postMessage({ mocktailTest: payload }, '*');
+          postMessage({ ghostfetchTest: payload }, '*');
         }),
       { ...request, id: ++nextId },
     );

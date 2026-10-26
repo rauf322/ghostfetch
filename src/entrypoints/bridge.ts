@@ -18,8 +18,8 @@ export default defineUnlistedScript(() => {
   // all its content scripts share and the page can't see.
   const address = new URL(document.URL);
   if (address.username || address.password) return;
-  if ((globalThis as { mocktailBridge?: boolean }).mocktailBridge) return;
-  (globalThis as { mocktailBridge?: boolean }).mocktailBridge = true;
+  if ((globalThis as { ghostfetchBridge?: boolean }).ghostfetchBridge) return;
+  (globalThis as { ghostfetchBridge?: boolean }).ghostfetchBridge = true;
 
   const MAX_LOG = 300;
   const KINDS = new Set<unknown>([
@@ -65,7 +65,7 @@ export default defineUnlistedScript(() => {
   });
   // Setting onmessage starts a port; with addEventListener, start() does.
   port.start();
-  window.postMessage({ mocktail: 'port' }, '*', [channel.port2]);
+  window.postMessage({ ghostfetch: 'port' }, '*', [channel.port2]);
   sendState();
 
   async function sendState() {
@@ -127,7 +127,7 @@ export default defineUnlistedScript(() => {
     if (!isTop) {
       // Frames can't reach the top frame's log directly, so the service worker relays.
       chrome.runtime
-        .sendMessage({ type: 'mocktail:frameEntry', entry } satisfies RuntimeMessage)
+        .sendMessage({ type: 'ghostfetch:frameEntry', entry } satisfies RuntimeMessage)
         .catch(() => {});
       return;
     }
@@ -144,13 +144,16 @@ export default defineUnlistedScript(() => {
   if (!isTop) return;
 
   chrome.runtime.onMessage.addListener((message: RuntimeMessage | undefined) => {
-    if (message?.type === 'mocktail:dnrHit' || message?.type === 'mocktail:frameEntry')
+    if (
+      message?.type === 'ghostfetch:dnrHit' ||
+      message?.type === 'ghostfetch:frameEntry'
+    )
       record(message.entry);
   });
 
   // The editor's Traffic view connects here to get the log so far plus live updates.
   chrome.runtime.onConnect.addListener((viewer) => {
-    if (viewer.name !== 'mocktail-log') return;
+    if (viewer.name !== 'ghostfetch-log') return;
     viewers.add(viewer);
     viewer.onDisconnect.addListener(() => viewers.delete(viewer));
     viewer.onMessage.addListener((message: LogViewerMessage | undefined) => {

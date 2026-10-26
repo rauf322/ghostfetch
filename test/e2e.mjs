@@ -113,7 +113,7 @@ await check('the manifest only injects content scripts on those same hosts', asy
   ]);
 });
 
-const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mocktail-e2e-'));
+const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ghostfetch-e2e-'));
 // Without CHROME, use the Chromium that `npm run browsers` installs. channel "chromium"
 // selects its new headless mode, which (unlike the headless shell) supports extensions.
 const context = await chromium.launchPersistentContext(userDataDir, {
@@ -126,7 +126,7 @@ const context = await chromium.launchPersistentContext(userDataDir, {
     `--disable-extensions-except=${EXTENSION}`,
     `--load-extension=${EXTENSION}`,
     // A non-localhost and a local.* hostname that still reach the test server.
-    '--host-resolver-rules=MAP evil.test 127.0.0.1,MAP local.mocktail.test 127.0.0.1',
+    '--host-resolver-rules=MAP evil.test 127.0.0.1,MAP local.ghostfetch.test 127.0.0.1',
   ],
   viewport: { width: 1280, height: 820 },
 });
@@ -796,7 +796,7 @@ try {
         new Promise((resolve) => {
           const got = [];
           const steal = (event) => {
-            if (event.data?.mocktail !== 'port' || !event.ports[0]) return;
+            if (event.data?.ghostfetch !== 'port' || !event.ports[0]) return;
             event.stopImmediatePropagation();
             got.push('port');
             const [port] = event.ports;
@@ -807,7 +807,7 @@ try {
           };
           window.addEventListener('message', steal, true);
           // Pretend to be the interceptor asking for a channel.
-          window.postMessage({ mocktail: 'hello' }, '*');
+          window.postMessage({ ghostfetch: 'hello' }, '*');
           setTimeout(() => resolve(got), 600);
         }),
     );
@@ -938,12 +938,14 @@ try {
     'a URL that only looks like local.* ("local.x@" before another host) gets nothing',
     async () => {
       const probe = await context.newPage();
-      await probe.goto(`${EVIL_ORIGIN.replace('://', '://local.mocktail.test@')}/steal`);
+      await probe.goto(
+        `${EVIL_ORIGIN.replace('://', '://local.ghostfetch.test@')}/steal`,
+      );
       await sleep(600);
       const r = await probe.evaluate(() => ({
         url: document.URL,
         wrapped: !String(window.fetch).includes('[native code]'),
-        flag: Symbol.for('mocktail.interceptor') in window,
+        flag: Symbol.for('ghostfetch.interceptor') in window,
         stolen: window.stolen,
       }));
       await probe.close();
@@ -1013,6 +1015,43 @@ try {
     await sitesPopup.close();
     expect(sites, []);
   });
+  await check(
+    'a script registered under its name up to 0.6.0 goes at the next sync',
+    async () => {
+      // As 0.6.0 may have left one: under its old id, for a site that has since been turned off.
+      await worker.evaluate(() =>
+        chrome.scripting.registerContentScripts([
+          {
+            id: 'mocktail-interceptor',
+            js: ['interceptor.js'],
+            matches: ['*://*.old.test/*'],
+          },
+        ]),
+      );
+      const ids = () =>
+        worker.evaluate(() =>
+          chrome.scripting
+            .getRegisteredContentScripts()
+            .then((scripts) => scripts.map((script) => script.id).toSorted()),
+        );
+      const settle = async (expected) => {
+        let last;
+        for (let tries = 0; tries < 30; tries++) {
+          last = await ids();
+          if (JSON.stringify(last) === JSON.stringify(expected)) break;
+          await sleep(100);
+        }
+        return last;
+      };
+      await setStorage({ sites: ['example.org'] });
+      const added = await settle(['ghostfetch-bridge', 'ghostfetch-interceptor']);
+      await setStorage({ sites: [] });
+      expect(
+        [added, await settle([])],
+        [['ghostfetch-bridge', 'ghostfetch-interceptor'], []],
+      );
+    },
+  );
 
   console.log('editor details');
   const storedRules = async () =>
@@ -1167,6 +1206,35 @@ try {
             'Traffic ',
         null,
         { timeout: 3000 },
+      );
+    },
+  );
+  await check(
+    'editor settings saved under their names up to 0.6.0 carry over',
+    async () => {
+      await app.evaluate(() => {
+        for (const name of ['vim', 'view', 'preserveLog']) {
+          localStorage.removeItem(`ghostfetch.${name}`);
+          localStorage.setItem(`mocktail.${name}`, name === 'view' ? 'traffic' : '1');
+        }
+      });
+      await app.reload();
+      await app.waitForSelector('[data-testid="tab-traffic"][aria-selected="true"]');
+      const saved = await app.evaluate(() =>
+        Object.keys(localStorage)
+          .filter((key) => /^(mocktail|ghostfetch)\./.test(key))
+          .toSorted()
+          .map((key) => `${key}=${localStorage.getItem(key)}`),
+      );
+      const preserve = await app
+        .getByRole('button', { name: 'Preserve' })
+        .getAttribute('aria-pressed');
+      expect(
+        [saved, preserve],
+        [
+          ['ghostfetch.preserveLog=1', 'ghostfetch.view=traffic', 'ghostfetch.vim=1'],
+          'true',
+        ],
       );
     },
   );

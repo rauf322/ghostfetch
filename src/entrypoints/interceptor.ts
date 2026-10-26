@@ -49,7 +49,7 @@ export default defineUnlistedScript(() => {
   if (address.username || address.password) return;
   // Run once per page even when two registrations match it: a site you added (myapp.com) can
   // overlap a built-in host (local.myapp.com). bridge.ts has the same two guards.
-  const FLAG = Symbol.for('mocktail.interceptor');
+  const FLAG = Symbol.for('ghostfetch.interceptor');
   if ((window as unknown as Record<symbol, boolean>)[FLAG]) return;
   Object.defineProperty(window, FLAG, { value: true });
 
@@ -139,7 +139,7 @@ export default defineUnlistedScript(() => {
     if (!event.isTrusted || apply(eventSource, event, []) !== window) return;
     const offer = apply(eventData, event, []);
     const ports = apply(eventPorts, event, []);
-    if (offer?.mocktail !== 'port' || ports.length !== 1) return;
+    if (offer?.ghostfetch !== 'port' || ports.length !== 1) return;
     apply(stopImmediate, event, []);
     apply(unlisten, window, ['message', receivePort, true]);
     port = ports[0];
@@ -466,7 +466,7 @@ export default defineUnlistedScript(() => {
 
   // ---------------------------------------------------------------- XMLHttpRequest
 
-  const META = Symbol('mocktail.xhr');
+  const META = Symbol('ghostfetch.xhr');
   type Tracked = XMLHttpRequest & { [META]?: XhrMeta };
   const OVERRIDES = [
     'readyState',

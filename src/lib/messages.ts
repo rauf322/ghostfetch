@@ -69,13 +69,13 @@ export interface PageLog {
 // chrome.runtime and chrome.tabs messages.
 export type RuntimeMessage =
   // The popup or editor to the background: re-register the content scripts and rules now.
-  | { type: 'mocktail:sync' }
+  | { type: 'ghostfetch:sync' }
   // An iframe's bridge to the background, which passes it on to the tab's top frame.
-  | { type: 'mocktail:frameEntry'; entry: LogEntry }
+  | { type: 'ghostfetch:frameEntry'; entry: LogEntry }
   // The background to a tab's top frame: a redirect, header or block rule fired.
-  | { type: 'mocktail:dnrHit'; entry: Partial<LogEntry> };
+  | { type: 'ghostfetch:dnrHit'; entry: Partial<LogEntry> };
 
-// Over the "mocktail-log" port: a tab's top-frame bridge to the Traffic view, and back.
+// Over the "ghostfetch-log" port: a tab's top-frame bridge to the Traffic view, and back.
 export type LogPortMessage =
   | { type: 'snapshot'; entries: LogEntry[]; url: string }
   | { type: 'entry'; entry: LogEntry };

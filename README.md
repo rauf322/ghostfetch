@@ -230,6 +230,11 @@ library or component instead, as FSD advises, so a screen that shows a button do
 body editor with it. `npm run lint` checks all this (`scripts/check-layers.mjs`), along with
 what keeps the background and the page scripts free of the screens' libraries.
 
+Inside a slice the files are grouped by what they're for: `ui/` holds its components, `model/` its
+state and what changes it, `lib/` plain functions, and `api/` what it says to another part of
+the extension. A screen is a page that composes components of its own, one per part of the
+screen, so each file is about one thing.
+
 ```
 src/app/                         the extension's parts, one folder each, which WXT builds (wxt.config.ts)
   background/                    service worker (Chrome) or event page (Firefox): content scripts for added sites, DNR rules, badge
@@ -241,12 +246,15 @@ src/app/                         the extension's parts, one folder each, which W
   messaging/                     the messages between the background, the bridge and the interceptor (types only)
   styles/                        theme.css, the look's values (colours, the font, the dotted grid), and kit.css: those as Tailwind's theme
 src/pages/                       what the screens show
-  rules/                         the Rules tab: the rule list and the rule editor
-  traffic/                       the Traffic tab: a tab's live log, a request's details, Mock this response
+  rules/                         the Rules tab: the rule list, and the rule editor (ui/rule-editor/, a component per section)
+  traffic/                       the Traffic tab: a tab's live log, a request's details (ui/request-detail/), Mock this response
   popup/                         the toolbar popup
   kit/                           the kit page: every kit component in its states
 src/features/                    what you can do from more than one screen
   master-switch/                 Ghostfetch on or off, in the popup and the editor's top bar
+  site-switch/                   Ghostfetch on or off for the site a tab shows (the popup, Traffic), then that tab reloaded
+  open-editor/                   the editor in the side panel or a tab, and on a rule the popup picked
+  rules-transfer/                rules files: export every rule or one, import one (its rules arrive switched off)
 src/entities/                    what Ghostfetch works with
   rule/                          a rule: its types and their names, making one, URL matching, and the screens' copy of the rules
   site/                          the sites Ghostfetch runs on, and the screens' copy of the ones you added

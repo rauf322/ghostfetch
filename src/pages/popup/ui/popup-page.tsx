@@ -17,6 +17,7 @@ import {
   openInTab,
   openRuleInEditor,
 } from '../../../features/open-editor/index.ts';
+import { turnOffFor, turnOnFor } from '../../../features/site-switch/index.ts';
 import { cn } from '../../../shared/lib/class-names/index.ts';
 import { useStore } from '../../../shared/lib/react/index.ts';
 import { Badge } from '../../../shared/ui/kit/badge.tsx';
@@ -42,16 +43,10 @@ export function PopupPage({
   // While Ghostfetch is off, what it would do is dimmed.
   const dimmed = !enabled && 'opacity-55';
 
-  // After the content scripts are re-registered, reload the tab so the change applies to it.
-  async function updateSites(next: string[]) {
-    await setSites(next);
-    if (currentHost) chrome.tabs.reload(activeTab!.id!);
-  }
-
-  function removeSite(site: string) {
-    const remaining = siteStore.state.sites.filter((candidate) => candidate !== site);
-    if (currentHost && siteCovers(site, currentHost)) updateSites(remaining);
-    else setSites(remaining);
+  // The × on a site you added. If it covers this tab's site, the tab reloads without it.
+  async function removeSite(site: string) {
+    await setSites(siteStore.state.sites.filter((candidate) => candidate !== site));
+    if (currentHost && siteCovers(site, currentHost)) chrome.tabs.reload(activeTab!.id!);
   }
 
   return (
@@ -103,13 +98,9 @@ export function PopupPage({
                 : 'Turn Ghostfetch on or off for this site'
             }
             onCheckedChange={(on) =>
-              updateSites(
-                on
-                  ? [...siteStore.state.sites, currentHost]
-                  : siteStore.state.sites.filter(
-                      (site) => !siteCovers(site, currentHost),
-                    ),
-              )
+              on
+                ? turnOnFor(currentHost, activeTab!.id!)
+                : turnOffFor(currentHost, activeTab!.id!)
             }
           />
         </div>

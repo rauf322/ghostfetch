@@ -39,6 +39,9 @@ interface TrafficLogOptions {
   preserve: () => boolean;
 }
 
+// What createTrafficLog() returns, for the components that use it.
+export type TrafficLog = ReturnType<typeof createTrafficLog>;
+
 export function createTrafficLog({ followActiveTab, preserve }: TrafficLogOptions) {
   let entries = new Map<string, LogEntry>();
   let tabs: TrafficTab[] = [];

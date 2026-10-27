@@ -127,12 +127,16 @@ export default defineConfig({
     'vite:build:extendConfig': (entrypoints, config) => {
       const output = config.build?.rollupOptions?.output;
       if (!output || Array.isArray(output)) return;
-      // The background stays in strict mode, like the ES module it was before the build step. Only
-      // the background: WXT drops the page scripts' IIFE name with a regex that a leading "use
-      // strict" defeats, which would leave a global variable in the page (the interceptor has its
-      // own directive instead).
+      // Every script stays in strict mode, like the ES modules it's built from: the background as
+      // a whole file, the two page scripts inside their wrapper function (`intro`). WXT drops the
+      // page scripts' IIFE name with a regex that a leading "use strict" defeats, which would leave
+      // a global variable in the page. Strict mode matters most in the interceptor: the page can
+      // patch the built-ins it calls, and in sloppy mode a patched one could climb to the caller
+      // through `.caller` and read its arguments, such as the rules.
       if (entrypoints.length === 1 && entrypoints[0]!.type === 'background')
         output.strict = true;
+      if (entrypoints.length === 1 && entrypoints[0]!.type === 'unlisted-script')
+        output.intro = '"use strict";';
       // The pages (the popup and the editor) share code. Its chunks are named for what's in them:
       // chunks/libraries-*.js holds React, Base UI and the other npm packages, chunks/shared-*.js
       // the Ghostfetch code both pages use.

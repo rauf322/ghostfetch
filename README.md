@@ -186,9 +186,10 @@ URL matching: *contains*, *equals* (response rules also accept a bare path such 
   web pages use none of them. The build (WXT and Vite) turns everything into plain, unminified
   JavaScript, and the only code it adds to those three scripts is WXT's few lines that start each
   one: a pass-through and a `try`/`catch`. The page-world script is built so it adds no globals
-  to the page, and the extension pages run under a strict CSP (`connect-src 'none'`, no remote
-  scripts, images or styles, no inline code, no `<style>` tags); `npm run test:release` checks
-  both in the built packages.
+  to the page and runs entirely in strict mode, so a built-in the page patches can't reach its
+  functions or their arguments through `.caller`. The extension pages run under a strict CSP
+  (`connect-src 'none'`, no remote scripts, images or styles, no inline code, no `<style>` tags);
+  `npm run test:release` checks all three in the built packages.
 - **Only runs where it should.** The built-in hosts' content scripts are declared in the
   manifest; the sites you add get theirs registered at runtime, for those sites only. The DNR
   rules are limited to requests started by the same hosts. Any other website can't see

@@ -7,7 +7,7 @@ import {
   ruleTitle,
 } from '../../../../entities/rule/index.ts';
 import type { Rule } from '../../../../entities/rule/index.ts';
-import { download } from '../../../../shared/lib/browser/index.ts';
+import { exportRule } from '../../../../features/rules-transfer/index.ts';
 import { Button } from '../../../../shared/ui/kit/button.tsx';
 import {
   DropdownMenu,
@@ -17,7 +17,6 @@ import {
 } from '../../../../shared/ui/kit/dropdown-menu.tsx';
 import { Icon } from '../../../../shared/ui/kit/icon.tsx';
 import { notify } from '../../../../shared/ui/kit/toast.tsx';
-import { slug } from '../../lib/slug.ts';
 
 export function RuleMenu({
   rule,
@@ -64,14 +63,7 @@ export function RuleMenu({
         <DropdownMenuItem onClick={duplicate}>
           <Icon name="copy" /> Duplicate
         </DropdownMenuItem>
-        <DropdownMenuItem
-          onClick={() =>
-            download(
-              `ghostfetch-${slug(ruleTitle(rule))}.json`,
-              JSON.stringify({ ghostfetch: 1, rules: [rule] }, null, 2),
-            )
-          }
-        >
+        <DropdownMenuItem onClick={() => exportRule(rule)}>
           <Icon name="export" /> Export this rule
         </DropdownMenuItem>
         <DropdownMenuItem

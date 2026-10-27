@@ -12,7 +12,11 @@ import {
   siteStore,
 } from '../../../entities/site/index.ts';
 import { MasterSwitch } from '../../../features/master-switch/index.ts';
-import { openSidePanel } from '../../../shared/lib/browser/index.ts';
+import {
+  openInSidePanel,
+  openInTab,
+  openRuleInEditor,
+} from '../../../features/open-editor/index.ts';
 import { cn } from '../../../shared/lib/class-names/index.ts';
 import { useStore } from '../../../shared/lib/react/index.ts';
 import { Badge } from '../../../shared/ui/kit/badge.tsx';
@@ -20,6 +24,7 @@ import { Button } from '../../../shared/ui/kit/button.tsx';
 import { Icon } from '../../../shared/ui/kit/icon.tsx';
 import { Label } from '../../../shared/ui/kit/label.tsx';
 import { Switch } from '../../../shared/ui/kit/switch.tsx';
+
 export function PopupPage({
   windowId,
   activeTab,
@@ -47,15 +52,6 @@ export function PopupPage({
     const remaining = siteStore.state.sites.filter((candidate) => candidate !== site);
     if (currentHost && siteCovers(site, currentHost)) updateSites(remaining);
     else setSites(remaining);
-  }
-
-  function openPanel() {
-    openSidePanel(windowId).then(() => window.close());
-  }
-
-  function openRule(id: string) {
-    chrome.storage.session.set({ focusRule: id });
-    openPanel();
   }
 
   return (
@@ -188,7 +184,7 @@ export function PopupPage({
             <button
               type="button"
               title="Edit this rule"
-              onClick={() => openRule(rule.id)}
+              onClick={() => openRuleInEditor(rule.id, windowId)}
               className={cn(
                 'min-w-0 flex-1 truncate text-left hover:underline hover:decoration-t40 hover:underline-offset-3',
                 rule.enabled ? 'text-foreground' : 'text-t40',
@@ -208,14 +204,14 @@ export function PopupPage({
 
       <footer className="grid grid-cols-2 border-t border-border">
         <Button
-          onClick={openPanel}
+          onClick={() => openInSidePanel(windowId)}
           className="h-11 border-0 bg-transparent tracking-[0.2em] text-white"
         >
           Side panel <Icon name="arrow" size={13} />
         </Button>
         <Button
           onClick={() => {
-            chrome.runtime.openOptionsPage();
+            openInTab();
             window.close();
           }}
           className="h-11 border-0 border-l border-border bg-transparent tracking-[0.2em] text-t40"

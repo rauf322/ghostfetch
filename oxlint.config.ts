@@ -1,6 +1,6 @@
 // The linter (oxlint, `npm run lint`), set up like bst-admin's. bst-admin also checks the imports
-// between its layers (src/app, src/pages, src/widgets, src/shared) with eslint-plugin-boundaries;
-// Ghostfetch has no such layers, so that part isn't here.
+// between its layers with eslint-plugin-boundaries, which needs ESLint itself; here
+// scripts/check-layers.mjs checks the same rules, and `npm run lint` runs it after oxlint.
 import { defineConfig } from 'oxlint';
 
 export default defineConfig({

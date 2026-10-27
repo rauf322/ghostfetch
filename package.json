@@ -10,7 +10,7 @@
     "build": "wxt build && wxt build -b firefox",
     "zip": "wxt zip && wxt zip -b firefox",
     "check": "tsc --noEmit",
-    "lint": "oxlint . --deny-warnings",
+    "lint": "oxlint . --deny-warnings && node scripts/check-layers.mjs",
     "lint:fix": "oxlint . --fix",
     "format": "oxfmt --check .",
     "format:fix": "oxfmt .",

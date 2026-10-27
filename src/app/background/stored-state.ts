@@ -30,7 +30,7 @@ export async function loadState(): Promise<StoredState> {
     rules: (Array.isArray(stored.rules) ? stored.rules : []).map((rule) =>
       normalizeRule(rule),
     ),
-    // local.* hosts opened so far; local-hosts.ts adds them to the DNR initiator list.
+    // local.* hosts opened so far (local-hosts.ts), which dnr-rules.ts adds to the initiators.
     localHosts: (Array.isArray(stored.localHosts) ? stored.localHosts : []).filter(
       (host) => typeof host === 'string' && isLocalPrefixHost(host),
     ),

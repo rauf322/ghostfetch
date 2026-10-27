@@ -6,7 +6,7 @@ import http from 'node:http';
 import { stripTypeScriptTypes } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createRule } from '../src/lib/store.ts';
+import { createRule } from '../src/entities/rule/index.ts';
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 // The built extension under test; `npm test` and `npm run test:firefox` build it first.
@@ -140,9 +140,9 @@ export async function startServer() {
         // The body editor with the Vim switch on, on a plain page, for the Firefox test: Firefox's
         // automation can't open extension pages, but it can load the same code from /src/.
         res.writeHead(200, { 'content-type': 'text/html' });
-        res.end(`<!doctype html><title>editor</title><link rel="stylesheet" href="/src/assets/theme.css"><link rel="stylesheet" href="/src/lib/editor/code-editor.css"><div style="width:640px"></div>
+        res.end(`<!doctype html><title>editor</title><link rel="stylesheet" href="/src/app/styles/theme.css"><link rel="stylesheet" href="/src/shared/ui/code-editor/code-editor.css"><div style="width:640px"></div>
           <script type="module">
-            import { createCodeEditor } from '/src/lib/editor/code-editor.ts';
+            import { createCodeEditor } from '/src/shared/ui/code-editor/engine/code-editor.ts';
             localStorage.setItem('ghostfetch.vim', '1');
             window.editor = createCodeEditor({ value: ${JSON.stringify(VIM_START)} });
             document.querySelector('div').append(window.editor.root);

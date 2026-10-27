@@ -12,7 +12,11 @@ import fs from 'node:fs';
 import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
-import { isSiteEnabled, normalizeSites, siteMatchPatterns } from '../src/lib/store.ts';
+import {
+  isSiteEnabled,
+  normalizeSites,
+  siteMatchPatterns,
+} from '../src/entities/site/index.ts';
 import {
   CHROME_BUILD,
   VIM_START,

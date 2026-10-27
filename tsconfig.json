@@ -4,8 +4,9 @@
     // The text-editing code (vim, the editor, URL matching) indexes strings and arrays inside
     // bounds it checks itself; flagging every one of those would bury real problems.
     "noUncheckedIndexedAccess": false,
-    // Only TypeScript that can be stripped without compiling: the tests import src/lib/store.ts
-    // directly, and the test server hands the editor's sources to the browser the same way.
+    // Only TypeScript that can be stripped without compiling: the tests import the rule and site
+    // models (src/entities/) directly, and the test server hands the body editor's sources
+    // (src/shared/ui/code-editor/) to the browser the same way.
     "erasableSyntaxOnly": true,
     // TypeScript 6 and later only load the @types packages listed here: the extension APIs, and
     // Node's for wxt.config.ts.

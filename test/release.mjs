@@ -249,12 +249,13 @@ for (const browser of ['chrome', 'firefox']) {
         ),
         [],
       );
-      // The kit's components are in the extension; the kit page isn't. The bundles name each
-      // module they hold in a comment, so its code would show up by its path.
+      // The kit's components are in the extension; the kit page (its entrypoint and the sheet it
+      // draws) isn't. The bundles name each module they hold in a comment, so its code would show
+      // up by its path.
       expect(
         all.filter(
           (file) =>
-            file.endsWith('.js') && read(browser, file).includes('src/entrypoints/kit/'),
+            file.endsWith('.js') && /src\/(app|pages)\/kit\//.test(read(browser, file)),
         ),
         [],
         'the kit page',
@@ -295,8 +296,8 @@ await check(
         'package.json',
         'wxt.config.ts',
         'tsconfig.json',
-        'src/entrypoints/background.ts',
-        'src/entrypoints/interceptor.ts',
+        'src/app/background/index.ts',
+        'src/app/interceptor/index.ts',
         'public/fonts/CommitMono-VF.woff2',
       ].filter((name) => !entries.includes(name)),
       [],

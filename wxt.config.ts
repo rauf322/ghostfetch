@@ -1,6 +1,6 @@
 // Builds Ghostfetch for Chrome (.output/chrome-mv3) and Firefox/Zen (.output/firefox-mv3) from
 // src/. This file is the manifest: WXT adds the background, popup and side panel (Firefox's
-// sidebar) from src/entrypoints/, and everything else is spelled out below.
+// sidebar) from src/app/, and everything else is spelled out below.
 import { copyFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import tailwindcss from '@tailwindcss/vite';
@@ -41,7 +41,7 @@ const ICONS = {
 };
 
 // Ghostfetch always runs on localhost, *.localhost, 127.0.0.1 and hosts starting with "local."
-// (see src/lib/store.ts); these are their content scripts. The sites you add get the same two
+// (see src/entities/site/); these are their content scripts. The sites you add get the same two
 // scripts registered at runtime by the background. Both are WXT "unlisted scripts" rather than
 // content script entrypoints, whose isolated-world wrapper announces itself to the page with a
 // postMessage and a DOM event.
@@ -63,14 +63,19 @@ const BRIDGE = { js: ['bridge.js'], run_at: 'document_start' as const, all_frame
 
 export default defineConfig({
   srcDir: 'src',
-  // React for the .tsx files: the UI kit (src/components/ui/) and the pages built from it.
+  // The code is laid out in Feature-Sliced Design's layers (README, "Files"), the app layer on top:
+  // a folder for each part of the extension (the background, the two page scripts, the popup, the
+  // side panel, the kit page), which is what WXT builds. WXT takes every app/<name>/index.* as an
+  // entrypoint, so the folders for anything else in app/ (styles/, messaging/) have no index file.
+  entrypointsDir: 'app',
+  // React for the .tsx files: the UI kit (src/shared/ui/kit/) and the pages built from it.
   modules: ['@wxt-dev/module-react'],
   // Every import is written out, so a reader can see where each name comes from.
   imports: false,
   // WXT builds Firefox as Manifest V2 unless told otherwise; Ghostfetch is MV3 in both browsers.
   manifestVersion: 3,
   // Readable output: Mozilla's reviewers read the built files and rebuild them from the sources.
-  // Tailwind only touches stylesheets that import it (src/assets/kit.css). No modulepreload
+  // Tailwind only touches stylesheets that import it (src/app/styles/kit.css). No modulepreload
   // polyfill: every browser Ghostfetch supports preloads modules itself.
   vite: () => ({
     build: { minify: false, modulePreload: { polyfill: false } },
@@ -110,10 +115,10 @@ export default defineConfig({
     icons: ICONS,
   }),
   hooks: {
-    // The kit page (src/entrypoints/kit/) shows every UI kit component. It's built for `npm run
-    // dev` and for test/kit.mjs (`wxt build --mode kit`, into .output/*-kit), never into the
-    // extension you install. `npm run test:kit` sets NODE_ENV=production for that build: left
-    // unset, WXT makes it the mode's name, and React then builds its development version.
+    // The kit page (src/app/kit/, drawing src/pages/kit/) shows every UI kit component. It's built
+    // for `npm run dev` and for test/kit.mjs (`wxt build --mode kit`, into .output/*-kit), never
+    // into the extension you install. `npm run test:kit` sets NODE_ENV=production for that build:
+    // left unset, WXT makes it the mode's name, and React then builds its development version.
     'entrypoints:resolved': (wxt, entrypoints) => {
       if (wxt.config.command === 'serve' || wxt.config.mode === 'kit') return;
       const kit = entrypoints.findIndex((entrypoint) => entrypoint.name === 'kit');
@@ -122,12 +127,16 @@ export default defineConfig({
     'vite:build:extendConfig': (entrypoints, config) => {
       const output = config.build?.rollupOptions?.output;
       if (!output || Array.isArray(output)) return;
-      // The background stays in strict mode, like the ES module it was before the build step. Only
-      // the background: WXT drops the page scripts' IIFE name with a regex that a leading "use
-      // strict" defeats, which would leave a global variable in the page (the interceptor has its
-      // own directive instead).
+      // Every script stays in strict mode, like the ES modules it's built from: the background as
+      // a whole file, the two page scripts inside their wrapper function (`intro`). WXT drops the
+      // page scripts' IIFE name with a regex that a leading "use strict" defeats, which would leave
+      // a global variable in the page. Strict mode matters most in the interceptor: the page can
+      // patch the built-ins it calls, and in sloppy mode a patched one could climb to the caller
+      // through `.caller` and read its arguments, such as the rules.
       if (entrypoints.length === 1 && entrypoints[0]!.type === 'background')
         output.strict = true;
+      if (entrypoints.length === 1 && entrypoints[0]!.type === 'unlisted-script')
+        output.intro = '"use strict";';
       // The pages (the popup and the editor) share code. Its chunks are named for what's in them:
       // chunks/libraries-*.js holds React, Base UI and the other npm packages, chunks/shared-*.js
       // the Ghostfetch code both pages use.

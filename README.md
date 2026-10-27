@@ -186,9 +186,10 @@ URL matching: *contains*, *equals* (response rules also accept a bare path such 
   web pages use none of them. The build (WXT and Vite) turns everything into plain, unminified
   JavaScript, and the only code it adds to those three scripts is WXT's few lines that start each
   one: a pass-through and a `try`/`catch`. The page-world script is built so it adds no globals
-  to the page, and the extension pages run under a strict CSP (`connect-src 'none'`, no remote
-  scripts, images or styles, no inline code, no `<style>` tags); `npm run test:release` checks
-  both in the built packages.
+  to the page and runs entirely in strict mode, so a built-in the page patches can't reach its
+  functions or their arguments through `.caller`. The extension pages run under a strict CSP
+  (`connect-src 'none'`, no remote scripts, images or styles, no inline code, no `<style>` tags);
+  `npm run test:release` checks all three in the built packages.
 - **Only runs where it should.** The built-in hosts' content scripts are declared in the
   manifest; the sites you add get theirs registered at runtime, for those sites only. The DNR
   rules are limited to requests started by the same hosts. Any other website can't see
@@ -221,31 +222,59 @@ URL matching: *contains*, *equals* (response rules also accept a bare path such 
 
 ## Files
 
+The code in `src/` is laid out in [Feature-Sliced Design](https://feature-sliced.design)'s
+layers. From the top, `app` → `pages` → `features` → `entities` → `shared`, and a file only
+imports from its own layer's folder or the layers below it, so the screens can't tangle with
+each other and `shared` knows nothing about Ghostfetch. A slice (a folder in `pages`, `features`
+or `entities`) is used from outside only through its `index.ts`. `shared` has one entry per
+library or component instead, as FSD advises, so a screen that shows a button doesn't load the
+body editor with it. `npm run lint` checks all this (`scripts/check-layers.mjs`), along with
+what keeps the background and the page scripts free of the screens' libraries.
+
+Inside a slice the files are grouped by what they're for: `ui/` holds its components, `model/` its
+state and what changes it, `lib/` plain functions, and `api/` what it says to another part of
+the extension. A screen is a page that composes components of its own, one per part of the
+screen, so each file is about one thing.
+
 ```
+src/app/                         the extension's parts, one folder each, which WXT builds (wxt.config.ts)
+  background/                    service worker (Chrome) or event page (Firefox): content scripts for added sites, DNR rules, badge
+  interceptor/                   page world: wraps fetch/XHR, applies response rules
+  bridge/                        isolated world: passes rules in, collects the traffic log
+  popup/                         the toolbar popup's page
+  sidepanel/                     the editor (Chrome's side panel, Firefox's sidebar, or a tab): its top bar, tabs and menus
+  kit/                           the kit page; for npm run dev and the kit test, never in the extension
+  messaging/                     the messages between the background, the bridge and the interceptor (types only)
+  styles/                        theme.css, the look's values (colours, the font, the dotted grid), and kit.css: those as Tailwind's theme
+src/pages/                       what the screens show
+  rules/                         the Rules tab: the rule list, and the rule editor (ui/rule-editor/, a component per section)
+  traffic/                       the Traffic tab: a tab's live log, a request's details (ui/request-detail/), Mock this response
+  popup/                         the toolbar popup
+  kit/                           the kit page: every kit component in its states
+src/features/                    what you can do from more than one screen
+  master-switch/                 Ghostfetch on or off, in the popup and the editor's top bar
+  site-switch/                   Ghostfetch on or off for the site a tab shows (the popup, Traffic), then that tab reloaded
+  open-editor/                   the editor in the side panel or a tab, and on a rule the popup picked
+  rules-transfer/                rules files: export every rule or one, import one (its rules arrive switched off)
+src/entities/                    what Ghostfetch works with
+  rule/                          a rule: its types and their names, making one, URL matching, and the screens' copy of the rules
+  site/                          the sites Ghostfetch runs on, and the screens' copy of the ones you added
+  settings/                      the on/off and recording switches
+  traffic/                       a logged request, and the port the Traffic tab reads a tab's log through
+src/shared/                      nothing Ghostfetch-specific
+  ui/kit/                        the UI kit: React components on Base UI, styled with Tailwind (see UI kit)
+  ui/list-detail/                the editor's layout: a list, and what's picked in it
+  ui/code-editor/                the body editor (plain DOM code, its find bar and vim keys) and its React component
+  lib/                           json/, html/, url/, icons/, browser/ (side panel, download), class-names/ (cn()), untrusted/,
+                                 store/ and react/ (the stores the entities keep, and the hook that redraws a screen when one changes)
 wxt.config.ts                    the manifest (permissions, content scripts, CSP, Firefox ID) and the build settings
-src/entrypoints/background.ts    background (service worker in Chrome, event page in Firefox): content scripts for added sites, DNR rules, badge
-src/entrypoints/interceptor.ts   page world: wraps fetch/XHR, applies response rules
-src/entrypoints/bridge.ts        isolated world: passes rules in, collects the traffic log
-src/entrypoints/sidepanel/       the editor: Chrome's side panel, Firefox's sidebar, or a tab; app.tsx is its top bar and menus
-src/entrypoints/popup/           the toolbar popup
-src/views/                       the editor's Rules and Traffic tabs, and the rule editor
-src/components/ui/               the UI kit: React components on Base UI, styled with Tailwind (see UI kit)
-src/components/                  built from the kit for the screens: the editor's layout, the master switch, the body editor in React
-src/lib/store.ts                 rule model, defaults, URL matching shared with the UI
-src/lib/state.ts                 the popup's and the editor's copy of the storage; useUiState() redraws a screen when it changes
-src/lib/traffic-log.ts           the Traffic tab's live log: which tab it watches, and the requests that tab reports
-src/lib/messages.ts              the messages between the parts, and traffic log entries (types only)
-src/lib/editor/                  the body editor, its vim keys (vim.ts) and its stylesheet, plain DOM code that React mounts
-src/assets/theme.css             the look's values: colours, the font, the dotted grid
-src/assets/kit.css               the screens' stylesheet: theme.css as Tailwind's theme
-src/entrypoints/kit/             the kit page, every component in its states; for npm run dev and the kit test, never in the extension
-src/lib/utils.ts                 cn(), which joins the kit's class names
 components.json                  settings for shadcn's CLI, for adding a kit component
 oxlint.config.ts                 the linter's settings (npm run lint)
 .oxfmtrc.json                    the formatter's settings (npm run format): single quotes, 90 columns
 public/fonts/                    Commit Mono by Eigil Nikolajsen (SIL Open Font License, see CommitMono-OFL.txt)
 public/icons/                    the Thorn Glass mark, generated by scripts/make-icons.mjs
 scripts/check-sources.mjs        rebuilds the sources zip in a clean folder and compares it with the build
+scripts/check-layers.mjs         checks that every import in src/ keeps to the layers (npm run lint)
 test/e2e.mjs                     end-to-end test in Chromium (Playwright)
 test/firefox.mjs                 end-to-end test in Zen or Firefox (puppeteer-core)
 test/kit.mjs                     the UI kit under the real CSP, in Chromium and Zen, driven with the keyboard and the mouse
@@ -256,9 +285,9 @@ test/fixtures.mjs                test server, hostile pages and rules shared by 
 
 ## UI kit
 
-`src/components/ui/` is the UI kit the popup and the editor are built from: React components on
+`src/shared/ui/kit/` is the UI kit the popup and the editor are built from: React components on
 [Base UI](https://base-ui.com), styled with Tailwind to the look (black, warm white,
-hairlines, square corners, Commit Mono, the green square). `src/assets/kit.css` switches off
+hairlines, square corners, Commit Mono, the green square). `src/app/styles/kit.css` switches off
 Tailwind's own colours, fonts, type sizes, letter spacings, radii and shadows and gives it only
 this look's values, so a component can't drift from it. Base UI does the keyboard and
 screen-reader work: menus and selects open with Enter or the arrow keys, the arrows move, Esc
@@ -276,16 +305,17 @@ error, which fails `npm test` on the popup and the editor and `npm run test:kit`
 ### Adding a UI component
 
 From [shadcn/ui](https://ui.shadcn.com), whose CLI `components.json` is set up for (Base UI, style
-base-lyra): `npx shadcn@4.22.1 add <name>` writes `src/components/ui/<name>.tsx`. Then:
+base-lyra): `npx shadcn@4.22.1 add <name>` writes `src/shared/ui/kit/<name>.tsx`. Then:
 
-- Change its `import { cn } from "cn"` to `import { cn } from '../../lib/utils.ts'`, uninstall the
-  `cn` package the CLI installs, and read the `package.json` diff for anything else it added.
+- Change its `cn` import to `import { cn } from '../../lib/class-names/index.ts'`, uninstall the
+  `cn` package the CLI installs if it did, and read the `package.json` diff for anything else it
+  added.
 - Write its other imports as relative paths with extensions, like the other components.
-- Swap its icons for the kit's `<Icon>` (`src/components/ui/icon.tsx`); if the CLI installed
+- Swap its icons for the kit's `<Icon>` (`src/shared/ui/kit/icon.tsx`); if the CLI installed
   `lucide-react` for them, uninstall it.
 - Restyle it with the kit's values, like the other components.
-- Put it on the kit page (`src/entrypoints/kit/sheet.tsx`). `npm run test:kit` fails while a
-  component file has nothing on the page.
+- Put it on the kit page (`src/pages/kit/`). `npm run test:kit` fails while a component file has
+  nothing on the page.
 
 A component from [21st.dev](https://21st.dev) or anywhere else also has to pass four checks:
 
@@ -295,7 +325,7 @@ A component from [21st.dev](https://21st.dev) or anywhere else also has to pass 
    kit's toast is Base UI's. `npm run test:kit` catches them.
 4. Restyled to the kit's values, with nothing left of its own palette, fonts or radii.
 
-The kit's components started as shadcn/ui's (MIT licence: `src/components/ui/LICENSE-shadcn.md`).
+The kit's components started as shadcn/ui's (MIT licence: `src/shared/ui/kit/LICENSE-shadcn.md`).
 
 ## Build from source
 
@@ -319,16 +349,17 @@ checks exactly that (add `--docker` to do it in a clean Linux container).
 ## Tests
 
 `npm run check` type-checks everything with TypeScript. `npm run lint` checks the code with
-[oxlint](https://oxc.rs) and fails on warnings too (`npm run lint:fix` fixes what it can).
+[oxlint](https://oxc.rs) and fails on warnings too (`npm run lint:fix` fixes what it can), then
+checks that every import keeps to the layers (see [Files](#files)).
 `npm run format` checks that every file is formatted with oxfmt, and `npm run format:fix` formats
 them.
 
 `test/e2e.mjs` loads the built extension into Chromium, runs a local API and checks every rule type
 against fetch and XHR, the editor (including the body editor's own find and its vim keys),
 traffic view and popup, plus the security properties above
-(channel theft, forged offers, patched built-ins, HTML injection, hostile rule files, sites
-that aren't turned on getting nothing, `local.*` hosts and a lookalike URL, turning a site on
-from the Traffic view). Branded Google Chrome ignores `--load-extension`, so the test uses
+(channel theft, forged offers, patched built-ins, built-ins that try to reach the interceptor
+through `.caller`, HTML injection, hostile rule files, sites that aren't turned on getting
+nothing, `local.*` hosts and a lookalike URL, turning a site on from the Traffic view). Branded Google Chrome ignores `--load-extension`, so the test uses
 Playwright's own Chromium:
 
 ```sh
@@ -340,9 +371,9 @@ npm test             # builds, then tests; add SHOTS=/tmp/shots to save UI scree
 To use a different build (e.g. Chrome for Testing) set `CHROME=/path/to/binary`.
 
 `test/firefox.mjs` runs the same backend and rules in Zen: fetch/XHR rules, the background
-page's redirect, header and block rules, the traffic log, the channel attacks, `local.*`
-hosts, a site that isn't turned on, and adding and removing a site. Firefox's automation
-can't open extension pages, so the editor and popup
+page's redirect, header and block rules, the traffic log, the channel and `.caller` attacks,
+`local.*` hosts, a site that isn't turned on, and adding and removing a site. Firefox's
+automation can't open extension pages, so the editor and popup
 are covered by the Chromium run (same code), and this test loads a temporary copy of the
 build with two test-only hooks for setting rules; the build itself isn't changed. The
 vim keys depend on the browser's editing, undo and scrolling, so this test also types them
@@ -355,7 +386,7 @@ same keys.
 Zen (served with the CSP as a response header there, since Firefox's automation can't open
 extension pages). It fails on any CSP violation, uncaught error or console error, drives every
 live component with the keyboard and the mouse, and checks that the kit's icons draw the same as
-`src/lib/icons.ts`. Two self-checks make sure it can fail: a `<style>` tag added on purpose has
+`src/shared/lib/icons/`. Two self-checks make sure it can fail: a `<style>` tag added on purpose has
 to be caught, and so does Base UI's own when `CSPProvider`'s setting is off.
 
 ```sh

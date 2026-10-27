@@ -6,7 +6,7 @@ import http from 'node:http';
 import { stripTypeScriptTypes } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createRule } from '../src/lib/store.ts';
+import { createRule } from '../src/entities/rule/index.ts';
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 // The built extension under test; `npm test` and `npm run test:firefox` build it first.
@@ -132,6 +132,47 @@ export async function startServer() {
             e.ports[0].onmessage = ({ data }) => stolen.push('real port received ' + data.type);
           });
         </script><title>steal-forged</title>`);
+      } else if (url.pathname === '/steal-caller') {
+        // Replaces built-ins the interceptor calls while it answers an XMLHttpRequest a rule
+        // matched, and has each one ask who called it (fn.caller), as a page could to reach the
+        // interceptor's functions and their arguments, such as the rule. attack() makes the
+        // request and returns the mocked response and what the built-ins got. Its decoy, a
+        // function of the page's own, shows that .caller does work in this browser.
+        res.writeHead(200, { 'content-type': 'text/html' });
+        res.end(`<!doctype html><script>
+          const stolen = [];
+          let watching = false;
+          for (const [owner, key] of [
+            [String.prototype, 'toUpperCase'], [String.prototype, 'includes'], [String.prototype, 'trim'],
+            [Headers.prototype, 'set'], [Set.prototype, 'has'], [Object, 'defineProperty'],
+            [Array.prototype, Symbol.iterator],
+          ]) {
+            const real = owner[key];
+            owner[key] = function patched() {
+              if (watching) {
+                try {
+                  const caller = patched.caller;
+                  if (caller && caller !== attack) stolen.push(caller.name || String(caller).slice(0, 60));
+                } catch {}
+              }
+              return real.apply(this, arguments);
+            };
+          }
+          function decoy() { return 'decoy '.trim(); }
+          function attack() {
+            const xhr = new XMLHttpRequest();
+            const loaded = new Promise((resolve) => (xhr.onload = () => resolve(JSON.parse(xhr.responseText))));
+            watching = true;
+            try {
+              decoy();
+              xhr.open('GET', '/api/user?case=replace');
+              xhr.send();
+            } finally {
+              watching = false;
+            }
+            return loaded.then((response) => ({ response, stolen }));
+          }
+        </script><title>steal-caller</title>`);
       } else if (url.pathname === '/__control') {
         // A blank page the Firefox test drives its storage hook from.
         res.writeHead(200, { 'content-type': 'text/html' });
@@ -140,9 +181,9 @@ export async function startServer() {
         // The body editor with the Vim switch on, on a plain page, for the Firefox test: Firefox's
         // automation can't open extension pages, but it can load the same code from /src/.
         res.writeHead(200, { 'content-type': 'text/html' });
-        res.end(`<!doctype html><title>editor</title><link rel="stylesheet" href="/src/assets/theme.css"><link rel="stylesheet" href="/src/lib/editor/code-editor.css"><div style="width:640px"></div>
+        res.end(`<!doctype html><title>editor</title><link rel="stylesheet" href="/src/app/styles/theme.css"><link rel="stylesheet" href="/src/shared/ui/code-editor/code-editor.css"><div style="width:640px"></div>
           <script type="module">
-            import { createCodeEditor } from '/src/lib/editor/code-editor.ts';
+            import { createCodeEditor } from '/src/shared/ui/code-editor/engine/code-editor.ts';
             localStorage.setItem('ghostfetch.vim', '1');
             window.editor = createCodeEditor({ value: ${JSON.stringify(VIM_START)} });
             document.querySelector('div').append(window.editor.root);

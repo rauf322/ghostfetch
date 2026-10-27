@@ -5,17 +5,17 @@
   "tsx": true,
   "tailwind": {
     "config": "",
-    "css": "src/assets/kit.css",
+    "css": "src/app/styles/kit.css",
     "baseColor": "neutral",
     "cssVariables": true,
     "prefix": ""
   },
   "aliases": {
-    "components": "@/components",
-    "utils": "@/lib/utils",
-    "ui": "@/components/ui",
-    "lib": "@/lib",
-    "hooks": "@/hooks"
+    "components": "@/shared/ui",
+    "utils": "@/shared/lib/class-names",
+    "ui": "@/shared/ui/kit",
+    "lib": "@/shared/lib",
+    "hooks": "@/shared/lib/react"
   },
   "iconLibrary": "lucide"
 }

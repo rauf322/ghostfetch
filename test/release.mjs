@@ -214,19 +214,18 @@ for (const browser of ['chrome', 'firefox']) {
     },
   );
   await check(
-    `${browser}: the page scripts add no globals to the page; the strict-mode boundaries hold`,
+    `${browser}: the page scripts add no globals to the page; every script is strict mode`,
     async () => {
+      // The page scripts are one anonymous function each, called at once, whose first statement
+      // is the directive, so it covers all their code; the background is strict as a whole file.
       const starts = ['interceptor.js', 'bridge.js', 'background.js'].map((file) =>
-        read(browser, file).slice(0, 13),
+        read(browser, file).slice(0, 28),
       );
-      expect(starts, ['(function() {', '(function() {', '"use strict";']);
-      expect(
-        read(browser, 'interceptor.js').includes(
-          'defineUnlistedScript(() => {\n\t\t"use strict";',
-        ),
-        true,
-        "interceptor's own directive",
-      );
+      expect(starts, [
+        '(function() {\n\t"use strict";',
+        '(function() {\n\t"use strict";',
+        '"use strict";\nvar background',
+      ]);
     },
   );
   await check(
@@ -249,12 +248,13 @@ for (const browser of ['chrome', 'firefox']) {
         ),
         [],
       );
-      // The kit's components are in the extension; the kit page isn't. The bundles name each
-      // module they hold in a comment, so its code would show up by its path.
+      // The kit's components are in the extension; the kit page (its entrypoint and the sheet it
+      // draws) isn't. The bundles name each module they hold in a comment, so its code would show
+      // up by its path.
       expect(
         all.filter(
           (file) =>
-            file.endsWith('.js') && read(browser, file).includes('src/entrypoints/kit/'),
+            file.endsWith('.js') && /src\/(app|pages)\/kit\//.test(read(browser, file)),
         ),
         [],
         'the kit page',
@@ -295,8 +295,8 @@ await check(
         'package.json',
         'wxt.config.ts',
         'tsconfig.json',
-        'src/entrypoints/background.ts',
-        'src/entrypoints/interceptor.ts',
+        'src/app/background/index.ts',
+        'src/app/interceptor/index.ts',
         'public/fonts/CommitMono-VF.woff2',
       ].filter((name) => !entries.includes(name)),
       [],

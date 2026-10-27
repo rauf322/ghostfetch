@@ -12,7 +12,11 @@ import fs from 'node:fs';
 import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
-import { isSiteEnabled, normalizeSites, siteMatchPatterns } from '../src/lib/store.ts';
+import {
+  isSiteEnabled,
+  normalizeSites,
+  siteMatchPatterns,
+} from '../src/entities/site/index.ts';
 import {
   CHROME_BUILD,
   VIM_START,
@@ -911,6 +915,19 @@ try {
     async () => {
       const { response, stolen } = await probeChannel('/steal-forged');
       expect(stolen, []);
+      expect(response, { name: 'Mocked' }, 'mocking still works');
+    },
+  );
+  await check(
+    "a built-in the page patches can't reach the interceptor's functions through .caller",
+    async () => {
+      const probe = await context.newPage();
+      await probe.goto(`${ORIGIN}/steal-caller`);
+      await sleep(600);
+      const { response, stolen } = await probe.evaluate(() => window.attack());
+      await probe.close();
+      // Only the page's own decoy: the interceptor is strict mode, so the browser hides it.
+      expect(stolen, ['decoy']);
       expect(response, { name: 'Mocked' }, 'mocking still works');
     },
   );

@@ -4,8 +4,10 @@
 import { useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import type { ComponentProps, Ref } from 'react';
 import { cn } from '../../lib/class-names/index.ts';
-import { createCodeEditor, tokens } from './engine/code-editor.ts';
-import type { CodeEditor as Editor, Language } from './engine/code-editor.ts';
+import { createCodeEditor } from './engine/code-editor.ts';
+import type { CodeEditor as Editor } from './engine/code-editor.ts';
+import { tokens } from './engine/highlight.ts';
+import type { Language } from './engine/highlight.ts';
 import './code-editor.css';
 
 interface CodeEditorProps extends Omit<ComponentProps<'div'>, 'onChange' | 'ref'> {

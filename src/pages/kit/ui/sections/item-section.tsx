@@ -1,0 +1,158 @@
+// Items: rows of rules and of requests, as the two lists show them, one of each selected.
+import { TYPES } from '../../../../entities/rule/index.ts';
+import type { RuleType } from '../../../../entities/rule/index.ts';
+import { Badge, StatusCode } from '../../../../shared/ui/kit/badge.tsx';
+import {
+  Item,
+  ItemContent,
+  ItemDescription,
+  ItemNumber,
+  ItemTitle,
+} from '../../../../shared/ui/kit/item.tsx';
+import { Switch } from '../../../../shared/ui/kit/switch.tsx';
+import { Cell } from '../cell.tsx';
+
+const RULES: {
+  name: string;
+  type: RuleType;
+  method: string;
+  url: string;
+  summary: string;
+  on: boolean;
+}[] = [
+  {
+    name: 'Logged-in admin user',
+    type: 'response',
+    method: 'GET',
+    url: '/api/user',
+    summary: 'Replace · 200',
+    on: true,
+  },
+  {
+    name: 'Prod API → local',
+    type: 'redirect',
+    method: 'ANY',
+    url: '^https://api\\.acme\\.dev/(.*)',
+    summary: '→ http://localhost:4000/\\1',
+    on: true,
+  },
+  {
+    name: 'Checkout fails',
+    type: 'response',
+    method: 'POST',
+    url: '/api/checkout',
+    summary: 'Replace · 500 · 1200 ms',
+    on: false,
+  },
+];
+const REQUESTS: {
+  method: string;
+  path: string;
+  host: string;
+  status: number | null;
+  ms: number | null;
+  action?: string;
+  rule?: string;
+}[] = [
+  {
+    method: 'GET',
+    path: '/api/user',
+    host: 'localhost:3000',
+    status: 200,
+    ms: 3,
+    action: 'Mocked',
+    rule: 'Logged-in admin user',
+  },
+  {
+    method: 'POST',
+    path: '/v1/track',
+    host: 'api.segment.io',
+    status: null,
+    ms: null,
+    action: 'Blocked',
+    rule: 'Block analytics',
+  },
+  {
+    method: 'GET',
+    path: '/api/team/members',
+    host: 'localhost:3000',
+    status: 401,
+    ms: 35,
+  },
+  {
+    method: 'GET',
+    path: '/api/billing/invoices',
+    host: 'localhost:3000',
+    status: 500,
+    ms: 212,
+  },
+];
+
+export function ItemSection({ index }: { index: number }) {
+  return (
+    <Cell index={index} title="Item" note="rule rows and request rows" wide>
+      <div className="grid grid-cols-2 gap-6">
+        <ul className="m-0 list-none border border-b-0 border-border p-0">
+          {RULES.map((rule, position) => (
+            <Item key={rule.name} variant="rule" selected={position === 1} off={!rule.on}>
+              <ItemNumber>{String(position + 1).padStart(2, '0')}</ItemNumber>
+              <ItemContent>
+                <ItemTitle>{rule.name}</ItemTitle>
+                <ItemDescription>
+                  <Badge>{TYPES[rule.type].short}</Badge>
+                  {rule.method !== 'ANY' && (
+                    <span className="flex-none text-control font-medium tracking-[0.04em] text-t80">
+                      {rule.method}
+                    </span>
+                  )}
+                  <span className="max-w-[62%] flex-none truncate text-t65">
+                    {rule.url}
+                  </span>
+                  <span className="min-w-0 flex-[0_10_auto] truncate text-t30">
+                    {rule.summary}
+                  </span>
+                </ItemDescription>
+              </ItemContent>
+              <Switch
+                size="sm"
+                defaultChecked={rule.on}
+                aria-label={`Turn “${rule.name}” on or off`}
+              />
+            </Item>
+          ))}
+        </ul>
+        <ul className="m-0 list-none border border-b-0 border-border p-0">
+          {REQUESTS.map((entry, position) => (
+            <Item
+              key={entry.path + entry.method}
+              variant="request"
+              hit={Boolean(entry.action)}
+              selected={position === 2}
+            >
+              <span className="text-control font-medium tracking-[0.04em] text-t80">
+                {entry.method}
+              </span>
+              <span className="flex min-w-0 flex-col">
+                <span className="truncate text-foreground">{entry.path}</span>
+                <span className="flex min-w-0 items-center gap-[7px] overflow-hidden text-control whitespace-nowrap text-t30">
+                  {entry.action ? (
+                    <>
+                      <Badge variant="fired">{entry.action}</Badge>
+                      <span className="truncate text-t40">{entry.rule}</span>
+                    </>
+                  ) : (
+                    entry.host
+                  )}
+                </span>
+              </span>
+              <StatusCode status={entry.status} />
+              <span className="text-right text-control text-t30 tabular-nums">
+                {entry.ms != null ? `${entry.ms} ms` : ''}
+              </span>
+            </Item>
+          ))}
+        </ul>
+      </div>
+    </Cell>
+  );
+}

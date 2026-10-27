@@ -918,6 +918,19 @@ try {
       expect(response, { name: 'Mocked' }, 'mocking still works');
     },
   );
+  await check(
+    "a built-in the page patches can't reach the interceptor's functions through .caller",
+    async () => {
+      const probe = await context.newPage();
+      await probe.goto(`${ORIGIN}/steal-caller`);
+      await sleep(600);
+      const { response, stolen } = await probe.evaluate(() => window.attack());
+      await probe.close();
+      // Only the page's own decoy: the interceptor is strict mode, so the browser hides it.
+      expect(stolen, ['decoy']);
+      expect(response, { name: 'Mocked' }, 'mocking still works');
+    },
+  );
   await check('local.* hosts get mocks and, once opened, header rules too', async () => {
     const probe = await context.newPage();
     await probe.goto(`${LOCAL_ORIGIN}/`);

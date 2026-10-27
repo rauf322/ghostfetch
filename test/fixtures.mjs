@@ -132,6 +132,47 @@ export async function startServer() {
             e.ports[0].onmessage = ({ data }) => stolen.push('real port received ' + data.type);
           });
         </script><title>steal-forged</title>`);
+      } else if (url.pathname === '/steal-caller') {
+        // Replaces built-ins the interceptor calls while it answers an XMLHttpRequest a rule
+        // matched, and has each one ask who called it (fn.caller), as a page could to reach the
+        // interceptor's functions and their arguments, such as the rule. attack() makes the
+        // request and returns the mocked response and what the built-ins got. Its decoy, a
+        // function of the page's own, shows that .caller does work in this browser.
+        res.writeHead(200, { 'content-type': 'text/html' });
+        res.end(`<!doctype html><script>
+          const stolen = [];
+          let watching = false;
+          for (const [owner, key] of [
+            [String.prototype, 'toUpperCase'], [String.prototype, 'includes'], [String.prototype, 'trim'],
+            [Headers.prototype, 'set'], [Set.prototype, 'has'], [Object, 'defineProperty'],
+            [Array.prototype, Symbol.iterator],
+          ]) {
+            const real = owner[key];
+            owner[key] = function patched() {
+              if (watching) {
+                try {
+                  const caller = patched.caller;
+                  if (caller && caller !== attack) stolen.push(caller.name || String(caller).slice(0, 60));
+                } catch {}
+              }
+              return real.apply(this, arguments);
+            };
+          }
+          function decoy() { return 'decoy '.trim(); }
+          function attack() {
+            const xhr = new XMLHttpRequest();
+            const loaded = new Promise((resolve) => (xhr.onload = () => resolve(JSON.parse(xhr.responseText))));
+            watching = true;
+            try {
+              decoy();
+              xhr.open('GET', '/api/user?case=replace');
+              xhr.send();
+            } finally {
+              watching = false;
+            }
+            return loaded.then((response) => ({ response, stolen }));
+          }
+        </script><title>steal-caller</title>`);
       } else if (url.pathname === '/__control') {
         // A blank page the Firefox test drives its storage hook from.
         res.writeHead(200, { 'content-type': 'text/html' });

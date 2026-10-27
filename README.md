@@ -357,9 +357,9 @@ them.
 `test/e2e.mjs` loads the built extension into Chromium, runs a local API and checks every rule type
 against fetch and XHR, the editor (including the body editor's own find and its vim keys),
 traffic view and popup, plus the security properties above
-(channel theft, forged offers, patched built-ins, HTML injection, hostile rule files, sites
-that aren't turned on getting nothing, `local.*` hosts and a lookalike URL, turning a site on
-from the Traffic view). Branded Google Chrome ignores `--load-extension`, so the test uses
+(channel theft, forged offers, patched built-ins, built-ins that try to reach the interceptor
+through `.caller`, HTML injection, hostile rule files, sites that aren't turned on getting
+nothing, `local.*` hosts and a lookalike URL, turning a site on from the Traffic view). Branded Google Chrome ignores `--load-extension`, so the test uses
 Playwright's own Chromium:
 
 ```sh
@@ -371,9 +371,9 @@ npm test             # builds, then tests; add SHOTS=/tmp/shots to save UI scree
 To use a different build (e.g. Chrome for Testing) set `CHROME=/path/to/binary`.
 
 `test/firefox.mjs` runs the same backend and rules in Zen: fetch/XHR rules, the background
-page's redirect, header and block rules, the traffic log, the channel attacks, `local.*`
-hosts, a site that isn't turned on, and adding and removing a site. Firefox's automation
-can't open extension pages, so the editor and popup
+page's redirect, header and block rules, the traffic log, the channel and `.caller` attacks,
+`local.*` hosts, a site that isn't turned on, and adding and removing a site. Firefox's
+automation can't open extension pages, so the editor and popup
 are covered by the Chromium run (same code), and this test loads a temporary copy of the
 build with two test-only hooks for setting rules; the build itself isn't changed. The
 vim keys depend on the browser's editing, undo and scrolling, so this test also types them

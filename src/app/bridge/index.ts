@@ -1,5 +1,5 @@
 // Isolated-world half of the content script. Reads rules from extension storage and hands
-// the response rules to interceptor.ts (the page-world half) over a private MessageChannel,
+// the response rules to the interceptor (the page-world half) over a private MessageChannel,
 // whose port is offered exactly once, before any page script runs. The top frame also keeps
 // the tab's traffic log, so the editor can show requests made before it was opened.
 // Built as bridge.js: WXT's wrapper runs this function at once and adds no globals of its own.
@@ -13,7 +13,7 @@ import type { Untrusted } from '../../shared/lib/untrusted/index.ts';
 import type { PageState, RuntimeMessage } from '../messaging/messages.ts';
 
 export default defineUnlistedScript(() => {
-  // Same two guards as interceptor.ts. The flag lives in the extension's isolated world, which
+  // Same two guards as the interceptor. The flag lives in the extension's isolated world, which
   // all its content scripts share and the page can't see.
   const address = new URL(document.URL);
   if (address.username || address.password) return;

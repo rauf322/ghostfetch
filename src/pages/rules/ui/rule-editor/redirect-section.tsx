@@ -1,8 +1,8 @@
 // "Redirect to": where a redirect rule sends the requests it matches.
+import { editRule } from '../../../../shared/api/index.ts';
 import type { Rule } from '../../../../shared/api/index.ts';
 import { Card, CardHint, CardTitle } from '../../../../shared/ui/kit/card.tsx';
 import { Input } from '../../../../shared/ui/kit/input.tsx';
-import { editRule } from '../../model/edit-rule.ts';
 
 export function RedirectSection({ rule, index }: { rule: Rule; index: number }) {
   return (

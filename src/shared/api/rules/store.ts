@@ -114,3 +114,17 @@ export function touchRule(rule: Rule, { immediate = false } = {}) {
   saveRules({ immediate });
   ruleStore.emit('edit');
 }
+
+// A change to a rule goes to the stored rule, looked up by its id: an edit made in another view
+// replaces every rule with a new copy. Each change is saved as it's made (touchRule), so it applies
+// to open tabs right away.
+export function editRule(
+  id: string,
+  change: (rule: Rule) => void,
+  { immediate = false } = {},
+) {
+  const current = findRule(id);
+  if (!current) return;
+  change(current);
+  touchRule(current, { immediate });
+}

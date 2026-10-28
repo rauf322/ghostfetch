@@ -1,11 +1,15 @@
 // Every rule, with how many are on: a switch for each, its name, which opens it in the editor, and
 // its type.
-import { TYPES, openRuleInEditor, ruleTitle } from '../../../shared/api/index.ts';
+import {
+  TYPES,
+  editRule,
+  openRuleInEditor,
+  ruleTitle,
+} from '../../../shared/api/index.ts';
 import type { Rule } from '../../../shared/api/index.ts';
 import { cn } from '../../../shared/ui/cn.ts';
 import { Badge } from '../../../shared/ui/kit/badge.tsx';
 import { Switch } from '../../../shared/ui/kit/switch.tsx';
-import { switchRule } from '../model/switch-rule.ts';
 
 export function PopupRules({
   rules,
@@ -51,7 +55,17 @@ function PopupRule({ rule, windowId }: { rule: Rule; windowId: number }) {
         size="sm"
         checked={rule.enabled}
         aria-label={`Turn “${ruleTitle(rule)}” on or off`}
-        onCheckedChange={(on) => switchRule(rule.id, on)}
+        // Saved at once rather than after the editor's short pause: the popup can close at any
+        // moment.
+        onCheckedChange={(on) =>
+          editRule(
+            rule.id,
+            (current) => {
+              current.enabled = on;
+            },
+            { immediate: true },
+          )
+        }
       />
       <button
         type="button"

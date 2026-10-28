@@ -3,6 +3,7 @@
 // rule's headers.
 import { useRef } from 'react';
 import { flushSync } from 'react-dom';
+import { editRule } from '../../../../shared/api/index.ts';
 import type { HeaderRow, Rule } from '../../../../shared/api/index.ts';
 import { cn } from '../../../../shared/ui/cn.ts';
 import { Button } from '../../../../shared/ui/kit/button.tsx';
@@ -15,7 +16,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../../../../shared/ui/kit/select.tsx';
-import { editRule } from '../../model/edit-rule.ts';
 
 const OP_ITEMS = [
   { value: 'set', label: 'Set' },

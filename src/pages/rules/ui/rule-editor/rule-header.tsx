@@ -1,10 +1,10 @@
 // The bar across the top of a rule: back to the list (in a narrow panel), the rule's name, its
 // switch and its ⋯ menu.
+import { editRule } from '../../../../shared/api/index.ts';
 import type { Rule } from '../../../../shared/api/index.ts';
 import { Input } from '../../../../shared/ui/kit/input.tsx';
 import { Switch } from '../../../../shared/ui/kit/switch.tsx';
 import { BackButton, PaneHead } from '../../../../shared/ui/list-detail.tsx';
-import { editRule } from '../../model/edit-rule.ts';
 import { RuleMenu } from './rule-menu.tsx';
 
 export function RuleHeader({

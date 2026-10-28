@@ -24,6 +24,7 @@ export { dnrUrlFilter, testUrl } from './rules/url-match.ts';
 export {
   addRule,
   addRules,
+  editRule,
   findRule,
   initRules,
   moveRule,
@@ -43,8 +44,14 @@ export {
   siteMatchPatterns,
   siteOf,
 } from './sites/site.ts';
-export { initSites, setSites, siteStore } from './sites/store.ts';
-export { turnOffFor, turnOnFor } from './sites/site-switch.ts';
+export {
+  initSites,
+  removeSite,
+  setSites,
+  siteStore,
+  turnOffFor,
+  turnOnFor,
+} from './sites/store.ts';
 export { initSettings, setFlag, settingsStore } from './settings.ts';
 export type { Settings } from './settings.ts';
 export type { EntryAction, EntryKind, LogEntry } from './log-entry.ts';

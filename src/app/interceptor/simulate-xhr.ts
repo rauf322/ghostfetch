@@ -1,7 +1,7 @@
 // Answers an XMLHttpRequest that a response rule matched, instead of the network: the real
 // request (if the rule needs it) goes through fetch, and the XMLHttpRequest's state, response
 // getters and events are played back from the result, in the order a real one fires them.
-import type { Rule } from '../../entities/rule/index.ts';
+import type { Rule } from '../../shared/api/index.ts';
 import { applyRule } from './apply-rule.ts';
 import { nativeFetch } from './fetch.ts';
 import { makeEntry, ruleEntry, ruleFields } from './log-entries.ts';

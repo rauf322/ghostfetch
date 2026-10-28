@@ -1,9 +1,8 @@
 // Every rule, with how many are on: a switch for each, its name, which opens it in the editor, and
 // its type.
-import { TYPES, ruleTitle } from '../../../entities/rule/index.ts';
-import type { Rule } from '../../../entities/rule/index.ts';
-import { openRuleInEditor } from '../../../features/open-editor/index.ts';
-import { cn } from '../../../shared/lib/class-names/index.ts';
+import { TYPES, openRuleInEditor, ruleTitle } from '../../../shared/api/index.ts';
+import type { Rule } from '../../../shared/api/index.ts';
+import { cn } from '../../../shared/ui/cn.ts';
 import { Badge } from '../../../shared/ui/kit/badge.tsx';
 import { Switch } from '../../../shared/ui/kit/switch.tsx';
 import { switchRule } from '../model/switch-rule.ts';

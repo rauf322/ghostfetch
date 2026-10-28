@@ -1,6 +1,6 @@
 import { Menu as MenuPrimitive } from '@base-ui/react/menu';
 import type { ComponentProps } from 'react';
-import { cn } from '../../lib/class-names/index.ts';
+import { cn } from '../cn.ts';
 
 // Institute's menus: a black box with a hairline border and a deep shadow, one hairline between
 // items. A destructive item turns inverted white when highlighted. Base UI does

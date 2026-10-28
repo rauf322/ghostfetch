@@ -1,6 +1,6 @@
 import { Toast as ToastPrimitive } from '@base-ui/react/toast';
 import type { ReactNode } from 'react';
-import { cn } from '../../lib/class-names/index.ts';
+import { cn } from '../cn.ts';
 
 // Institute's toast: one inverted white bar at a time, centred over the bottom bar, with an
 // underlined action. An error is the same bar in black with a white border. Built on Base UI's

@@ -223,19 +223,25 @@ URL matching: *contains*, *equals* (response rules also accept a bare path such 
 ## Files
 
 The code in `src/` is laid out in [Feature-Sliced Design](https://feature-sliced.design)'s
-layers. From the top, `app` → `pages` → `features` → `entities` → `shared`, and a file only
-imports from its own layer's folder or the layers below it, so the screens can't tangle with
-each other and `shared` knows nothing about Ghostfetch. A slice (a folder in `pages`, `features`
-or `entities`) is used from outside only through its `index.ts`. `shared` has one entry per
-library or component instead, as FSD advises, so a screen that shows a button doesn't load the
-body editor with it. `npm run lint` checks all this with eslint-plugin-boundaries, whose
-policies are in `oxlint.config.ts`, along with what keeps the background and the page scripts
-free of the screens' libraries.
+layers, the way FSD 2.1 starts a project, with pages first: from the top, `app` → `pages` →
+`shared`, and a file only imports from its own layer's folder or the layers below it. A page
+keeps what only it uses, and anything that more than one part of the extension needs is in
+`shared`, so the pages can't tangle with each other. A page is used from outside only through
+its `index.ts`.
 
-Inside a slice the files are grouped by what they're for: `ui/` holds its components, `model/` its
-state and what changes it, `lib/` plain functions, and `api/` what it says to another part of
-the extension. A screen is a page that composes components of its own, one per part of the
-screen, so each file is about one thing.
+`shared` has no slices, only segments, one for each kind of code: `api` for what Ghostfetch
+keeps in `chrome.storage` and what its parts send each other, `lib` for small libraries of its
+own, `react` for where those meet React, and `ui` for components. `api`, `lib` and `react` are
+each used through their `index.ts`. `shared/ui` has a public file per component instead, as FSD
+advises, so a screen that shows a button doesn't load the body editor with it. `api` and `lib`
+are plain TypeScript, with no React and no npm package: `lib` imports nothing else and `api`
+only `lib`, which is what keeps the background and the page scripts, which use both, free of
+the screens' libraries. `npm run lint` checks all this with eslint-plugin-boundaries, whose
+policies are in `oxlint.config.ts`.
+
+Inside a page the files are grouped by what they're for: `ui/` holds its components, `model/` its
+state and what changes it, and `lib/` plain functions. A page composes components of its own,
+one per part of the screen, so each file is about one thing.
 
 ```
 src/app/                         the extension's parts, one folder each, which WXT builds (wxt.config.ts)
@@ -245,29 +251,30 @@ src/app/                         the extension's parts, one folder each, which W
   popup/                         the toolbar popup's page
   sidepanel/                     the editor (Chrome's side panel, Firefox's sidebar, or a tab): its top bar, tabs and menus
   kit/                           the kit page; for npm run dev and the kit test, never in the extension
-  messaging/                     the messages between the background, the bridge and the interceptor (types only)
   styles/                        theme.css, the look's values (colours, the font, the dotted grid), and kit.css: those as Tailwind's theme
 src/pages/                       what the screens show
   rules/                         the Rules tab: the rule list, and the rule editor (ui/rule-editor/, a component per section)
   traffic/                       the Traffic tab: a tab's live log, a request's details (ui/request-detail/), Mock this response
   popup/                         the toolbar popup
   kit/                           the kit page: every kit component in its states
-src/features/                    what you can do from more than one screen
-  master-switch/                 Ghostfetch on or off, in the popup and the editor's top bar
-  site-switch/                   Ghostfetch on or off for the site a tab shows (the popup, Traffic), then that tab reloaded
-  open-editor/                   the editor in the side panel or a tab, and on a rule the popup picked
-  rules-transfer/                rules files: export every rule or one, import one (its rules arrive switched off)
-src/entities/                    what Ghostfetch works with
-  rule/                          a rule: its types and their names, making one, URL matching, and the screens' copy of the rules
-  site/                          the sites Ghostfetch runs on, and the screens' copy of the ones you added
-  settings/                      the on/off and recording switches
-  traffic/                       a logged request, and the port the Traffic tab reads a tab's log through
-src/shared/                      nothing Ghostfetch-specific
-  ui/kit/                        the UI kit: React components on Base UI, styled with Tailwind (see UI kit)
-  ui/list-detail/                the editor's layout: a list, and what's picked in it
-  ui/code-editor/                the body editor (plain DOM code, its find bar and vim keys) and its React component
-  lib/                           json/, html/, url/, icons/, browser/ (side panel, download), class-names/ (cn()), untrusted/,
-                                 store/ and react/ (the stores the entities keep, and the hook that redraws a screen when one changes)
+src/shared/                      what more than one part of the extension uses
+  api/                           what's kept in chrome.storage and what the parts send each other (index.ts)
+    rules/                       a rule: its types and their names, making one, URL matching, and the screens' copy of the rules
+    sites/                       the sites Ghostfetch runs on, the screens' copy of the ones you added, turning one on or off
+    settings.ts                  the on/off and recording switches
+    log-entry.ts                 a request in a tab's traffic log
+    messages.ts                  the messages between the background, the bridge, the interceptor and the Traffic tab
+    open-editor.ts               the editor in the side panel or a tab, and on a rule the popup picked
+  lib/                           small libraries, a file each (index.ts): JSON, HTML, URLs, icons, file names, a download,
+                                 the side panel, the stores' base, untrusted data
+  react/                         useStore(), which redraws a screen when a store changes (index.ts)
+  ui/                            components, a public file each
+    kit/                         the UI kit: React components on Base UI, styled with Tailwind (see UI kit)
+    code-editor/                 the body editor (plain DOM code, its find bar and vim keys) and its React component (index.ts)
+    list-detail.tsx              the editor's layout: a list, and what's picked in it
+    master-switch.tsx            Ghostfetch on or off, in the popup and the editor's top bar
+    rules-file.tsx               rules files: export every rule or one, import one (its rules arrive switched off)
+    cn.ts                        cn(), which joins the kit's class names
 wxt.config.ts                    the manifest (permissions, content scripts, CSP, Firefox ID) and the build settings
 components.json                  settings for shadcn's CLI, for adding a kit component
 oxlint.config.ts                 the linter's settings (npm run lint), and the layers' rules for eslint-plugin-boundaries
@@ -308,7 +315,7 @@ error, which fails `npm test` on the popup and the editor and `npm run test:kit`
 From [shadcn/ui](https://ui.shadcn.com), whose CLI `components.json` is set up for (Base UI, style
 base-lyra): `npx shadcn@4.22.1 add <name>` writes `src/shared/ui/kit/<name>.tsx`. Then:
 
-- Change its `cn` import to `import { cn } from '../../lib/class-names/index.ts'`, uninstall the
+- Change its `cn` import to `import { cn } from '../cn.ts'`, uninstall the
   `cn` package the CLI installs if it did, and read the `package.json` diff for anything else it
   added.
 - Write its other imports as relative paths with extensions, like the other components.
@@ -350,8 +357,8 @@ checks exactly that (add `--docker` to do it in a clean Linux container).
 ## Tests
 
 `npm run check` type-checks everything with TypeScript. `npm run lint` checks the code with
-[oxlint](https://oxc.rs) and fails on warnings too (`npm run lint:fix` fixes what it can), then
-checks that every import keeps to the layers (see [Files](#files)).
+[oxlint](https://oxc.rs) and fails on warnings too (`npm run lint:fix` fixes what it can),
+including that every import keeps to the layers (see [Files](#files)).
 `npm run format` checks that every file is formatted with oxfmt, and `npm run format:fix` formats
 them.
 
@@ -387,7 +394,7 @@ same keys.
 Zen (served with the CSP as a response header there, since Firefox's automation can't open
 extension pages). It fails on any CSP violation, uncaught error or console error, drives every
 live component with the keyboard and the mouse, and checks that the kit's icons draw the same as
-`src/shared/lib/icons/`. Two self-checks make sure it can fail: a `<style>` tag added on purpose has
+`src/shared/lib/icons.ts`. Two self-checks make sure it can fail: a `<style>` tag added on purpose has
 to be caught, and so does Base UI's own when `CSPProvider`'s setting is off.
 
 ```sh

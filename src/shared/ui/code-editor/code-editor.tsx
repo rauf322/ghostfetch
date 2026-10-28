@@ -3,7 +3,7 @@
 // Traffic.
 import { useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import type { ComponentProps, Ref } from 'react';
-import { cn } from '../../lib/class-names/index.ts';
+import { cn } from '../cn.ts';
 import { createCodeEditor } from './engine/code-editor.ts';
 import type { CodeEditor as Editor } from './engine/code-editor.ts';
 import { tokens } from './engine/highlight.ts';

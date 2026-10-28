@@ -1,5 +1,5 @@
 import { Select as SelectPrimitive } from '@base-ui/react/select';
-import { cn } from '../../lib/class-names/index.ts';
+import { cn } from '../cn.ts';
 
 // A select in Institute's style: the trigger looks like an input, with a small solid triangle
 // (kit.css's select-arrow) at its right end; the list is a hairline box with hairlines between

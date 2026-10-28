@@ -1,5 +1,5 @@
 import type { ComponentProps } from 'react';
-import { cn } from '../../lib/class-names/index.ts';
+import { cn } from '../cn.ts';
 
 // Small uppercase labels with wide tracking, like the site's CHAPTERS heading, and the smaller ones
 // over fields.

@@ -1,5 +1,5 @@
 // The popup's footer: the editor in the side panel, or in a tab of its own.
-import { openInSidePanel, openInTab } from '../../../features/open-editor/index.ts';
+import { openInSidePanel, openInTab } from '../../../shared/api/index.ts';
 import { Button } from '../../../shared/ui/kit/button.tsx';
 import { Icon } from '../../../shared/ui/kit/icon.tsx';
 

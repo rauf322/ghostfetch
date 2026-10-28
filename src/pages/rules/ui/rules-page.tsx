@@ -1,15 +1,10 @@
 // Rules tab: the rule list and the rule editor. In a narrow side panel only one of the
 // two is visible at a time; from 760px wide they sit side by side.
 import { useEffect, useRef, useState } from 'react';
-import {
-  addRule,
-  createRule,
-  findRule,
-  ruleStore,
-} from '../../../entities/rule/index.ts';
-import type { RuleType } from '../../../entities/rule/index.ts';
-import { useStore } from '../../../shared/lib/react/index.ts';
-import { DetailPane, Split } from '../../../shared/ui/list-detail/index.ts';
+import { addRule, createRule, findRule, ruleStore } from '../../../shared/api/index.ts';
+import type { RuleType } from '../../../shared/api/index.ts';
+import { useStore } from '../../../shared/react/index.ts';
+import { DetailPane, Split } from '../../../shared/ui/list-detail.tsx';
 import { FieldSuggestions } from './field-suggestions.tsx';
 import { NoRuleSelected } from './no-rules.tsx';
 import { RuleEditor } from './rule-editor/rule-editor.tsx';

@@ -2,7 +2,7 @@ import { mergeProps } from '@base-ui/react/merge-props';
 import { useRender } from '@base-ui/react/use-render';
 import { cva } from 'class-variance-authority';
 import type { VariantProps } from 'class-variance-authority';
-import { cn } from '../../lib/class-names/index.ts';
+import { cn } from '../cn.ts';
 
 // Rule types and rule hits are words, not colours. "fired" puts the green square in front: a rule
 // fired. "error" is inverted white.

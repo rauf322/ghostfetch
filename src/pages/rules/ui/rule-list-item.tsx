@@ -1,8 +1,8 @@
 // One rule in the list: its number (its priority), its name, its type with what it matches and
 // does, a mark when Chrome rejected it, and its switch. Click it to open it; drag it to reorder.
-import { TYPES, ruleTitle } from '../../../entities/rule/index.ts';
-import type { Rule } from '../../../entities/rule/index.ts';
-import { cn } from '../../../shared/lib/class-names/index.ts';
+import { TYPES, ruleTitle } from '../../../shared/api/index.ts';
+import type { Rule } from '../../../shared/api/index.ts';
+import { cn } from '../../../shared/ui/cn.ts';
 import { Badge } from '../../../shared/ui/kit/badge.tsx';
 import {
   Item,

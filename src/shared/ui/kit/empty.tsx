@@ -1,5 +1,5 @@
 import type { ComponentProps } from 'react';
-import { cn } from '../../lib/class-names/index.ts';
+import { cn } from '../cn.ts';
 
 // The empty state: centred on the dotted grid, a title, one line of guidance and the next step.
 export function Empty({ className, ...props }: ComponentProps<'div'>) {

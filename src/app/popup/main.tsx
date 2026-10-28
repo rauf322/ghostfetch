@@ -3,10 +3,8 @@ import { CSPProvider } from '@base-ui/react/csp-provider';
 import { StrictMode } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
-import { initRules } from '../../entities/rule/index.ts';
-import { initSettings } from '../../entities/settings/index.ts';
-import { initSites } from '../../entities/site/index.ts';
 import { PopupPage } from '../../pages/popup/index.ts';
+import { initRules, initSettings, initSites } from '../../shared/api/index.ts';
 import '../styles/kit.css';
 
 // The side panel must be opened synchronously inside the click, so look the window up first.

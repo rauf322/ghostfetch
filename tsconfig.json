@@ -5,7 +5,7 @@
     // bounds it checks itself; flagging every one of those would bury real problems.
     "noUncheckedIndexedAccess": false,
     // Only TypeScript that can be stripped without compiling: the tests import the rule and site
-    // models (src/entities/) directly, and the test server hands the body editor's sources
+    // models (src/shared/api/) directly, and the test server hands the body editor's sources
     // (src/shared/ui/code-editor/) to the browser the same way.
     "erasableSyntaxOnly": true,
     // TypeScript 6 and later only load the @types packages listed here: the extension APIs, and

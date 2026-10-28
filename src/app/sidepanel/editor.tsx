@@ -3,17 +3,21 @@
 // them it opens rules: one picked in Traffic, one made from a captured response, the first of an
 // import, and one the popup asks for.
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { addRule, findRule, normalizeRule } from '../../entities/rule/index.ts';
-import type { Rule } from '../../entities/rule/index.ts';
-import { settingsStore } from '../../entities/settings/index.ts';
-import { watchRuleRequests } from '../../features/open-editor/index.ts';
-import { ImportRulesInput, exportRules } from '../../features/rules-transfer/index.ts';
 import { RulesPage } from '../../pages/rules/index.ts';
 import { TrafficPage } from '../../pages/traffic/index.ts';
-import { useStore } from '../../shared/lib/react/index.ts';
+import {
+  addRule,
+  findRule,
+  normalizeRule,
+  settingsStore,
+  watchRuleRequests,
+} from '../../shared/api/index.ts';
+import type { Rule } from '../../shared/api/index.ts';
+import { useStore } from '../../shared/react/index.ts';
 import { Alert } from '../../shared/ui/kit/alert.tsx';
 import { Tabs, TabsContent } from '../../shared/ui/kit/tabs.tsx';
 import { notify } from '../../shared/ui/kit/toast.tsx';
+import { ImportRulesInput, exportRules } from '../../shared/ui/rules-file.tsx';
 import { TopBar } from './top-bar.tsx';
 
 type View = 'rules' | 'traffic';

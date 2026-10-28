@@ -1,9 +1,7 @@
 // The toolbar popup: the master switch, Ghostfetch on this tab's site, the sites it runs on,
 // recording, and a switch for every rule. A rule's name opens it in the editor.
-import { ruleStore } from '../../../entities/rule/index.ts';
-import { settingsStore } from '../../../entities/settings/index.ts';
-import { siteStore } from '../../../entities/site/index.ts';
-import { useStore } from '../../../shared/lib/react/index.ts';
+import { ruleStore, settingsStore, siteStore } from '../../../shared/api/index.ts';
+import { useStore } from '../../../shared/react/index.ts';
 import { CurrentSite } from './current-site.tsx';
 import { PopupFooter } from './popup-footer.tsx';
 import { PopupHeader } from './popup-header.tsx';

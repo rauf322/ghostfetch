@@ -1,6 +1,6 @@
 // A redirect, header or block rule fired on a request: the tab's traffic log hears of it through
 // the bridge in its top frame, with the rule's name and what it did.
-import { ruleTitle } from '../../entities/rule/index.ts';
+import { ruleTitle } from '../../shared/api/index.ts';
 import { loadState } from './stored-state.ts';
 
 // Only fires for unpacked extensions, which is exactly how Ghostfetch is meant to be installed.

@@ -2,8 +2,7 @@
 // never calls the server, or for Merge JSON, Script and Original the real response (sendReal),
 // changed. If a merge or a script fails, the page gets the real response and the log says why.
 // The rule's status and headers apply last.
-import type { Rule } from '../../entities/rule/index.ts';
-import type { EntryAction } from '../../entities/traffic/index.ts';
+import type { EntryAction, Rule } from '../../shared/api/index.ts';
 import type { PageRequest, RuleResult } from './types.ts';
 
 const NULL_BODY_STATUS = new Set([101, 103, 204, 205, 304]);

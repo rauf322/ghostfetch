@@ -3,8 +3,7 @@
 // first), and the bar of switches under them.
 import { useState, useSyncExternalStore } from 'react';
 import type { ReactNode } from 'react';
-import { settingsStore } from '../../../entities/settings/index.ts';
-import { siteStore } from '../../../entities/site/index.ts';
+import { settingsStore, siteStore } from '../../../shared/api/index.ts';
 import { Label } from '../../../shared/ui/kit/label.tsx';
 import {
   List,
@@ -13,7 +12,7 @@ import {
   PaneToolbar,
   SearchField,
   SectionRow,
-} from '../../../shared/ui/list-detail/index.ts';
+} from '../../../shared/ui/list-detail.tsx';
 import { filterEntries } from '../lib/filter-entries.ts';
 import { isPreserved, rememberPreserve } from '../model/preserve.ts';
 import type { TrafficLog, TrafficSnapshot } from '../model/traffic-log.ts';

@@ -1,8 +1,7 @@
 // What to do with an open request: Mock this response, for the fetch() and XMLHttpRequest calls
 // it can mock, and a row of quieter ones: open the rule that fired, copy the URL, copy the
 // response.
-import type { Rule } from '../../../../entities/rule/index.ts';
-import type { LogEntry } from '../../../../entities/traffic/index.ts';
+import type { LogEntry, Rule } from '../../../../shared/api/index.ts';
 import { Button } from '../../../../shared/ui/kit/button.tsx';
 import { Icon } from '../../../../shared/ui/kit/icon.tsx';
 import { notify } from '../../../../shared/ui/kit/toast.tsx';

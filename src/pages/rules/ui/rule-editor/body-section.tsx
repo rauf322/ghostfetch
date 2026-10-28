@@ -2,9 +2,9 @@
 // body editor for the text it uses, with a line saying whether that text is valid, the Vim switch
 // and Format.
 import { useRef, useState } from 'react';
-import { BODY_MODES } from '../../../../entities/rule/index.ts';
-import type { BodyMode, Rule } from '../../../../entities/rule/index.ts';
-import { formatJson } from '../../../../shared/lib/json/index.ts';
+import { BODY_MODES } from '../../../../shared/api/index.ts';
+import type { BodyMode, Rule } from '../../../../shared/api/index.ts';
+import { formatJson } from '../../../../shared/lib/index.ts';
 import { CodeEditor, vimPreferred } from '../../../../shared/ui/code-editor/index.ts';
 import type { CodeEditorHandle } from '../../../../shared/ui/code-editor/index.ts';
 import { Button } from '../../../../shared/ui/kit/button.tsx';

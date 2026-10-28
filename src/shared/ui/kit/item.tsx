@@ -3,7 +3,7 @@ import { useRender } from '@base-ui/react/use-render';
 import { cva } from 'class-variance-authority';
 import type { VariantProps } from 'class-variance-authority';
 import type { ComponentProps } from 'react';
-import { cn } from '../../lib/class-names/index.ts';
+import { cn } from '../cn.ts';
 
 // List rows: a rule, or a request in Traffic. The selected row gets a white rule down its left
 // edge, a rule that's off fades, and a request a rule changed sits on the code background.

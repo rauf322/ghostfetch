@@ -1,8 +1,8 @@
 // What's known about an open request, each a small label over its value: its URL, what made it
 // (and in which iframe), how long it took, when, its Content-Type, and the rule that fired.
 import type { ReactNode } from 'react';
-import type { LogEntry } from '../../../../entities/traffic/index.ts';
-import { cn } from '../../../../shared/lib/class-names/index.ts';
+import type { LogEntry } from '../../../../shared/api/index.ts';
+import { cn } from '../../../../shared/ui/cn.ts';
 import { ActionBadge } from '../action-badge.tsx';
 
 const KIND_LABELS: Record<string, string> = {

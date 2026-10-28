@@ -2,11 +2,11 @@
 // request went), its status and how long it took. Entries come from the page, so everything in
 // them is shown as text, never as HTML.
 import { memo } from 'react';
-import type { LogEntry } from '../../../entities/traffic/index.ts';
-import { splitUrl } from '../../../shared/lib/url/index.ts';
+import type { LogEntry } from '../../../shared/api/index.ts';
+import { splitUrl } from '../../../shared/lib/index.ts';
 import { StatusCode } from '../../../shared/ui/kit/badge.tsx';
 import { Item } from '../../../shared/ui/kit/item.tsx';
-import { Method } from '../../../shared/ui/list-detail/index.ts';
+import { Method } from '../../../shared/ui/list-detail.tsx';
 import { ActionBadge } from './action-badge.tsx';
 
 export const RequestRow = memo(function RequestRow({

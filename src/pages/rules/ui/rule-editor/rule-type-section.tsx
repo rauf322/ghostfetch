@@ -1,6 +1,6 @@
 // "Rule type": response, redirect, headers or block, and what that type does.
-import { TYPES } from '../../../../entities/rule/index.ts';
-import type { Rule, RuleType } from '../../../../entities/rule/index.ts';
+import { TYPES } from '../../../../shared/api/index.ts';
+import type { Rule, RuleType } from '../../../../shared/api/index.ts';
 import { Card, CardHint, CardTitle } from '../../../../shared/ui/kit/card.tsx';
 import { Segmented, SegmentedItem } from '../../../../shared/ui/kit/segmented.tsx';
 import { editRule } from '../../model/edit-rule.ts';

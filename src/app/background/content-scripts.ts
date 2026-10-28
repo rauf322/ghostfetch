@@ -1,7 +1,7 @@
 // The sites you added get their content scripts registered at runtime, so they only ever run
 // on those sites; every other site never sees Ghostfetch. The files are the same two the
 // manifest declares for the built-in hosts.
-import { siteMatchPatterns } from '../../entities/site/index.ts';
+import { siteMatchPatterns } from '../../shared/api/index.ts';
 import type { StoredState } from './stored-state.ts';
 
 const SCRIPT_IDS = ['ghostfetch-interceptor', 'ghostfetch-bridge'];

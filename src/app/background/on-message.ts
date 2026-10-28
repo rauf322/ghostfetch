@@ -1,6 +1,6 @@
-// The messages the background answers (app/messaging): an iframe's traffic log entry, passed on to
+// The messages the background answers (shared/api): an iframe's traffic log entry, passed on to
 // its tab's top frame, and the popup's or the editor's request to sync at once.
-import type { RuntimeMessage } from '../messaging/messages.ts';
+import type { RuntimeMessage } from '../../shared/api/index.ts';
 import { scheduleSync } from './schedule-sync.ts';
 
 export function onMessage(

@@ -1,8 +1,7 @@
 // The requests the page makes, as entries for the tab's traffic log (sent with report()). Bodies
 // are kept as text only, none from event streams: a response's up to 1 MB, not read at all past
 // 5 MB by its Content-Length, and a request's up to 100 KB.
-import type { Rule } from '../../entities/rule/index.ts';
-import type { LogEntry } from '../../entities/traffic/index.ts';
+import type { LogEntry, Rule } from '../../shared/api/index.ts';
 import { report } from './page-channel.ts';
 import type { PageRequest, RuleResult } from './types.ts';
 

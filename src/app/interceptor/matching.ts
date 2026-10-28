@@ -1,6 +1,6 @@
 // Which response rule a request gets: the first whose method, URL pattern and (for GraphQL)
 // operation name match it. The URL patterns are made into tests once, as the rules arrive.
-import type { Rule } from '../../entities/rule/index.ts';
+import type { Rule } from '../../shared/api/index.ts';
 import type { Compiled, PageRequest, PageRules } from './types.ts';
 
 export function compile(rules: Rule[]) {

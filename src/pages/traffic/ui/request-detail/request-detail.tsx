@@ -2,11 +2,10 @@
 // what to do with it (Mock this response first), what's known about it, and its bodies.
 // Memoized on the entry, which never changes: a long body is only formatted once.
 import { memo, useMemo } from 'react';
-import type { Rule } from '../../../../entities/rule/index.ts';
-import type { LogEntry } from '../../../../entities/traffic/index.ts';
-import { formatJson } from '../../../../shared/lib/json/index.ts';
+import type { LogEntry, Rule } from '../../../../shared/api/index.ts';
+import { formatJson } from '../../../../shared/lib/index.ts';
 import { Alert } from '../../../../shared/ui/kit/alert.tsx';
-import { PaneScroll } from '../../../../shared/ui/list-detail/index.ts';
+import { PaneScroll } from '../../../../shared/ui/list-detail.tsx';
 import { RequestActions } from './request-actions.tsx';
 import { RequestBodies } from './request-bodies.tsx';
 import { RequestFacts } from './request-facts.tsx';

@@ -1,7 +1,7 @@
 // A check's result, like "Matches" or "Valid JSON": the green square when it passed, a cross when
 // it didn't, and neither for a plain note.
 import type { ComponentProps } from 'react';
-import { cn } from '../../../../shared/lib/class-names/index.ts';
+import { cn } from '../../../../shared/ui/cn.ts';
 
 export function Verdict({
   tone,

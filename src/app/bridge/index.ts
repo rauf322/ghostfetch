@@ -8,9 +8,10 @@ import type {
   LogEntry,
   LogPortMessage,
   LogViewerMessage,
-} from '../../entities/traffic/index.ts';
-import type { Untrusted } from '../../shared/lib/untrusted/index.ts';
-import type { PageState, RuntimeMessage } from '../messaging/messages.ts';
+  PageState,
+  RuntimeMessage,
+} from '../../shared/api/index.ts';
+import type { Untrusted } from '../../shared/lib/index.ts';
 
 export default defineUnlistedScript(() => {
   // Same two guards as the interceptor. The flag lives in the extension's isolated world, which

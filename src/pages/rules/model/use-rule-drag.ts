@@ -2,8 +2,8 @@
 // tried top to bottom and the first match wins.
 import { useState } from 'react';
 import type { DragEvent } from 'react';
-import { moveRule } from '../../../entities/rule/index.ts';
-import type { Rule } from '../../../entities/rule/index.ts';
+import { moveRule } from '../../../shared/api/index.ts';
+import type { Rule } from '../../../shared/api/index.ts';
 
 // A rule being dragged to a new place, and where it would land.
 interface Drag {

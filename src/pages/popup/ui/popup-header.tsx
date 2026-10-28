@@ -1,5 +1,5 @@
 // The popup's header: Ghostfetch's mark and name, and the master switch.
-import { MasterSwitch } from '../../../features/master-switch/index.ts';
+import { MasterSwitch } from '../../../shared/ui/master-switch.tsx';
 
 export function PopupHeader() {
   return (

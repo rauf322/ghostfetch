@@ -1,5 +1,5 @@
 // Badges and status codes, which say what they mean in words rather than colours.
-import { TYPES } from '../../../../entities/rule/index.ts';
+import { TYPES } from '../../../../shared/api/index.ts';
 import { Badge, StatusCode } from '../../../../shared/ui/kit/badge.tsx';
 import { Cell, Row } from '../cell.tsx';
 

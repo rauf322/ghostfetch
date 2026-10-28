@@ -41,7 +41,7 @@ const ICONS = {
 };
 
 // Ghostfetch always runs on localhost, *.localhost, 127.0.0.1 and hosts starting with "local."
-// (see src/entities/site/); these are their content scripts. The sites you add get the same two
+// (see src/shared/api/sites/); these are their content scripts. The sites you add get the same two
 // scripts registered at runtime by the background. Both are WXT "unlisted scripts" rather than
 // content script entrypoints, whose isolated-world wrapper announces itself to the page with a
 // postMessage and a DOM event.
@@ -66,7 +66,7 @@ export default defineConfig({
   // The code is laid out in Feature-Sliced Design's layers (README, "Files"), the app layer on top:
   // a folder for each part of the extension (the background, the two page scripts, the popup, the
   // side panel, the kit page), which is what WXT builds. WXT takes every app/<name>/index.* as an
-  // entrypoint, so the folders for anything else in app/ (styles/, messaging/) have no index file.
+  // entrypoint, so the folder for anything else in app/ (styles/) has no index file.
   entrypointsDir: 'app',
   // React for the .tsx files: the UI kit (src/shared/ui/kit/) and the pages built from it.
   modules: ['@wxt-dev/module-react'],

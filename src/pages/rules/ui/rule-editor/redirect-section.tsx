@@ -1,5 +1,5 @@
 // "Redirect to": where a redirect rule sends the requests it matches.
-import type { Rule } from '../../../../entities/rule/index.ts';
+import type { Rule } from '../../../../shared/api/index.ts';
 import { Card, CardHint, CardTitle } from '../../../../shared/ui/kit/card.tsx';
 import { Input } from '../../../../shared/ui/kit/input.tsx';
 import { editRule } from '../../model/edit-rule.ts';

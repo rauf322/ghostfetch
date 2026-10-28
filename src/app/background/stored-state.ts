@@ -1,8 +1,11 @@
 // Everything Ghostfetch keeps, as the background reads it: chrome.storage.local holds
 // { enabled, record, sites, rules, localHosts }.
-import { normalizeRule } from '../../entities/rule/index.ts';
-import type { Rule } from '../../entities/rule/index.ts';
-import { isLocalPrefixHost, normalizeSites } from '../../entities/site/index.ts';
+import {
+  isLocalPrefixHost,
+  normalizeRule,
+  normalizeSites,
+} from '../../shared/api/index.ts';
+import type { Rule } from '../../shared/api/index.ts';
 
 export interface StoredState {
   enabled: boolean;

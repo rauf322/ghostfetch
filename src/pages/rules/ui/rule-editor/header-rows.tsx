@@ -3,8 +3,8 @@
 // rule's headers.
 import { useRef } from 'react';
 import { flushSync } from 'react-dom';
-import type { HeaderRow, Rule } from '../../../../entities/rule/index.ts';
-import { cn } from '../../../../shared/lib/class-names/index.ts';
+import type { HeaderRow, Rule } from '../../../../shared/api/index.ts';
+import { cn } from '../../../../shared/ui/cn.ts';
 import { Button } from '../../../../shared/ui/kit/button.tsx';
 import { Icon } from '../../../../shared/ui/kit/icon.tsx';
 import { Input } from '../../../../shared/ui/kit/input.tsx';

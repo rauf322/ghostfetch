@@ -2,7 +2,7 @@
 // states, and the words that say what a live one last did. HOVER and FOCUS are the classes those
 // states add, given to a still copy so that a screenshot shows them.
 import type { ReactNode } from 'react';
-import { cn } from '../../../shared/lib/class-names/index.ts';
+import { cn } from '../../../shared/ui/cn.ts';
 import { Card, CardTitle } from '../../../shared/ui/kit/card.tsx';
 import { FieldLabel } from '../../../shared/ui/kit/label.tsx';
 

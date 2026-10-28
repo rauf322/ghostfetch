@@ -1,9 +1,9 @@
 // The bar across the top of an open request: back to the list (in a narrow panel), its method,
 // its path (the full URL as its title) and its status.
-import type { LogEntry } from '../../../../entities/traffic/index.ts';
-import { splitUrl } from '../../../../shared/lib/url/index.ts';
+import type { LogEntry } from '../../../../shared/api/index.ts';
+import { splitUrl } from '../../../../shared/lib/index.ts';
 import { StatusCode } from '../../../../shared/ui/kit/badge.tsx';
-import { BackButton, Method, PaneHead } from '../../../../shared/ui/list-detail/index.ts';
+import { BackButton, Method, PaneHead } from '../../../../shared/ui/list-detail.tsx';
 
 export function RequestHeader({
   entry,

@@ -1,8 +1,8 @@
 // What the rule editor says about what you typed: a regex that doesn't compile, whether a URL
 // matches the pattern, and whether a body is valid JSON.
-import { testUrl } from '../../../entities/rule/index.ts';
-import type { Rule } from '../../../entities/rule/index.ts';
-import { jsonProblem } from '../../../shared/lib/json/index.ts';
+import { testUrl } from '../../../shared/api/index.ts';
+import type { Rule } from '../../../shared/api/index.ts';
+import { jsonProblem } from '../../../shared/lib/index.ts';
 
 // A regex that doesn't compile, in the browser's words.
 export function regexError({ match }: Rule) {

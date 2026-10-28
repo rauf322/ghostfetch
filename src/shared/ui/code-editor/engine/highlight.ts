@@ -1,6 +1,6 @@
 // Syntax highlighting for the body editor and the read-only CodeView: JSON, or JavaScript for a
 // Script body, cut into pieces that each have a colour.
-import { escapeHtml } from '../../../lib/html/index.ts';
+import { escapeHtml } from '../../../lib/index.ts';
 
 export type Language = 'json' | 'js';
 // A token's colour (the tk-* classes in code-editor.css), or '' for the text between tokens.

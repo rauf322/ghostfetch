@@ -2,8 +2,8 @@
 // requests started by `initiators`, the hosts Ghostfetch runs on. Throws, in the words the editor
 // shows on the rule, when it can't be one yet: no URL pattern, no destination or one that isn't a
 // full URL, no headers.
-import { dnrUrlFilter } from '../../entities/rule/index.ts';
-import type { HeaderRow, Rule } from '../../entities/rule/index.ts';
+import { dnrUrlFilter } from '../../shared/api/index.ts';
+import type { HeaderRow, Rule } from '../../shared/api/index.ts';
 
 export type DnrRule = chrome.declarativeNetRequest.Rule;
 

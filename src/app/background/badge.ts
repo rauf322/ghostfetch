@@ -1,5 +1,5 @@
 // The toolbar badge: how many rules are on, or "off" while Ghostfetch is.
-import type { Rule } from '../../entities/rule/index.ts';
+import type { Rule } from '../../shared/api/index.ts';
 
 export function updateBadge(enabled: boolean, rules: Rule[]) {
   const count = rules.filter((rule) => rule.enabled).length;

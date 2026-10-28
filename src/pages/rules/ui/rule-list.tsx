@@ -1,9 +1,9 @@
 // The Rules tab's list: search and New rule along the top, how many rules are on, the rules in
 // their order (numbered by priority, even while a search hides some), and Import and Export along
 // the bottom.
-import { ruleStore } from '../../../entities/rule/index.ts';
-import type { RuleType } from '../../../entities/rule/index.ts';
-import { useStore } from '../../../shared/lib/react/index.ts';
+import { ruleStore } from '../../../shared/api/index.ts';
+import type { RuleType } from '../../../shared/api/index.ts';
+import { useStore } from '../../../shared/react/index.ts';
 import { Button } from '../../../shared/ui/kit/button.tsx';
 import { Icon } from '../../../shared/ui/kit/icon.tsx';
 import { Label } from '../../../shared/ui/kit/label.tsx';
@@ -15,7 +15,7 @@ import {
   PaneToolbar,
   SearchField,
   SectionRow,
-} from '../../../shared/ui/list-detail/index.ts';
+} from '../../../shared/ui/list-detail.tsx';
 import { filterRules } from '../lib/filter-rules.ts';
 import { useRuleDrag } from '../model/use-rule-drag.ts';
 import { NewRuleMenu } from './new-rule-menu.tsx';

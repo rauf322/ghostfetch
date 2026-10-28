@@ -2,7 +2,7 @@ import { Input as InputPrimitive } from '@base-ui/react/input';
 import { cva } from 'class-variance-authority';
 import type { VariantProps } from 'class-variance-authority';
 import type { ComponentProps } from 'react';
-import { cn } from '../../lib/class-names/index.ts';
+import { cn } from '../cn.ts';
 
 // Institute's text field: a hairline box whose border turns white while it's focused. "bare" fills
 // a cell of a bar with no box of its own, like the search field and the rule's title, and is

@@ -1,10 +1,10 @@
 // The bar under the log, a row of cells: Rec (record requests), Preserve (keep them when the page
 // reloads), Matched (only the requests a rule matched) and Clear.
-import { setFlag } from '../../../entities/settings/index.ts';
+import { setFlag } from '../../../shared/api/index.ts';
 import { Button } from '../../../shared/ui/kit/button.tsx';
 import { Icon } from '../../../shared/ui/kit/icon.tsx';
 import { Toggle } from '../../../shared/ui/kit/toggle.tsx';
-import { PaneFooter } from '../../../shared/ui/list-detail/index.ts';
+import { PaneFooter } from '../../../shared/ui/list-detail.tsx';
 
 export function TrafficFooter({
   record,

@@ -1,5 +1,5 @@
 import type { ComponentProps, ReactNode } from 'react';
-import { cn } from '../../lib/class-names/index.ts';
+import { cn } from '../cn.ts';
 
 // The rule editor's sections: full-width bands separated by hairlines, each with a title bar
 // numbered like the site's chapters, "02 — Match requests".

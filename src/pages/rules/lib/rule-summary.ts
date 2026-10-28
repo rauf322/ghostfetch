@@ -1,7 +1,7 @@
 // What a rule in the list says it does, after its type: where it redirects, how many headers it
 // sets, or its body mode, status and delay.
-import { BODY_MODES } from '../../../entities/rule/index.ts';
-import type { Rule } from '../../../entities/rule/index.ts';
+import { BODY_MODES } from '../../../shared/api/index.ts';
+import type { Rule } from '../../../shared/api/index.ts';
 
 export function ruleSummary(rule: Rule) {
   if (rule.type === 'redirect') return `→ ${rule.redirect.to || 'no destination yet'}`;

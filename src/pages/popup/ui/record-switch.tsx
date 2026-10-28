@@ -1,6 +1,6 @@
 // Whether requests are recorded for the Traffic tab.
-import { setFlag } from '../../../entities/settings/index.ts';
-import { cn } from '../../../shared/lib/class-names/index.ts';
+import { setFlag } from '../../../shared/api/index.ts';
+import { cn } from '../../../shared/ui/cn.ts';
 import { Switch } from '../../../shared/ui/kit/switch.tsx';
 
 export function RecordSwitch({ record, dimmed }: { record: boolean; dimmed: boolean }) {

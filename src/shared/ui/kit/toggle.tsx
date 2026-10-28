@@ -1,7 +1,7 @@
 import { Toggle as TogglePrimitive } from '@base-ui/react/toggle';
 import { cva } from 'class-variance-authority';
 import type { VariantProps } from 'class-variance-authority';
-import { cn } from '../../lib/class-names/index.ts';
+import { cn } from '../cn.ts';
 
 // Buttons that stay pressed: a small square, hollow when off and the green square when on, as for
 // Rec, Preserve, Matched and Vim. The "segment" look is for the options of a ToggleGroup.

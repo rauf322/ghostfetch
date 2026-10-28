@@ -7,7 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../../../shared/ui/kit/select.tsx';
-import { PaneToolbar } from '../../../shared/ui/list-detail/index.ts';
+import { PaneToolbar } from '../../../shared/ui/list-detail.tsx';
 import type { TrafficTab } from '../model/traffic-log.ts';
 
 export function TabPicker({

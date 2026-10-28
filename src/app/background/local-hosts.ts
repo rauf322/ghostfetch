@@ -2,7 +2,7 @@
 // hosts can't be listed up front the way localhost can. Each one is remembered the first time
 // a tab opens it and added to the rules' initiators, which means requests made during that
 // very first load can miss redirect, header and block rules. Response rules aren't affected.
-import { isLocalPrefixHost, siteOf } from '../../entities/site/index.ts';
+import { isLocalPrefixHost, siteOf } from '../../shared/api/index.ts';
 import { loadState } from './stored-state.ts';
 
 const MAX_LOCAL_HOSTS = 50;

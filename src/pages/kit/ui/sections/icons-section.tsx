@@ -1,11 +1,16 @@
 // Every icon with its name: the same shapes the body editor's find bar draws from
-// src/shared/lib/icons, which test/kit.mjs checks.
+// src/shared/lib/icons.ts, which test/kit.mjs checks.
 import { ICON_NAMES, Icon } from '../../../../shared/ui/kit/icon.tsx';
 import { Cell } from '../cell.tsx';
 
 export function IconsSection({ index }: { index: number }) {
   return (
-    <Cell index={index} title="Icons" note="the same shapes as src/shared/lib/icons" wide>
+    <Cell
+      index={index}
+      title="Icons"
+      note="the same shapes as src/shared/lib/icons.ts"
+      wide
+    >
       <div
         data-testid="kit-icons"
         className="grid grid-cols-10 border-t border-l border-border"

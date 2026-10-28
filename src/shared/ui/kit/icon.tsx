@@ -1,8 +1,8 @@
-// Ghostfetch's icons as React elements: the same 24×24 shapes as shared/lib/icons (which the body
-// editor's find bar draws from HTML strings), stroked with currentColor. test/kit.mjs checks that
-// the two draw the same.
+// Ghostfetch's icons as React elements: the same 24×24 shapes as shared/lib/icons.ts (which the
+// body editor's find bar draws from HTML strings), stroked with currentColor. test/kit.mjs checks
+// that the two draw the same.
 import type { SVGProps } from 'react';
-import { cn } from '../../lib/class-names/index.ts';
+import { cn } from '../cn.ts';
 
 const SHAPES = {
   back: <path d="M15 18l-6-6 6-6" />,

@@ -1,6 +1,6 @@
 // "Status, delay and headers" for a response rule: the status code (typed or picked from the
 // common ones), the delay, the Content-Type for a body it replaces, and headers to set or remove.
-import type { Rule } from '../../../../entities/rule/index.ts';
+import type { Rule } from '../../../../shared/api/index.ts';
 import { Card, CardTitle } from '../../../../shared/ui/kit/card.tsx';
 import { Input } from '../../../../shared/ui/kit/input.tsx';
 import { FieldLabel } from '../../../../shared/ui/kit/label.tsx';

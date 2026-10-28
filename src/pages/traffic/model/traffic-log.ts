@@ -6,7 +6,7 @@ import type {
   LogEntry,
   LogPortMessage,
   LogViewerMessage,
-} from '../../../entities/traffic/index.ts';
+} from '../../../shared/api/index.ts';
 
 const MAX_ENTRIES = 500;
 

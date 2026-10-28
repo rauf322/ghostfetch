@@ -1,11 +1,11 @@
 // "Status, delay and headers" for a response rule: the status code (typed or picked from the
 // common ones), the delay, the Content-Type for a body it replaces, and headers to set or remove.
-import type { Rule } from '../../../../entities/rule/index.ts';
+import { editRule } from '../../../../shared/api/index.ts';
+import type { Rule } from '../../../../shared/api/index.ts';
 import { Card, CardTitle } from '../../../../shared/ui/kit/card.tsx';
 import { Input } from '../../../../shared/ui/kit/input.tsx';
 import { FieldLabel } from '../../../../shared/ui/kit/label.tsx';
 import { ToggleGroup, ToggleGroupItem } from '../../../../shared/ui/kit/toggle-group.tsx';
-import { editRule } from '../../model/edit-rule.ts';
 import { HeaderRows } from './header-rows.tsx';
 
 const STATUS_PRESETS = [200, 201, 204, 400, 401, 403, 404, 409, 422, 429, 500, 503];

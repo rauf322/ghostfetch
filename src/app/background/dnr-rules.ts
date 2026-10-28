@@ -3,7 +3,7 @@
 // with the rules that are on, keeps in session storage why the browser rejected any (dnrErrors,
 // which the editor shows on the rule) and which rule each came from (dnrMap, for the hits in the
 // Traffic log), then updates the toolbar badge.
-import { BUILT_IN_SITES } from '../../entities/site/index.ts';
+import { BUILT_IN_SITES } from '../../shared/api/index.ts';
 import { updateBadge } from './badge.ts';
 import type { StoredState } from './stored-state.ts';
 import { toDnrRule } from './to-dnr-rule.ts';

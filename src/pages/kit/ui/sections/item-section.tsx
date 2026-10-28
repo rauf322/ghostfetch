@@ -1,6 +1,6 @@
 // Items: rows of rules and of requests, as the two lists show them, one of each selected.
-import { TYPES } from '../../../../entities/rule/index.ts';
-import type { RuleType } from '../../../../entities/rule/index.ts';
+import { TYPES } from '../../../../shared/api/index.ts';
+import type { RuleType } from '../../../../shared/api/index.ts';
 import { Badge, StatusCode } from '../../../../shared/ui/kit/badge.tsx';
 import {
   Item,

@@ -6,7 +6,7 @@ import http from 'node:http';
 import { stripTypeScriptTypes } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createRule } from '../src/entities/rule/index.ts';
+import { createRule } from '../src/shared/api/index.ts';
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 // The built extension under test; `npm test` and `npm run test:firefox` build it first.

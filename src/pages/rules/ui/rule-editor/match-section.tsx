@@ -1,8 +1,13 @@
 // "Match requests": the method, how the URL is compared and the pattern, a GraphQL operation for
 // response rules, and a field to try the pattern on a URL.
 import { useEffect, useRef, useState } from 'react';
-import { MATCH_HINTS, MATCH_MODES, METHODS } from '../../../../entities/rule/index.ts';
-import type { MatchMode, Method, Rule } from '../../../../entities/rule/index.ts';
+import {
+  MATCH_HINTS,
+  MATCH_MODES,
+  METHODS,
+  editRule,
+} from '../../../../shared/api/index.ts';
+import type { MatchMode, Method, Rule } from '../../../../shared/api/index.ts';
 import { Card, CardHint, CardTitle } from '../../../../shared/ui/kit/card.tsx';
 import { Input } from '../../../../shared/ui/kit/input.tsx';
 import { FieldLabel } from '../../../../shared/ui/kit/label.tsx';
@@ -14,7 +19,6 @@ import {
   SelectValue,
 } from '../../../../shared/ui/kit/select.tsx';
 import { regexError, testResult } from '../../lib/rule-checks.ts';
-import { editRule } from '../../model/edit-rule.ts';
 import { Verdict } from './verdict.tsx';
 
 const METHOD_ITEMS = METHODS.map((method) => ({

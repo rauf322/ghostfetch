@@ -1,7 +1,7 @@
 // Segmented controls (one answer always) and a toggle group of chips that clear, both live.
 import { useState } from 'react';
-import { BODY_MODES, TYPES } from '../../../../entities/rule/index.ts';
-import type { RuleType } from '../../../../entities/rule/index.ts';
+import { BODY_MODES, TYPES } from '../../../../shared/api/index.ts';
+import type { RuleType } from '../../../../shared/api/index.ts';
 import { Segmented, SegmentedItem } from '../../../../shared/ui/kit/segmented.tsx';
 import { ToggleGroup, ToggleGroupItem } from '../../../../shared/ui/kit/toggle-group.tsx';
 import { Cell, Output, Row } from '../cell.tsx';

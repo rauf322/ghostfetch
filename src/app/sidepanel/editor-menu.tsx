@@ -1,7 +1,6 @@
 // The editor's ⋯ menu: import and export rules, and move the editor between a tab of its own and
 // the side panel.
-import { openInSidePanel, openInTab } from '../../features/open-editor/index.ts';
-import { exportRules } from '../../features/rules-transfer/index.ts';
+import { openInSidePanel, openInTab } from '../../shared/api/index.ts';
 import { Button } from '../../shared/ui/kit/button.tsx';
 import {
   DropdownMenu,
@@ -10,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from '../../shared/ui/kit/dropdown-menu.tsx';
 import { Icon } from '../../shared/ui/kit/icon.tsx';
+import { exportRules } from '../../shared/ui/rules-file.tsx';
 
 export function EditorMenu({
   inTab,

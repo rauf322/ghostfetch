@@ -1,7 +1,7 @@
 // The New rule button and its menu of the four rule types.
 import { useRef } from 'react';
-import { TYPES } from '../../../entities/rule/index.ts';
-import type { RuleType } from '../../../entities/rule/index.ts';
+import { TYPES } from '../../../shared/api/index.ts';
+import type { RuleType } from '../../../shared/api/index.ts';
 import { Button } from '../../../shared/ui/kit/button.tsx';
 import {
   DropdownMenu,

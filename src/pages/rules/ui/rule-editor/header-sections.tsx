@@ -1,9 +1,9 @@
 // A headers rule's two sections: the request headers it sets or removes, and the response headers,
 // with a shortcut that adds the usual CORS ones.
-import type { HeaderRow, Rule } from '../../../../entities/rule/index.ts';
+import { editRule } from '../../../../shared/api/index.ts';
+import type { HeaderRow, Rule } from '../../../../shared/api/index.ts';
 import { Button } from '../../../../shared/ui/kit/button.tsx';
 import { Card, CardHint, CardTitle } from '../../../../shared/ui/kit/card.tsx';
-import { editRule } from '../../model/edit-rule.ts';
 import { HeaderRows } from './header-rows.tsx';
 
 const CORS_HEADERS: HeaderRow[] = [

@@ -16,7 +16,7 @@ import {
   isSiteEnabled,
   normalizeSites,
   siteMatchPatterns,
-} from '../src/entities/site/index.ts';
+} from '../src/shared/api/index.ts';
 import {
   CHROME_BUILD,
   VIM_START,

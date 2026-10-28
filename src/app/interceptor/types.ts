@@ -1,7 +1,6 @@
 // What the interceptor's parts pass each other: a request as the rules see it, what a matched rule
 // gives the page, the rules as the bridge sent them, and what it keeps on an XMLHttpRequest.
-import type { Rule } from '../../entities/rule/index.ts';
-import type { EntryAction } from '../../entities/traffic/index.ts';
+import type { EntryAction, Rule } from '../../shared/api/index.ts';
 
 // A request as the rules see it.
 export interface PageRequest {

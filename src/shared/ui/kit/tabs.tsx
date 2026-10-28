@@ -1,6 +1,6 @@
 import { Tabs as TabsPrimitive } from '@base-ui/react/tabs';
 import type { ComponentProps } from 'react';
-import { cn } from '../../lib/class-names/index.ts';
+import { cn } from '../cn.ts';
 
 // The top bar's tabs: cells divided by hairlines, the active one underlined in white. A count next
 // to the label dims with its tab. Base UI does the keyboard: the arrow keys move between tabs,

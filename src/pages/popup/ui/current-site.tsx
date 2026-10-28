@@ -1,8 +1,13 @@
 // The site of the tab the popup opened on: whether Ghostfetch runs there and why, and a switch that
 // turns it on or off there. Nothing for a page that isn't a website.
-import { isBuiltInHost, isSiteEnabled, siteOf } from '../../../entities/site/index.ts';
-import { turnOffFor, turnOnFor } from '../../../features/site-switch/index.ts';
-import { cn } from '../../../shared/lib/class-names/index.ts';
+import {
+  isBuiltInHost,
+  isSiteEnabled,
+  siteOf,
+  turnOffFor,
+  turnOnFor,
+} from '../../../shared/api/index.ts';
+import { cn } from '../../../shared/ui/cn.ts';
 import { Label } from '../../../shared/ui/kit/label.tsx';
 import { Switch } from '../../../shared/ui/kit/switch.tsx';
 

@@ -2,8 +2,12 @@
 // web page open, that Ghostfetch is off on the page's site (with a button that turns it on), that
 // it isn't running in the tab yet (with one that reloads the page), or that recording is off.
 import type { ReactNode } from 'react';
-import { isSiteEnabled, normalizeSite, siteOf } from '../../../entities/site/index.ts';
-import { turnOnFor } from '../../../features/site-switch/index.ts';
+import {
+  isSiteEnabled,
+  normalizeSite,
+  siteOf,
+  turnOnFor,
+} from '../../../shared/api/index.ts';
 import { Alert } from '../../../shared/ui/kit/alert.tsx';
 import { Button } from '../../../shared/ui/kit/button.tsx';
 import type { TrafficSnapshot } from '../model/traffic-log.ts';

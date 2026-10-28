@@ -3,7 +3,7 @@
 // Cmd/Ctrl+F inside it opens its own find bar (find-bar.ts) instead of the browser's, which would
 // search the whole page. With the Vim switch on, vim.ts handles its keys. Its look is
 // code-editor.css; the React screens use it through ../code-editor.tsx.
-import { icon } from '../../../lib/icons/index.ts';
+import { icon } from '../../../lib/index.ts';
 import { createVim, rememberVim, vimPreferred } from '../vim/vim.ts';
 import { createFindBar } from './find-bar.ts';
 import { highlight } from './highlight.ts';

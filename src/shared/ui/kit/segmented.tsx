@@ -1,6 +1,6 @@
 import { Radio } from '@base-ui/react/radio';
 import { RadioGroup } from '@base-ui/react/radio-group';
-import { cn } from '../../lib/class-names/index.ts';
+import { cn } from '../cn.ts';
 
 // The segmented control: options side by side in one hairline box, the chosen one inverted white.
 // A radio group: one option is always chosen, the arrow keys move between options and choose as

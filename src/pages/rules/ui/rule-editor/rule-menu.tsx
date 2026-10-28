@@ -5,9 +5,8 @@ import {
   removeRule,
   ruleStore,
   ruleTitle,
-} from '../../../../entities/rule/index.ts';
-import type { Rule } from '../../../../entities/rule/index.ts';
-import { exportRule } from '../../../../features/rules-transfer/index.ts';
+} from '../../../../shared/api/index.ts';
+import type { Rule } from '../../../../shared/api/index.ts';
 import { Button } from '../../../../shared/ui/kit/button.tsx';
 import {
   DropdownMenu,
@@ -17,6 +16,7 @@ import {
 } from '../../../../shared/ui/kit/dropdown-menu.tsx';
 import { Icon } from '../../../../shared/ui/kit/icon.tsx';
 import { notify } from '../../../../shared/ui/kit/toast.tsx';
+import { exportRule } from '../../../../shared/ui/rules-file.tsx';
 
 export function RuleMenu({
   rule,

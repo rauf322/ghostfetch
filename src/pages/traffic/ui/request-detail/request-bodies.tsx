@@ -1,6 +1,6 @@
 // An open request's bodies in the body editor's colours: the response (or why there isn't one),
 // and the request's own if it sent one.
-import type { LogEntry } from '../../../../entities/traffic/index.ts';
+import type { LogEntry } from '../../../../shared/api/index.ts';
 import { CodeView } from '../../../../shared/ui/code-editor/index.ts';
 import { Card, CardHint, CardTitle } from '../../../../shared/ui/kit/card.tsx';
 

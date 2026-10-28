@@ -1,13 +1,13 @@
 // What the Rules tab shows with nothing to edit: in the list (a narrow panel, where the editor's
 // side is hidden) when there are no rules yet, and in the editor's place when none is open.
-import type { RuleType } from '../../../entities/rule/index.ts';
+import type { RuleType } from '../../../shared/api/index.ts';
 import {
   Empty,
   EmptyDescription,
   EmptyMedia,
   EmptyTitle,
 } from '../../../shared/ui/kit/empty.tsx';
-import { ListEmpty } from '../../../shared/ui/list-detail/index.ts';
+import { ListEmpty } from '../../../shared/ui/list-detail.tsx';
 import { RuleTypeCards } from './rule-type-option.tsx';
 
 export function NoRulesYet({ onPick }: { onPick: (type: RuleType) => void }) {

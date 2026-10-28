@@ -1,9 +1,9 @@
 // The four rule types to pick from: as one option (its badge, its name and what it does) in the
 // New rule menu, and as a column of buttons where there are no rules (yet) to show.
 import type { ComponentProps } from 'react';
-import { TYPES } from '../../../entities/rule/index.ts';
-import type { RuleType } from '../../../entities/rule/index.ts';
-import { cn } from '../../../shared/lib/class-names/index.ts';
+import { TYPES } from '../../../shared/api/index.ts';
+import type { RuleType } from '../../../shared/api/index.ts';
+import { cn } from '../../../shared/ui/cn.ts';
 import { Badge } from '../../../shared/ui/kit/badge.tsx';
 
 export function RuleTypeOption({ type }: { type: RuleType }) {

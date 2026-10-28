@@ -2,7 +2,7 @@
 // page, marks every match on a layer under the highlighted text, and steps through them. With
 // the Vim switch on it's also vim's "/" and "?" search line, and findFrom() finds the matches for
 // n, N, * and #. Its elements are in the editor's markup (code-editor.ts).
-import { escapeHtml } from '../../../lib/html/index.ts';
+import { escapeHtml } from '../../../lib/index.ts';
 import type { SearchLine } from '../vim/types.ts';
 import type { createVim } from '../vim/vim.ts';
 

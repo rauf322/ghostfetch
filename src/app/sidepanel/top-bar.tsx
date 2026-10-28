@@ -1,10 +1,9 @@
 // The editor's top bar, a row of cells like the site's header: Ghostfetch's name, the Rules and
 // Traffic tabs with their counts, the master switch and the ⋯ menu.
-import { ruleStore } from '../../entities/rule/index.ts';
-import { settingsStore } from '../../entities/settings/index.ts';
-import { MasterSwitch } from '../../features/master-switch/index.ts';
-import { useStore } from '../../shared/lib/react/index.ts';
+import { ruleStore, settingsStore } from '../../shared/api/index.ts';
+import { useStore } from '../../shared/react/index.ts';
 import { TabsCount, TabsList, TabsTrigger } from '../../shared/ui/kit/tabs.tsx';
+import { MasterSwitch } from '../../shared/ui/master-switch.tsx';
 import { EditorMenu } from './editor-menu.tsx';
 
 // Tab counts are zero-padded, like the rule numbers: "Rules 08".

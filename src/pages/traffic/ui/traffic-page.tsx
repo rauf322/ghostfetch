@@ -1,8 +1,8 @@
 // Traffic tab: live log of the fetch/XHR calls in a tab, with a detail pane and
 // "Mock this response", which turns a captured response into an editable rule.
 import { memo, useCallback, useEffect, useState } from 'react';
-import type { Rule } from '../../../entities/rule/index.ts';
-import { DetailPane, Split } from '../../../shared/ui/list-detail/index.ts';
+import type { Rule } from '../../../shared/api/index.ts';
+import { DetailPane, Split } from '../../../shared/ui/list-detail.tsx';
 import { useTrafficLog } from '../model/use-traffic-log.ts';
 import { NoRequestSelected } from './no-request.tsx';
 import { RequestDetail } from './request-detail/request-detail.tsx';

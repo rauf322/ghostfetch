@@ -1,6 +1,6 @@
 import { Toggle as TogglePrimitive } from '@base-ui/react/toggle';
 import { ToggleGroup as ToggleGroupPrimitive } from '@base-ui/react/toggle-group';
-import { cn } from '../../lib/class-names/index.ts';
+import { cn } from '../cn.ts';
 import { toggleVariants } from './toggle.tsx';
 
 // Toggle buttons that share one value, like the status code chips: the chosen one is inverted

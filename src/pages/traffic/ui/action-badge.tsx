@@ -1,5 +1,5 @@
 // What a rule did to a request: the green square and a word, or an inverted "Rule error".
-import type { LogEntry } from '../../../entities/traffic/index.ts';
+import type { LogEntry } from '../../../shared/api/index.ts';
 import { Badge } from '../../../shared/ui/kit/badge.tsx';
 
 const ACTION_LABELS: Record<string, string> = {

@@ -5,7 +5,7 @@
 // This script runs before any page script, so these are still the browser's own functions.
 // The channel handoff below only ever calls these copies, never a property looked up later,
 // so a page that patches MessageEvent, EventTarget or MessagePort can't intercept it.
-import type { LogEntry } from '../../entities/traffic/index.ts';
+import type { LogEntry } from '../../shared/api/index.ts';
 import { compile } from './matching.ts';
 import type { PageRules } from './types.ts';
 

@@ -1,12 +1,11 @@
 // One rule's settings, in numbered sections like the site's chapters ("02 — Match requests"):
 // the rule type and what it matches for every rule, then what its type does. Every change is
 // saved as you make it (editRule) and applies to open tabs right away.
-import { ruleStore } from '../../../../entities/rule/index.ts';
-import type { Rule } from '../../../../entities/rule/index.ts';
-import { settingsStore } from '../../../../entities/settings/index.ts';
-import { useStore } from '../../../../shared/lib/react/index.ts';
+import { ruleStore, settingsStore } from '../../../../shared/api/index.ts';
+import type { Rule } from '../../../../shared/api/index.ts';
+import { useStore } from '../../../../shared/react/index.ts';
 import { Alert } from '../../../../shared/ui/kit/alert.tsx';
-import { PaneScroll } from '../../../../shared/ui/list-detail/index.ts';
+import { PaneScroll } from '../../../../shared/ui/list-detail.tsx';
 import { BlockSection } from './block-section.tsx';
 import { BodySection } from './body-section.tsx';
 import { HeaderSections } from './header-sections.tsx';

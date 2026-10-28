@@ -1,8 +1,8 @@
 // The sites Ghostfetch runs on, as a ticker line: the built-in hosts, then the sites you added,
 // each with a × that turns Ghostfetch off there.
 import { Fragment } from 'react';
+import { removeSite } from '../../../shared/api/index.ts';
 import { Label } from '../../../shared/ui/kit/label.tsx';
-import { removeSite } from '../model/remove-site.ts';
 
 export function SiteList({
   sites,

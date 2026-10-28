@@ -1,7 +1,7 @@
 import { cva } from 'class-variance-authority';
 import type { VariantProps } from 'class-variance-authority';
 import type { ComponentProps } from 'react';
-import { cn } from '../../lib/class-names/index.ts';
+import { cn } from '../cn.ts';
 
 // Banners: a notice, an error, and the bar that says Ghostfetch is off. An error gets a white
 // border and an inverted "Error" label instead of red, and is announced at once (role="alert"); the

@@ -7,144 +7,96 @@ import { defineConfig } from 'oxlint';
 
 const rootPath = fileURLToPath(new URL('.', import.meta.url));
 
-// The layers, from the top: app, pages, features, entities, shared. A slice (a folder in pages,
-// features or entities) is used through its index.ts; a group of shared/ui or shared/lib through
-// its index.ts, except the kit, which has a public file per component. The body editor's engine/
-// and vim/ are plain TypeScript the Zen test serves straight from src/: they import only .ts files
-// by relative path and no npm package.
+// The layers, from the top: app, pages, shared (Feature-Sliced Design's "pages first", as in
+// bst-admin). A page is used through its index.ts. shared has segments instead of slices: api,
+// lib, react and ui. api, lib and react are each used through their index.ts; shared/ui has a
+// public file per component, so a screen bundles only what it shows, and the body editor
+// (code-editor/) is used through its index.ts. The editor's engine/ and vim/ are plain TypeScript
+// the Zen test serves straight from src/: they import only .ts files by relative path, and no npm
+// package. The first descriptor a file matches decides what it is.
 const elements = [
-  { type: 'kit', pattern: 'src/shared/ui/kit', partialMatch: false },
   {
     type: 'editor-engine',
     pattern: ['src/shared/ui/code-editor/engine', 'src/shared/ui/code-editor/vim'],
     partialMatch: false,
   },
-  {
-    type: 'shared',
-    pattern: 'src/shared/*/*',
-    capture: ['segment', 'group'],
-    partialMatch: false,
-  },
-  {
-    type: 'entities',
-    pattern: 'src/entities/*',
-    capture: ['slice'],
-    partialMatch: false,
-  },
-  {
-    type: 'features',
-    pattern: 'src/features/*',
-    capture: ['slice'],
-    partialMatch: false,
-  },
+  { type: 'code-editor', pattern: 'src/shared/ui/code-editor', partialMatch: false },
+  { type: 'shared', pattern: 'src/shared/*', capture: ['segment'], partialMatch: false },
   { type: 'pages', pattern: 'src/pages/*', capture: ['slice'], partialMatch: false },
   { type: 'app', pattern: 'src/app/*', capture: ['part'], partialMatch: false },
 ];
 
 const type = (...types: string[]) => ({ element: { type: types } });
-const sameSlice = (layer: string) => ({
-  element: { type: layer, captured: { slice: '{{ from.element.captured.slice }}' } },
+const segment = (...segments: string[]) => ({
+  element: { type: 'shared', captured: { segment: segments } },
 });
+const samePage = {
+  element: { type: 'pages', captured: { slice: '{{ from.element.captured.slice }}' } },
+};
 const packages = { module: { origin: ['external', 'core'] } };
-// What runs outside the extension's pages: no React, no kit, no npm package but WXT's helpers.
+// What runs outside the extension's pages: no React, no UI, no npm package but WXT's helpers.
 const notUi = {
-  element: {
-    type: 'app',
-    captured: { part: ['background', 'interceptor', 'bridge', 'messaging'] },
-  },
-};
-const uiLibs = {
-  element: {
-    type: 'shared',
-    captured: { segment: 'lib', group: ['react', 'class-names'] },
-  },
-};
-const codeEditor = {
-  element: { type: 'shared', captured: { segment: 'ui', group: 'code-editor' } },
+  element: { type: 'app', captured: { part: ['background', 'interceptor', 'bridge'] } },
 };
 
 // Processed in order; the last policy matching an import decides.
 const policies = [
-  // The layers: each imports from its own layer's folder or the layers below, and a slice from
-  // another slice of its own layer never.
+  // The layers: app imports anything; a page its own folder and shared, never another page;
+  // shared only shared.
   { from: type('app'), allow: { to: [type('*'), packages] } },
   {
     from: type('pages'),
-    allow: {
-      to: [sameSlice('pages'), type('features', 'entities', 'shared', 'kit'), packages],
-    },
+    allow: { to: [samePage, type('shared', 'code-editor'), packages] },
   },
   {
-    from: type('features'),
-    allow: { to: [sameSlice('features'), type('entities', 'shared', 'kit'), packages] },
+    from: type('shared', 'code-editor'),
+    allow: { to: [type('shared', 'code-editor'), packages] },
   },
-  { from: type('entities'), allow: { to: [sameSlice('entities'), type('shared')] } },
-  { from: type('shared'), allow: { to: type('shared', 'kit') } },
-  { from: type('kit'), allow: { to: [type('kit', 'shared'), packages] } },
-  { from: type('editor-engine'), allow: { to: type('editor-engine', 'shared') } },
-  // npm packages in shared: shared/ui, and the two libraries about React and the kit's classes.
+  // shared/lib imports nothing else, and shared/api only shared/lib: no React, no UI and no npm
+  // package, so what the background and the page scripts reach through them is free of all three.
   {
-    from: { element: { type: 'shared', captured: { segment: 'ui' } } },
-    allow: { to: packages },
+    from: segment('api', 'lib'),
+    disallow: { to: [type('*'), packages] },
+    message:
+      'shared/api and shared/lib are plain TypeScript: shared/api imports shared/lib only.',
   },
-  { from: uiLibs, allow: { to: packages } },
-  // The background and the page scripts: the entities, the non-UI parts of shared/lib, and WXT.
+  { from: segment('api'), allow: { to: segment('lib') } },
+  // The background and the page scripts: shared/api, shared/lib and WXT's helpers.
   { from: notUi, disallow: { to: [type('*'), packages] } },
   {
     from: notUi,
     allow: {
-      to: [
-        notUi,
-        type('entities'),
-        {
-          element: {
-            type: 'shared',
-            captured: { segment: 'lib', group: '!(react|class-names)' },
-          },
-        },
-        { module: { origin: 'external', source: 'wxt' } },
-      ],
+      to: [segment('api', 'lib'), { module: { origin: 'external', source: 'wxt' } }],
     },
   },
-  // The public APIs. (A pattern like `!(index.ts|index.tsx)` would miss the files in a slice's
+  // The public APIs. (A pattern like `!(index.ts|index.tsx)` would miss the files in a page's
   // folders, as an extglob doesn't match across a slash; `!index.{ts,tsx}` negates the whole.)
+  {
+    to: { element: { type: 'pages', fileInternalPath: '!index.{ts,tsx}' } },
+    disallow: { from: type('*') },
+    message: 'A page is used through its index.ts.',
+  },
   {
     to: {
       element: {
-        type: ['pages', 'features', 'entities'],
-        fileInternalPath: '!index.{ts,tsx}',
+        type: 'shared',
+        captured: { segment: ['api', 'lib', 'react'] },
+        fileInternalPath: '!index.ts',
       },
     },
     disallow: { from: type('*') },
-    message: 'A slice is used through its index.ts.',
+    message: 'shared/api, shared/lib and shared/react are used through their index.ts.',
   },
   {
-    from: type('entities'),
-    allow: {
-      to: {
-        element: {
-          type: 'entities',
-          fileInternalPath: '@x/{{ from.element.captured.slice }}.ts',
-        },
-      },
-    },
-  },
-  {
-    to: { element: { type: 'shared', fileInternalPath: '!index.ts' } },
+    to: { element: { type: 'code-editor', fileInternalPath: '!index.ts' } },
     disallow: { from: type('*') },
-    message: 'A folder of shared/ui or shared/lib is used through its index.ts.',
+    message: 'The body editor is used through shared/ui/code-editor/index.ts.',
   },
+  // The body editor's engine: only the editor reaches it, and it imports its own .ts files and
+  // shared/lib.
   { to: type('editor-engine'), disallow: { from: type('*') } },
-  {
-    from: [codeEditor, type('editor-engine')],
-    allow: { to: type('editor-engine') },
-  },
-  // No UI in the entities; only .ts files in the body editor's engine.
-  {
-    from: type('entities'),
-    disallow: { to: { file: { path: '**/*.tsx' } } },
-    message: 'The entities have no UI (.tsx).',
-  },
+  { from: type('code-editor', 'editor-engine'), allow: { to: type('editor-engine') } },
+  { from: type('editor-engine'), allow: { to: segment('lib') } },
   {
     from: type('editor-engine'),
     disallow: { to: { module: { origin: 'local' }, file: { path: '!**/*.ts' } } },

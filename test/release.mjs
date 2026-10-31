@@ -88,8 +88,9 @@ function zipEntries(file) {
   }
   return names.filter((name) => !name.endsWith('/')).toSorted();
 }
+// The packages `npm run zip` made (zip in wxt.config.ts).
 const artifact = (suffix) =>
-  path.join(ROOT, '.output', `ghostfetch-${version}-${suffix}`);
+  path.join(ROOT, 'web-ext-artifacts', `ghostfetch-${version}-${suffix}`);
 
 console.log('manifests');
 for (const browser of ['chrome', 'firefox']) {

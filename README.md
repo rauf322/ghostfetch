@@ -45,7 +45,7 @@ In Zen and Firefox nothing changes: the add-on ID stays `@ghostfetch`, and so do
 ### Zen, Firefox and other Firefox-based browsers (140 or later)
 
 Firefox-based browsers can't load a folder the way Chrome does, and they only keep add-ons
-that are signed. `npm run zip` builds the add-on into `.output/`: a
+that are signed. `npm run zip` packs the add-on into `web-ext-artifacts/`: a
 `ghostfetch-<version>-firefox.zip` for uploading, an identical `.xpi` for installing, and the
 `ghostfetch-<version>-sources.zip` Mozilla asks for. Then pick one:
 
@@ -288,7 +288,8 @@ test/firefox.mjs                 end-to-end test in Zen or Firefox (puppeteer-co
 test/kit.mjs                     the UI kit under the real CSP, in Chromium and Zen, driven with the keyboard and the mouse
 test/release.mjs                 checks the built manifests, files and zips before an upload
 test/fixtures.mjs                test server, hostile pages and rules shared by the tests
-.output/                         what the build makes: chrome-mv3/, firefox-mv3/ and the zips (*-kit/: the kit test's builds)
+.output/                         what the build makes: chrome-mv3/, firefox-mv3/ (*-kit/: the kit test's builds)
+web-ext-artifacts/               what npm run zip makes: the packages for each browser, the .xpi and the sources zip
 ```
 
 ## UI kit
@@ -346,7 +347,7 @@ npm run zip
 ```
 
 The Firefox build is then in `.output/firefox-mv3`, packed as
-`.output/ghostfetch-<version>-firefox.zip`; `npm run zip` also builds Chrome's
+`web-ext-artifacts/ghostfetch-<version>-firefox.zip`; `npm run zip` also builds Chrome's
 (`.output/chrome-mv3`). The output isn't minified. Every file in it comes from `src/` and
 `public/`, except `chunks/libraries-*.js`: the npm packages the popup and the editor use (React
 and Base UI, see [Security model](#security-model)), at the versions in `package-lock.json`.
@@ -403,5 +404,5 @@ npm run test:kit         # builds the kit page into .output/*-kit, then tests it
 npm run test:release     # zips both browsers, then checks the manifests, the release CSP, the built files and the zips
 npm run lint:firefox     # Mozilla's validator: the checks addons.mozilla.org runs on upload
 npm run start:zen        # a fresh Zen profile with the dev build loaded, reloaded on every save
-npm run zip              # the packages and the sources zip in .output/
+npm run zip              # the packages and the sources zip in web-ext-artifacts/
 ```

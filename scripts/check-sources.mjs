@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const { version } = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
-const SOURCES = path.join(ROOT, '.output', `ghostfetch-${version}-sources.zip`);
+const SOURCES = path.join(ROOT, 'web-ext-artifacts', `ghostfetch-${version}-sources.zip`);
 const BUILD = path.join(ROOT, '.output', 'firefox-mv3');
 const docker = process.argv.includes('--docker');
 

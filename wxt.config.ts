@@ -1,7 +1,8 @@
 // Builds Ghostfetch for Chrome (.output/chrome-mv3) and Firefox/Zen (.output/firefox-mv3) from
-// src/. This file is the manifest: WXT adds the background, popup and side panel (Firefox's
-// sidebar) from src/app/, and everything else is spelled out below.
-import { copyFileSync } from 'node:fs';
+// src/, and `npm run zip` packs them into web-ext-artifacts/. This file is the manifest: WXT adds
+// the background, popup and side panel (Firefox's sidebar) from src/app/, and everything else is
+// spelled out below.
+import { copyFileSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'wxt';
@@ -14,6 +15,11 @@ const relativePaths = {
   name: 'ghostfetch:relative-paths',
   renderChunk: (code: string) => code.replaceAll(ROOT, ''),
 };
+
+// Where `npm run zip` puts the packages, apart from the builds in .output/: web-ext-artifacts/,
+// the folder web-ext's own `build` uses. WXT puts a zip wherever its file name template points
+// (an absolute path here) but only creates .output/ itself.
+const ARTIFACTS = fileURLToPath(new URL('web-ext-artifacts/', import.meta.url));
 
 // The extension pages' Content-Security-Policy, the same string Ghostfetch has always shipped.
 // test/release.mjs checks both built manifests against it.
@@ -159,6 +165,9 @@ export default defineConfig({
         { ...LOCAL_PREFIX, ...BRIDGE },
       ];
     },
+    'zip:start': () => {
+      mkdirSync(ARTIFACTS, { recursive: true });
+    },
     // The Firefox package doubles as the .xpi for installing it by hand.
     'zip:extension:done': (wxt, zipPath) => {
       if (wxt.config.browser === 'firefox')
@@ -166,6 +175,10 @@ export default defineConfig({
     },
   },
   zip: {
+    // WXT's own names (ghostfetch-<version>-firefox.zip, ghostfetch-<version>-sources.zip), in
+    // web-ext-artifacts/.
+    artifactTemplate: `${ARTIFACTS}{{name}}-{{packageVersion}}-{{browser}}{{modeSuffix}}.zip`,
+    sourcesTemplate: `${ARTIFACTS}{{name}}-{{packageVersion}}-sources{{modeSuffix}}.zip`,
     // Only what it takes to rebuild the extension, so nothing else in this folder can end up in
     // the sources zip that goes to Mozilla.
     includeSources: [

@@ -385,7 +385,9 @@ try {
     await app.fill('[data-testid="rule-name"]', 'Made in the UI');
     const editor = app.locator('.code textarea');
     await editor.fill('{"ui": true}');
+    await app.click('[data-testid="tab-status"]');
     await app.click('[data-testid="status-201"]');
+    await app.click('[data-testid="tab-body"]');
     await sleep(600);
     const r = await call('/api/user?case=ui');
     expect([r.status, r.body], [201, { ui: true }]);
@@ -395,8 +397,12 @@ try {
     await app.fill('[data-testid="tester"]', `${ORIGIN}/api/user?case=ui`);
     expect(await app.locator('[data-testid="tester-result"]').textContent(), 'Matches');
     await app.locator('.code textarea').fill('{"ui": ');
-    const status = await app.locator('[data-testid="code-status"]').textContent();
-    if (!/Line 1/.test(status)) throw new Error(`status: ${status}`);
+    // A mistake shows once typing pauses.
+    await app.waitForFunction(() =>
+      document
+        .querySelector('[data-testid="code-status"]')
+        .textContent.startsWith('Line 1: '),
+    );
     await app.locator('.code textarea').fill('{"ui":true,"n":[1,2]}');
     await app.click('[data-testid="format"]');
     expect(
@@ -404,6 +410,182 @@ try {
       '{\n  "ui": true,\n  "n": [\n    1,\n    2\n  ]\n}',
     );
   });
+  await check(
+    'the response tabs: status, delay and headers, each with its value on its tab',
+    async () => {
+      const tab = (name) => app.locator(`[data-testid="tab-${name}"]`).textContent();
+      // Where Match requests is in the pane's content, wherever the pane is scrolled to (a click
+      // scrolls what it clicks into view).
+      const matchTop = () =>
+        app.locator('[data-testid="match-url"]').evaluate((field) => {
+          const pane = field.closest('[data-slot="pane-scroll"]');
+          return Math.round(
+            field.getBoundingClientRect().top -
+              pane.getBoundingClientRect().top +
+              pane.scrollTop,
+          );
+        });
+      const top = await matchTop();
+      expect(await tab('status'), 'Status201');
+      await app.click('[data-testid="tab-status"]');
+      expect(await app.locator('[data-testid="status-name"]').textContent(), 'Created');
+      await app.fill('[data-testid="status-code"]', '418');
+      expect(
+        await app.locator('[data-testid="status-name"]').textContent(),
+        "I'm a Teapot",
+      );
+      await app.click('[data-testid="status-404"]');
+      expect(
+        [await tab('status'), await app.inputValue('[data-testid="status-code"]')],
+        ['Status404', '404'],
+      );
+      await app.click('[data-testid="tab-delay"]');
+      // The tab left behind goes a frame later.
+      await sleep(100);
+      expect(await matchTop(), top, 'Match requests stays put');
+      expect(
+        await app
+          .locator('.code')
+          .evaluate((code) => code.closest('[role="tabpanel"]').inert),
+        true,
+        'the Body tab is inert behind the others',
+      );
+      await app.click('[data-testid="delay-1000"]');
+      expect(await tab('delay'), 'Delay1 s');
+      // The chosen one again goes back to none.
+      await app.click('[data-testid="delay-1000"]');
+      expect(await tab('delay'), 'Delay');
+      await app.fill('[data-testid="delay"]', '600');
+      await app.click('[data-testid="tab-headers"]');
+      await sleep(100);
+      expect(await matchTop(), top, 'Match requests stays put');
+      await app.getByRole('button', { name: 'Add header' }).click();
+      await app.keyboard.type('X-Tabbed');
+      expect(await tab('headers'), 'Headers1');
+      await sleep(400);
+      const { rules } = await worker.evaluate(() => chrome.storage.local.get('rules'));
+      const rule = rules.find((r) => r.match.url === 'case=ui');
+      expect(
+        [
+          rule.response.status,
+          rule.response.delay,
+          rule.response.headers.map((h) => h.name),
+        ],
+        ['404', 600, ['X-Tabbed']],
+      );
+      await app.getByTitle('Remove header').last().click();
+      await app.click('[data-testid="tab-delay"]');
+      await app.click('[data-testid="delay-0"]');
+      await app.click('[data-testid="tab-status"]');
+      await app.click('[data-testid="status-201"]');
+      await app.click('[data-testid="tab-body"]');
+    },
+  );
+  await check(
+    'a JSON mistake is marked where it is, and clicking it puts the cursor there',
+    async () => {
+      await app.click('[data-testid="tab-body"]');
+      const editor = app.locator('.code textarea');
+      await editor.fill('{\n  "id": 42\n  "name": "Ada"\n}');
+      expect(await app.locator('.code-error').count(), 0, 'not while typing');
+      await app.waitForSelector('.code-error', { timeout: 3000 });
+      expect(
+        await app.evaluate(() =>
+          [
+            '.code-error',
+            '.code-error-note',
+            '.code-lines .error',
+            '[data-testid="code-status"]',
+            '[data-testid="tab-body"]',
+          ].map((selector) => document.querySelector(selector).textContent.trim()),
+        ),
+        [
+          '42',
+          'missing comma',
+          '2',
+          'Line 2: missing comma after 42',
+          'Body✗, has a mistake',
+        ],
+      );
+      const mark = await app.locator('.code-error').boundingBox();
+      await app.mouse.move(mark.x + mark.width / 2, mark.y + mark.height / 2);
+      expect(
+        await app.locator('.code-error-tip').textContent(),
+        '✗ Missing comma after 42Line 2, column 9',
+        'the whole message on hover',
+      );
+      await app.click('[data-testid="code-problem"]');
+      expect(
+        await editor.evaluate((textarea) => [
+          document.activeElement === textarea,
+          textarea.selectionStart,
+        ]),
+        [true, 10],
+        'the cursor at the mistake',
+      );
+      // Fixed, it goes at once.
+      await editor.fill('{\n  "id": 42,\n  "name": "Ada"\n}');
+      expect(
+        [
+          await app.locator('.code-error').count(),
+          await app.locator('[data-testid="code-status"]').textContent(),
+        ],
+        [0, 'Valid JSON'],
+      );
+    },
+  );
+  await check(
+    'text size: − and + step it, the number puts it back, remembered',
+    async () => {
+      await app.click('[data-testid="tab-body"]');
+      const size = () =>
+        app.evaluate(() => [
+          getComputedStyle(document.querySelector('.code')).fontSize,
+          document.querySelector('[data-testid="font-size"]').textContent,
+          localStorage.getItem('ghostfetch.fontSize'),
+        ]);
+      expect(await size(), ['11.5px', '11.5', null]);
+      await app.click('[data-testid="font-larger"]');
+      await app.click('[data-testid="font-larger"]');
+      expect(await size(), ['13px', '13', '13']);
+      // Back at the default, nothing is kept.
+      await app.click('[data-testid="font-size"]');
+      expect(await size(), ['11.5px', '11.5', null]);
+    },
+  );
+  await check(
+    'the body editor is as tall as its text, up to where the section fits the pane',
+    async () => {
+      await app.click('[data-testid="tab-body"]');
+      const editor = app.locator('.code textarea');
+      const heights = () =>
+        app.evaluate(() => {
+          const code = document.querySelector('.code');
+          return {
+            code: code.offsetHeight,
+            section: code.closest('[data-slot="tabs"]').offsetHeight,
+            pane: code.closest('[data-slot="pane-scroll"]').clientHeight,
+          };
+        });
+      await editor.fill('{"short": true}');
+      expect((await heights()).code, 120, 'a short body: the smallest editor');
+      await editor.fill(
+        '{\n  "a": 1,\n  "b": 2,\n  "c": 3,\n  "d": 4,\n  "e": 5,\n  "f": 6\n}',
+      );
+      // Eight lines of 20.125 px (11.5 px text, line height 1.75), its padding and border.
+      expect((await heights()).code, 179, 'eight lines: eight lines tall');
+      await editor.fill(
+        JSON.stringify(
+          { items: Array.from({ length: 200 }, (_, id) => ({ id })) },
+          null,
+          2,
+        ),
+      );
+      const tall = await heights();
+      if (Math.abs(tall.section - tall.pane) > 1)
+        throw new Error(`a long body: section ${tall.section}px, pane ${tall.pane}px`);
+    },
+  );
   await check('Cmd/Ctrl+F in the body searches only the body', async () => {
     const editor = app.locator('.code textarea');
     const count = () => app.locator('.code-find-count').textContent();
@@ -757,6 +939,17 @@ try {
     await app.setViewportSize({ width: 400, height: 760 });
     await app.click('[data-testid="tab-rules"]');
     await app.screenshot({ path: `${SHOTS}/narrow-editor.png` });
+    await app.click('[data-testid="tab-status"]');
+    await app.screenshot({ path: `${SHOTS}/narrow-status.png` });
+    await app.click('[data-testid="tab-body"]');
+    // A body with a mistake, marked, its message on hover; then the body as it was.
+    const before = await body.inputValue();
+    await body.fill('{\n  "id": 42\n  "name": "Ada Lovelace",\n  "active": true\n}');
+    await app.waitForSelector('.code-error');
+    const mark = await app.locator('.code-error').boundingBox();
+    await app.mouse.move(mark.x + mark.width / 2, mark.y + mark.height / 2);
+    await app.screenshot({ path: `${SHOTS}/narrow-json-error.png` });
+    await body.fill(before);
     await app.click('[data-testid="rule-back"]');
     await app.screenshot({ path: `${SHOTS}/narrow-list.png` });
     await app.click('[data-testid="tab-traffic"]');
@@ -1127,6 +1320,7 @@ try {
         .locator('[data-testid="rule"]', { hasText: 'case=replace' })
         .first()
         .click();
+      await app.click('[data-testid="tab-headers"]');
       await app.getByRole('button', { name: 'Add header' }).click();
       expect(
         await app.evaluate(() => [

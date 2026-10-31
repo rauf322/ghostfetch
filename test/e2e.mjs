@@ -381,8 +381,15 @@ try {
   await check('create a rule in the editor and it mocks immediately', async () => {
     await app.click('[data-testid="new-rule"]');
     await app.click('[data-testid="new-response"]');
-    await app.fill('[data-testid="match-url"]', 'case=ui');
+    // A new rule opens on Match, with the cursor in the URL field.
+    await app.waitForFunction(
+      () => document.activeElement?.dataset.testid === 'match-url',
+      null,
+      { timeout: 3000 },
+    );
+    await app.keyboard.type('case=ui');
     await app.fill('[data-testid="rule-name"]', 'Made in the UI');
+    await app.click('[data-testid="tab-body"]');
     const editor = app.locator('.code textarea');
     await editor.fill('{"ui": true}');
     await app.click('[data-testid="tab-status"]');
@@ -394,8 +401,10 @@ try {
     expect(await app.locator('[data-testid="code-status"]').textContent(), 'Valid JSON');
   });
   await check('tester and invalid JSON feedback', async () => {
+    await app.click('[data-testid="tab-match"]');
     await app.fill('[data-testid="tester"]', `${ORIGIN}/api/user?case=ui`);
     expect(await app.locator('[data-testid="tester-result"]').textContent(), 'Matches');
+    await app.click('[data-testid="tab-body"]');
     await app.locator('.code textarea').fill('{"ui": ');
     // A mistake shows once typing pauses.
     await app.waitForFunction(() =>
@@ -411,21 +420,14 @@ try {
     );
   });
   await check(
-    'the response tabs: status, delay and headers, each with its value on its tab',
+    'the response tabs: status, delay, headers and match, each with its value on its tab',
     async () => {
       const tab = (name) => app.locator(`[data-testid="tab-${name}"]`).textContent();
-      // Where Match requests is in the pane's content, wherever the pane is scrolled to (a click
-      // scrolls what it clicks into view).
-      const matchTop = () =>
-        app.locator('[data-testid="match-url"]').evaluate((field) => {
-          const pane = field.closest('[data-slot="pane-scroll"]');
-          return Math.round(
-            field.getBoundingClientRect().top -
-              pane.getBoundingClientRect().top +
-              pane.scrollTop,
-          );
-        });
-      const top = await matchTop();
+      const sectionHeight = () =>
+        app
+          .locator('[data-testid="tab-body"]')
+          .evaluate((trigger) => trigger.closest('[data-slot="tabs"]').offsetHeight);
+      const height = await sectionHeight();
       expect(await tab('status'), 'Status201');
       await app.click('[data-testid="tab-status"]');
       expect(await app.locator('[data-testid="status-name"]').textContent(), 'Created');
@@ -442,7 +444,7 @@ try {
       await app.click('[data-testid="tab-delay"]');
       // The tab left behind goes a frame later.
       await sleep(100);
-      expect(await matchTop(), top, 'Match requests stays put');
+      expect(await sectionHeight(), height, 'a shorter tab keeps the Body tab’s height');
       expect(
         await app
           .locator('.code')
@@ -458,7 +460,7 @@ try {
       await app.fill('[data-testid="delay"]', '600');
       await app.click('[data-testid="tab-headers"]');
       await sleep(100);
-      expect(await matchTop(), top, 'Match requests stays put');
+      expect(await sectionHeight(), height, 'a shorter tab keeps the Body tab’s height');
       await app.getByRole('button', { name: 'Add header' }).click();
       await app.keyboard.type('X-Tabbed');
       expect(await tab('headers'), 'Headers1');
@@ -478,6 +480,25 @@ try {
       await app.click('[data-testid="delay-0"]');
       await app.click('[data-testid="tab-status"]');
       await app.click('[data-testid="status-201"]');
+      // Match: the URL being tried is still there after the other tabs, and the label carries
+      // the method once it isn't Any.
+      await app.click('[data-testid="tab-match"]');
+      expect(
+        [
+          await tab('match'),
+          await app.inputValue('[data-testid="tester"]'),
+          await app.locator('[data-testid="tester-result"]').textContent(),
+        ],
+        ['Match', `${ORIGIN}/api/user?case=ui`, 'Matches'],
+      );
+      const method = async (name) => {
+        await app.click('[title="HTTP method"]');
+        await app.getByRole('option', { name, exact: true }).click();
+      };
+      await method('POST');
+      expect(await tab('match'), 'MatchPOST');
+      await method('Any method');
+      expect(await tab('match'), 'Match');
       await app.click('[data-testid="tab-body"]');
     },
   );
@@ -535,36 +556,128 @@ try {
     },
   );
   await check(
-    'text size: − and + step it, the number puts it back, remembered',
-    async () => {
-      await app.click('[data-testid="tab-body"]');
-      const size = () =>
-        app.evaluate(() => [
-          getComputedStyle(document.querySelector('.code')).fontSize,
-          document.querySelector('[data-testid="font-size"]').textContent,
-          localStorage.getItem('ghostfetch.fontSize'),
-        ]);
-      expect(await size(), ['11.5px', '11.5', null]);
-      await app.click('[data-testid="font-larger"]');
-      await app.click('[data-testid="font-larger"]');
-      expect(await size(), ['13px', '13', '13']);
-      // Back at the default, nothing is kept.
-      await app.click('[data-testid="font-size"]');
-      expect(await size(), ['11.5px', '11.5', null]);
-    },
-  );
-  await check(
-    'the body editor is as tall as its text, up to where the section fits the pane',
+    'text size: Cmd/Ctrl with =, - and 0 in the body, shown for a moment, remembered',
     async () => {
       await app.click('[data-testid="tab-body"]');
       const editor = app.locator('.code textarea');
+      const text = await editor.inputValue();
+      // The size, what's remembered, and the size shown in the corner.
+      const size = () =>
+        app.evaluate(() => {
+          const badge = document.querySelector('.code-size');
+          return [
+            getComputedStyle(document.querySelector('.code')).fontSize,
+            localStorage.getItem('ghostfetch.fontSize'),
+            badge.hidden ? '' : badge.textContent,
+          ];
+        });
+      expect(await size(), ['11.5px', null, '']);
+      await editor.focus();
+      await app.keyboard.press('ControlOrMeta+=');
+      await app.keyboard.press('ControlOrMeta+=');
+      expect(await size(), ['13px', '13', '13 px']);
+      await app.keyboard.press('ControlOrMeta+-');
+      expect(await size(), ['12px', '12', '12 px']);
+      await app.waitForSelector('.code-size', { state: 'hidden', timeout: 3000 });
+      // Back at the default, nothing is kept. None of it typed anything.
+      await app.keyboard.press('ControlOrMeta+0');
+      expect(
+        [...(await size()), await editor.inputValue()],
+        ['11.5px', null, '11.5 px', text],
+      );
+    },
+  );
+  await check(
+    'a long body is coloured where it is on screen, and only there',
+    async () => {
+      const editor = app.locator('.code textarea');
+      const before = await editor.inputValue();
+      // The pieces on the highlight layer, and the coloured tokens in them.
+      const painted = () =>
+        app.evaluate(() => {
+          const layer = document.querySelector('.code-highlight');
+          return {
+            tokens: layer.querySelectorAll('[class^="tk-"]').length,
+            pieces: layer.querySelectorAll(':scope > span').length,
+          };
+        });
+      const scroll = (to) =>
+        editor.evaluate((textarea, end) => {
+          textarea.scrollTop = end ? textarea.scrollHeight : 0;
+          textarea.scrollLeft = end ? textarea.scrollWidth : 0;
+        }, to);
+      const items = Array.from({ length: 5000 }, (_, id) => ({
+        id,
+        name: `user ${id}`,
+        on: true,
+      }));
+      // 200,000 characters on one line, as a captured response often is. Then Format makes it
+      // 370,000 over 25,000 lines in one edit, which Chrome fires an input for per line: the
+      // editor redraws and the rule is saved once, not 25,000 times.
+      await editor.fill(JSON.stringify({ items }));
+      for (const shape of ['on one line', 'formatted']) {
+        if (shape === 'formatted') {
+          const started = Date.now();
+          await app.click('[data-testid="format"]');
+          await app.waitForFunction(
+            () => document.querySelector('.code textarea').value.startsWith('{\n'),
+            null,
+            { timeout: 10_000 },
+          );
+          const took = Date.now() - started;
+          if (took > 3000) throw new Error(`Format took ${took} ms`);
+          await sleep(400);
+          const { rules } = await worker.evaluate(() =>
+            chrome.storage.local.get('rules'),
+          );
+          expect(
+            rules.find((r) => r.match.url === 'case=ui').response.body,
+            JSON.stringify({ items }, null, 2),
+            'the formatted body is saved',
+          );
+        }
+        // At either end of the body, its first or its last piece has colours and the other
+        // hasn't, once the layer has caught up with the scroll.
+        for (const end of [false, true]) {
+          await scroll(end);
+          await app.waitForFunction(
+            (atEnd) => {
+              const pieces = document.querySelectorAll('.code-highlight > span');
+              const coloured = (piece) => Boolean(piece.querySelector('[class^="tk-"]'));
+              return (
+                coloured(pieces[atEnd ? pieces.length - 1 : 0]) &&
+                !coloured(pieces[atEnd ? 0 : pieces.length - 1])
+              );
+            },
+            end,
+            { timeout: 3000 },
+          );
+          const now = await painted();
+          if (now.pieces < 20 || now.tokens > 6000)
+            throw new Error(`${shape}, ${end ? 'end' : 'start'}: ${JSON.stringify(now)}`);
+        }
+      }
+      await editor.fill(before);
+    },
+  );
+  await check(
+    'the body editor is as tall as its text, down to the bottom of the pane',
+    async () => {
+      await app.click('[data-testid="tab-body"]');
+      const editor = app.locator('.code textarea');
+      // The editor's height, and with the pane scrolled to the top, how far the section's bottom
+      // is from the pane's and whether the pane has anything to scroll.
       const heights = () =>
         app.evaluate(() => {
           const code = document.querySelector('.code');
+          const pane = code.closest('[data-slot="pane-scroll"]');
+          pane.scrollTop = 0;
           return {
             code: code.offsetHeight,
-            section: code.closest('[data-slot="tabs"]').offsetHeight,
-            pane: code.closest('[data-slot="pane-scroll"]').clientHeight,
+            gap:
+              pane.getBoundingClientRect().bottom -
+              code.closest('[data-slot="tabs"]').getBoundingClientRect().bottom,
+            scrolls: pane.scrollHeight > pane.clientHeight,
           };
         });
       await editor.fill('{"short": true}');
@@ -581,9 +694,10 @@ try {
           2,
         ),
       );
+      // A long one: the section ends at the pane's bottom, and the body scrolls in the editor.
       const tall = await heights();
-      if (Math.abs(tall.section - tall.pane) > 1)
-        throw new Error(`a long body: section ${tall.section}px, pane ${tall.pane}px`);
+      if (Math.abs(tall.gap) > 1 || tall.scrolls)
+        throw new Error(`a long body: ${JSON.stringify(tall)}`);
     },
   );
   await check('Cmd/Ctrl+F in the body searches only the body', async () => {
@@ -725,17 +839,18 @@ try {
   await check(
     'vim: u in the body never undoes another field (Chrome keeps one undo history per page)',
     async () => {
-      const url = app.locator('[data-testid="match-url"]');
-      await url.click();
-      await url.press('End');
+      // The rule's name, which is on the page whichever tab is open.
+      const name = app.locator('[data-testid="rule-name"]');
+      await name.click();
+      await name.press('End');
       await app.keyboard.type('X');
       await body.focus();
       await typeVim('u');
       expect(
-        [await url.inputValue(), (await vimState()).message, await bodyFocused()],
-        ['case=uiX', 'Already at oldest change', true],
+        [await name.inputValue(), (await vimState()).message, await bodyFocused()],
+        ['Made in the UIX', 'Already at oldest change', true],
       );
-      await url.fill('case=ui');
+      await name.fill('Made in the UI');
     },
   );
   await check(
@@ -910,11 +1025,14 @@ try {
       .click();
     await app.click('[data-testid="mock"]');
     await app.waitForSelector('[data-testid="view-rules"]:not([hidden])');
+    // It opens on the body it captured; the URL is on the Match tab.
+    expect(JSON.parse(await body.inputValue()).name, 'Real');
+    await app.click('[data-testid="tab-match"]');
     expect(
       await app.inputValue('[data-testid="match-url"]'),
       '/api/user?case=live-check',
     );
-    expect(JSON.parse(await body.inputValue()).name, 'Real');
+    await app.click('[data-testid="tab-body"]');
     await body.fill('{"fromTraffic": true}');
     await sleep(500);
     expect((await call('/api/user?case=live-check')).body, { fromTraffic: true });
@@ -941,9 +1059,23 @@ try {
     await app.screenshot({ path: `${SHOTS}/narrow-editor.png` });
     await app.click('[data-testid="tab-status"]');
     await app.screenshot({ path: `${SHOTS}/narrow-status.png` });
+    await app.click('[data-testid="tab-match"]');
+    await app.screenshot({ path: `${SHOTS}/narrow-match.png` });
     await app.click('[data-testid="tab-body"]');
-    // A body with a mistake, marked, its message on hover; then the body as it was.
     const before = await body.inputValue();
+    // A longer body, with every kind of value, that fills the editor down to the pane's bottom.
+    const user = (id) => ({
+      id,
+      name: ['Ada Lovelace', 'Alan Turing', 'Grace Hopper'][id % 3],
+      email: `user${id}@example.com`,
+      score: 9.5 - id,
+      active: id % 2 === 0,
+      manager: null,
+      tags: ['admin', 'beta'],
+    });
+    await body.fill(JSON.stringify({ total: 3, users: [1, 2, 3].map(user) }, null, 2));
+    await app.screenshot({ path: `${SHOTS}/narrow-long.png` });
+    // A body with a mistake, marked, its message on hover; then the body as it was.
     await body.fill('{\n  "id": 42\n  "name": "Ada Lovelace",\n  "active": true\n}');
     await app.waitForSelector('.code-error');
     const mark = await app.locator('.code-error').boundingBox();
@@ -1061,7 +1193,7 @@ try {
       buffer: Buffer.from(JSON.stringify(evil)),
     });
     await app.waitForSelector(
-      '[data-testid="view-rules"]:not([hidden]) [data-testid="match-url"]',
+      '[data-testid="view-rules"]:not([hidden]) [data-testid="rule-name"]',
     );
     expect(await app.locator('[data-xss]').count(), 0, 'injected elements');
     const { rules } = await worker.evaluate(() => chrome.storage.local.get('rules'));
@@ -1344,8 +1476,10 @@ try {
   await check('a rule picked in the popup opens in the editor', async () => {
     const rule = (await storedRules()).find((r) => r.match.url === 'case=delay');
     await worker.evaluate((id) => chrome.storage.session.set({ focusRule: id }), rule.id);
+    // The rule's name says which rule is open: unnamed, it shows the URL.
     await app.waitForFunction(
-      () => document.querySelector('[data-testid="match-url"]')?.value === 'case=delay',
+      () =>
+        document.querySelector('[data-testid="rule-name"]')?.placeholder === 'case=delay',
       null,
       { timeout: 3000 },
     );
@@ -1356,7 +1490,7 @@ try {
       const row = app.locator('[data-testid="rule"]', { hasText: 'case=merge' }).first();
       const state = async () => [
         (await storedRules()).find((r) => r.match.url === 'case=merge').enabled,
-        await app.inputValue('[data-testid="match-url"]'),
+        await app.getAttribute('[data-testid="rule-name"]', 'placeholder'),
       ];
       await row.getByRole('switch').click();
       await sleep(400);

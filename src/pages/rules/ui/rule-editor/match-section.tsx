@@ -1,6 +1,7 @@
 // "Match requests": the method, how the URL is compared and the pattern, a GraphQL operation for
-// response rules, and a field to try the pattern on a URL.
-import { useEffect, useRef, useState } from 'react';
+// response rules, and a field to try the pattern on a URL. A response rule shows the fields in its
+// Match tab (MatchFields), the other types in a section of their own (MatchSection).
+import { useEffect, useRef } from 'react';
 import {
   MATCH_HINTS,
   MATCH_MODES,
@@ -29,19 +30,32 @@ const MODE_ITEMS = (Object.entries(MATCH_MODES) as [MatchMode, string][]).map(
   ([value, label]) => ({ value, label: `URL ${label.toLowerCase()}` }),
 );
 
-export function MatchSection({
-  rule,
-  index,
-  focusUrl,
-}: {
+interface MatchProps {
   rule: Rule;
-  index: number;
   // Put the cursor in the URL field, for a rule that was just created.
   focusUrl: boolean;
-}) {
+  // The URL being tried. The rule editor keeps it, so it stays when you switch tabs or change the
+  // rule's type.
+  testedUrl: string;
+  onTestedUrlChange: (url: string) => void;
+}
+
+export function MatchSection({ index, ...props }: MatchProps & { index: number }) {
+  return (
+    <Card>
+      <CardTitle index={index}>Match requests</CardTitle>
+      <MatchFields {...props} />
+    </Card>
+  );
+}
+
+export function MatchFields({
+  rule,
+  focusUrl,
+  testedUrl,
+  onTestedUrlChange,
+}: MatchProps) {
   const urlField = useRef<HTMLInputElement>(null);
-  // The URL being tried, which stays when you change the rule's type.
-  const [testedUrl, setTestedUrl] = useState('');
   const { match } = rule;
 
   useEffect(() => {
@@ -52,8 +66,7 @@ export function MatchSection({
   const tested = testedUrl.trim() ? testResult(rule, testedUrl.trim()) : null;
 
   return (
-    <Card>
-      <CardTitle index={index}>Match requests</CardTitle>
+    <>
       <div className="flex gap-2">
         <Select
           items={METHOD_ITEMS}
@@ -135,7 +148,7 @@ export function MatchSection({
           aria-label="Test URL"
           placeholder="Paste a URL to test the pattern"
           value={testedUrl}
-          onChange={(event) => setTestedUrl(event.target.value)}
+          onChange={(event) => onTestedUrlChange(event.target.value)}
           className="flex-1"
         />
         {tested && (
@@ -148,6 +161,6 @@ export function MatchSection({
           </Verdict>
         )}
       </div>
-    </Card>
+    </>
   );
 }

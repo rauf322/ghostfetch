@@ -1,7 +1,9 @@
 // One rule's settings, in numbered sections like the site's chapters ("02 — Match requests"):
-// the rule type, then what the rule matches and what its type does. A response rule shows what it
-// sends back first, then what it matches; the other types the other way round. Every change is
-// saved as you make it (editRule) and applies to open tabs right away.
+// the rule type, then what the rule matches and what its type does. A response rule has those two
+// in one section of tabs (Body, Status, Headers, Delay and Match), the last thing in the pane, so
+// its body editor can take the room down to the pane's bottom. Every change is saved as you make
+// it (editRule) and applies to open tabs right away.
+import { useState } from 'react';
 import { ruleStore, settingsStore } from '../../../../shared/api/index.ts';
 import type { Rule } from '../../../../shared/api/index.ts';
 import { useStore } from '../../../../shared/react/index.ts';
@@ -28,19 +30,10 @@ export function RuleEditor({ rule, focusUrl, revision, onSelect }: RuleEditorPro
   const { enabled } = useStore(settingsStore);
   const { dnrErrors } = useStore(ruleStore);
   const dnrError = rule.enabled && enabled ? dnrErrors[rule.id] : '';
-  const responseFirst = rule.type === 'response';
-
-  // The two sections are keyed, so a type change swaps their places rather than starting them
-  // over, and the URL tester keeps its text.
-  const match = (
-    <MatchSection
-      key="match"
-      rule={rule}
-      index={responseFirst ? 3 : 2}
-      focusUrl={focusUrl}
-    />
-  );
-  const action = actionSection(rule, revision);
+  // The URL being tried against the pattern, which stays when the rule's type changes and its
+  // match fields move between a tab and a section.
+  const [testedUrl, setTestedUrl] = useState('');
+  const match = { rule, focusUrl, testedUrl, onTestedUrlChange: setTestedUrl };
 
   return (
     <>
@@ -52,23 +45,28 @@ export function RuleEditor({ rule, focusUrl, revision, onSelect }: RuleEditorPro
           </Alert>
         )}
         <RuleTypeSection rule={rule} index={1} />
-        {responseFirst ? [action, match] : [match, action]}
+        {rule.type === 'response' ? (
+          <ResponseSection {...match} index={2} revision={revision} />
+        ) : (
+          <>
+            <MatchSection {...match} index={2} />
+            {actionSection(rule)}
+          </>
+        )}
       </PaneScroll>
     </>
   );
 }
 
-// What the rule's type does: the response it sends back (02), where it redirects (03), the headers
-// it changes (03 and 04), or nothing to set for a block.
-function actionSection(rule: Rule, revision: number) {
+// What another type of rule does: where it redirects (03), the headers it changes (03 and 04), or
+// nothing to set for a block.
+function actionSection(rule: Rule) {
   switch (rule.type) {
-    case 'response':
-      return <ResponseSection key="action" rule={rule} index={2} revision={revision} />;
     case 'redirect':
-      return <RedirectSection key="action" rule={rule} index={3} />;
+      return <RedirectSection rule={rule} index={3} />;
     case 'headers':
-      return <HeaderSections key="action" rule={rule} index={3} />;
+      return <HeaderSections rule={rule} index={3} />;
     default:
-      return <BlockSection key="action" />;
+      return <BlockSection />;
   }
 }

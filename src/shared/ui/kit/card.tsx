@@ -33,7 +33,9 @@ export function CardTitle({
       {...props}
     >
       {index != null && (
-        <span className="whitespace-pre">{String(index).padStart(2, '0')} — </span>
+        <span data-slot="card-index" className="whitespace-pre">
+          {String(index).padStart(2, '0')} —{' '}
+        </span>
       )}
       {children}
       {note && (

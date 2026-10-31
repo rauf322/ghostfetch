@@ -90,6 +90,9 @@ interface VimOptions {
   ) => { index: number; wrapped: boolean } | null;
   openSearch: (line: SearchLine) => void;
   sync: () => void;
+  // Runs a browser editing command (insertText, delete, undo, redo) on the body, and fires one
+  // input for it, however many the browser makes of a long one.
+  execute: (name: string, value?: string) => boolean;
   active?: boolean;
 }
 
@@ -161,6 +164,7 @@ export function createVim({
   find,
   openSearch,
   sync,
+  execute,
   active: startActive = false,
 }: VimOptions) {
   const [modeLabel, keysLabel, positionLabel] = statusLine.children;
@@ -472,7 +476,7 @@ export function createVim({
   function exec(name: string, value?: string) {
     editing = true;
     try {
-      return document.execCommand(name, false, value);
+      return execute(name, value);
     } finally {
       editing = false;
     }

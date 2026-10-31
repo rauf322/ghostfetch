@@ -1,14 +1,16 @@
 // Lightweight code editor: a transparent <textarea> laid over a syntax-highlighted <pre>
-// (highlight.ts), plus a line-number gutter. Enough for JSON bodies and short transform scripts.
-// Cmd/Ctrl+F inside it opens its own find bar (find-bar.ts) instead of the browser's, which would
-// search the whole page. With the Vim switch on, vim.ts handles its keys. It marks a mistake it's
-// given (setProblem), the way a language server's client would: a squiggle under it, the line
-// tinted, a note at the end of the line and the whole message on hover. Its look is
-// code-editor.css; the React screens use it through ../code-editor.tsx.
+// (highlight.ts), plus a line-number gutter. Enough for JSON bodies and short transform scripts,
+// and a JSON body of a megabyte: only what's on screen gets its colours. Cmd/Ctrl+F inside it
+// opens its own find bar (find-bar.ts) instead of the browser's, which would search the whole
+// page, and Cmd/Ctrl with =, - and 0 sizes its text instead of zooming the page. With the Vim
+// switch on, vim.ts handles its keys. It marks a mistake it's given (setProblem), the way a
+// language server's client would: a squiggle under it, the line tinted, a note at the end of the
+// line and the whole message on hover. Its look is code-editor.css; the React screens use it
+// through ../code-editor.tsx.
 import { icon } from '../../../lib/index.ts';
 import { createVim, rememberVim, vimPreferred } from '../vim/vim.ts';
 import { createFindBar } from './find-bar.ts';
-import { highlight } from './highlight.ts';
+import { chunks, tokens } from './highlight.ts';
 import type { Language } from './highlight.ts';
 
 export type CodeEditor = ReturnType<typeof createCodeEditor>;
@@ -26,12 +28,33 @@ export interface CodeProblem {
 
 const MODIFIERS = new Set(['Shift', 'Control', 'Alt', 'Meta', 'CapsLock']);
 
-// The text sizes − and + step through, in px, and the one the stylesheet starts at. One setting
-// for every body editor, remembered in this browser like the Vim switch.
-export const FONT_SIZES = [10, 11, 11.5, 12, 13, 14, 16, 18];
-export const DEFAULT_FONT_SIZE = 11.5;
+// The input an editing command makes, as the browser names it.
+const INPUT_TYPES: Record<string, string> = {
+  insertText: 'insertText',
+  delete: 'deleteContentBackward',
+  undo: 'historyUndo',
+  redo: 'historyRedo',
+};
+
+// The most lines an insert goes through the browser's undoable editing command with. Chrome takes
+// about 50 ms for 300 lines, and four times as long for each doubling.
+const MAX_COMMAND_LINES = 300;
+function longerThan(text: string, lines: number) {
+  let count = 0;
+  for (let at = text.indexOf('\n'); at !== -1; at = text.indexOf('\n', at + 1))
+    if (++count >= lines) return true;
+  return false;
+}
+
+// The text sizes Cmd/Ctrl+= and Cmd/Ctrl+- step through, in px, and the one the stylesheet starts
+// at, which Cmd/Ctrl+0 goes back to: the keys code editors size their text with (+ and _ are the
+// same keys with Shift). One setting for every body editor, remembered in this browser like the
+// Vim switch.
+const FONT_SIZES = [10, 11, 11.5, 12, 13, 14, 16, 18, 20, 24];
+const DEFAULT_FONT_SIZE = 11.5;
 const FONT_SIZE_KEY = 'ghostfetch.fontSize';
-export function fontSizePreferred() {
+const SIZE_KEYS: Record<string, 1 | -1 | 0> = { '=': 1, '+': 1, '-': -1, _: -1, '0': 0 };
+function fontSizePreferred() {
   const size = Number(localStorage.getItem(FONT_SIZE_KEY));
   return FONT_SIZES.includes(size) ? size : DEFAULT_FONT_SIZE;
 }
@@ -77,6 +100,7 @@ export function createCodeEditor({
       <pre class="code-cursor" aria-hidden="true"></pre>
       <textarea spellcheck="false" autocomplete="off" autocapitalize="off" wrap="off"></textarea>
       <div class="code-error-tip" role="tooltip" hidden><strong></strong><span></span></div>
+      <div class="code-size" aria-live="polite" hidden></div>
     </div>
     <div class="code-vim" hidden><span class="code-vim-mode" aria-live="polite"></span><span class="code-vim-keys"></span><span class="code-vim-pos"></span></div>`;
   const textarea = root.querySelector('textarea')!;
@@ -90,6 +114,7 @@ export function createCodeEditor({
   const lines = root.querySelector<HTMLElement>('.code-lines')!;
   const findBar = root.querySelector<HTMLElement>('.code-find')!;
   const statusLine = root.querySelector<HTMLElement>('.code-vim')!;
+  const sizeBadge = root.querySelector<HTMLElement>('.code-size')!;
   textarea.value = value;
   textarea.placeholder = placeholder;
   let lineCount = 0;
@@ -99,16 +124,81 @@ export function createCodeEditor({
   let problem: CodeProblem | null = null;
   let problemLine = -1;
   let fontSize = fontSizePreferred();
+  let sizeShown: ReturnType<typeof setTimeout> | undefined;
   applyFontSize();
+  // A long JSON body's pieces on the highlight layer (chunks()): their text, the line each starts
+  // on, the element each is in, and whether that one has its colours.
+  let pieces: string[] = [];
+  let pieceLines: number[] = [];
+  let pieceElements: HTMLElement[] = [];
+  let painted: boolean[] = [];
 
   function render() {
-    // The trailing newline lets the layer scroll as far as the textarea does.
-    layer.innerHTML = `${highlight(textarea.value, language)}\n\n`;
     lineCount = textarea.value.split('\n').length;
+    renderLayer();
     renderGutter();
     find.refresh();
     fitHeight();
     sync();
+  }
+
+  // The highlight layer: a short body coloured whole, a long one as its pieces, uncoloured until
+  // paintPieces() finds them on screen. The trailing newlines let the layer scroll as far as the
+  // textarea does.
+  function renderLayer() {
+    const text = textarea.value;
+    pieces = chunks(text, language);
+    if (pieces.length === 1) {
+      pieceElements = [];
+      colour(layer, text);
+      layer.append('\n\n');
+      return;
+    }
+    let line = 0;
+    pieceLines = [];
+    pieceElements = pieces.map((piece) => {
+      pieceLines.push(line);
+      for (let at = piece.indexOf('\n'); at !== -1; at = piece.indexOf('\n', at + 1))
+        line++;
+      const element = document.createElement('span');
+      element.textContent = piece;
+      return element;
+    });
+    painted = pieces.map(() => false);
+    layer.replaceChildren(...pieceElements, '\n\n');
+  }
+
+  // Colours the pieces on screen and a screen's worth around them, and takes the colours off the
+  // rest, so the layer holds a few thousand coloured tokens at most, however long the body. The
+  // lines tell which pieces are near; the pieces of a long line are told apart by where they are.
+  function paintPieces() {
+    if (!pieceElements.length) return;
+    const { lineHeight, top } = metrics();
+    const screen = Math.ceil(textarea.clientHeight / lineHeight);
+    const first = Math.floor((textarea.scrollTop - top) / lineHeight) - screen;
+    const last = first + 3 * screen;
+    const view = layer.getBoundingClientRect();
+    for (const [index, element] of pieceElements.entries()) {
+      let near =
+        pieceLines[index]! <= last && (pieceLines[index + 1] ?? lineCount) >= first;
+      if (near) {
+        const box = element.getBoundingClientRect();
+        near = box.right >= view.left - view.width && box.left <= view.right + view.width;
+      }
+      if (near === painted[index]) continue;
+      painted[index] = near;
+      if (near) colour(element, pieces[index]!);
+      else element.textContent = pieces[index]!;
+    }
+  }
+
+  // Puts text in an element as its tokens, a span for each coloured one (the tk-* classes in
+  // code-editor.css). Built from text nodes, so nothing in the body is ever read as HTML.
+  function colour(element: HTMLElement, text: string) {
+    const fragment = document.createDocumentFragment();
+    for (const [kind, part] of tokens(text, language))
+      fragment.append(kind ? span(`tk-${kind}`, part) : part);
+    element.replaceChildren(fragment);
   }
 
   // The line numbers, the marked line's in white.
@@ -206,6 +296,7 @@ export function createCodeEditor({
         mark.style.transform = y;
       }
     }
+    paintPieces();
   }
 
   // With `fit`, the height of the whole text: lines, padding, a horizontal scrollbar if there is
@@ -224,16 +315,59 @@ export function createCodeEditor({
     root.style.setProperty('--code-fit', `${Math.ceil(height)}px`);
   }
   if (fit) {
-    // The bars come and go, and a narrower editor can grow a horizontal scrollbar.
+    // The bars come and go.
     const bars = new MutationObserver(fitHeight);
     for (const element of [findBar, statusLine])
       bars.observe(element, { attributes: true, attributeFilter: ['hidden'] });
-    new ResizeObserver(fitHeight).observe(textarea);
   }
+  // The text area changes size when the editor goes on the page, shows again after being hidden,
+  // or the window changes: a narrower one can grow a horizontal scrollbar, and different pieces of
+  // a long body are on screen.
+  new ResizeObserver(() => {
+    fitHeight();
+    paintPieces();
+  }).observe(textarea);
 
   function applyFontSize() {
     root.style.fontSize = fontSize === DEFAULT_FONT_SIZE ? '' : `${fontSize}px`;
   }
+
+  // The text size, in px: one of FONT_SIZES, remembered for every body editor (and forgotten again
+  // at the default). The new size shows in the corner for a moment.
+  function setFontSize(size: number) {
+    fontSize = size;
+    if (size === DEFAULT_FONT_SIZE) localStorage.removeItem(FONT_SIZE_KEY);
+    else localStorage.setItem(FONT_SIZE_KEY, String(size));
+    applyFontSize();
+    fitHeight();
+    sync();
+    sizeBadge.textContent = `${size} px`;
+    sizeBadge.hidden = false;
+    clearTimeout(sizeShown);
+    sizeShown = setTimeout(() => {
+      sizeBadge.hidden = true;
+    }, 1200);
+  }
+
+  // Cmd/Ctrl with = or + (larger), - or _ (smaller) or 0 (the default), anywhere in the editor,
+  // the find bar too. It goes first, before vim and the find bar see the key, and the browser
+  // doesn't zoom the page.
+  root.addEventListener(
+    'keydown',
+    (event) => {
+      const step = SIZE_KEYS[event.key];
+      if (step === undefined || !(event.metaKey || event.ctrlKey) || event.altKey) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const at = FONT_SIZES.indexOf(fontSize) + step;
+      setFontSize(
+        step === 0
+          ? DEFAULT_FONT_SIZE
+          : FONT_SIZES[Math.min(Math.max(at, 0), FONT_SIZES.length - 1)]!,
+      );
+    },
+    { capture: true },
+  );
 
   // The mistake's whole message while the pointer is over its marks (or its note), under the
   // line, or above it when there's no room below.
@@ -280,6 +414,44 @@ export function createCodeEditor({
     }px`;
   }
 
+  // An edit through the browser's editing commands, which keeps its undo history intact, unlike
+  // setting .value. Vim edits through it too. Chrome makes a command that inserts many lines a
+  // step per line, laying the text out and firing an input every time: 4,000 lines took seven
+  // seconds, and Format on a long body froze the editor. So while a command runs its inputs stop
+  // at the editor's edge, and once it's done it fires one of its own; and text of more lines than
+  // MAX_COMMAND_LINES goes in directly, in a moment, though the browser can't undo that.
+  let commanding = false;
+  root.addEventListener(
+    'input',
+    (event) => {
+      if (commanding) event.stopImmediatePropagation();
+    },
+    { capture: true },
+  );
+  function command(name: string, text?: string) {
+    const before = textarea.value;
+    let done = true;
+    if (name === 'insertText' && text && longerThan(text, MAX_COMMAND_LINES)) {
+      textarea.setRangeText(text, textarea.selectionStart, textarea.selectionEnd, 'end');
+    } else {
+      commanding = true;
+      try {
+        done = document.execCommand(name, false, text);
+      } finally {
+        commanding = false;
+      }
+    }
+    if (textarea.value !== before)
+      textarea.dispatchEvent(
+        new InputEvent('input', {
+          bubbles: true,
+          inputType: INPUT_TYPES[name] ?? 'insertText',
+          data: text ?? null,
+        }),
+      );
+    return done;
+  }
+
   // The find bar is vim's search line, and vim moves to what it finds, so each needs the other:
   // the find bar gets vim through a function it only calls once both exist.
   const find = createFindBar({ root, textarea, marks, sync, vim: () => vim });
@@ -291,11 +463,11 @@ export function createCodeEditor({
     find: find.findFrom,
     openSearch: find.open,
     sync,
+    execute: command,
     active: vimPreferred(),
   });
 
-  // execCommand keeps the browser's undo history intact, unlike setting .value.
-  const insert = (text: string) => document.execCommand('insertText', false, text);
+  const insert = (text: string) => command('insertText', text);
 
   textarea.addEventListener('input', () => {
     // The marks were for the text before this edit; whoever set them sets them again.
@@ -341,7 +513,7 @@ export function createCodeEditor({
     const spaces = /^ {1,2}/.exec(textarea.value.slice(lineStart))?.[0].length ?? 0;
     if (!spaces) return;
     textarea.setSelectionRange(lineStart, lineStart + spaces);
-    document.execCommand('delete');
+    command('delete');
     textarea.setSelectionRange(
       Math.max(lineStart, selectionStart - spaces),
       Math.max(lineStart, selectionStart - spaces),
@@ -391,19 +563,6 @@ export function createCodeEditor({
         y + lineHeight > textarea.scrollTop + textarea.clientHeight
       )
         textarea.scrollTop = y - (textarea.clientHeight - lineHeight) / 2;
-      sync();
-    },
-    get fontSize() {
-      return fontSize;
-    },
-    // The text size, in px: one of FONT_SIZES, remembered for every body editor (and forgotten
-    // again at the default).
-    setFontSize(size: number) {
-      fontSize = size;
-      if (size === DEFAULT_FONT_SIZE) localStorage.removeItem(FONT_SIZE_KEY);
-      else localStorage.setItem(FONT_SIZE_KEY, String(size));
-      applyFontSize();
-      fitHeight();
       sync();
     },
   };

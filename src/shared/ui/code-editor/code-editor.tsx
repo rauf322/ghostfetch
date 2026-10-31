@@ -28,8 +28,8 @@ interface CodeEditorProps extends Omit<ComponentProps<'div'>, 'onChange' | 'ref'
   fit?: boolean;
   // A mistake in the current text to mark, or null.
   problem?: CodeProblem | null;
-  // The editor itself, for Format (replace()), the Vim switch (setVim()), the text size
-  // (setFontSize()), going to a mistake (reveal()) and focus.
+  // The editor itself, for Format (replace()), the Vim switch (setVim()), going to a mistake
+  // (reveal()) and focus.
   ref?: Ref<Editor | null>;
 }
 

@@ -1,18 +1,14 @@
 // The Body tab: how a response rule makes the body (replace, merge, script or keep it), the
 // Content-Type of a body it replaces, and the body editor for the text it uses, as tall as that
-// text up to the room the section has. Under it, what the check found (a mistake is marked in the
-// editor too, and clicking it here puts the cursor there), the text size, the Vim switch and
-// Format.
+// text down to the bottom of the pane. Under it, what the check found (a mistake is marked in the
+// editor too, and clicking it here puts the cursor there), the Vim switch and Format. The
+// editor sizes its own text, with Cmd/Ctrl and =, - or 0.
 import { useRef, useState } from 'react';
 import { BODY_MODES, editRule } from '../../../../shared/api/index.ts';
 import type { BodyMode, Rule } from '../../../../shared/api/index.ts';
 import { formatJson } from '../../../../shared/lib/index.ts';
 import { cn } from '../../../../shared/ui/cn.ts';
-import {
-  CodeEditor,
-  fontSizePreferred,
-  vimPreferred,
-} from '../../../../shared/ui/code-editor/index.ts';
+import { CodeEditor, vimPreferred } from '../../../../shared/ui/code-editor/index.ts';
 import type { CodeEditorHandle } from '../../../../shared/ui/code-editor/index.ts';
 import { Button } from '../../../../shared/ui/kit/button.tsx';
 import { CardHint } from '../../../../shared/ui/kit/card.tsx';
@@ -23,7 +19,6 @@ import { notify } from '../../../../shared/ui/kit/toast.tsx';
 import { Toggle } from '../../../../shared/ui/kit/toggle.tsx';
 import { BODY_FIELDS } from '../../lib/body-fields.ts';
 import type { CodeStatus } from '../../lib/rule-checks.ts';
-import { TextSize } from './text-size.tsx';
 import { Verdict } from './verdict.tsx';
 
 export function BodyPanel({
@@ -38,10 +33,8 @@ export function BodyPanel({
   status: CodeStatus | null;
 }) {
   const code = useRef<CodeEditorHandle | null>(null);
-  // The Vim switch and the text size are one setting each for every body editor, which the editor
-  // remembers (setVim(), setFontSize()).
+  // The Vim switch is one setting for every body editor, which the editor remembers (setVim()).
   const [vim, setVim] = useState(vimPreferred);
-  const [fontSize, setFontSize] = useState(fontSizePreferred);
   const { response } = rule;
   const body = BODY_FIELDS[response.bodyMode];
   const problem = status?.problem ?? null;
@@ -64,11 +57,6 @@ export function BodyPanel({
     code.current?.setVim(on);
     // Straight back into the body, where the keys are.
     code.current?.textarea.focus({ preventScroll: true });
-  }
-
-  function resize(size: number) {
-    setFontSize(size);
-    code.current?.setFontSize(size);
   }
 
   return (
@@ -140,7 +128,6 @@ export function BodyPanel({
                 <span className="min-w-0 truncate">{status?.text}</span>
               )}
             </Verdict>
-            <TextSize value={fontSize} onChange={resize} />
             <Toggle
               data-testid="vim"
               pressed={vim}

@@ -1,9 +1,12 @@
-// JSON check: checkJson (src/shared/lib/json.ts), which the body editor marks mistakes with, agrees
-// with JSON.parse on what's valid, for mistakes picked by hand and for thousands of valid bodies
-// broken at random, and says where each mistake is and what it is. No browser needed.
+// JSON in the body editor, without a browser. The JSON check: checkJson (src/shared/lib/json.ts),
+// which the editor marks mistakes with, agrees with JSON.parse on what's valid, for mistakes
+// picked by hand and for thousands of valid bodies broken at random, and says where each mistake
+// is and what it is. And the pieces chunks() cuts a long body into, which the editor colours one
+// by one: they make up the body and colour exactly as the whole of it does.
 //
 //   node test/json.mjs      (npm test runs it first)
 import { checkJson } from '../src/shared/lib/index.ts';
+import { chunks, tokens } from '../src/shared/ui/code-editor/engine/highlight.ts';
 import { check, expect, finish } from './fixtures.mjs';
 
 const parses = (text) => {
@@ -249,6 +252,44 @@ await check(
       );
     // The random breaks have to produce plenty of invalid bodies, or this proves little.
     if (invalid < 10_000) throw new Error(`only ${invalid} invalid bodies`);
+  },
+);
+
+console.log('a long body highlighted in pieces');
+await check(
+  'the pieces join back into the body and colour exactly as the whole body does',
+  async () => {
+    const random = generator(20261101);
+    // The text as coloured, written out: each token in brackets with its colour, the plain text
+    // between them as it is. The pieces' join must read the same as the whole text's.
+    const coloured = (text) =>
+      tokens(text)
+        .map(([kind, part]) => (kind ? `[${kind}:${part}]` : part))
+        .join('');
+    const wrong = [];
+    let cut = 0;
+    for (let round = 0; round < 20_000 && wrong.length < 5; round++) {
+      let text = JSON.stringify(random.value(0), null, [0, 2][random.int(2)]);
+      for (let times = random.int(3); times > 0; times--) text = random.mutate(text);
+      // Now and then a key with its colon on the next line, which a cut mustn't come between.
+      if (random.int(10) === 0) text = text.replace('":', '"\n  :');
+      // Small pieces, so that bodies of a few hundred characters are cut many times.
+      const pieces = chunks(text, 'json', 1 + random.int(40));
+      if (pieces.length > 1) cut++;
+      if (
+        pieces.join('') !== text ||
+        (pieces.length > 1 && pieces.some((piece) => !piece)) ||
+        pieces.map((piece) => coloured(piece)).join('') !== coloured(text)
+      )
+        wrong.push(text);
+    }
+    if (wrong.length)
+      throw new Error(
+        `cut wrong:\n${wrong.map((text) => JSON.stringify(text)).join('\n')}`,
+      );
+    // Many bodies are shorter than their piece size; enough of them have to be cut.
+    if (cut < 2000) throw new Error(`only ${cut} bodies were cut into pieces`);
+    expect(chunks('x'.repeat(10_000), 'js', 100).length, 1, 'a script stays whole');
   },
 );
 

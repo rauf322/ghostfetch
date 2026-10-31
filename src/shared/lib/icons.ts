@@ -4,7 +4,6 @@ const PATHS = {
   back: '<path d="M15 18l-6-6 6-6"/>',
   more: '<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
-  minus: '<path d="M5 12h14"/>',
   close: '<path d="M6 6l12 12M18 6L6 18"/>',
   copy: '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a1 1 0 0 1 1-1h10"/>',
   external:

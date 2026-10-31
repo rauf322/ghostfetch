@@ -11,7 +11,13 @@ export function ruleSummary(rule: Rule) {
     return `${count} header${count === 1 ? '' : 's'}`;
   }
   const { bodyMode, status, delay } = rule.response;
-  return [BODY_MODES[bodyMode].label, status, delay ? `${delay} ms` : '']
+  return [BODY_MODES[bodyMode].label, status, delay ? formatDelay(delay) : '']
     .filter(Boolean)
     .join(' · ');
+}
+
+// A delay as the list and the Delay tab show it: "600 ms" under a second, "1 s" or "1.5 s" from
+// there on.
+export function formatDelay(ms: number) {
+  return ms < 1000 ? `${ms} ms` : `${Number((ms / 1000).toFixed(2))} s`;
 }

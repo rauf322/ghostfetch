@@ -1,8 +1,9 @@
 // What the rule editor says about what you typed: a regex that doesn't compile, whether a URL
-// matches the pattern, and whether a body is valid JSON.
+// matches the pattern, and whether a body is valid JSON (and if not, where it goes wrong).
 import { testUrl } from '../../../shared/api/index.ts';
 import type { Rule } from '../../../shared/api/index.ts';
-import { jsonProblem } from '../../../shared/lib/index.ts';
+import { checkJson } from '../../../shared/lib/index.ts';
+import type { JsonProblem } from '../../../shared/lib/index.ts';
 
 // A regex that doesn't compile, in the browser's words.
 export function regexError({ match }: Rule) {
@@ -35,19 +36,42 @@ export function testResult(
   }
 }
 
-// What the line under the body says: whether the JSON is valid, or how a script is used.
-export function codeStatus(
-  rule: Rule,
-  text: string,
-): { tone?: 'good' | 'bad'; text: string } | null {
+// What the line under the body says: whether the JSON is valid, or how a script is used. A
+// mistake that has a place comes with it (`problem`), for the body editor to mark.
+export interface CodeStatus {
+  tone?: 'good' | 'bad';
+  text: string;
+  problem?: JsonProblem;
+}
+
+export function codeStatus(rule: Rule, text: string): CodeStatus | null {
   const mode = rule.response.bodyMode;
   if (mode === 'script')
     return {
       text: 'Runs in the page. Return the value the app should receive.',
     };
   if (mode === 'replace' && !/json/i.test(rule.response.contentType)) return null;
-  let problem = jsonProblem(text);
-  if (!problem && mode === 'merge' && !/^\s*\{/.test(text))
-    problem = 'Merge JSON should be an object, e.g. { "role": "admin" }';
-  return { tone: problem ? 'bad' : 'good', text: problem || 'Valid JSON' };
+  const problem = checkJson(text);
+  // An empty body is a mistake with no place to mark.
+  if (problem && problem.to <= problem.from)
+    return { tone: 'bad', text: problem.message };
+  if (problem)
+    return {
+      tone: 'bad',
+      text: `Line ${problem.line}: ${sentenceCase(problem.message)}`,
+      problem,
+    };
+  if (mode === 'merge' && !/^\s*\{/.test(text))
+    return {
+      tone: 'bad',
+      text: 'Merge JSON should be an object, e.g. { "role": "admin" }',
+    };
+  return { tone: 'good', text: 'Valid JSON' };
+}
+
+// "Missing comma after 42" as it reads after "Line 2: ", keeping words like "JSON" whole.
+function sentenceCase(message: string) {
+  return /^[A-Z][a-z]/.test(message)
+    ? message[0]!.toLowerCase() + message.slice(1)
+    : message;
 }

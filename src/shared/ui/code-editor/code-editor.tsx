@@ -1,11 +1,18 @@
 // The body editor (engine/code-editor.ts, with its find bar and vim keys) as a React component,
 // and CodeView: the same syntax colours for a body that's only read, like a captured response in
 // Traffic.
-import { useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import {
+  useEffect,
+  useImperativeHandle,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import type { ComponentProps, Ref } from 'react';
 import { cn } from '../cn.ts';
 import { createCodeEditor } from './engine/code-editor.ts';
-import type { CodeEditor as Editor } from './engine/code-editor.ts';
+import type { CodeProblem, CodeEditor as Editor } from './engine/code-editor.ts';
 import { tokens } from './engine/highlight.ts';
 import type { Language } from './engine/highlight.ts';
 import './code-editor.css';
@@ -17,7 +24,12 @@ interface CodeEditorProps extends Omit<ComponentProps<'div'>, 'onChange' | 'ref'
   language?: Language;
   // Every edit, as the whole text.
   onChange?: (value: string) => void;
-  // The editor itself, for Format (replace()), the Vim switch (setVim()) and focus.
+  // As tall as the text, up to the room the page gives it in --code-max. Only where it starts.
+  fit?: boolean;
+  // A mistake in the current text to mark, or null.
+  problem?: CodeProblem | null;
+  // The editor itself, for Format (replace()), the Vim switch (setVim()), the text size
+  // (setFontSize()), going to a mistake (reveal()) and focus.
   ref?: Ref<Editor | null>;
 }
 
@@ -25,12 +37,14 @@ export function CodeEditor({
   value,
   language = 'json',
   onChange,
+  fit = false,
+  problem = null,
   ref,
   className,
   ...props
 }: CodeEditorProps) {
   const slot = useRef<HTMLDivElement>(null);
-  const [editor] = useState(() => createCodeEditor({ value, language }));
+  const [editor] = useState(() => createCodeEditor({ value, language, fit }));
   useImperativeHandle(ref, () => editor, [editor]);
   useEffect(() => {
     slot.current!.append(editor.root);
@@ -44,6 +58,11 @@ export function CodeEditor({
     editor.textarea.addEventListener('input', changed);
     return () => editor.textarea.removeEventListener('input', changed);
   }, [editor, onChange]);
+  // Before the browser paints: an edit clears the marks, and the redraw it causes puts them back
+  // for the new text, so they never show in the wrong place.
+  useLayoutEffect(() => {
+    editor.setProblem(problem);
+  }, [editor, problem]);
   return <div data-slot="code-editor" ref={slot} className={className} {...props} />;
 }
 

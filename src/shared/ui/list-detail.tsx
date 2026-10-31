@@ -125,9 +125,12 @@ export function PaneHead({ className, ...props }: ComponentProps<'div'>) {
   );
 }
 
+// What scrolls under the pane's head. A section can size itself to it (the rule editor's body
+// editor does) by finding it as data-slot="pane-scroll".
 export function PaneScroll({ className, ...props }: ComponentProps<'div'>) {
   return (
     <div
+      data-slot="pane-scroll"
       className={cn('flex min-h-0 flex-1 flex-col overflow-auto scroll-thin', className)}
       {...props}
     />

@@ -1,96 +1,122 @@
-// "Status, delay and headers" for a response rule: the status code (typed or picked from the
-// common ones), the delay, the Content-Type for a body it replaces, and headers to set or remove.
-import { editRule } from '../../../../shared/api/index.ts';
+// "02 — Body · Status · Headers · Delay": what a response rule sends back, a tab for each part, in
+// the section's title bar. Each tab's label carries what it's set to (STATUS 404, HEADERS 2,
+// DELAY 1 S), and BODY a cross while the body has a mistake. The Body tab stays mounted under the
+// others, invisible: the body editor keeps its undo history and vim state, and the section is
+// never shorter than the Body tab, so what's below doesn't jump as you switch tabs.
+import { useRef, useState } from 'react';
 import type { Rule } from '../../../../shared/api/index.ts';
-import { Card, CardTitle } from '../../../../shared/ui/kit/card.tsx';
-import { Input } from '../../../../shared/ui/kit/input.tsx';
-import { FieldLabel } from '../../../../shared/ui/kit/label.tsx';
-import { ToggleGroup, ToggleGroupItem } from '../../../../shared/ui/kit/toggle-group.tsx';
-import { HeaderRows } from './header-rows.tsx';
+import { cn } from '../../../../shared/ui/cn.ts';
+import { CardTitle } from '../../../../shared/ui/kit/card.tsx';
+import {
+  Tabs,
+  TabsContent,
+  TabsCount,
+  TabsList,
+  TabsTrigger,
+} from '../../../../shared/ui/kit/tabs.tsx';
+import { BODY_FIELDS } from '../../lib/body-fields.ts';
+import { codeStatus } from '../../lib/rule-checks.ts';
+import { formatDelay } from '../../lib/rule-summary.ts';
+import { useEditorRoom } from '../../model/use-editor-room.ts';
+import { useSettledStatus } from '../../model/use-settled-status.ts';
+import { BodyPanel } from './body-panel.tsx';
+import { DelayPanel } from './delay-panel.tsx';
+import { HeadersPanel } from './headers-panel.tsx';
+import { StatusPanel } from './status-panel.tsx';
 
-const STATUS_PRESETS = [200, 201, 204, 400, 401, 403, 404, 409, 422, 429, 500, 503];
+type Tab = 'body' | 'status' | 'headers' | 'delay';
 
-export function ResponseSection({ rule, index }: { rule: Rule; index: number }) {
+// The panels share one grid cell, so the area is as tall as the tallest one showing.
+const PANEL = 'col-start-1 row-start-1 flex min-w-0 flex-col gap-[9px]';
+
+export function ResponseSection({
+  rule,
+  index,
+  revision,
+}: {
+  rule: Rule;
+  index: number;
+  // Moves when the rules were changed in another view, so the body editor starts over from them.
+  revision: number;
+}) {
+  const [tab, setTab] = useState<Tab>('body');
+  const section = useRef<HTMLDivElement>(null);
+  const panels = useRef<HTMLDivElement>(null);
+  const bodyPanel = useRef<HTMLDivElement>(null);
+  useEditorRoom(section, panels, bodyPanel);
   const { response } = rule;
+  const body = BODY_FIELDS[response.bodyMode];
+  const text = body ? response[body.field] : '';
+  const status = useSettledStatus(body ? codeStatus(rule, text) : null, text.length);
+  const mistake = status?.tone === 'bad' && Boolean(status.text);
+
   return (
-    <Card>
-      <CardTitle index={index}>Status, delay and headers</CardTitle>
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-2">
-        <label className="flex min-w-0 flex-col gap-[5px]">
-          <FieldLabel>Status code</FieldLabel>
-          <Input
-            type="number"
-            min={200}
-            max={599}
-            value={response.status}
-            placeholder={response.bodyMode === 'replace' ? '200' : 'Keep original'}
-            onChange={(event) =>
-              editRule(rule.id, (current) => {
-                current.response.status = event.target.value;
-              })
-            }
-            className="tabular-nums"
-          />
-        </label>
-        <label className="flex min-w-0 flex-col gap-[5px]">
-          <FieldLabel>Delay (ms)</FieldLabel>
-          {/* Whole milliseconds, never below 0: the field shows what's kept. */}
-          <Input
-            type="number"
-            min={0}
-            step={250}
-            value={response.delay || ''}
-            placeholder="0"
-            onChange={(event) =>
-              editRule(rule.id, (current) => {
-                current.response.delay = Math.max(
-                  0,
-                  Math.round(Number(event.target.value) || 0),
-                );
-              })
-            }
-            className="tabular-nums"
-          />
-        </label>
-        {response.bodyMode === 'replace' && (
-          <label className="col-span-2 flex min-w-0 flex-col gap-[5px]">
-            <FieldLabel>Content-Type</FieldLabel>
-            <Input
-              list="content-types"
-              value={response.contentType}
-              onChange={(event) =>
-                editRule(rule.id, (current) => {
-                  current.response.contentType = event.target.value;
-                })
-              }
+    <Tabs
+      ref={section}
+      value={tab}
+      onValueChange={(value) => setTab(value as Tab)}
+      className="flex-col gap-[9px] border-b border-border pb-3.5"
+    >
+      <CardTitle index={index} className="pr-0">
+        <TabsList aria-label="Response" className="ml-1">
+          <TabsTrigger value="body" data-testid="tab-body">
+            Body
+            {mistake && (
+              <>
+                <TabsCount
+                  aria-hidden
+                  className="text-foreground group-data-active/tab:text-foreground"
+                >
+                  ✗
+                </TabsCount>
+                <span className="sr-only">, has a mistake</span>
+              </>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="status" data-testid="tab-status">
+            Status
+            <TabsCount>{response.status}</TabsCount>
+          </TabsTrigger>
+          <TabsTrigger value="headers" data-testid="tab-headers">
+            Headers
+            <TabsCount>{response.headers.length || ''}</TabsCount>
+          </TabsTrigger>
+          <TabsTrigger value="delay" data-testid="tab-delay">
+            Delay
+            <TabsCount>{response.delay ? formatDelay(response.delay) : ''}</TabsCount>
+          </TabsTrigger>
+        </TabsList>
+      </CardTitle>
+      <div ref={panels} className="mx-3.5 grid">
+        {/* Behind another tab, the Body tab keeps its place in the layout: inert and invisible
+            rather than hidden, which would take it out (and Tailwind's hidden rule can't be
+            overridden). */}
+        <TabsContent
+          ref={bodyPanel}
+          value="body"
+          keepMounted
+          className={PANEL}
+          render={(props, state) => (
+            <div
+              {...props}
+              hidden={undefined}
+              inert={state.hidden}
+              className={cn(props.className, state.hidden && 'invisible')}
             />
-          </label>
-        )}
+          )}
+        >
+          <BodyPanel rule={rule} revision={revision} status={status} />
+        </TabsContent>
+        <TabsContent value="status" className={PANEL}>
+          <StatusPanel rule={rule} />
+        </TabsContent>
+        <TabsContent value="headers" className={PANEL}>
+          <HeadersPanel rule={rule} />
+        </TabsContent>
+        <TabsContent value="delay" className={PANEL}>
+          <DelayPanel rule={rule} />
+        </TabsContent>
       </div>
-      {/* Click the chosen code again to clear it. */}
-      <ToggleGroup
-        aria-label="Status code"
-        value={[response.status]}
-        onValueChange={(values) =>
-          editRule(rule.id, (current) => {
-            current.response.status = (values as string[])[0] ?? '';
-          })
-        }
-        className="grid grid-cols-6 border-0 border-t border-l"
-      >
-        {STATUS_PRESETS.map((preset) => (
-          <ToggleGroupItem
-            key={preset}
-            value={String(preset)}
-            data-testid={`status-${preset}`}
-            className="h-[26px] border-r border-b border-input px-0 text-meta normal-case tracking-[inherit] not-first:border-l-0"
-          >
-            {preset}
-          </ToggleGroupItem>
-        ))}
-      </ToggleGroup>
-      <FieldLabel className="mt-1.5 block">Response headers</FieldLabel>
-      <HeaderRows rule={rule} pick={(current) => current.response.headers} />
-    </Card>
+    </Tabs>
   );
 }

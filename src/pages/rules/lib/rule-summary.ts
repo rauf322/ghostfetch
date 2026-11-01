@@ -2,7 +2,7 @@
 // its name in the editor (describeRule), and the value each setting shows on its row.
 import { BODY_MODES } from '../../../shared/api/index.ts';
 import type { MatchMode, Rule } from '../../../shared/api/index.ts';
-import { statusName } from './status-codes.ts';
+import { statusName } from '../../../shared/lib/index.ts';
 
 export function ruleSummary(rule: Rule) {
   const { bodyMode, status, delay } = rule.response;

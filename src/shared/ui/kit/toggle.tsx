@@ -3,8 +3,8 @@ import { cva } from 'class-variance-authority';
 import type { VariantProps } from 'class-variance-authority';
 import { cn } from '../cn.ts';
 
-// Buttons that stay pressed: a small rounded mark, hollow when off and green when on, as for Rec,
-// Preserve, Matched and Vim. The "segment" look is for the options of a ToggleGroup.
+// Buttons that stay pressed: a small rounded mark, hollow when off and green when on, as for Keep
+// on reload and Vim keys. The "segment" look is for the options of a ToggleGroup.
 export const toggleVariants = cva(
   'inline-flex shrink-0 items-center justify-center gap-[7px] whitespace-nowrap text-t50 transition-colors duration-120 select-none hover:bg-pressed hover:text-foreground disabled:pointer-events-none disabled:opacity-45',
   {
@@ -19,8 +19,6 @@ export const toggleVariants = cva(
       size: {
         // the size of a small button, hairline included (give it border-input to show the hairline)
         sm: 'h-7 rounded-md border border-transparent px-2.5 text-label font-medium',
-        // a quiet button in a list's footer, like Rec / Preserve / Matched
-        cell: 'h-8 rounded-md px-2.5 text-control',
         segment: 'h-7 rounded-[8px] px-2 text-control',
       },
     },

@@ -6,7 +6,8 @@ import { CardHint } from '../../../../shared/ui/kit/card.tsx';
 import { Input } from '../../../../shared/ui/kit/input.tsx';
 import { FieldLabel } from '../../../../shared/ui/kit/label.tsx';
 import { ToggleGroup, ToggleGroupItem } from '../../../../shared/ui/kit/toggle-group.tsx';
-import { STATUS_GROUPS, presetName, statusName } from '../../lib/status-codes.ts';
+import { statusName } from '../../../../shared/lib/index.ts';
+import { STATUS_GROUPS, presetName } from '../../lib/status-codes.ts';
 
 export function StatusPanel({ rule }: { rule: Rule }) {
   const { response } = rule;

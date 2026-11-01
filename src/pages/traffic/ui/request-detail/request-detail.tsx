@@ -1,5 +1,6 @@
-// One request, opened from the list: its method, path and status along the top, then any error,
-// what to do with it (Mock this response first), what's known about it, and its bodies.
+// One request, opened from the list, in a drawer that floats beside it (or takes the list's place
+// in a narrow panel): its method and path with its status, duration and kind, then any error,
+// Mock this response and the quieter actions, what's known about it, and its bodies.
 // Memoized on the entry, which never changes: a long body is only formatted once.
 import { memo, useMemo } from 'react';
 import type { LogEntry, Rule } from '../../../../shared/api/index.ts';
@@ -13,12 +14,12 @@ import { RequestHeader } from './request-header.tsx';
 
 export const RequestDetail = memo(function RequestDetail({
   entry,
-  onBack,
+  onClose,
   onMock,
   onOpenRule,
 }: {
   entry: LogEntry;
-  onBack: () => void;
+  onClose: () => void;
   onMock: (draft: Rule) => void;
   onOpenRule: (id: string) => void;
 }) {
@@ -26,23 +27,18 @@ export const RequestDetail = memo(function RequestDetail({
   const requestPretty = useMemo(() => formatJson(entry.requestBody), [entry.requestBody]);
 
   return (
-    <>
-      <RequestHeader entry={entry} onBack={onBack} />
-      <PaneScroll>
-        {entry.error && (
-          <Alert variant="error" className="mx-3.5 mt-3.5">
-            {entry.error}
-          </Alert>
-        )}
-        <RequestActions
-          entry={entry}
-          pretty={pretty}
-          onMock={onMock}
-          onOpenRule={onOpenRule}
-        />
-        <RequestFacts entry={entry} />
+    <section
+      aria-label="Request"
+      data-testid="request-detail"
+      className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden wide:my-3 wide:mr-3 wide:w-[min(44%,600px)] wide:flex-none wide:rounded-xl wide:border wide:border-border wide:bg-card wide:shadow-menu"
+    >
+      <RequestHeader entry={entry} onClose={onClose} />
+      <PaneScroll className="gap-4 px-4 pb-4 wide:px-5">
+        {entry.error && <Alert variant="error">{entry.error}</Alert>}
+        <RequestActions entry={entry} pretty={pretty} onMock={onMock} />
+        <RequestFacts entry={entry} onOpenRule={onOpenRule} />
         <RequestBodies entry={entry} pretty={pretty} requestPretty={requestPretty} />
       </PaneScroll>
-    </>
+    </section>
   );
 });

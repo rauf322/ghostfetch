@@ -37,7 +37,7 @@ export function Badge({
 const statusVariants = cva('flex-none font-mono text-meta tabular-nums', {
   variants: {
     tone: {
-      '2xx': 'text-t65',
+      '2xx': 'text-foreground',
       '3xx': 'text-t40',
       '4xx': 'rounded-sm px-1 text-foreground shadow-[inset_0_0_0_1px_var(--t50)]',
       '5xx': 'rounded-sm bg-foreground px-1 font-semibold text-black',

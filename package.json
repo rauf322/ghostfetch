@@ -15,7 +15,7 @@
     "format": "oxfmt --check .",
     "format:fix": "oxfmt .",
     "browsers": "playwright-core install chromium",
-    "test": "node test/json.mjs && node test/matching.mjs && wxt build && node test/e2e.mjs",
+    "test": "node test/json.mjs && node test/matching.mjs && node test/curl.mjs && wxt build && node test/e2e.mjs",
     "test:firefox": "wxt build -b firefox && node test/firefox.mjs",
     "test:kit": "NODE_ENV=production wxt build --mode kit && NODE_ENV=production wxt build -b firefox --mode kit && node test/kit.mjs",
     "test:release": "npm run zip && node test/release.mjs",

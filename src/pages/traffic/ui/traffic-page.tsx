@@ -1,10 +1,10 @@
-// Traffic tab: live log of the fetch/XHR calls in a tab, with a detail pane and
-// "Mock this response", which turns a captured response into an editable rule.
+// Traffic tab: the live log of the fetch/XHR calls in a tab, and a request's details in a drawer
+// beside it, whose one big button, Mock this response, turns the captured response into an
+// editable rule. With nothing open the list has the whole width; in a narrow side panel the
+// drawer takes the list's place, with a button to close it.
 import { memo, useCallback, useEffect, useState } from 'react';
 import type { Rule, TrafficLog } from '../../../shared/api/index.ts';
 import { useTraffic } from '../../../shared/react/index.ts';
-import { DetailPane, Split } from '../../../shared/ui/list-detail.tsx';
-import { NoRequestSelected } from './no-request.tsx';
 import { RequestDetail } from './request-detail/request-detail.tsx';
 import { TrafficList } from './traffic-list.tsx';
 
@@ -28,12 +28,12 @@ export const TrafficPage = memo(function TrafficPage({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const { entries } = traffic;
   const selected = entries.find((entry) => entry.id === selectedId);
-  const back = useCallback(() => setSelectedId(null), []);
+  const close = useCallback(() => setSelectedId(null), []);
 
   useEffect(() => onCount(entries.length), [entries.length, onCount]);
 
   return (
-    <Split>
+    <div className="flex h-full min-h-0">
       <TrafficList
         log={log}
         traffic={traffic}
@@ -41,18 +41,14 @@ export const TrafficPage = memo(function TrafficPage({
         selectedId={selectedId}
         onSelect={setSelectedId}
       />
-      <DetailPane picked={Boolean(selected)}>
-        {selected ? (
-          <RequestDetail
-            entry={selected}
-            onBack={back}
-            onMock={onMock}
-            onOpenRule={onOpenRule}
-          />
-        ) : (
-          <NoRequestSelected />
-        )}
-      </DetailPane>
-    </Split>
+      {selected && (
+        <RequestDetail
+          entry={selected}
+          onClose={close}
+          onMock={onMock}
+          onOpenRule={onOpenRule}
+        />
+      )}
+    </div>
   );
 });

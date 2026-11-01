@@ -1,9 +1,8 @@
 // The editor's layout, shared by the Rules and Traffic tabs: a list, and what's picked in it. From
 // 760px wide the two sit side by side; in a narrower side panel only one shows, the list until
-// something is picked, with a back button to return to it.
+// something is picked, with a button to go back to it.
 import type { ComponentProps } from 'react';
 import { cn } from './cn.ts';
-import { Button } from './kit/button.tsx';
 import { Icon } from './kit/icon.tsx';
 import { Input } from './kit/input.tsx';
 
@@ -133,20 +132,6 @@ export function PaneScroll({ className, ...props }: ComponentProps<'div'>) {
   );
 }
 
-// Back to the list, in a narrow panel only.
-export function BackButton({ className, ...props }: ComponentProps<typeof Button>) {
-  return (
-    <Button
-      variant="ghost"
-      size="icon"
-      className={cn('h-full w-10 rounded-none wide:hidden', className)}
-      {...props}
-    >
-      <Icon name="back" size={18} />
-    </Button>
-  );
-}
-
 // A filled, rounded search field, with the magnifier inside it. The field covers the magnifier
 // too, so a click anywhere in it goes to the field.
 export function SearchField({ className, ...props }: ComponentProps<typeof Input>) {
@@ -171,11 +156,20 @@ export function SearchField({ className, ...props }: ComponentProps<typeof Input
   );
 }
 
-// An HTTP method, as in "GET /api/user": code, so in the monospace font.
-export function Method({ className, ...props }: ComponentProps<'span'>) {
+// An HTTP method, as in "GET /api/user": code, so in the monospace font, in a small rounded box.
+// Green while a rule answered the request (`matched`).
+export function Method({
+  matched = false,
+  className,
+  ...props
+}: ComponentProps<'span'> & { matched?: boolean }) {
   return (
     <span
-      className={cn('flex-none font-mono text-meta font-medium text-t80', className)}
+      data-matched={matched || undefined}
+      className={cn(
+        'inline-flex h-7 min-w-11 flex-none items-center justify-center rounded-md bg-pressed px-1.5 font-mono text-[11px] font-medium text-t65 data-matched:bg-signal-soft data-matched:text-signal',
+        className,
+      )}
       {...props}
     />
   );

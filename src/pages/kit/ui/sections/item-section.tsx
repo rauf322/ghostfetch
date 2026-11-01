@@ -120,32 +120,36 @@ export function ItemSection() {
             </Item>
           ))}
         </ul>
-        <ul className="m-0 list-none py-1">
+        <ul className="m-0 list-none rounded-lg bg-card p-1">
           {REQUESTS.map((entry, position) => (
             <Item
               key={entry.path + entry.method}
               variant="request"
               selected={position === 2}
+              className="mx-0"
             >
-              <Method>{entry.method}</Method>
+              <Method matched={Boolean(entry.action)}>{entry.method}</Method>
               <span className="flex min-w-0 flex-col gap-0.5">
                 <span className="truncate font-mono text-body text-foreground">
                   {entry.path}
                 </span>
-                <span className="flex min-w-0 items-center gap-1.5 overflow-hidden text-label whitespace-nowrap text-t40">
+                <span className="flex min-w-0 items-center gap-1 overflow-hidden text-label whitespace-nowrap text-t40">
                   {entry.action ? (
                     <>
                       <Badge variant="fired">{entry.action}</Badge>
-                      <span className="truncate text-t65">{entry.rule}</span>
+                      <span className="flex-none text-signal">by</span>
+                      <span className="truncate pl-0.5 text-t65">{entry.rule}</span>
                     </>
                   ) : (
-                    entry.host
+                    `${entry.host} · fetch`
                   )}
                 </span>
               </span>
-              <StatusCode status={entry.status} />
-              <span className="text-right font-mono text-meta text-t40 tabular-nums">
-                {entry.ms != null ? `${entry.ms} ms` : ''}
+              <span className="flex flex-col items-end gap-0.5">
+                <StatusCode status={entry.status} />
+                <span className="font-mono text-label text-t40 tabular-nums">
+                  {entry.ms != null ? `${entry.ms} ms` : ''}
+                </span>
               </span>
             </Item>
           ))}

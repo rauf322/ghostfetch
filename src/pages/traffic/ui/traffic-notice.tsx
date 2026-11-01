@@ -62,7 +62,7 @@ export function TrafficNotice({
 
   if (!notice) return null;
   return (
-    <Alert data-testid="traffic-notice" className="mx-3.5 mt-2.5 flex-none">
+    <Alert data-testid="traffic-notice" className="flex-none">
       {notice}
     </Alert>
   );

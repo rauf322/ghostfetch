@@ -119,11 +119,16 @@ What's different in Firefox-based browsers:
     on [vim keys](#vim-keys). The text size and the Vim switch are remembered for every body
     editor. Format on a body of more than 300
     lines can't be undone with ⌘Z: the browser would take minutes to make it undoable.
-  - **Traffic**: live `fetch`/XHR log of a tab. Requests a rule changed are marked in green
-    (**Mocked**, **Modified**). **Rec**, **Preserve**, **Matched** and **Clear** are in the
-    bottom bar.
-    Click a request to see its response, then **Mock this response** to turn it into a rule
-    pre-filled with the method, path, status and the real body, ready to edit.
+  - **Traffic**: live `fetch`/XHR log of a tab, newest first, grouped by when ("Just now",
+    "1 minute ago"). What a rule did is in green ("Mocked by Feature flags"). The bar along
+    the top picks the page to watch and has **Recording**, **Keep on reload** (keep the log
+    when the page reloads) and **Clear**; under it, **All**, **Matched** and **Errors** (a
+    status of 400 or more, a failed request or a rule's error), each with its count, and a
+    search by URL, status or rule.
+    Click a request to open it in a drawer beside the log: its status, time and Content-Type,
+    the rule that acted on it, its bodies, **Copy URL**, **Copy as cURL** and **Copy body**,
+    and **Mock this response**, which turns it into a rule pre-filled with the method, path,
+    status and the real body, ready to edit.
 
 The look is dark-only and calm, after [T3 Code](https://github.com/pingdotgg/t3code), Revolut
 and ChatGPT: a near-black canvas with cards a step lighter, soft corners, Geist for words and
@@ -274,7 +279,7 @@ src/app/                         the extension's parts, one folder each, which W
   styles/                        theme.css, the look's values (colours, the two fonts), and kit.css: those as Tailwind's theme (type sizes, corners)
 src/pages/                       what the screens show
   rules/                         the Rules tab: the rule list, and the rule editor (ui/rule-editor/, a component per part: settings rows, the body, the URL to try)
-  traffic/                       the Traffic tab: a tab's live log, a request's details (ui/request-detail/), Mock this response
+  traffic/                       the Traffic tab: a tab's live log grouped by time, a request's drawer (ui/request-detail/), Mock this response
   popup/                         the toolbar popup
   kit/                           the kit page: every kit component in its states
 src/shared/                      what more than one part of the extension uses
@@ -286,8 +291,8 @@ src/shared/                      what more than one part of the extension uses
     traffic-log.ts               the editor's live log of the tab it watches (Traffic, and how often a rule fired)
     messages.ts                  the messages between the background, the bridge, the interceptor and the Traffic tab
     open-editor.ts               the editor in the side panel or a tab, and on a rule the popup picked
-  lib/                           small libraries, a file each (index.ts): JSON, HTML, URLs, icons, file names, a download,
-                                 the side panel, the stores' base, untrusted data
+  lib/                           small libraries, a file each (index.ts): JSON, HTML, URLs, status names, cURL commands,
+                                 icons, file names, a download, the side panel, the stores' base, untrusted data
   react/                         useStore(), which redraws a screen when a store changes, and the traffic log's hooks (index.ts)
   ui/                            components, a public file each
     kit/                         the UI kit: React components on Base UI, styled with Tailwind (see UI kit)
@@ -307,6 +312,7 @@ scripts/check-sources.mjs        rebuilds the sources zip in a clean folder and 
 scripts/oxlint-rules.mjs         two lint rules of its own (npm run lint): no export *, and the folders of src/app/ are the extension's parts
 test/json.mjs                    the body editor's JSON check against JSON.parse, and the pieces it colours a long body in
 test/matching.mjs                which URLs a rule's pattern matches, and that the rule editor's Try a URL says what the page does
+test/curl.mjs                    Traffic's Copy as cURL, and that nothing the page sent can break out of its quotes
 test/e2e.mjs                     end-to-end test in Chromium (Playwright)
 test/firefox.mjs                 end-to-end test in Zen or Firefox (puppeteer-core)
 test/kit.mjs                     the UI kit under the real CSP, in Chromium and Zen, driven with the keyboard and the mouse
@@ -400,12 +406,16 @@ compile, and no pattern with or without a GraphQL operation), and that the rule 
 says the same for every case: both use one function, `urlTester`. It needs no browser either, and
 `npm test` runs it next.
 
+`test/curl.mjs` checks Traffic's Copy as cURL: the command for a request, and that whatever the
+page put in it (quotes, `$(…)`, backticks, `;`, in the URL, the body or the method) stays inside
+its quotes when a shell reads the command. `npm test` runs it after `test/matching.mjs`.
+
 `test/e2e.mjs` loads the built extension into Chromium, runs a local API and checks the rules
 against fetch and XHR (and that rules saved by older versions do what they should), the editor
-(including the rule's tabs, the body editor's marks for a
-JSON mistake, its height and text size, Format and colours on a body of 370,000 characters,
-its own find and its vim keys),
-traffic view and popup, plus the security properties above
+(including the rule's settings rows and its sentence, the body editor's marks for a JSON mistake,
+its height beside the settings and under them, text size, Format and colours on a body of 370,000
+characters, its own find and its vim keys), the traffic view (its filters, Keep on reload and
+Clear) and popup, plus the security properties above
 (channel theft, forged offers, patched built-ins, built-ins that try to reach the interceptor
 through `.caller`, HTML injection, hostile rule files, sites that aren't turned on getting
 nothing, `local.*` hosts and a lookalike URL, turning a site on from the Traffic view). Branded Google Chrome ignores `--load-extension`, so the test uses

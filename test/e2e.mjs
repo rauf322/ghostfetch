@@ -1597,7 +1597,7 @@ try {
     },
   );
   await check(
-    'Traffic: Matched hides what no rule matched, Preserve keeps the log over a reload, Clear empties it',
+    'Traffic: Matched and Errors filter the log, Keep on reload keeps it over a reload, Clear empties it',
     async () => {
       await app.click('[data-testid="tab-traffic"]');
       await app.click('[data-testid="traffic-tab"]');
@@ -1607,22 +1607,51 @@ try {
       await page.reload();
       await page.evaluate(() => window.early);
       await page.evaluate(() => fetch('/api/user?case=none'));
-      await app.waitForSelector('[data-testid="request"]:has-text("case=none")', {
+      // The test server answers a path it doesn't know with a 404.
+      await page.evaluate(() => fetch('/api/nowhere'));
+      await app.waitForSelector('[data-testid="request"]:has-text("/api/nowhere")', {
         timeout: 3000,
       });
       const count = () => app.locator('[data-testid="request"]').count();
       const all = await count();
-      await app.getByRole('button', { name: 'Matched' }).click();
+      await app.click('[data-testid="filter-matched"]');
       expect(
         [
           await count(),
           await app.locator('[data-testid="request"]', { hasText: 'case=none' }).count(),
         ],
-        [all - 1, 0],
+        [all - 2, 0],
         'Matched',
       );
-      await app.getByRole('button', { name: 'Matched' }).click();
-      await app.getByRole('button', { name: 'Preserve' }).click();
+      // Errors: a status of 400 or more, a request that failed or a rule's error, and as many as
+      // its pill says.
+      await app.click('[data-testid="filter-errors"]');
+      const failed = await app.evaluate(() => {
+        const rows = [...document.querySelectorAll('[data-testid="request"]')];
+        return {
+          shown: rows.length,
+          counted: Number(
+            document.querySelector('[data-testid="filter-errors"] span').textContent,
+          ),
+          notErrors: rows.filter(
+            (row) =>
+              !/^(ERR|[45]\d\d)$/.test(
+                row.querySelector('[data-slot="status"]').textContent,
+              ) && !row.textContent.includes('Rule error'),
+          ).length,
+          nowhere: rows.some((row) => row.textContent.includes('/api/nowhere')),
+        };
+      });
+      if (
+        failed.shown < 1 ||
+        failed.shown !== failed.counted ||
+        failed.notErrors ||
+        !failed.nowhere
+      )
+        throw new Error(`Errors: ${JSON.stringify(failed)}`);
+      await app.click('[data-testid="filter-all"]');
+      expect(await count(), all, 'All');
+      await app.getByRole('button', { name: 'Keep on reload' }).click();
       await page.reload();
       await page.evaluate(() => window.early);
       await app.waitForFunction(
@@ -1630,7 +1659,7 @@ try {
         all,
         { timeout: 3000 },
       );
-      await app.getByRole('button', { name: 'Preserve' }).click();
+      await app.getByRole('button', { name: 'Keep on reload' }).click();
       await app.getByTitle('Clear the log').click();
       // The log redraws once a frame, however many requests arrive; then the count in the tab goes.
       await app.waitForFunction(
@@ -1661,7 +1690,7 @@ try {
           .map((key) => `${key}=${localStorage.getItem(key)}`),
       );
       const preserve = await app
-        .getByRole('button', { name: 'Preserve' })
+        .getByRole('button', { name: 'Keep on reload' })
         .getAttribute('aria-pressed');
       expect(
         [saved, preserve],

@@ -1,4 +1,4 @@
-// Toggles and switches, in their states: a list's footer as in Traffic's, the Vim toggle, a
+// Toggles and switches, in their states: the bar over Traffic's log, the Vim keys toggle, a
 // switch with its words that a click on either flips, and a rule's switch, the green dot.
 import { useState } from 'react';
 import { Button } from '../../../../shared/ui/kit/button.tsx';
@@ -14,24 +14,30 @@ export function ToggleSection() {
   return (
     <Cell title="Toggle and switch" note="green means on">
       <Row
-        label="A list's footer: Rec on, Preserve off, Matched hover"
-        className="flex h-11 items-center gap-0.5 border-t border-border px-1.5"
+        label="Traffic's bar: Recording on, Keep on reload off, the same with the pointer over it, Clear"
+        className="flex items-center gap-1.5"
       >
-        <Toggle size="cell" defaultPressed>
-          Rec
+        <label className="flex h-8 cursor-pointer items-center gap-2 rounded-md bg-card pr-1.5 pl-3 text-control font-medium text-t80">
+          Recording
+          <Switch defaultChecked aria-label="Recording" />
+        </label>
+        <Toggle className="h-8 border-input">Keep on reload</Toggle>
+        <Toggle className="h-8 border-input bg-pressed text-foreground">
+          Keep on reload
         </Toggle>
-        <Toggle size="cell">Preserve</Toggle>
-        <Toggle size="cell" className="bg-pressed text-foreground">
-          Matched
-        </Toggle>
-        <Button variant="cell" size="cell" className="ml-auto">
-          <Icon name="clear" size={13} /> Clear
+        <Button size="sm" className="h-8">
+          <Icon name="trash" size={14} /> Clear
         </Button>
       </Row>
-      <Row label="Vim off · on (live: Space)">
-        <Toggle>Vim</Toggle>
-        <Toggle data-testid="kit-toggle" pressed={vim} onPressedChange={setVim}>
-          Vim
+      <Row label="Vim keys off · on (live: Space)">
+        <Toggle className="border-input">Vim keys</Toggle>
+        <Toggle
+          data-testid="kit-toggle"
+          pressed={vim}
+          onPressedChange={setVim}
+          className="border-input"
+        >
+          Vim keys
         </Toggle>
       </Row>
       <Row label="Switch off · on · small off · small on · disabled · focus">

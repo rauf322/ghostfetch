@@ -1,8 +1,9 @@
 // An open request's bodies in the body editor's colours: the response (or why there isn't one),
-// and the request's own if it sent one.
+// and the request's own if it sent one, each under a grey label.
+import type { ReactNode } from 'react';
 import type { LogEntry } from '../../../../shared/api/index.ts';
 import { CodeView } from '../../../../shared/ui/code-editor/index.ts';
-import { Card, CardHint, CardTitle } from '../../../../shared/ui/kit/card.tsx';
+import { CardHint } from '../../../../shared/ui/kit/card.tsx';
 
 export function RequestBodies({
   entry,
@@ -16,25 +17,43 @@ export function RequestBodies({
 }) {
   return (
     <>
-      <Card>
-        <CardTitle note={entry.truncated ? 'first 1 MB only' : undefined}>
-          Response body
-        </CardTitle>
+      <Body label="Response body" note={entry.truncated ? 'the first 1 MB' : undefined}>
         {entry.responseBody ? (
           <CodeView text={pretty ?? entry.responseBody} highlight={pretty !== null} />
         ) : (
-          <CardHint>No body captured (empty, binary, or a streaming response).</CardHint>
+          <CardHint className="px-1">
+            No body captured (empty, binary, or a streaming response).
+          </CardHint>
         )}
-      </Card>
+      </Body>
       {entry.requestBody && (
-        <Card>
-          <CardTitle>Request body</CardTitle>
+        <Body label="Request body">
           <CodeView
             text={requestPretty ?? entry.requestBody}
             highlight={requestPretty !== null}
           />
-        </Card>
+        </Body>
       )}
     </>
+  );
+}
+
+function Body({
+  label,
+  note,
+  children,
+}: {
+  label: string;
+  note?: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="flex flex-col gap-2">
+      <h3 className="px-1 text-label font-medium text-t40">
+        {label}
+        {note && <span className="ml-2 font-normal text-t30">{note}</span>}
+      </h3>
+      {children}
+    </section>
   );
 }

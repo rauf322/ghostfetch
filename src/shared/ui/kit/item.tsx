@@ -6,14 +6,15 @@ import type { ComponentProps } from 'react';
 import { cn } from '../cn.ts';
 
 // List rows: a rule, or a request in Traffic. Rounded and inset from the list's edges; the
-// selected row is a filled pill, and a rule that's off fades. A rule's row starts with its dot.
+// selected row is a filled pill, and a rule that's off fades. A rule's row starts with its dot, a
+// request's with its method, and its status and duration sit at its right end.
 const itemVariants = cva(
   'group/item relative mx-1.5 grid cursor-pointer items-center rounded-md hover:bg-hover data-selected:bg-pressed',
   {
     variants: {
       variant: {
         rule: 'grid-cols-[auto_minmax(0,1fr)] gap-x-1 px-3 py-2.5',
-        request: 'grid-cols-[46px_minmax(0,1fr)_auto_56px] gap-2 px-3 py-2',
+        request: 'grid-cols-[auto_minmax(0,1fr)_auto] gap-3 px-2.5 py-2',
       },
     },
     defaultVariants: { variant: 'rule' },

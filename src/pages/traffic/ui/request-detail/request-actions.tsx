@@ -1,38 +1,35 @@
-// What to do with an open request: Mock this response, and a row of quieter ones: open the rule
-// that fired, copy the URL, copy the response.
+// What to do with an open request: Mock this response, the one big button, and a row of quieter
+// ones: copy the URL, the request as a cURL command, and the response's body.
 import { ruleFromEntry } from '../../../../shared/api/index.ts';
 import type { LogEntry, Rule } from '../../../../shared/api/index.ts';
+import { curlCommand } from '../../../../shared/lib/index.ts';
 import { Button } from '../../../../shared/ui/kit/button.tsx';
 import { Icon } from '../../../../shared/ui/kit/icon.tsx';
+import type { IconName } from '../../../../shared/ui/kit/icon.tsx';
 import { notify } from '../../../../shared/ui/kit/toast.tsx';
-
-// The row of secondary actions under Mock this response: small outline buttons, side by side.
-const SECONDARY = 'min-w-0 px-2 text-t65';
 
 export function RequestActions({
   entry,
   pretty,
   onMock,
-  onOpenRule,
 }: {
   entry: LogEntry;
   // The response body pretty-printed, or null when it isn't JSON.
   pretty: string | null;
   onMock: (draft: Rule) => void;
-  onOpenRule: (id: string) => void;
 }) {
-  async function copy(text: string) {
+  async function copy(text: string, what: string) {
     await navigator.clipboard.writeText(text);
-    notify('Copied to clipboard');
+    notify(`Copied ${what}`);
   }
 
   return (
-    <div className="flex flex-col gap-2 border-b border-border px-3.5 py-3">
+    <div className="flex flex-col gap-2">
       <Button
         variant="primary"
         size="lg"
         data-testid="mock"
-        className="w-full"
+        className="h-11 w-full rounded-lg text-body"
         onClick={() => {
           onMock(ruleFromEntry(entry));
           if (entry.truncated)
@@ -45,32 +42,51 @@ export function RequestActions({
         <Icon name="wand" />
         Mock this response
       </Button>
-      <div className="grid auto-cols-fr grid-flow-col gap-2">
-        {entry.ruleId && (
-          <Button
-            size="sm"
-            className={SECONDARY}
-            onClick={() => onOpenRule(entry.ruleId!)}
-          >
-            <Icon name="rule" size={13} />
-            Open rule
-          </Button>
-        )}
-        <Button size="sm" className={SECONDARY} onClick={() => copy(entry.url)}>
-          <Icon name="copy" size={13} />
+      <div className="grid auto-cols-fr grid-flow-col gap-1.5">
+        <Secondary icon="link" onClick={() => copy(entry.url, 'the URL')}>
           Copy URL
-        </Button>
+        </Secondary>
+        <Secondary
+          icon="terminal"
+          onClick={() =>
+            copy(
+              curlCommand({
+                method: entry.method,
+                url: entry.url,
+                body: entry.requestBody,
+              }),
+              'a cURL command',
+            )
+          }
+        >
+          Copy as cURL
+        </Secondary>
         {entry.responseBody && (
-          <Button
-            size="sm"
-            className={SECONDARY}
-            onClick={() => copy(pretty ?? entry.responseBody)}
+          <Secondary
+            icon="copy"
+            onClick={() => copy(pretty ?? entry.responseBody, 'the response body')}
           >
-            <Icon name="copy" size={13} />
-            Copy response
-          </Button>
+            Copy body
+          </Secondary>
         )}
       </div>
     </div>
+  );
+}
+
+function Secondary({
+  icon,
+  onClick,
+  children,
+}: {
+  icon: IconName;
+  onClick: () => void;
+  children: string;
+}) {
+  return (
+    <Button onClick={onClick} className="h-9 min-w-0 gap-1.5 px-1.5 text-t80">
+      <Icon name={icon} size={14} className="flex-none" />
+      <span className="truncate">{children}</span>
+    </Button>
   );
 }

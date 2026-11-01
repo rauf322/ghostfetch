@@ -1,10 +1,10 @@
 // The bar across the top of a rule: back to the list (in a narrow panel), the rule's name, its
-// switch and its ⋯ menu.
+// switch (the green square) and its ⋯ menu.
 import { editRule } from '../../../../shared/api/index.ts';
 import type { Rule } from '../../../../shared/api/index.ts';
 import { Input } from '../../../../shared/ui/kit/input.tsx';
-import { Switch } from '../../../../shared/ui/kit/switch.tsx';
 import { BackButton, PaneHead } from '../../../../shared/ui/list-detail.tsx';
+import { RuleSwitch } from '../../../../shared/ui/rule-switch.tsx';
 import { RuleMenu } from './rule-menu.tsx';
 
 export function RuleHeader({
@@ -35,23 +35,12 @@ export function RuleHeader({
         }
         className="flex-1 px-3.5 text-title font-medium text-white placeholder:text-t40 hover:bg-hover focus:bg-pressed"
       />
-      {/* The rule's own switch fills a cell, so the whole cell is clickable. The words are
-          for screen readers; the title is the same words on hover. */}
-      <label
-        title="Turn this rule on or off"
-        className="flex w-14 flex-none cursor-pointer items-center justify-center border-l border-border"
-      >
-        <span className="sr-only">Turn this rule on or off</span>
-        <Switch
-          checked={rule.enabled}
-          onCheckedChange={(on) =>
-            editRule(rule.id, (current) => {
-              current.enabled = on;
-            })
-          }
-          className="data-[size=default]:h-[13px] data-[size=default]:w-[25px]"
-        />
-      </label>
+      {/* The rule's switch fills a cell, so the whole cell is clickable. */}
+      <RuleSwitch
+        rule={rule}
+        data-testid="rule-switch"
+        className="h-auto w-14 self-stretch border-l border-border hover:bg-hover"
+      />
       <RuleMenu rule={rule} onSelect={onSelect} />
     </PaneHead>
   );

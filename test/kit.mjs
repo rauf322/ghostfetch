@@ -211,6 +211,65 @@ async function runChecks(browser, open) {
   );
 
   await check(
+    `${browser}: a rule's switch pulses while on, in step with the others, and is still while paused or off`,
+    async () => {
+      // Each square: whether it's on, and its animations, with when each counts from.
+      const state = () =>
+        ['off', 'on', 'paused'].map((name) => {
+          const square = document.querySelector(`[data-testid=kit-signal-${name}]`);
+          return [
+            square.getAttribute('aria-checked'),
+            square.firstElementChild
+              .getAnimations()
+              .map((animation) => [animation.animationName, animation.startTime]),
+          ];
+        });
+      const pulse = [['signal-pulse', 0]];
+      await settles(
+        kit,
+        state,
+        [
+          ['false', []],
+          ['true', pulse],
+          ['true', []],
+        ],
+        'at first',
+      );
+      // Switched on a while after the others, it still pulses in step with them.
+      await kit.click('[data-testid=kit-signal-off]');
+      await settles(
+        kit,
+        state,
+        [
+          ['true', pulse],
+          ['true', pulse],
+          ['true', []],
+        ],
+        'switched on',
+      );
+      const everyPulse = await kit.run(() =>
+        document
+          .getAnimations()
+          .filter((animation) => animation.animationName === 'signal-pulse')
+          .map((animation) => animation.startTime),
+      );
+      if (everyPulse.length < 3 || everyPulse.some((start) => start !== 0))
+        throw new Error(`pulses out of step: ${JSON.stringify(everyPulse)}`);
+      await kit.click('[data-testid=kit-signal-off]');
+      await settles(
+        kit,
+        state,
+        [
+          ['false', []],
+          ['true', pulse],
+          ['true', []],
+        ],
+        'switched off again',
+      );
+    },
+  );
+
+  await check(
     `${browser}: tabs: the arrow keys move between tabs, Enter opens one`,
     async () => {
       const state = () => ({
@@ -514,6 +573,9 @@ async function inChromium() {
     ignoreDefaultArgs: ['--disable-extensions'],
     args: [`--disable-extensions-except=${dir}`, `--load-extension=${dir}`],
     viewport: VIEWPORT,
+    // As with macOS's Reduce motion on, which Zen picks up from the system: a rule's switch
+    // still pulses then.
+    reducedMotion: 'reduce',
   });
   try {
     const worker =

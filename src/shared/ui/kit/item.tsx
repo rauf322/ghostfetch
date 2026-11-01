@@ -12,7 +12,7 @@ const itemVariants = cva(
   {
     variants: {
       variant: {
-        rule: 'grid-cols-[22px_minmax(0,1fr)_auto_auto] gap-2.5 border-border px-3.5 py-[11px]',
+        rule: 'grid-cols-[22px_minmax(0,1fr)_auto] gap-2.5 border-border px-3.5 py-[11px]',
         request:
           'grid-cols-[46px_minmax(0,1fr)_auto_52px] gap-2 border-line-soft px-3.5 py-[7px] data-hit:bg-code data-hit:data-selected:bg-pressed',
       },

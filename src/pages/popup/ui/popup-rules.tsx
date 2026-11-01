@@ -1,8 +1,9 @@
-// Every rule, with how many are on: a switch for each, and its name, which opens it in the editor.
-import { editRule, openRuleInEditor, ruleTitle } from '../../../shared/api/index.ts';
+// Every rule, with how many are on: a switch for each (the green square), and its name, which
+// opens it in the editor.
+import { openRuleInEditor, ruleTitle } from '../../../shared/api/index.ts';
 import type { Rule } from '../../../shared/api/index.ts';
 import { cn } from '../../../shared/ui/cn.ts';
-import { Switch } from '../../../shared/ui/kit/switch.tsx';
+import { RuleSwitch } from '../../../shared/ui/rule-switch.tsx';
 
 export function PopupRules({
   rules,
@@ -40,26 +41,12 @@ export function PopupRules({
 
 function PopupRule({ rule, windowId }: { rule: Rule; windowId: number }) {
   return (
+    // The square lines up with the "Rules" label above, 14 px in, and sits 11 px before the name.
     <li
       data-testid="popup-rule"
-      className="flex items-center gap-[11px] border-b border-line-soft px-3.5 py-2 hover:bg-hover"
+      className="flex items-center gap-[3px] border-b border-line-soft px-3.5 py-[5px] hover:bg-hover"
     >
-      <Switch
-        size="sm"
-        checked={rule.enabled}
-        aria-label={`Turn “${ruleTitle(rule)}” on or off`}
-        // Saved at once rather than after the editor's short pause: the popup can close at any
-        // moment.
-        onCheckedChange={(on) =>
-          editRule(
-            rule.id,
-            (current) => {
-              current.enabled = on;
-            },
-            { immediate: true },
-          )
-        }
-      />
+      <RuleSwitch rule={rule} immediate className="-ml-2" />
       <button
         type="button"
         title="Edit this rule"

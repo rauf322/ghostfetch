@@ -60,6 +60,26 @@
 
   --shadow-menu: 0 12px 32px rgba(0, 0, 0, 0.7);
 
+  /* A rule that's on (SignalSwitch): the green square dims to half and back every 2 s, after
+     T3 Code's "working" dot. Long holds and stepped ramps, so the browser draws a dozen frames a
+     cycle rather than one every refresh. */
+  --animate-signal-pulse: signal-pulse 2s infinite;
+  @keyframes signal-pulse {
+    0%,
+    40% {
+      opacity: 1;
+      animation-timing-function: steps(6);
+    }
+    50%,
+    90% {
+      opacity: 0.5;
+      animation-timing-function: steps(6);
+    }
+    100% {
+      opacity: 1;
+    }
+  }
+
   /* From 760px wide (`wide:`), the editor shows a list and what's picked in it side by side; in a
      narrower side panel, one at a time. */
   --breakpoint-wide: 760px;

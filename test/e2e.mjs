@@ -1541,24 +1541,44 @@ try {
     );
   });
   await check(
-    "a rule's switch in the list turns it off and on, and doesn't open it",
+    "a rule's switch in the list turns it off and on, doesn't open it, and pulses while it's on",
     async () => {
       const row = app.locator('[data-testid="rule"]', { hasText: 'case=merge' }).first();
+      const square = row.getByRole('switch');
+      // Whether it's stored on, the rule the editor shows, and whether the square pulses.
       const state = async () => [
         (await storedRules()).find((r) => r.match.url === 'case=merge').enabled,
         await app.getAttribute('[data-testid="rule-name"]', 'placeholder'),
+        await square.evaluate((element) =>
+          element.firstElementChild
+            .getAnimations()
+            .some((animation) => animation.animationName === 'signal-pulse'),
+        ),
       ];
-      await row.getByRole('switch').click();
+      await square.click();
       await sleep(400);
       const off = await state();
-      await row.getByRole('switch').click();
+      await square.click();
+      await sleep(400);
+      const on = await state();
+      // While Ghostfetch is off, a rule that's on holds still, and its title says why.
+      await setStorage({ enabled: false });
+      await sleep(400);
+      const paused = [...(await state()), await square.getAttribute('title')];
+      await setStorage({ enabled: true });
       await sleep(400);
       // The editor still shows the rule opened in the check before.
       expect(
-        [off, await state()],
+        [off, on, paused],
         [
-          [false, 'case=delay'],
-          [true, 'case=delay'],
+          [false, 'case=delay', false],
+          [true, 'case=delay', true],
+          [
+            true,
+            'case=delay',
+            false,
+            'On, but Ghostfetch is off. Click to turn this rule off',
+          ],
         ],
       );
     },

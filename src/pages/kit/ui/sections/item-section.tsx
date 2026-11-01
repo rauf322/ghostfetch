@@ -7,7 +7,7 @@ import {
   ItemNumber,
   ItemTitle,
 } from '../../../../shared/ui/kit/item.tsx';
-import { Switch } from '../../../../shared/ui/kit/switch.tsx';
+import { SignalSwitch } from '../../../../shared/ui/kit/signal-switch.tsx';
 import { Cell } from '../cell.tsx';
 
 const RULES: {
@@ -113,10 +113,10 @@ export function ItemSection({ index }: { index: number }) {
                   </span>
                 </ItemDescription>
               </ItemContent>
-              <Switch
-                size="sm"
+              <SignalSwitch
                 defaultChecked={rule.on}
                 aria-label={`Turn “${rule.name}” on or off`}
+                className="-mr-2"
               />
             </Item>
           ))}

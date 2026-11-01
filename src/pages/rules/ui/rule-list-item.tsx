@@ -1,6 +1,6 @@
 // One rule in the list: its number (its priority), its name, what it matches and does, and its
-// switch. Click it to open it; drag it to reorder.
-import { editRule, ruleTitle } from '../../../shared/api/index.ts';
+// switch, the green square. Click it to open it; drag it to reorder.
+import { ruleTitle } from '../../../shared/api/index.ts';
 import type { Rule } from '../../../shared/api/index.ts';
 import { cn } from '../../../shared/ui/cn.ts';
 import {
@@ -10,7 +10,7 @@ import {
   ItemNumber,
   ItemTitle,
 } from '../../../shared/ui/kit/item.tsx';
-import { Switch } from '../../../shared/ui/kit/switch.tsx';
+import { RuleSwitch } from '../../../shared/ui/rule-switch.tsx';
 import { ruleSummary } from '../lib/rule-summary.ts';
 import type { RowDrag } from '../model/use-rule-drag.ts';
 
@@ -74,16 +74,8 @@ export function RuleListItem({
           </span>
         </ItemDescription>
       </ItemContent>
-      <Switch
-        size="sm"
-        checked={rule.enabled}
-        title={`Turn this rule ${rule.enabled ? 'off' : 'on'}`}
-        onCheckedChange={(on) =>
-          editRule(rule.id, (current) => {
-            current.enabled = on;
-          })
-        }
-      />
+      {/* The square sits 14 px in from the row's right edge, as the row's text does on the left. */}
+      <RuleSwitch rule={rule} className="-mr-2" />
     </Item>
   );
 }

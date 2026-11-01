@@ -1,8 +1,9 @@
-// Toggles and switches, in their states: cells in a bar as in Traffic's, the Vim toggle, and a
-// switch with its words that a click on either flips.
+// Toggles and switches, in their states: cells in a bar as in Traffic's, the Vim toggle, a
+// switch with its words that a click on either flips, and a rule's switch, the green square.
 import { useState } from 'react';
 import { Button } from '../../../../shared/ui/kit/button.tsx';
 import { Icon } from '../../../../shared/ui/kit/icon.tsx';
+import { SignalSwitch } from '../../../../shared/ui/kit/signal-switch.tsx';
 import { Switch } from '../../../../shared/ui/kit/switch.tsx';
 import { Toggle } from '../../../../shared/ui/kit/toggle.tsx';
 import { Cell, FOCUS, Row } from '../cell.tsx';
@@ -49,6 +50,18 @@ export function ToggleSection({ index }: { index: number }) {
           <Switch data-testid="kit-switch" checked={ruleOn} onCheckedChange={setRuleOn} />
           <span data-testid="kit-switch-words">Rule {ruleOn ? 'on' : 'off'}</span>
         </label>
+      </Row>
+      <Row label="A rule's switch: off · on, pulsing · on, Ghostfetch off · disabled · focus">
+        <SignalSwitch aria-label="Off" data-testid="kit-signal-off" />
+        <SignalSwitch aria-label="On" defaultChecked data-testid="kit-signal-on" />
+        <SignalSwitch
+          aria-label="On, paused"
+          defaultChecked
+          paused
+          data-testid="kit-signal-paused"
+        />
+        <SignalSwitch aria-label="Disabled" disabled defaultChecked />
+        <SignalSwitch aria-label="Focused" defaultChecked className={FOCUS} />
       </Row>
     </Cell>
   );

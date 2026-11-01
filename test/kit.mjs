@@ -262,7 +262,7 @@ async function runChecks(browser, open) {
       seen.push(await chosen());
       await kit.press('ArrowLeft');
       seen.push(await chosen());
-      expect(seen, [['Response'], ['Redirect'], ['Redirect'], ['Response']]);
+      expect(seen, [['Replace'], ["Server's body"], ["Server's body"], ['Replace']]);
     },
   );
 
@@ -279,9 +279,9 @@ async function runChecks(browser, open) {
       await kit.press('ArrowRight');
       await focusOn(kit, '[data-testid=kit-chip-201]');
       expect(seen, [
-        'Response · status 404',
-        'Response · status none',
-        'Response · status 200',
+        'Replace · status 404',
+        'Replace · status none',
+        'Replace · status 200',
       ]);
     },
   );

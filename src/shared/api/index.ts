@@ -3,17 +3,16 @@
 // traffic log, the messages between the background, the page scripts and the screens, and opening
 // the editor. No React and no npm package: the background and the page scripts import from here
 // too, and keep only what they use.
-export type {
-  BodyMode,
-  HeaderRow,
-  MatchMode,
-  Method,
-  Rule,
-  RuleType,
-} from './rules/types.ts';
-export { BODY_MODES, MATCH_HINTS, MATCH_MODES, METHODS, TYPES } from './rules/catalog.ts';
-export { createRule, normalizeRule, ruleTitle } from './rules/rule.ts';
-export { dnrUrlFilter, testUrl } from './rules/url-match.ts';
+export type { BodyMode, HeaderRow, MatchMode, Method, Rule } from './rules/types.ts';
+export { BODY_MODES, MATCH_HINTS, MATCH_MODES, METHODS } from './rules/catalog.ts';
+export {
+  createRule,
+  isResponseRule,
+  normalizeRule,
+  normalizeRules,
+  ruleTitle,
+} from './rules/rule.ts';
+export { testUrl } from './rules/url-match.ts';
 export {
   addRule,
   addRules,

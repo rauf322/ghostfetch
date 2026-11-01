@@ -1,6 +1,7 @@
-// A rule as it's stored, edited and sent to the page.
+// A rule as it's stored, edited and sent to the page. Every rule answers the page's fetch() and
+// XMLHttpRequest calls that it matches. Up to 0.8 a rule also had a type: redirect, header and
+// block rules, which 0.9.0 took out, are left out when the rules are read (normalizeRules).
 
-export type RuleType = 'response' | 'redirect' | 'headers' | 'block';
 export type Method =
   | 'ANY'
   | 'GET'
@@ -25,7 +26,6 @@ export interface Rule {
   id: string;
   name: string;
   enabled: boolean;
-  type: RuleType;
   match: { url: string; mode: MatchMode; method: Method; graphqlOperation: string };
   response: {
     bodyMode: BodyMode;
@@ -36,8 +36,6 @@ export interface Rule {
     contentType: string;
     headers: HeaderRow[];
   };
-  redirect: { to: string };
-  headers: { request: HeaderRow[]; response: HeaderRow[] };
   createdAt: number;
   updatedAt: number;
 }

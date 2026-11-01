@@ -1,33 +1,12 @@
 // One request in a tab's traffic log. Types only: nothing in this file ends up in the built
 // extension.
-import type { RuleType } from './rules/types.ts';
 
-// What a logged request was: fetch() or XMLHttpRequest in the page, or the resource type
-// declarativeNetRequest reports for a redirect, header or block rule hit.
-export type EntryKind =
-  | 'fetch'
-  | 'xhr'
-  | 'main_frame'
-  | 'sub_frame'
-  | 'stylesheet'
-  | 'script'
-  | 'image'
-  | 'font'
-  | 'object'
-  | 'xmlhttprequest'
-  | 'ping'
-  | 'csp_report'
-  | 'media'
-  | 'websocket'
-  | 'other';
+// What a logged request was: a fetch() or an XMLHttpRequest in the page.
+export type EntryKind = 'fetch' | 'xhr';
 
-// What a rule did to the request; '' when no rule matched.
-export type EntryAction =
-  | ''
-  | 'mocked'
-  | 'modified'
-  | 'error'
-  | Exclude<RuleType, 'response'>;
+// What a rule did to the request: answered it with its own body (mocked), changed the server's
+// response (modified), or couldn't get the server's response (error); '' when no rule matched.
+export type EntryAction = '' | 'mocked' | 'modified' | 'error';
 
 // One request in a tab's traffic log, as the bridge rebuilds it from what the page reported
 // (see clean() in app/bridge).

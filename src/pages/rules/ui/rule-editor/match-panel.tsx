@@ -1,6 +1,5 @@
-// "Match requests": the method, how the URL is compared and the pattern, a GraphQL operation for
-// response rules, and a field to try the pattern on a URL. A response rule shows the fields in its
-// Match tab (MatchFields), the other types in a section of their own (MatchSection).
+// The Match tab: the requests a rule answers. The method, how the URL is compared and the pattern,
+// a GraphQL operation, and a field to try the pattern on a URL.
 import { useEffect, useRef } from 'react';
 import {
   MATCH_HINTS,
@@ -9,7 +8,7 @@ import {
   editRule,
 } from '../../../../shared/api/index.ts';
 import type { MatchMode, Method, Rule } from '../../../../shared/api/index.ts';
-import { Card, CardHint, CardTitle } from '../../../../shared/ui/kit/card.tsx';
+import { CardHint } from '../../../../shared/ui/kit/card.tsx';
 import { Input } from '../../../../shared/ui/kit/input.tsx';
 import { FieldLabel } from '../../../../shared/ui/kit/label.tsx';
 import {
@@ -30,31 +29,19 @@ const MODE_ITEMS = (Object.entries(MATCH_MODES) as [MatchMode, string][]).map(
   ([value, label]) => ({ value, label: `URL ${label.toLowerCase()}` }),
 );
 
-interface MatchProps {
-  rule: Rule;
-  // Put the cursor in the URL field, for a rule that was just created.
-  focusUrl: boolean;
-  // The URL being tried. The rule editor keeps it, so it stays when you switch tabs or change the
-  // rule's type.
-  testedUrl: string;
-  onTestedUrlChange: (url: string) => void;
-}
-
-export function MatchSection({ index, ...props }: MatchProps & { index: number }) {
-  return (
-    <Card>
-      <CardTitle index={index}>Match requests</CardTitle>
-      <MatchFields {...props} />
-    </Card>
-  );
-}
-
-export function MatchFields({
+export function MatchPanel({
   rule,
   focusUrl,
   testedUrl,
   onTestedUrlChange,
-}: MatchProps) {
+}: {
+  rule: Rule;
+  // Put the cursor in the URL field, for a rule that was just created.
+  focusUrl: boolean;
+  // The URL being tried, which RuleTabs keeps, so it stays as you switch tabs.
+  testedUrl: string;
+  onTestedUrlChange: (url: string) => void;
+}) {
   const urlField = useRef<HTMLInputElement>(null);
   const { match } = rule;
 
@@ -124,23 +111,21 @@ export function MatchFields({
       <CardHint tone={regexProblem ? 'bad' : 'default'}>
         {regexProblem || MATCH_HINTS[match.mode]}
       </CardHint>
-      {rule.type === 'response' && (
-        <label className="flex min-w-0 flex-col gap-[5px]">
-          <FieldLabel>
-            {'GraphQL operation '}
-            <em className="tracking-mono text-t30 not-italic normal-case">optional</em>
-          </FieldLabel>
-          <Input
-            value={match.graphqlOperation}
-            placeholder="GetUser"
-            onChange={(event) =>
-              editRule(rule.id, (current) => {
-                current.match.graphqlOperation = event.target.value;
-              })
-            }
-          />
-        </label>
-      )}
+      <label className="flex min-w-0 flex-col gap-[5px]">
+        <FieldLabel>
+          {'GraphQL operation '}
+          <em className="tracking-mono text-t30 not-italic normal-case">optional</em>
+        </FieldLabel>
+        <Input
+          value={match.graphqlOperation}
+          placeholder="GetUser"
+          onChange={(event) =>
+            editRule(rule.id, (current) => {
+              current.match.graphqlOperation = event.target.value;
+            })
+          }
+        />
+      </label>
       <div className="flex items-center gap-2.5">
         <Input
           size="sm"

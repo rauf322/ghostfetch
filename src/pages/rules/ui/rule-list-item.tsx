@@ -1,9 +1,8 @@
-// One rule in the list: its number (its priority), its name, its type with what it matches and
-// does, a mark when Chrome rejected it, and its switch. Click it to open it; drag it to reorder.
-import { TYPES, editRule, ruleTitle } from '../../../shared/api/index.ts';
+// One rule in the list: its number (its priority), its name, what it matches and does, and its
+// switch. Click it to open it; drag it to reorder.
+import { editRule, ruleTitle } from '../../../shared/api/index.ts';
 import type { Rule } from '../../../shared/api/index.ts';
 import { cn } from '../../../shared/ui/cn.ts';
-import { Badge } from '../../../shared/ui/kit/badge.tsx';
 import {
   Item,
   ItemContent,
@@ -25,7 +24,6 @@ export function RuleListItem({
   rule,
   position,
   selected,
-  error,
   drag,
   onSelect,
 }: {
@@ -33,8 +31,6 @@ export function RuleListItem({
   // The rule's place in the whole list, zero-padded ("03").
   position: string;
   selected: boolean;
-  // Chrome's reason for rejecting it, if it did.
-  error: string | undefined;
   drag: RowDrag;
   onSelect: (id: string) => void;
 }) {
@@ -64,7 +60,6 @@ export function RuleListItem({
       <ItemContent>
         <ItemTitle>{ruleTitle(rule)}</ItemTitle>
         <ItemDescription>
-          <Badge>{TYPES[rule.type].short}</Badge>
           {rule.match.method !== 'ANY' && (
             <span className="flex-none text-control font-medium tracking-[0.04em] text-t80">
               {rule.match.method}
@@ -79,7 +74,6 @@ export function RuleListItem({
           </span>
         </ItemDescription>
       </ItemContent>
-      {error && <span title={error} className="size-2 flex-none bg-foreground" />}
       <Switch
         size="sm"
         checked={rule.enabled}

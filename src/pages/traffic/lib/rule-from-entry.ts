@@ -1,11 +1,11 @@
-// "Mock this response": a response rule made from a request in the log. It matches the request's
-// method and path (for GraphQL, its path and operation) and returns its status and body.
+// "Mock this response": a rule made from a request in the log. It matches the request's method
+// and path (for GraphQL, its path and operation) and returns its status and body.
 import { METHODS, createRule } from '../../../shared/api/index.ts';
 import type { LogEntry, Method } from '../../../shared/api/index.ts';
 import { formatJson, splitUrl } from '../../../shared/lib/index.ts';
 
 export function ruleFromEntry(entry: LogEntry) {
-  const rule = createRule('response');
+  const rule = createRule();
   const { path, pathname } = splitUrl(entry.url);
   const operation = graphqlOperation(entry.requestBody);
   rule.match.method = (METHODS as readonly string[]).includes(entry.method)

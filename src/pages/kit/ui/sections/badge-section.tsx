@@ -1,23 +1,19 @@
 // Badges and status codes, which say what they mean in words rather than colours.
-import { TYPES } from '../../../../shared/api/index.ts';
 import { Badge, StatusCode } from '../../../../shared/ui/kit/badge.tsx';
 import { Cell, Row } from '../cell.tsx';
 
 export function BadgeSection({ index }: { index: number }) {
   return (
     <Cell index={index} title="Badge and status" note="words, not colours">
-      <Row label="Rule types">
-        {Object.values(TYPES).map((item) => (
-          <Badge key={item.short}>{item.short}</Badge>
-        ))}
+      <Row label="A label">
+        <Badge>Draft</Badge>
       </Row>
       <Row
         label="A rule fired · rule error"
         className="flex flex-wrap items-center gap-4"
       >
         <Badge variant="fired">Mocked</Badge>
-        <Badge variant="fired">Redirected</Badge>
-        <Badge variant="fired">Blocked</Badge>
+        <Badge variant="fired">Modified</Badge>
         <Badge variant="error">Rule error</Badge>
       </Row>
       <Row

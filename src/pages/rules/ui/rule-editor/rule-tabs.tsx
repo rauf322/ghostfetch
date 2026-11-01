@@ -1,10 +1,10 @@
-// "02 — Body · Status · Headers · Delay · Match": what a response rule sends back and the requests
-// it answers, a tab for each, in the section's title bar. Each tab's label carries what it's set
-// to (STATUS 404, HEADERS 2, DELAY 1 S, MATCH POST), and BODY and MATCH a cross while the body has
-// a mistake or the pattern doesn't compile. A rule that was just created opens on Match, with the
-// cursor in its URL field. The Body tab stays mounted under the others, invisible: the body
-// editor keeps its undo history and vim state, and the section is never shorter than the Body tab,
-// so it doesn't jump as you switch tabs.
+// "Body · Status · Headers · Delay · Match": what a rule sends back and the requests it answers, a
+// tab for each, in the section's title bar. Each tab's label carries what it's set to (STATUS 404,
+// HEADERS 2, DELAY 1 S, MATCH POST), and BODY and MATCH a cross while the body has a mistake or
+// the pattern doesn't compile. A rule that was just created opens on Match, with the cursor in its
+// URL field. The Body tab stays mounted under the others, invisible: the body editor keeps its
+// undo history and vim state, and the section is never shorter than the Body tab, so it doesn't
+// jump as you switch tabs.
 import { useRef, useState } from 'react';
 import type { Rule } from '../../../../shared/api/index.ts';
 import { cn } from '../../../../shared/ui/cn.ts';
@@ -23,7 +23,7 @@ import { useSettledStatus } from '../../model/use-settled-status.ts';
 import { BodyPanel } from './body-panel.tsx';
 import { DelayPanel } from './delay-panel.tsx';
 import { HeadersPanel } from './headers-panel.tsx';
-import { MatchFields } from './match-section.tsx';
+import { MatchPanel } from './match-panel.tsx';
 import { StatusPanel } from './status-panel.tsx';
 
 type Tab = 'body' | 'status' | 'headers' | 'delay' | 'match';
@@ -31,29 +31,24 @@ type Tab = 'body' | 'status' | 'headers' | 'delay' | 'match';
 // The panels share one grid cell, so the area is as tall as the tallest one showing; each is as
 // tall as its content, which useEditorRoom measures the Body tab by.
 const PANEL = 'col-start-1 row-start-1 flex min-w-0 flex-col gap-[9px] self-start';
-// In a section narrower than 460 px (a side panel) the tabs are closer together and the section's
-// number gives them its room; narrower still, they scroll sideways rather than being cut off.
+// In a section narrower than 460 px (a side panel) the tabs are closer together; narrower still,
+// they scroll sideways rather than being cut off.
 const TAB = '@max-[460px]:px-1.5';
 
-export function ResponseSection({
+export function RuleTabs({
   rule,
-  index,
   revision,
   focusUrl,
-  testedUrl,
-  onTestedUrlChange,
 }: {
   rule: Rule;
-  index: number;
   // Moves when the rules were changed in another view, so the body editor starts over from them.
   revision: number;
   // A rule that was just created: open on Match, with the cursor in the URL field.
   focusUrl: boolean;
-  // The URL being tried in the Match tab, which the rule editor keeps.
-  testedUrl: string;
-  onTestedUrlChange: (url: string) => void;
 }) {
   const [tab, setTab] = useState<Tab>(focusUrl ? 'match' : 'body');
+  // The URL being tried in the Match tab, kept here so it stays as you switch tabs.
+  const [testedUrl, setTestedUrl] = useState('');
   const section = useRef<HTMLDivElement>(null);
   const bodyPanel = useRef<HTMLDivElement>(null);
   useEditorRoom(section, bodyPanel);
@@ -68,19 +63,17 @@ export function ResponseSection({
       onValueChange={(value) => setTab(value as Tab)}
       className="@container flex-col gap-[9px] border-b border-border pb-3.5"
     >
-      {/* Narrow, the first tab's label lines up with the panel under it. */}
-      <CardTitle
-        index={index}
-        className="pr-0 @max-[460px]:pl-2 @max-[460px]:[&>[data-slot=card-index]]:hidden"
-      >
+      {/* The first tab's label lines up with the panel under it, 14 px in: 5 + 9 px wide, 8 + 6
+          px narrow. */}
+      <CardTitle className="pr-0 pl-[5px] @max-[460px]:pl-2">
         <TabsList
-          aria-label="Response"
-          className="ml-1 min-w-0 overflow-x-auto [scrollbar-width:none] @max-[460px]:ml-0"
+          aria-label="Rule"
+          className="min-w-0 overflow-x-auto [scrollbar-width:none]"
         >
           <TabsTrigger
             value="body"
             data-testid="tab-body"
-            className={cn(TAB, '@max-[460px]:border-l-0')}
+            className={cn(TAB, 'border-l-0')}
           >
             Body
             {mistake && <Cross label="has a mistake" />}
@@ -134,11 +127,11 @@ export function ResponseSection({
           <DelayPanel rule={rule} />
         </TabsContent>
         <TabsContent value="match" className={PANEL}>
-          <MatchFields
+          <MatchPanel
             rule={rule}
             focusUrl={focusUrl}
             testedUrl={testedUrl}
-            onTestedUrlChange={onTestedUrlChange}
+            onTestedUrlChange={setTestedUrl}
           />
         </TabsContent>
       </div>

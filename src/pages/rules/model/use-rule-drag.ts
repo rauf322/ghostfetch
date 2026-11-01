@@ -1,5 +1,5 @@
-// Dragging a rule to a new place in the list. The order is the rules' priority: response rules are
-// tried top to bottom and the first match wins.
+// Dragging a rule to a new place in the list. The order is the rules' priority: rules are tried
+// top to bottom and the first match wins.
 import { useState } from 'react';
 import type { DragEvent } from 'react';
 import { moveRule } from '../../../shared/api/index.ts';

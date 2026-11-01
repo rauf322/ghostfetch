@@ -1,6 +1,5 @@
-// What to do with an open request: Mock this response, for the fetch() and XMLHttpRequest calls
-// it can mock, and a row of quieter ones: open the rule that fired, copy the URL, copy the
-// response.
+// What to do with an open request: Mock this response, and a row of quieter ones: open the rule
+// that fired, copy the URL, copy the response.
 import type { LogEntry, Rule } from '../../../../shared/api/index.ts';
 import { Button } from '../../../../shared/ui/kit/button.tsx';
 import { Icon } from '../../../../shared/ui/kit/icon.tsx';
@@ -14,13 +13,11 @@ const SECONDARY =
 
 export function RequestActions({
   entry,
-  canMock,
   pretty,
   onMock,
   onOpenRule,
 }: {
   entry: LogEntry;
-  canMock: boolean;
   // The response body pretty-printed, or null when it isn't JSON.
   pretty: string | null;
   onMock: (draft: Rule) => void;
@@ -33,25 +30,23 @@ export function RequestActions({
 
   return (
     <div className="flex flex-col gap-2 border-b border-border px-3.5 py-3">
-      {canMock && (
-        <Button
-          variant="primary"
-          size="lg"
-          data-testid="mock"
-          className="w-full"
-          onClick={() => {
-            onMock(ruleFromEntry(entry));
-            if (entry.truncated)
-              notify('The response was over 1 MB, so the mock only has the first 1 MB', {
-                kind: 'error',
-                duration: 5000,
-              });
-          }}
-        >
-          <Icon name="wand" />
-          Mock this response
-        </Button>
-      )}
+      <Button
+        variant="primary"
+        size="lg"
+        data-testid="mock"
+        className="w-full"
+        onClick={() => {
+          onMock(ruleFromEntry(entry));
+          if (entry.truncated)
+            notify('The response was over 1 MB, so the mock only has the first 1 MB', {
+              kind: 'error',
+              duration: 5000,
+            });
+        }}
+      >
+        <Icon name="wand" />
+        Mock this response
+      </Button>
       <div className="grid auto-cols-fr grid-flow-col border border-input">
         {entry.ruleId && (
           <Button className={SECONDARY} onClick={() => onOpenRule(entry.ruleId!)}>

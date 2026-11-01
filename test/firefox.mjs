@@ -1,7 +1,7 @@
 // Firefox-family end-to-end check: loads Ghostfetch into Zen (or any Firefox build) over WebDriver
 // BiDi with puppeteer-core, because Playwright can't load extensions into Firefox. It uses the
 // same backend and rules as the Chromium test and covers what differs between the browsers: the
-// background page, the page-world handoff, declarativeNetRequest and the traffic log.
+// background page, the page-world handoff and the traffic log.
 //
 //   npm run test:firefox                          Zen from /Applications
 //   FIREFOX=/path/to/firefox npm run test:firefox
@@ -236,27 +236,25 @@ try {
     );
   });
 
-  console.log('declarativeNetRequest (background page)');
-  await check('redirect, request and response headers, block', async () => {
-    const redirected = await call('/api/old-home');
-    expect(
-      [redirected.body, redirected.url],
-      [{ redirected: true }, `${ORIGIN}/api/new-home`],
-    );
+  await check('redirect, header and block rules saved by 0.8 do nothing', async () => {
+    const redirect = await call('/api/old-home');
     const echoed = await call('/api/echo');
-    expect([echoed.body.headers['x-debug'], echoed.headers['x-resp']], ['1', 'ok']);
-    if (!(await call('/api/blocked')).error) throw new Error('request was not blocked');
+    const blocked = await call('/api/blocked');
+    expect(
+      [
+        redirect.status,
+        echoed.body.headers['x-debug'],
+        echoed.headers['x-resp'],
+        blocked.error,
+        blocked.status,
+      ],
+      [404, undefined, undefined, undefined, 404],
+    );
   });
   await check('master switch off disables every rule, on restores them', async () => {
     await setStorage({ enabled: false });
     await sleep(500);
-    expect(
-      [
-        (await call('/api/user?case=replace')).body.name,
-        (await call('/api/old-home')).status,
-      ],
-      ['Real', 404],
-    );
+    expect((await call('/api/user?case=replace')).body.name, 'Real');
     await setStorage({ enabled: true });
     await sleep(500);
     expect((await call('/api/user?case=replace')).body, { name: 'Mocked' });
@@ -330,20 +328,14 @@ try {
       expect(response, { name: 'Mocked' }, 'mocking still works');
     },
   );
-  await check('local.* hosts get mocks and, once opened, header rules too', async () => {
+  await check('local.* hosts get mocks, from the first request on', async () => {
     const probe = await open(`${LOCAL_ORIGIN}/`, 'local.*');
     const early = await probe.evaluate(() => window.early);
-    // The first visit makes the background remember the host for redirect, header and block rules.
-    await sleep(600);
-    const r = await probe.evaluate(async () => {
-      const response = await fetch('/api/echo');
-      return {
-        sent: (await response.json()).headers['x-debug'],
-        received: response.headers.get('x-resp'),
-      };
-    });
+    const later = await probe.evaluate(() =>
+      fetch('/api/user?case=replace').then((response) => response.json()),
+    );
     await probe.close();
-    expect([early, r.sent, r.received], [{ early: 'mocked' }, '1', 'ok']);
+    expect([early, later], [{ early: 'mocked' }, { name: 'Mocked' }]);
   });
   await check('Ghostfetch does nothing on sites that are not turned on', async () => {
     const probe = await open(`${EVIL_ORIGIN}/steal`, 'evil.test');
@@ -351,11 +343,10 @@ try {
     const r = await probe.evaluate(async () => ({
       wrapped: !String(window.fetch).includes('[native code]'),
       mock: await fetch('/api/user?case=replace').then((x) => x.json()),
-      redirect: await fetch('/api/old-home').then((x) => x.status),
       stolen: window.stolen,
     }));
     await probe.close();
-    expect([r.wrapped, r.mock.name, r.redirect, r.stolen], [false, 'Real', 404, []]);
+    expect([r.wrapped, r.mock.name, r.stolen], [false, 'Real', []]);
   });
   await check(
     'a site you add gets Ghostfetch (registered at runtime) and loses it when removed',
@@ -365,7 +356,6 @@ try {
         const probe = await open(`${EVIL_ORIGIN}/`, label);
         const r = await probe.evaluate(async () => ({
           early: await window.early,
-          sent: (await (await fetch('/api/echo')).json()).headers['x-debug'] ?? null,
           wrapped: !String(window.fetch).includes('[native code]'),
         }));
         await probe.close();
@@ -380,8 +370,8 @@ try {
       expect(
         [added, removed],
         [
-          { early: { early: 'mocked' }, sent: '1', wrapped: true },
-          { early: { early: 'real' }, sent: null, wrapped: false },
+          { early: { early: 'mocked' }, wrapped: true },
+          { early: { early: 'real' }, wrapped: false },
         ],
       );
     },

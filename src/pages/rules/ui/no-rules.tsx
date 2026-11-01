@@ -1,27 +1,27 @@
 // What the Rules tab shows with nothing to edit: in the list (a narrow panel, where the editor's
 // side is hidden) when there are no rules yet, and in the editor's place when none is open.
-import type { RuleType } from '../../../shared/api/index.ts';
+import { Button } from '../../../shared/ui/kit/button.tsx';
 import {
   Empty,
   EmptyDescription,
   EmptyMedia,
   EmptyTitle,
 } from '../../../shared/ui/kit/empty.tsx';
+import { Icon } from '../../../shared/ui/kit/icon.tsx';
 import { ListEmpty } from '../../../shared/ui/list-detail.tsx';
-import { RuleTypeCards } from './rule-type-option.tsx';
 
-export function NoRulesYet({ onPick }: { onPick: (type: RuleType) => void }) {
+export function NoRulesYet() {
   return (
     // In a narrow panel, where the editor's own empty state is hidden.
     <ListEmpty className="wide:hidden">
       <p>
-        <strong>No rules yet.</strong> Pick what you want to do:
+        <strong>No rules yet.</strong> A rule answers the page's requests with the body,
+        status, headers or delay you choose.
       </p>
-      <RuleTypeCards onPick={onPick} />
       {/* Text that ends at a line break is a string, which oxfmt can't split at a space:
           each piece stays one run of text, so it lines up to the pixel as in 0.5.1. */}
       <p className="text-meta leading-[1.55] text-t40">
-        Or open <b>Traffic</b>
+        Click <b>New rule</b>, or open <b>Traffic</b>
         {', click a request and choose '}
         <b>Mock this response</b>.
       </p>
@@ -31,10 +31,10 @@ export function NoRulesYet({ onPick }: { onPick: (type: RuleType) => void }) {
 
 export function NoRuleSelected({
   hasRules,
-  onPick,
+  onCreate,
 }: {
   hasRules: boolean;
-  onPick: (type: RuleType) => void;
+  onCreate: () => void;
 }) {
   return (
     <Empty>
@@ -45,12 +45,16 @@ export function NoRuleSelected({
         {hasRules ? 'Select a rule to edit it' : 'Create your first rule'}
       </EmptyTitle>
       <EmptyDescription>
-        Rules apply on every site Ghostfetch runs on while it's switched on. The quickest
+        A rule answers the page's requests with the body, status, headers or delay you
+        choose, on every site Ghostfetch runs on while it's switched on. The quickest
         start: open <b>Traffic</b>
         {', click a request and choose '}
         <b>Mock this response</b>.
       </EmptyDescription>
-      <RuleTypeCards onPick={onPick} />
+      <Button variant="primary" data-testid="empty-new-rule" onClick={onCreate}>
+        <Icon name="plus" size={14} />
+        New rule
+      </Button>
     </Empty>
   );
 }

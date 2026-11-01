@@ -113,13 +113,11 @@ for (const browser of ['chrome', 'firefox']) {
     );
     expect(
       manifest.description,
-      'Mock and modify API responses, redirect requests and change headers. Runs locally, makes no network calls of its own.',
+      'Mock and modify API responses. Runs locally, makes no network calls of its own.',
     );
     expect(manifest.permissions, [
       'storage',
       'unlimitedStorage',
-      'declarativeNetRequest',
-      'declarativeNetRequestFeedback',
       'sidePanel',
       'scripting',
     ]);

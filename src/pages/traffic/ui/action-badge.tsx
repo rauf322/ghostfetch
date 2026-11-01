@@ -6,9 +6,6 @@ const ACTION_LABELS: Record<string, string> = {
   mocked: 'Mocked',
   modified: 'Modified',
   error: 'Rule error',
-  redirect: 'Redirected',
-  headers: 'Headers',
-  block: 'Blocked',
 };
 
 export function ActionBadge({ entry, title }: { entry: LogEntry; title?: string }) {

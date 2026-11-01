@@ -1,7 +1,7 @@
-// Segmented controls (one answer always) and a toggle group of chips that clear, both live.
+// A segmented control (one answer always) and a toggle group of chips that clear, both live.
 import { useState } from 'react';
-import { BODY_MODES, TYPES } from '../../../../shared/api/index.ts';
-import type { RuleType } from '../../../../shared/api/index.ts';
+import { BODY_MODES } from '../../../../shared/api/index.ts';
+import type { BodyMode } from '../../../../shared/api/index.ts';
 import { Segmented, SegmentedItem } from '../../../../shared/ui/kit/segmented.tsx';
 import { ToggleGroup, ToggleGroupItem } from '../../../../shared/ui/kit/toggle-group.tsx';
 import { Cell, Output, Row } from '../cell.tsx';
@@ -9,7 +9,7 @@ import { Cell, Output, Row } from '../cell.tsx';
 const STATUS_PRESETS = [200, 201, 204, 400, 401, 403, 404, 409, 422, 429, 500, 503];
 
 export function SegmentedSection({ index }: { index: number }) {
-  const [type, setType] = useState('response');
+  const [mode, setMode] = useState<BodyMode>('replace');
   const [status, setStatus] = useState<string[]>(['404']);
   return (
     <Cell
@@ -19,18 +19,11 @@ export function SegmentedSection({ index }: { index: number }) {
     >
       <Row label="Segmented (live: arrow keys choose)" className="flex flex-col gap-2">
         <Segmented
-          value={type}
-          onValueChange={(next) => setType(next as string)}
-          aria-label="Rule type"
+          value={mode}
+          onValueChange={(next) => setMode(next as BodyMode)}
+          aria-label="Response body"
           data-testid="kit-segmented"
         >
-          {Object.entries(TYPES).map(([key, item]) => (
-            <SegmentedItem key={key} value={key}>
-              {item.short}
-            </SegmentedItem>
-          ))}
-        </Segmented>
-        <Segmented defaultValue="original" aria-label="Response body">
           {Object.entries(BODY_MODES).map(([key, item]) => (
             <SegmentedItem key={key} value={key}>
               {item.label}
@@ -62,7 +55,7 @@ export function SegmentedSection({ index }: { index: number }) {
         </ToggleGroup>
       </Row>
       <Output testid="kit-choices">
-        {TYPES[type as RuleType].short} · status {status[0] ?? 'none'}
+        {BODY_MODES[mode].label} · status {status[0] ?? 'none'}
       </Output>
     </Cell>
   );

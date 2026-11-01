@@ -1,15 +1,14 @@
 // Making rules: a new one, one rebuilt from data that can't be trusted, and the name a rule goes by.
 import type { Untrusted } from '../../lib/index.ts';
-import { BODY_MODES, MATCH_MODES, METHODS, TYPES } from './catalog.ts';
-import type { BodyMode, HeaderRow, Method, Rule, RuleType } from './types.ts';
+import { BODY_MODES, MATCH_MODES, METHODS } from './catalog.ts';
+import type { BodyMode, HeaderRow, Method, Rule } from './types.ts';
 
-export function createRule(type: RuleType = 'response'): Rule {
+export function createRule(): Rule {
   const now = Date.now();
   return {
     id: crypto.randomUUID(),
     name: '',
     enabled: true,
-    type,
     match: { url: '', mode: 'contains', method: 'ANY', graphqlOperation: '' },
     response: {
       bodyMode: 'replace',
@@ -19,14 +18,28 @@ export function createRule(type: RuleType = 'response'): Rule {
       contentType: 'application/json',
       headers: [],
     },
-    redirect: { to: '' },
-    headers: { request: [], response: [] },
     createdAt: now,
     updatedAt: now,
   };
 }
 
-// Whether `key` names one of `options` (TYPES, MATCH_MODES, BODY_MODES), checked like Object.hasOwn.
+// Whether stored or imported data is a rule Ghostfetch still has: one with no type (from 0.9.0 on)
+// or a response rule. Redirect, header and block rules, which 0.9.0 took out, aren't. The bridge
+// asks this of the rules as they're stored, before handing them to the page.
+export function isResponseRule(input: unknown) {
+  const type = (input as Untrusted)?.type;
+  return type === undefined || type === 'response';
+}
+
+// The rules in a stored or imported list that Ghostfetch still has (isResponseRule), each rebuilt
+// by normalizeRule. A redirect, header or block rule is left out, so the next save drops it.
+export function normalizeRules(list: unknown, options: { newId?: boolean } = {}): Rule[] {
+  return (Array.isArray(list) ? list : [])
+    .filter(isResponseRule)
+    .map((rule) => normalizeRule(rule, options));
+}
+
+// Whether `key` names one of `options` (MATCH_MODES, BODY_MODES), checked like Object.hasOwn.
 function isKey<T extends object>(options: T, key: unknown): key is keyof T {
   return Object.hasOwn(options, key as PropertyKey);
 }
@@ -46,7 +59,7 @@ function bodyMode(mode: unknown): BodyMode {
 // rules (which may come from an untrusted file) can't carry unexpected values into the UI.
 export function normalizeRule(input: unknown, { newId = false } = {}): Rule {
   const raw = input as Untrusted;
-  const base = createRule(isKey(TYPES, raw?.type) ? raw.type : 'response');
+  const base = createRule();
   const match: Untrusted = isObject(raw?.match) ? raw.match : {};
   const response: Untrusted = isObject(raw?.response) ? raw.response : {};
   const status = String(response.status ?? '');
@@ -57,7 +70,6 @@ export function normalizeRule(input: unknown, { newId = false } = {}): Rule {
         : base.id,
     name: text(raw?.name),
     enabled: raw?.enabled !== false,
-    type: base.type,
     match: {
       url: text(match.url),
       mode: isKey(MATCH_MODES, match.mode) ? match.mode : 'contains',
@@ -71,11 +83,6 @@ export function normalizeRule(input: unknown, { newId = false } = {}): Rule {
       delay: Math.min(Math.max(Math.round(Number(response.delay) || 0), 0), 600_000),
       contentType: text(response.contentType, base.response.contentType),
       headers: headerRows(response.headers),
-    },
-    redirect: { to: text(raw?.redirect?.to) },
-    headers: {
-      request: headerRows(raw?.headers?.request),
-      response: headerRows(raw?.headers?.response),
     },
     createdAt: Number.isFinite(raw?.createdAt) ? raw!.createdAt : base.createdAt,
     updatedAt: Number.isFinite(raw?.updatedAt) ? raw!.updatedAt : base.updatedAt,

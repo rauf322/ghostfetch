@@ -5,12 +5,9 @@ import type { LogEntry } from '../../../../shared/api/index.ts';
 import { cn } from '../../../../shared/ui/cn.ts';
 import { ActionBadge } from '../action-badge.tsx';
 
-const KIND_LABELS: Record<string, string> = {
+const KIND_LABELS: Record<LogEntry['kind'], string> = {
   fetch: 'fetch()',
   xhr: 'XMLHttpRequest',
-  xmlhttprequest: 'XHR / fetch',
-  main_frame: 'Page',
-  sub_frame: 'Iframe',
 };
 
 export function RequestFacts({ entry }: { entry: LogEntry }) {
@@ -19,7 +16,7 @@ export function RequestFacts({ entry }: { entry: LogEntry }) {
       <Fact label="URL" wide className="break-all">
         {entry.url}
       </Fact>
-      <Fact label="Type">{`${KIND_LABELS[entry.kind] || entry.kind}${entry.frame ? ` in iframe ${entry.frame}` : ''}`}</Fact>
+      <Fact label="Type">{`${KIND_LABELS[entry.kind]}${entry.frame ? ` in iframe ${entry.frame}` : ''}`}</Fact>
       {entry.duration != null && <Fact label="Duration">{`${entry.duration} ms`}</Fact>}
       <Fact label="Time">{new Date(entry.time).toLocaleTimeString()}</Fact>
       {entry.contentType && <Fact label="Content-Type">{entry.contentType}</Fact>}

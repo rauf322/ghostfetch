@@ -1,9 +1,10 @@
 // Isolated-world half of the content script. Reads rules from extension storage and hands
-// the response rules to the interceptor (the page-world half) over a private MessageChannel,
+// the ones that are on to the interceptor (the page-world half) over a private MessageChannel,
 // whose port is offered exactly once, before any page script runs. The top frame also keeps
 // the tab's traffic log, so the editor can show requests made before it was opened.
 // Built as bridge.js: WXT's wrapper runs this function at once and adds no globals of its own.
 import { defineUnlistedScript } from 'wxt/utils/define-unlisted-script';
+import { isResponseRule } from '../../shared/api/index.ts';
 import type {
   LogEntry,
   LogPortMessage,
@@ -22,32 +23,8 @@ export default defineUnlistedScript(() => {
   (globalThis as { ghostfetchBridge?: boolean }).ghostfetchBridge = true;
 
   const MAX_LOG = 300;
-  const KINDS = new Set<unknown>([
-    'fetch',
-    'xhr',
-    'main_frame',
-    'sub_frame',
-    'stylesheet',
-    'script',
-    'image',
-    'font',
-    'object',
-    'xmlhttprequest',
-    'ping',
-    'csp_report',
-    'media',
-    'websocket',
-    'other',
-  ]);
-  const ACTIONS = new Set<unknown>([
-    '',
-    'mocked',
-    'modified',
-    'error',
-    'redirect',
-    'headers',
-    'block',
-  ]);
+  const KINDS = new Set<unknown>(['fetch', 'xhr']);
+  const ACTIONS = new Set<unknown>(['', 'mocked', 'modified', 'error']);
   const isTop = window === window.top;
   const log: LogEntry[] = [];
   const viewers = new Set<chrome.runtime.Port>();
@@ -80,8 +57,10 @@ export default defineUnlistedScript(() => {
         type: 'state',
         enabled: stored.enabled,
         record: stored.record,
+        // As they're stored, which can still include a redirect, header or block rule from
+        // before 0.9.0 until the rules are next saved.
         rules: Array.isArray(stored.rules)
-          ? stored.rules.filter((rule) => rule?.type === 'response' && rule.enabled)
+          ? stored.rules.filter((rule) => isResponseRule(rule) && rule?.enabled)
           : [],
       } satisfies PageState);
     } catch {
@@ -92,14 +71,15 @@ export default defineUnlistedScript(() => {
   // Entries come from the page's own world (or from another frame's), which the page controls.
   // Rebuild each one from known fields and types so nothing unexpected reaches the editor.
   function clean(raw: Untrusted): LogEntry | null {
-    if (!raw || typeof raw !== 'object') return null;
+    // The interceptor only ever reports a fetch() or an XMLHttpRequest.
+    if (!raw || typeof raw !== 'object' || !KINDS.has(raw.kind)) return null;
     const text = (value: unknown, max: number) =>
       typeof value === 'string' ? value.slice(0, max) : '';
     const method = text(raw.method, 32).toUpperCase();
     return {
       id: `${Date.now().toString(36)}-${(sequence++).toString(36)}`,
       time: Number.isFinite(raw.time) ? raw.time : Date.now(),
-      kind: KINDS.has(raw.kind) ? raw.kind : 'other',
+      kind: raw.kind,
       method: /^[A-Z][A-Z0-9_-]*$/.test(method) ? method : 'INVALID',
       url: text(raw.url, 8192),
       frame: text(raw.frame, 512),
@@ -143,12 +123,9 @@ export default defineUnlistedScript(() => {
 
   if (!isTop) return;
 
+  // A request an iframe logged, which the background passes on.
   chrome.runtime.onMessage.addListener((message: RuntimeMessage | undefined) => {
-    if (
-      message?.type === 'ghostfetch:dnrHit' ||
-      message?.type === 'ghostfetch:frameEntry'
-    )
-      record(message.entry);
+    if (message?.type === 'ghostfetch:frameEntry') record(message.entry);
   });
 
   // The editor's Traffic view connects here to get the log so far plus live updates.

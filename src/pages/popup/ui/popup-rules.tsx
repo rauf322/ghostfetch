@@ -1,14 +1,7 @@
-// Every rule, with how many are on: a switch for each, its name, which opens it in the editor, and
-// its type.
-import {
-  TYPES,
-  editRule,
-  openRuleInEditor,
-  ruleTitle,
-} from '../../../shared/api/index.ts';
+// Every rule, with how many are on: a switch for each, and its name, which opens it in the editor.
+import { editRule, openRuleInEditor, ruleTitle } from '../../../shared/api/index.ts';
 import type { Rule } from '../../../shared/api/index.ts';
 import { cn } from '../../../shared/ui/cn.ts';
-import { Badge } from '../../../shared/ui/kit/badge.tsx';
 import { Switch } from '../../../shared/ui/kit/switch.tsx';
 
 export function PopupRules({
@@ -78,7 +71,6 @@ function PopupRule({ rule, windowId }: { rule: Rule; windowId: number }) {
       >
         {ruleTitle(rule)}
       </button>
-      <Badge className="text-t30">{TYPES[rule.type].short}</Badge>
     </li>
   );
 }

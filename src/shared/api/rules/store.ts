@@ -1,21 +1,18 @@
-// The editor's and the popup's copy of the rules in storage, with Chrome's reason for rejecting any
-// redirect, header or block rule. Rule edits are saved with a short debounce; changes made in
-// another view (popup, other window) are picked up through chrome.storage.onChanged. The screens
-// read ruleStore.state while they render and redraw through useStore(ruleStore).
+// The editor's and the popup's copy of the rules in storage. Rule edits are saved with a short
+// debounce; changes made in another view (popup, other window) are picked up through
+// chrome.storage.onChanged. The screens read ruleStore.state while they render and redraw through
+// useStore(ruleStore).
 import { createStore } from '../../lib/index.ts';
-import { normalizeRule } from './rule.ts';
+import { normalizeRules } from './rule.ts';
 import type { Rule } from './types.ts';
 
 interface RuleState {
   rules: Rule[];
-  // Chrome's reason for rejecting a redirect, header or block rule, by rule id.
-  dnrErrors: Record<string, string>;
 }
-// What changed, for subscribers: rules edited elsewhere, Chrome's rule errors, or an edit made in
-// this view.
-export type RuleChange = 'rules' | 'errors' | 'edit';
+// What changed, for subscribers: rules edited elsewhere, or an edit made in this view.
+export type RuleChange = 'rules' | 'edit';
 
-const state: RuleState = { rules: [], dnrErrors: {} };
+const state: RuleState = { rules: [] };
 export const ruleStore = /* @__PURE__ */ createStore<RuleState, RuleChange>(state);
 
 // Every write is tagged with this view's id, so the change event it triggers can be told
@@ -28,17 +25,9 @@ let saveTimer: ReturnType<typeof setTimeout> | null = null;
 export async function initRules() {
   writer = crypto.randomUUID();
   const stored = await chrome.storage.local.get({ rules: [] });
-  state.rules = (Array.isArray(stored.rules) ? stored.rules : []).map((rule) =>
-    normalizeRule(rule),
-  );
-  const { dnrErrors = {} } = await chrome.storage.session.get('dnrErrors');
-  state.dnrErrors = dnrErrors as Record<string, string>;
+  state.rules = normalizeRules(stored.rules);
 
   chrome.storage.onChanged.addListener((changed, area) => {
-    if (area === 'session' && changed.dnrErrors) {
-      state.dnrErrors = (changed.dnrErrors.newValue as Record<string, string>) || {};
-      ruleStore.emit('errors');
-    }
     if (
       area === 'local' &&
       changed.rules &&
@@ -46,9 +35,7 @@ export async function initRules() {
     ) {
       clearTimeout(saveTimer!);
       saveTimer = null;
-      state.rules = ((changed.rules.newValue as unknown[]) || []).map((rule) =>
-        normalizeRule(rule),
-      );
+      state.rules = normalizeRules(changed.rules.newValue);
       ruleStore.emit('rules');
     }
   });

@@ -1,8 +1,9 @@
 # Ghostfetch
 
 A small, local Requestly-style browser extension for frontend work, for Chrome and
-Firefox-based browsers such as Zen: mock or patch API responses, redirect requests, change
-headers and block calls, from a side-panel editor. TypeScript and Manifest V3, with a popup and
+Firefox-based browsers such as Zen: mock or patch the API responses your app gets (replace a
+body, or keep the server's and change its status, headers or delay), from a side-panel editor.
+TypeScript and Manifest V3, with a popup and
 editor in React, built with [WXT](https://wxt.dev) into plain, unminified JavaScript; it makes no
 network requests of its own. Rules live in the browser's extension storage on your
 machine. (In Irish folklore a *fetch* is the ghostly double of a living person; here it's the
@@ -78,8 +79,6 @@ your rules to the new build folder (see the note above).
 What's different in Firefox-based browsers:
 
 - The editor opens in the browser's **sidebar** instead of Chrome's side panel.
-- The Traffic view doesn't list redirect, header and block hits, because Firefox has no API
-  that reports them. Those rules still apply, and fetch/XHR traffic shows as usual.
 - Site access can be granted or revoked per site from the Extensions menu. If rules stop
   applying, check that Ghostfetch is allowed on that site.
 
@@ -93,8 +92,8 @@ What's different in Firefox-based browsers:
   popup, or from the `⋯` menu.
   - **Rules**: create and edit rules. Changes save as you type and apply to open tabs
     immediately, without reloading. Rules are numbered in order; drag them to reorder, since
-    for response rules the first match wins. Import and export sit at the bottom of the list.
-    A response rule is five tabs: **Body** (**Replace** sends your body without calling the
+    the first match wins. Import and export sit at the bottom of the list.
+    A rule is five tabs: **Body** (**Replace** sends your body without calling the
     server; **Server's body** makes the real request and keeps its body, so only the status,
     headers and delay change), **Status** (the code with its name, and the common ones by
     class), **Headers**, **Delay** and **Match** (what requests it answers; a new rule opens
@@ -157,37 +156,32 @@ Motions and text objects behave like vim's own (`cw`, `dw` at the end of a line,
   stays paste on Windows and Linux), Replace mode (`R`), `gu`, `gU` and `g~`, `Ctrl+A` and
   `Ctrl+X`, and custom mappings such as `jk` for Esc.
 
-### Rule types
+### What a rule does
 
-| Type | What it does | How |
-| --- | --- | --- |
-| **Response** | Replace the body, or keep the server's body and change only status / headers / delay | Wraps `fetch` and `XMLHttpRequest` in the page |
-| **Redirect** | Send matching requests elsewhere, e.g. prod API → `localhost` | `declarativeNetRequest` |
-| **Headers** | Set or remove request and response headers (CORS, auth…) | `declarativeNetRequest` |
-| **Block** | Make requests fail, to test error states | `declarativeNetRequest` |
+A rule answers the `fetch()` and `XMLHttpRequest` calls it matches: with your body, without
+calling the server (**Replace**), or with the server's response (**Server's body**), and either
+way with the status, headers and delay you set. Ghostfetch wraps `fetch` and `XMLHttpRequest`
+in the page to do it.
 
-URL matching: *contains*, *equals* (response rules also accept a bare path such as
-`/api/users?page=1`), *wildcard* (`*`) or *regex*. Response rules can also match a
-**GraphQL operation name**, read from the request body or the `operationName` query param.
+URL matching: *contains*, *equals* (a bare path such as `/api/users?page=1` works too),
+*wildcard* (`*`) or *regex*. A rule can also match a **GraphQL operation name**, read from the
+request body or the `operationName` query param.
 
 ### Limits worth knowing
 
-- Response rules only see `fetch()` and `XMLHttpRequest` calls made by page scripts, not
+- Rules only see `fetch()` and `XMLHttpRequest` calls made by page scripts, not
   `<script>`/`<img>` loads, WebSockets, or requests from service workers.
 - A **Server's body** rule still makes the real request. If that fails, the page gets the
   network error, as it would without Ghostfetch, and the Traffic view shows a "Rule error".
 - **Merge JSON** and **Script** bodies went in 0.8.0. A rule saved with either keeps the
   server's body now; its JSON or script isn't used, and goes the next time the rules are
   saved.
+- **Redirect**, **Headers** and **Block** rules went in 0.9.0. One saved before then does
+  nothing and isn't listed; it goes from storage the next time the rules are saved, and
+  importing a file skips it.
 - The Traffic log keeps the last 300 requests per tab and captures response bodies up to
   1 MB. Iframes from other sites (auth widgets, wallets) aren't captured unless Ghostfetch runs
   on their site too.
-- Redirect, header and block rules only apply to requests *started by* a page on a site
-  Ghostfetch runs on, so they never touch the rest of your browsing. A URL you type into the
-  address bar has no initiator, so those rules don't redirect top-level navigations.
-- Browsers can only scope those rules by exact domain, so Ghostfetch remembers each `local.*`
-  host the first time you open it. Requests made during that very first page load can miss
-  redirect, header and block rules; reload once and they apply. Response rules work right away.
 
 ## Security model
 
@@ -205,8 +199,8 @@ URL matching: *contains*, *equals* (response rules also accept a bare path such 
   (`connect-src 'none'`, no remote scripts, images or styles, no inline code, no `<style>` tags);
   `npm run test:release` checks all three in the built packages.
 - **Only runs where it should.** The built-in hosts' content scripts are declared in the
-  manifest; the sites you add get theirs registered at runtime, for those sites only. The DNR
-  rules are limited to requests started by the same hosts. Any other website can't see
+  manifest; the sites you add get theirs registered at runtime, for those sites only. Any
+  other website can't see
   Ghostfetch, your rules or your traffic. The `local.*` pattern is matched against the start of
   the page URL, so both content scripts also refuse to run on a URL with credentials, such as
   `http://local.x@other.site/`, which would otherwise pass it.
@@ -217,22 +211,23 @@ URL matching: *contains*, *equals* (response rules also accept a bare path such 
   that forges an offer, or patches `MessageEvent`, `EventTarget`, `MessagePort` or array
   iteration, still can't take the port. Everything the page reports back is rebuilt from
   known fields, and the editor shows it as text, never as HTML.
-- **Scripts on the sites Ghostfetch runs on are trusted.** Response rules have to live in the
-  page to work, so code running there (a compromised dependency, say) can see that Ghostfetch
-  is present, can fetch a URL that a response rule matches and get the mock body, and can try
+- **Scripts on the sites Ghostfetch runs on are trusted.** Rules have to live in the page to
+  work, so code running there (a compromised dependency, say) can see that Ghostfetch is
+  present, can fetch a URL that a rule matches and get the mock body, and can try
   to read the rules by tampering with built-ins like `String` or `RegExp` methods after load.
   Every site Ghostfetch runs on gets the same rules. Any host starting with `local.` counts, so
   only open `local.*` sites you control while Ghostfetch is on, only add sites you trust, and
   don't keep real secrets in rule bodies.
-- **Imported rules arrive switched off.** A rule can change what your app receives or redirect
-  its requests, so read a rules file from someone else before you switch its rules on.
+- **Imported rules arrive switched off.** A rule changes what your app gets back from its
+  server, so read a rules file from someone else before you switch its rules on.
 - **Mind what you mock.** "Mock this response" copies a real response into a rule. Rules are
   stored unencrypted in your browser profile and included in exports, so strip tokens and
   personal data from bodies you keep or share.
-- `host_permissions` stays `<all_urls>`: browsers require host access to the API domains your
-  redirect and header rules target (e.g. prod API → localhost). Content scripts and DNR
-  initiators are still limited to the sites Ghostfetch runs on. The `scripting` permission is
-  only used to register the content scripts for the sites you add.
+- `host_permissions` stays `<all_urls>`: a site you add needs host access for its content
+  scripts, and the browser only shows the extension a tab's address and title (the popup's
+  current site, Traffic's list of tabs) with host access, since Ghostfetch has no `tabs`
+  permission. Content scripts still only run on the sites Ghostfetch runs on. The `scripting`
+  permission is only used to register the content scripts for the sites you add.
 
 ## Files
 
@@ -259,21 +254,21 @@ one per part of the screen, so each file is about one thing.
 
 ```
 src/app/                         the extension's parts, one folder each, which WXT builds (wxt.config.ts)
-  background/                    service worker (Chrome) or event page (Firefox): content scripts for added sites, DNR rules, badge
-  interceptor/                   page world: wraps fetch/XHR, applies response rules
+  background/                    service worker (Chrome) or event page (Firefox): content scripts for added sites, badge
+  interceptor/                   page world: wraps fetch/XHR, applies the rules
   bridge/                        isolated world: passes rules in, collects the traffic log
   popup/                         the toolbar popup's page
   sidepanel/                     the editor (Chrome's side panel, Firefox's sidebar, or a tab): its top bar, tabs and menus
   kit/                           the kit page; for npm run dev and the kit test, never in the extension
   styles/                        theme.css, the look's values (colours, the font, the dotted grid), and kit.css: those as Tailwind's theme
 src/pages/                       what the screens show
-  rules/                         the Rules tab: the rule list, and the rule editor (ui/rule-editor/, a component per section)
+  rules/                         the Rules tab: the rule list, and the rule editor (ui/rule-editor/, a component per tab)
   traffic/                       the Traffic tab: a tab's live log, a request's details (ui/request-detail/), Mock this response
   popup/                         the toolbar popup
   kit/                           the kit page: every kit component in its states
 src/shared/                      what more than one part of the extension uses
   api/                           what's kept in chrome.storage and what the parts send each other (index.ts)
-    rules/                       a rule: its types and their names, making one, URL matching, and the screens' copy of the rules
+    rules/                       a rule: its fields and their names, making one, URL matching, and the screens' copy of the rules
     sites/                       the sites Ghostfetch runs on, the screens' copy of the ones you added, turning one on or off
     settings.ts                  the on/off and recording switches
     log-entry.ts                 a request in a tab's traffic log
@@ -385,8 +380,9 @@ characters a person expects. It also checks the pieces the editor colours a long
 20,000 random bodies they must make up the body and colour exactly as the whole body does. It
 needs no browser, and `npm test` runs it first.
 
-`test/e2e.mjs` loads the built extension into Chromium, runs a local API and checks every rule type
-against fetch and XHR, the editor (including the response tabs, the body editor's marks for a
+`test/e2e.mjs` loads the built extension into Chromium, runs a local API and checks the rules
+against fetch and XHR (and that rules saved by older versions do what they should), the editor
+(including the rule's tabs, the body editor's marks for a
 JSON mistake, its height and text size, Format and colours on a body of 370,000 characters,
 its own find and its vim keys),
 traffic view and popup, plus the security properties above
@@ -403,8 +399,8 @@ npm test             # builds, then tests; add SHOTS=/tmp/shots to save UI scree
 
 To use a different build (e.g. Chrome for Testing) set `CHROME=/path/to/binary`.
 
-`test/firefox.mjs` runs the same backend and rules in Zen: fetch/XHR rules, the background
-page's redirect, header and block rules, the traffic log, the channel and `.caller` attacks,
+`test/firefox.mjs` runs the same backend and rules in Zen: fetch/XHR rules, rules saved by
+older versions, the traffic log, the channel and `.caller` attacks,
 `local.*` hosts, a site that isn't turned on, and adding and removing a site. Firefox's
 automation can't open extension pages, so the editor and popup
 are covered by the Chromium run (same code), and this test loads a temporary copy of the

@@ -95,7 +95,7 @@ export default defineConfig({
   manifest: ({ command }) => ({
     name: 'Ghostfetch',
     description:
-      'Mock and modify API responses, redirect requests and change headers. Runs locally, makes no network calls of its own.',
+      'Mock and modify API responses. Runs locally, makes no network calls of its own.',
     minimum_chrome_version: '121',
     browser_specific_settings: {
       gecko: {
@@ -105,14 +105,7 @@ export default defineConfig({
       },
       gecko_android: { strict_min_version: '142.0' },
     },
-    permissions: [
-      'storage',
-      'unlimitedStorage',
-      'declarativeNetRequest',
-      'declarativeNetRequestFeedback',
-      'sidePanel',
-      'scripting',
-    ],
+    permissions: ['storage', 'unlimitedStorage', 'sidePanel', 'scripting'],
     host_permissions: ['<all_urls>'],
     content_security_policy: { extension_pages: command === 'serve' ? DEV_CSP : CSP },
     action: { default_title: 'Ghostfetch', default_icon: ICONS },

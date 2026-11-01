@@ -24,9 +24,7 @@ export function AlertSection({ index }: { index: number }) {
   return (
     <Cell index={index} title="Alert and toast" note="errors are inverted white, not red">
       <Alert>Recording is paused. Rules still apply.</Alert>
-      <Alert variant="error">
-        Chrome rejected this rule: the regular expression is too complex.
-      </Alert>
+      <Alert variant="error">TypeError: Failed to fetch</Alert>
       <Alert variant="paused">
         Ghostfetch is off. Rules aren't applied until you turn it back on.
       </Alert>

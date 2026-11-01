@@ -1,6 +1,5 @@
 // Set or remove headers, one row each: the operation, the name and (to set) the value. `pick` is
-// the rule's list these rows are: its request headers, its response headers, or a response
-// rule's headers.
+// the rule's list these rows are (the Headers tab's: the headers of the response).
 import { useRef } from 'react';
 import { flushSync } from 'react-dom';
 import { editRule } from '../../../../shared/api/index.ts';

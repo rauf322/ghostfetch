@@ -4,7 +4,7 @@ import { cva } from 'class-variance-authority';
 import type { VariantProps } from 'class-variance-authority';
 import { cn } from '../cn.ts';
 
-// Rule types and rule hits are words, not colours. "fired" puts the green square in front: a rule
+// Labels and rule hits are words, not colours. "fired" puts the green square in front: a rule
 // fired. "error" is inverted white.
 const badgeVariants = cva(
   'inline-flex flex-none items-center text-micro font-medium uppercase tracking-badge',

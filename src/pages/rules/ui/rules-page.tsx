@@ -2,7 +2,6 @@
 // two is visible at a time; from 760px wide they sit side by side.
 import { useEffect, useRef, useState } from 'react';
 import { addRule, createRule, findRule, ruleStore } from '../../../shared/api/index.ts';
-import type { RuleType } from '../../../shared/api/index.ts';
 import { useStore } from '../../../shared/react/index.ts';
 import { DetailPane, Split } from '../../../shared/ui/list-detail.tsx';
 import { FieldSuggestions } from './field-suggestions.tsx';
@@ -43,9 +42,10 @@ export function RulesPage({ selectedId, onSelect, onImport, onExport }: RulesPag
     onSelect(id);
   }
 
-  function createOfType(type: RuleType) {
+  // A new rule goes first in the list, open on its Match tab.
+  function create() {
     setQuery('');
-    const rule = addRule(createRule(type), 0);
+    const rule = addRule(createRule(), 0);
     onSelect(rule.id);
     setCreated(rule.id);
   }
@@ -59,7 +59,7 @@ export function RulesPage({ selectedId, onSelect, onImport, onExport }: RulesPag
           query={query}
           onQueryChange={setQuery}
           onSelect={select}
-          onCreate={createOfType}
+          onCreate={create}
           onImport={onImport}
           onExport={onExport}
         />
@@ -73,7 +73,7 @@ export function RulesPage({ selectedId, onSelect, onImport, onExport }: RulesPag
               onSelect={select}
             />
           ) : (
-            <NoRuleSelected hasRules={rules.length > 0} onPick={createOfType} />
+            <NoRuleSelected hasRules={rules.length > 0} onCreate={create} />
           )}
         </DetailPane>
       </Split>

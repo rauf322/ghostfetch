@@ -334,18 +334,21 @@ try {
     );
   });
 
-  console.log('declarativeNetRequest rules');
-  await check('redirect', async () => {
-    const r = await call('/api/old-home');
-    expect([r.body, r.url], [{ redirected: true }, `${ORIGIN}/api/new-home`]);
-  });
-  await check('request and response headers', async () => {
-    const r = await call('/api/echo');
-    expect([r.body.headers['x-debug'], r.headers['x-resp']], ['1', 'ok']);
-  });
-  await check('block', async () => {
-    const r = await call('/api/blocked');
-    if (!r.error) throw new Error(`request was not blocked: ${JSON.stringify(r)}`);
+  await check('redirect, header and block rules saved by 0.8 do nothing', async () => {
+    const redirect = await call('/api/old-home');
+    const echoed = await call('/api/echo');
+    const blocked = await call('/api/blocked');
+    expect(
+      [
+        redirect.status,
+        redirect.url,
+        echoed.body.headers['x-debug'],
+        echoed.headers['x-resp'],
+        blocked.error,
+        blocked.status,
+      ],
+      [404, `${ORIGIN}/api/old-home`, undefined, undefined, undefined, 404],
+    );
   });
 
   console.log('switches');
@@ -353,7 +356,6 @@ try {
     await setStorage({ enabled: false });
     await sleep(400);
     expect((await call('/api/user?case=replace')).body.name, 'Real');
-    expect((await call('/api/old-home')).status, 404);
     await setStorage({ enabled: true });
     await sleep(400);
     expect((await call('/api/user?case=replace')).body, { name: 'Mocked' });
@@ -377,9 +379,15 @@ try {
   await app.goto(`chrome-extension://${extensionId}/sidepanel.html`);
   await app.waitForSelector('[data-testid="rule"]');
 
-  await check('rule list renders every rule', async () => {
-    expect(await app.locator('[data-testid="rule"]').count(), RULES.length);
-  });
+  await check(
+    'rule list renders every rule, but not the redirect, header and block ones',
+    async () => {
+      expect(
+        await app.locator('[data-testid="rule"]').count(),
+        RULES.filter((rule) => !rule.type).length,
+      );
+    },
+  );
   if (SHOTS) {
     fs.mkdirSync(SHOTS, { recursive: true });
     await app.locator('[data-testid="rule"]').nth(1).click();
@@ -388,7 +396,6 @@ try {
 
   await check('create a rule in the editor and it mocks immediately', async () => {
     await app.click('[data-testid="new-rule"]');
-    await app.click('[data-testid="new-response"]');
     // A new rule opens on Match, with the cursor in the URL field.
     await app.waitForFunction(
       () => document.activeElement?.dataset.testid === 'match-url',
@@ -993,16 +1000,6 @@ try {
     await app.click('[data-slot="toast"] button');
     expect(await app.locator('[data-testid="rule"]').count(), before);
   });
-  await check("invalid redirect shows Chrome's error on the rule", async () => {
-    await app.click('[data-testid="new-rule"]');
-    await app.click('[data-testid="new-redirect"]');
-    await app.fill('[data-testid="match-url"]', '/never');
-    await app.fill('[data-testid="redirect-to"]', '/relative/path');
-    await app.waitForSelector('[data-testid="dnr-error"]', { timeout: 3000 });
-    await app.click('[data-testid="rule-menu"]');
-    await app.click('[data-testid="delete-rule"]');
-  });
-
   await check('traffic view shows captured requests live', async () => {
     await app.click('[data-testid="tab-traffic"]');
     await app.waitForSelector('[data-testid="request"]', { timeout: 5000 });
@@ -1014,7 +1011,7 @@ try {
     const badges = await app
       .locator('[data-testid="request"] [data-testid="request-action"]')
       .allTextContents();
-    for (const label of ['Mocked', 'Modified', 'Rule error', 'Redirected', 'Blocked']) {
+    for (const label of ['Mocked', 'Modified', 'Rule error']) {
       if (!badges.includes(label))
         throw new Error(`no "${label}" entry; saw ${[...new Set(badges)].join(', ')}`);
     }
@@ -1180,46 +1177,72 @@ try {
       expect(await app.locator('[data-xss]').count(), 0, 'injected elements');
     },
   );
-  await check('imported rule files are validated and arrive turned off', async () => {
-    const evil = {
-      rules: [
-        {
-          name: 'Imported <img data-xss=1>',
-          type: 'toString',
-          match: { url: '/imported', method: '<img data-xss=1>', mode: 'constructor' },
-          response: {
-            delay: '"><img data-xss=1>',
-            status: '<b>',
-            headers: [{ op: 'set', name: 1, value: {} }],
+  await check(
+    'imported rule files are validated and arrive turned off; a redirect rule is skipped',
+    async () => {
+      const evil = {
+        rules: [
+          {
+            name: 'Imported <img data-xss=1>',
+            type: 'response',
+            match: { url: '/imported', method: '<img data-xss=1>', mode: 'constructor' },
+            response: {
+              delay: '"><img data-xss=1>',
+              status: '<b>',
+              headers: [{ op: 'set', name: 1, value: {} }],
+            },
           },
-        },
-      ],
-    };
-    await app.setInputFiles('[data-testid="import-file"]', {
-      name: 'evil.json',
-      mimeType: 'application/json',
-      buffer: Buffer.from(JSON.stringify(evil)),
-    });
-    await app.waitForSelector(
-      '[data-testid="view-rules"]:not([hidden]) [data-testid="rule-name"]',
-    );
-    expect(await app.locator('[data-xss]').count(), 0, 'injected elements');
-    const { rules } = await worker.evaluate(() => chrome.storage.local.get('rules'));
-    const imported = rules.find((r) => r.match.url === '/imported');
-    const headers = imported.response.headers.map((row) => [row.op, row.name, row.value]);
-    expect(
-      [
-        imported.enabled,
-        imported.type,
-        imported.match.method,
-        imported.match.mode,
-        imported.response.delay,
-        imported.response.status,
-        headers,
-      ],
-      [false, 'response', 'ANY', 'contains', 0, '', [['set', '', '']]],
-    );
-  });
+          // As 0.8 exported it.
+          {
+            name: 'Old redirect',
+            type: 'redirect',
+            match: { url: '/imported-redirect' },
+            redirect: { to: 'https://evil.test/' },
+          },
+        ],
+      };
+      await app.setInputFiles('[data-testid="import-file"]', {
+        name: 'evil.json',
+        mimeType: 'application/json',
+        buffer: Buffer.from(JSON.stringify(evil)),
+      });
+      await app.waitForSelector(
+        '[data-testid="view-rules"]:not([hidden]) [data-testid="rule-name"]',
+      );
+      expect(await app.locator('[data-xss]').count(), 0, 'injected elements');
+      const { rules } = await worker.evaluate(() => chrome.storage.local.get('rules'));
+      const imported = rules.find((r) => r.match.url === '/imported');
+      const headers = imported.response.headers.map((row) => [
+        row.op,
+        row.name,
+        row.value,
+      ]);
+      // The toast says what was skipped (it can follow another one that's still closing).
+      const toldSkipped = await app
+        .locator('[data-slot="toast"]', {
+          hasText: '1 redirect, header or block rule was skipped',
+        })
+        .waitFor({ timeout: 5000 })
+        .then(
+          () => true,
+          () => false,
+        );
+      expect(
+        [
+          imported.enabled,
+          'type' in imported,
+          imported.match.method,
+          imported.match.mode,
+          imported.response.delay,
+          imported.response.status,
+          headers,
+          rules.some((r) => r.match.url === '/imported-redirect'),
+          toldSkipped,
+        ],
+        [false, false, 'ANY', 'contains', 0, '', [['set', '', '']], false, true],
+      );
+    },
+  );
 
   // Loads a hostile page, then makes a mocked fetch so the traffic report goes over the port
   // too, and returns what the page managed to grab.
@@ -1264,25 +1287,15 @@ try {
       expect(response, { name: 'Mocked' }, 'mocking still works');
     },
   );
-  await check('local.* hosts get mocks and, once opened, header rules too', async () => {
+  await check('local.* hosts get mocks, from the first request on', async () => {
     const probe = await context.newPage();
     await probe.goto(`${LOCAL_ORIGIN}/`);
-    expect(
-      await probe.evaluate(() => window.early),
-      { early: 'mocked' },
-      'mocked during load',
+    const early = await probe.evaluate(() => window.early);
+    const later = await probe.evaluate(() =>
+      fetch('/api/user?case=replace').then((response) => response.json()),
     );
-    // The first visit makes the background remember the host for redirect, header and block rules.
-    await sleep(600);
-    const r = await probe.evaluate(async () => {
-      const response = await fetch('/api/echo');
-      return {
-        sent: (await response.json()).headers['x-debug'],
-        received: response.headers.get('x-resp'),
-      };
-    });
     await probe.close();
-    expect([r.sent, r.received], ['1', 'ok']);
+    expect([early, later], [{ early: 'mocked' }, { name: 'Mocked' }]);
   });
   await check(
     'a URL that only looks like local.* ("local.x@" before another host) gets nothing',
@@ -1310,10 +1323,9 @@ try {
     const r = await probe.evaluate(async () => ({
       wrapped: !String(window.fetch).includes('[native code]'),
       mock: await fetch('/api/user?case=replace').then((x) => x.json()),
-      redirect: await fetch('/api/old-home').then((x) => x.status),
       stolen: window.stolen,
     }));
-    expect([r.wrapped, r.mock.name, r.redirect, r.stolen], [false, 'Real', 404, []]);
+    expect([r.wrapped, r.mock.name, r.stolen], [false, 'Real', []]);
     await probe.close();
   });
   await check(
@@ -1433,6 +1445,13 @@ try {
       expect(await state(), ['true', 0, 'original']);
       // Still the server's body for the page.
       expect((await call('/api/user?case=merge')).body.role, 'user');
+      // Saved, the rules have no type any more, and the redirect, header and block ones are gone.
+      expect(
+        (await storedRules()).filter((r) => 'type' in r || r.redirect || r.headers)
+          .length,
+        0,
+        'old fields and types in storage',
+      );
     },
   );
   await check(

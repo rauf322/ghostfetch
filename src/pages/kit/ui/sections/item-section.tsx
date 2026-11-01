@@ -1,6 +1,4 @@
 // Items: rows of rules and of requests, as the two lists show them, one of each selected.
-import { TYPES } from '../../../../shared/api/index.ts';
-import type { RuleType } from '../../../../shared/api/index.ts';
 import { Badge, StatusCode } from '../../../../shared/ui/kit/badge.tsx';
 import {
   Item,
@@ -14,7 +12,6 @@ import { Cell } from '../cell.tsx';
 
 const RULES: {
   name: string;
-  type: RuleType;
   method: string;
   url: string;
   summary: string;
@@ -22,23 +19,20 @@ const RULES: {
 }[] = [
   {
     name: 'Logged-in admin user',
-    type: 'response',
     method: 'GET',
     url: '/api/user',
     summary: 'Replace · 200',
     on: true,
   },
   {
-    name: 'Prod API → local',
-    type: 'redirect',
+    name: 'Slow team page',
     method: 'ANY',
-    url: '^https://api\\.acme\\.dev/(.*)',
-    summary: '→ http://localhost:4000/\\1',
+    url: '^/api/team/(.*)',
+    summary: "Server's body · 2 s",
     on: true,
   },
   {
     name: 'Checkout fails',
-    type: 'response',
     method: 'POST',
     url: '/api/checkout',
     summary: 'Replace · 500 · 1200 ms',
@@ -64,13 +58,20 @@ const REQUESTS: {
     rule: 'Logged-in admin user',
   },
   {
+    method: 'GET',
+    path: '/api/team/projects',
+    host: 'localhost:3000',
+    status: 200,
+    ms: 2014,
+    action: 'Modified',
+    rule: 'Slow team page',
+  },
+  {
     method: 'POST',
     path: '/v1/track',
     host: 'api.segment.io',
     status: null,
-    ms: null,
-    action: 'Blocked',
-    rule: 'Block analytics',
+    ms: 18,
   },
   {
     method: 'GET',
@@ -99,7 +100,6 @@ export function ItemSection({ index }: { index: number }) {
               <ItemContent>
                 <ItemTitle>{rule.name}</ItemTitle>
                 <ItemDescription>
-                  <Badge>{TYPES[rule.type].short}</Badge>
                   {rule.method !== 'ANY' && (
                     <span className="flex-none text-control font-medium tracking-[0.04em] text-t80">
                       {rule.method}

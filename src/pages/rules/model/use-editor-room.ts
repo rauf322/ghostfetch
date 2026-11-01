@@ -1,5 +1,5 @@
-// The room the body editor may grow into: down to where the response section, the last thing in
-// the pane, ends at the pane's bottom with the pane scrolled to the top. So the editor is never
+// The room the body editor may grow into: down to where the rule's tabs (rule-tabs.tsx), the only
+// thing in the pane, end at the pane's bottom with the pane scrolled to the top. So the editor is never
 // taller than the window has room for, and a longer body scrolls inside it. Kept in --code-max on
 // the section, which code-editor.css reads (with 120 px as the least); it follows the window,
 // what's above the editor and what's under it.

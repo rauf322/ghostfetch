@@ -2,7 +2,6 @@
 // their order (numbered by priority, even while a search hides some), and Import and Export along
 // the bottom.
 import { ruleStore } from '../../../shared/api/index.ts';
-import type { RuleType } from '../../../shared/api/index.ts';
 import { useStore } from '../../../shared/react/index.ts';
 import { Button } from '../../../shared/ui/kit/button.tsx';
 import { Icon } from '../../../shared/ui/kit/icon.tsx';
@@ -18,7 +17,6 @@ import {
 } from '../../../shared/ui/list-detail.tsx';
 import { filterRules } from '../lib/filter-rules.ts';
 import { useRuleDrag } from '../model/use-rule-drag.ts';
-import { NewRuleMenu } from './new-rule-menu.tsx';
 import { NoRulesYet } from './no-rules.tsx';
 import { RuleListItem } from './rule-list-item.tsx';
 
@@ -29,7 +27,7 @@ interface RuleListProps {
   query: string;
   onQueryChange: (query: string) => void;
   onSelect: (id: string) => void;
-  onCreate: (type: RuleType) => void;
+  onCreate: () => void;
   onImport: () => void;
   onExport: () => void;
 }
@@ -44,7 +42,7 @@ export function RuleList({
   onImport,
   onExport,
 }: RuleListProps) {
-  const { rules, dnrErrors } = useStore(ruleStore);
+  const { rules } = useStore(ruleStore);
   const drag = useRuleDrag(rules);
   const visible = filterRules(rules, query);
   const active = rules.filter((rule) => rule.enabled).length;
@@ -58,7 +56,15 @@ export function RuleList({
           placeholder="Search rules"
           aria-label="Search rules"
         />
-        <NewRuleMenu onCreate={onCreate} />
+        <Button
+          variant="primary"
+          data-testid="new-rule"
+          onClick={onCreate}
+          className="mr-2 h-7 self-center"
+        >
+          <Icon name="plus" size={14} />
+          New rule
+        </Button>
       </PaneToolbar>
       <SectionRow>
         <Label>Rules</Label>
@@ -68,7 +74,7 @@ export function RuleList({
       </SectionRow>
 
       <List>
-        {!rules.length && <NoRulesYet onPick={onCreate} />}
+        {!rules.length && <NoRulesYet />}
         {Boolean(rules.length) && !visible.length && (
           <ListEmpty>
             <p>{`No rules match “${query}”.`}</p>
@@ -82,7 +88,6 @@ export function RuleList({
             // hides some rules.
             position={String(rules.indexOf(rule) + 1).padStart(2, '0')}
             selected={rule.id === selectedId}
-            error={dnrErrors[rule.id]}
             drag={drag(rule)}
             onSelect={onSelect}
           />

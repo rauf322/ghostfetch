@@ -6,13 +6,10 @@ import { Card, CardHint, CardTitle } from '../../../../shared/ui/kit/card.tsx';
 
 export function RequestBodies({
   entry,
-  canMock,
   pretty,
   requestPretty,
 }: {
   entry: LogEntry;
-  // A fetch() or XMLHttpRequest call, whose body the page reported.
-  canMock: boolean;
   // The two bodies pretty-printed, or null when they aren't JSON.
   pretty: string | null;
   requestPretty: string | null;
@@ -26,11 +23,7 @@ export function RequestBodies({
         {entry.responseBody ? (
           <CodeView text={pretty ?? entry.responseBody} highlight={pretty !== null} />
         ) : (
-          <CardHint>
-            {canMock
-              ? 'No body captured (empty, binary, or a streaming response).'
-              : 'Chrome handled this request directly, so its body isn’t available.'}
-          </CardHint>
+          <CardHint>No body captured (empty, binary, or a streaming response).</CardHint>
         )}
       </Card>
       {entry.requestBody && (

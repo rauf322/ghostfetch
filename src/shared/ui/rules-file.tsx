@@ -1,7 +1,7 @@
 // Rules files: every rule, or one, saved as JSON, and a rules file read back in through the hidden
 // file picker behind "Import rules…".
 import type { Ref } from 'react';
-import { addRules, normalizeRule, ruleStore, ruleTitle } from '../api/index.ts';
+import { addRules, normalizeRules, ruleStore, ruleTitle } from '../api/index.ts';
 import type { Rule } from '../api/index.ts';
 import { download, slug } from '../lib/index.ts';
 import { notify } from './kit/toast.tsx';
@@ -32,23 +32,31 @@ export function exportRule(rule: Rule) {
 }
 
 // Adds the rules in a rules file (an export, or a plain list of rules), each rebuilt from what it
-// says and switched off: a rule can run a script inside your app or redirect its requests
-// elsewhere, so a rules file is effectively code, and its rules wait until you've read them.
-// `onAdded` gets the rules once they're in; a toast says how it went.
+// says and switched off: a rule changes what your app gets back from its server, so the rules in
+// someone else's file wait until you've read them. A redirect, header or block rule (from before
+// 0.9.0) is skipped. `onAdded` gets the rules once they're in; a toast says how it went.
 async function importRules(file: File, onAdded: (rules: Rule[]) => void) {
   try {
     const data = JSON.parse(await file.text());
     const incoming = Array.isArray(data) ? data : data?.rules;
     if (!Array.isArray(incoming) || !incoming.length)
       throw new Error('no rules found in this file');
-    const imported = incoming.map((rule: unknown) => ({
-      ...normalizeRule(rule, { newId: true }),
+    const imported = normalizeRules(incoming, { newId: true }).map((rule) => ({
+      ...rule,
       enabled: false,
     }));
+    if (!imported.length)
+      throw new Error(
+        "it only has redirect, header or block rules, which Ghostfetch doesn't have any more",
+      );
+    const skipped = incoming.length - imported.length;
+    const skippedNote = skipped
+      ? ` ${skipped} redirect, header or block rule${skipped === 1 ? ' was' : 's were'} skipped: Ghostfetch doesn't have those any more.`
+      : '';
     addRules(imported);
     onAdded(imported);
     notify(
-      `Imported ${imported.length} rule${imported.length === 1 ? '' : 's'}, switched off. Review them before turning them on: rules can run scripts and redirect requests.`,
+      `Imported ${imported.length} rule${imported.length === 1 ? '' : 's'}, switched off. Review them before turning them on.${skippedNote}`,
       { duration: 7000 },
     );
   } catch (error) {

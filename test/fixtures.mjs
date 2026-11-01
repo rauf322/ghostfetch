@@ -219,19 +219,29 @@ export async function startServer() {
 
 // ------------------------------------------------------------ rules under test
 
-function rule(type, match, patch = {}) {
-  const base = createRule(type);
+function rule(match, patch = {}) {
+  const base = createRule();
   Object.assign(base.match, match);
   for (const [key, value] of Object.entries(patch)) Object.assign(base[key], value);
   return base;
 }
 
-// `origin` is the test server, which the redirect rule points at.
+// A redirect, header or block rule as 0.8 stored it, before 0.9.0 took those types out.
+function oldRule(type, match, fields = {}) {
+  return {
+    ...rule(match),
+    type,
+    redirect: { to: '' },
+    headers: { request: [], response: [] },
+    ...fields,
+  };
+}
+
+// `origin` is the test server, which the old redirect rule points at.
 export function testRules(origin) {
   return [
-    rule('response', { url: '/api/early' }, { response: { body: '{"early":"mocked"}' } }),
+    rule({ url: '/api/early' }, { response: { body: '{"early":"mocked"}' } }),
     rule(
-      'response',
       { url: '/api/user?case=replace', mode: 'equals' },
       {
         response: {
@@ -244,7 +254,6 @@ export function testRules(origin) {
     // A Merge and a Script rule as 0.7 stored them, before 0.8.0 took both out: they keep the
     // server's body now, and their JSON or script does nothing.
     rule(
-      'response',
       { url: 'case=merge' },
       {
         response: {
@@ -254,7 +263,6 @@ export function testRules(origin) {
       },
     ),
     rule(
-      'response',
       { url: 'case=script' },
       {
         response: {
@@ -266,46 +274,39 @@ export function testRules(origin) {
     ),
     // Keeps the server's body of a request that can't reach any server (port 1 is closed, and
     // browsers refuse it anyway): the page gets the network error, and Traffic a "Rule error".
-    rule('response', { url: '127.0.0.1:1/' }, { response: { bodyMode: 'original' } }),
+    rule({ url: '127.0.0.1:1/' }, { response: { bodyMode: 'original' } }),
     rule(
-      'response',
       { url: 'case=delay' },
       { response: { bodyMode: 'original', delay: 600, status: '503' } },
     ),
     rule(
-      'response',
       { url: '/graphql', graphqlOperation: 'GetUser' },
       { response: { body: '{"data":{"user":"mocked"}}' } },
     ),
     rule(
-      'response',
       { url: 'case=method', method: 'POST' },
       { response: { body: '{"post":"mocked"}' } },
     ),
     rule(
-      'response',
       { url: '*/api/user?case=wild*', mode: 'wildcard' },
       { response: { body: '{"wild":true}' } },
     ),
     rule(
-      'response',
       { url: 'case=regex\\d+$', mode: 'regex' },
       { response: { body: '{"regex":true}' } },
     ),
     {
-      ...rule(
-        'response',
-        { url: 'case=disabled' },
-        { response: { body: '{"disabled":"mocked"}' } },
-      ),
+      ...rule({ url: 'case=disabled' }, { response: { body: '{"disabled":"mocked"}' } }),
       enabled: false,
     },
-    rule(
+    // A redirect, a header and a block rule as 0.8 stored them: they do nothing now, and the
+    // editor leaves them out.
+    oldRule(
       'redirect',
       { url: '/api/old-home' },
       { redirect: { to: `${origin}/api/new-home` } },
     ),
-    rule(
+    oldRule(
       'headers',
       { url: '/api/echo' },
       {
@@ -315,7 +316,7 @@ export function testRules(origin) {
         },
       },
     ),
-    rule('block', { url: '/api/blocked' }),
+    oldRule('block', { url: '/api/blocked' }),
   ];
 }
 

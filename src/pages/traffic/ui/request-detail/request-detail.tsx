@@ -24,8 +24,6 @@ export const RequestDetail = memo(function RequestDetail({
 }) {
   const pretty = useMemo(() => formatJson(entry.responseBody), [entry.responseBody]);
   const requestPretty = useMemo(() => formatJson(entry.requestBody), [entry.requestBody]);
-  // The page's own calls, which response rules can answer; the rest the browser handled itself.
-  const canMock = entry.kind === 'fetch' || entry.kind === 'xhr';
 
   return (
     <>
@@ -38,18 +36,12 @@ export const RequestDetail = memo(function RequestDetail({
         )}
         <RequestActions
           entry={entry}
-          canMock={canMock}
           pretty={pretty}
           onMock={onMock}
           onOpenRule={onOpenRule}
         />
         <RequestFacts entry={entry} />
-        <RequestBodies
-          entry={entry}
-          canMock={canMock}
-          pretty={pretty}
-          requestPretty={requestPretty}
-        />
+        <RequestBodies entry={entry} pretty={pretty} requestPretty={requestPretty} />
       </PaneScroll>
     </>
   );

@@ -1,5 +1,7 @@
 // Which response rule a request gets: the first whose method, URL pattern and (for GraphQL)
-// operation name match it. The URL patterns are made into tests once, as the rules arrive.
+// operation name match it. The URL patterns are made into tests once, as the rules arrive, by
+// urlTester, which the editor's URL tester uses too.
+import { urlTester } from '../../shared/api/index.ts';
 import type { Rule } from '../../shared/api/index.ts';
 import type { Compiled, PageRequest, PageRules } from './types.ts';
 
@@ -13,28 +15,6 @@ export function compile(rules: Rule[]) {
     }
   }
   return compiled;
-}
-
-function urlTester({
-  url = '',
-  mode = 'contains',
-  graphqlOperation = '',
-}: Partial<Rule['match']>): (candidate: string) => boolean {
-  const pattern = url.trim();
-  if (!pattern) return () => Boolean(graphqlOperation.trim());
-  if (mode === 'regex') {
-    const regex = new RegExp(pattern);
-    return (candidate) => regex.test(candidate);
-  }
-  if (mode === 'wildcard') {
-    const regex = new RegExp(`^${pattern.split('*').map(escapeRegex).join('.*')}$`);
-    return (candidate) => regex.test(candidate);
-  }
-  if (mode === 'equals') {
-    return (candidate) =>
-      candidate === pattern || (pattern.startsWith('/') && pathOf(candidate) === pattern);
-  }
-  return (candidate) => candidate.includes(pattern);
 }
 
 export function findRule(state: PageRules, request: PageRequest) {
@@ -70,17 +50,4 @@ function operationName({ url, body }: PageRequest) {
   } catch {
     return '';
   }
-}
-
-function pathOf(url: string) {
-  try {
-    const parsed = new URL(url);
-    return parsed.pathname + parsed.search;
-  } catch {
-    return url;
-  }
-}
-
-function escapeRegex(text: string) {
-  return text.replace(/[.+?^${}()|[\]\\]/g, '\\$&');
 }

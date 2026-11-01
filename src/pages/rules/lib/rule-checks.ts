@@ -1,6 +1,6 @@
 // What the rule editor says about what you typed: a regex that doesn't compile, whether a URL
 // matches the pattern, and whether a body is valid JSON (and if not, where it goes wrong).
-import { testUrl } from '../../../shared/api/index.ts';
+import { urlTester } from '../../../shared/api/index.ts';
 import type { Rule } from '../../../shared/api/index.ts';
 import { checkJson } from '../../../shared/lib/index.ts';
 import type { JsonProblem } from '../../../shared/lib/index.ts';
@@ -16,15 +16,14 @@ export function regexError({ match }: Rule) {
   }
 }
 
+// Whether `url` matches the rule's pattern, as the page decides it (urlTester), or why the pattern
+// can't be tried.
 export function testResult(
   rule: Rule,
   url: string,
 ): { tone: 'good' | 'bad'; text: string } {
   try {
-    const matched = rule.match.url.trim()
-      ? testUrl(rule, url)
-      : Boolean(rule.match.graphqlOperation.trim());
-    if (!matched) return { tone: 'bad', text: 'No match' };
+    if (!urlTester(rule.match)(url)) return { tone: 'bad', text: 'No match' };
     return {
       tone: 'good',
       text: rule.match.graphqlOperation.trim()

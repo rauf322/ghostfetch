@@ -12,7 +12,7 @@ export {
   normalizeRules,
   ruleTitle,
 } from './rules/rule.ts';
-export { testUrl } from './rules/url-match.ts';
+export { urlTester } from './rules/url-match.ts';
 export {
   addRule,
   addRules,

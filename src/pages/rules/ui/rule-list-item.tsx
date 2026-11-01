@@ -75,7 +75,7 @@ export function RuleListItem({
         </ItemDescription>
       </ItemContent>
       {/* The dot sits 14 px in from the row's right edge, as the row's text does on the left. */}
-      <RuleSwitch rule={rule} className="-mr-[7px]" />
+      <RuleSwitch rule={rule} className="-mr-2" />
     </Item>
   );
 }

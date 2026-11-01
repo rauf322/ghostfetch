@@ -1,5 +1,5 @@
 // The bar across the top of a rule: back to the list (in a narrow panel), the rule's name, its
-// switch (the green square) and its ⋯ menu.
+// switch (the green dot) and its ⋯ menu.
 import { editRule } from '../../../../shared/api/index.ts';
 import type { Rule } from '../../../../shared/api/index.ts';
 import { Input } from '../../../../shared/ui/kit/input.tsx';

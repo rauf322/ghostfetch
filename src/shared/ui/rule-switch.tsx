@@ -1,4 +1,4 @@
-// A rule's switch, in the rule list, the rule's top bar and the popup: the green square, pulsing
+// A rule's switch, in the rule list, the rule's top bar and the popup: the green dot, pulsing
 // while the rule is on and answering requests, still while it's on but Ghostfetch is off, and grey
 // while the rule is off. Its title says which.
 import type { ComponentProps } from 'react';

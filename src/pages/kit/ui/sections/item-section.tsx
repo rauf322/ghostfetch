@@ -116,7 +116,7 @@ export function ItemSection({ index }: { index: number }) {
               <SignalSwitch
                 defaultChecked={rule.on}
                 aria-label={`Turn “${rule.name}” on or off`}
-                className="-mr-2"
+                className="-mr-[7px]"
               />
             </Item>
           ))}

@@ -213,13 +213,13 @@ async function runChecks(browser, open) {
   await check(
     `${browser}: a rule's switch pulses while on, in step with the others, and is still while paused or off`,
     async () => {
-      // Each square: whether it's on, and its animations, with when each counts from.
+      // Each dot: whether it's on, and its animations, with when each counts from.
       const state = () =>
         ['off', 'on', 'paused'].map((name) => {
-          const square = document.querySelector(`[data-testid=kit-signal-${name}]`);
+          const dot = document.querySelector(`[data-testid=kit-signal-${name}]`);
           return [
-            square.getAttribute('aria-checked'),
-            square.firstElementChild
+            dot.getAttribute('aria-checked'),
+            dot.firstElementChild
               .getAnimations()
               .map((animation) => [animation.animationName, animation.startTime]),
           ];

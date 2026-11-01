@@ -93,8 +93,8 @@ What's different in Firefox-based browsers:
   - **Rules**: create and edit rules. Changes save as you type and apply to open tabs
     immediately, without reloading. Rules are numbered in order; drag them to reorder, since
     the first match wins. Import and export sit at the bottom of the list. A rule's switch
-    is the green square: it pulses while the rule is on, holds still while Ghostfetch is off,
-    and is grey while the rule is off. Click it to turn the rule on or off.
+    is a green dot: it pulses while the rule is on, holds still while Ghostfetch is off, and
+    is grey while the rule is off. Click it to turn the rule on or off.
     A rule is five tabs: **Body** (**Replace** sends your body without calling the
     server; **Server's body** makes the real request and keeps its body, so only the status,
     headers and delay change), **Status** (the code with its name, and the common ones by
@@ -120,7 +120,8 @@ What's different in Firefox-based browsers:
 
 The look is monochrome and dark-only, after [effect.institute](https://www.effect.institute/):
 black, warm white, hairline cells and one colour, the green square, which means "on" or "a
-rule fired". Errors and failed requests are inverted white instead of red.
+rule fired" (a rule's switch is the one round thing: a green dot that pulses while the rule is
+on). Errors and failed requests are inverted white instead of red.
 
 ### Vim keys
 
@@ -284,7 +285,7 @@ src/shared/                      what more than one part of the extension uses
     code-editor/                 the body editor (plain DOM code, its find bar and vim keys) and its React component (index.ts)
     list-detail.tsx              the editor's layout: a list, and what's picked in it
     master-switch.tsx            Ghostfetch on or off, in the popup and the editor's top bar
-    rule-switch.tsx              a rule on or off (the pulsing green square), in the list, the rule's top bar and the popup
+    rule-switch.tsx              a rule on or off (the pulsing green dot), in the list, the rule's top bar and the popup
     rules-file.tsx               rules files: export every rule or one, import one (its rules arrive switched off)
     cn.ts                        cn(), which joins the kit's class names
 wxt.config.ts                    the manifest (permissions, content scripts, CSP, Firefox ID) and the build settings

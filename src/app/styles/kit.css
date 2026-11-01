@@ -60,7 +60,7 @@
 
   --shadow-menu: 0 12px 32px rgba(0, 0, 0, 0.7);
 
-  /* A rule that's on (SignalSwitch): the green square dims to half and back every 2 s, after
+  /* A rule that's on (SignalSwitch): the green dot dims to half and back every 2 s, after
      T3 Code's "working" dot. Long holds and stepped ramps, so the browser draws a dozen frames a
      cycle rather than one every refresh. */
   --animate-signal-pulse: signal-pulse 2s infinite;

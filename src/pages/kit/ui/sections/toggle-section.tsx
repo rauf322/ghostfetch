@@ -1,5 +1,5 @@
 // Toggles and switches, in their states: cells in a bar as in Traffic's, the Vim toggle, a
-// switch with its words that a click on either flips, and a rule's switch, the green square.
+// switch with its words that a click on either flips, and a rule's switch, the green dot.
 import { useState } from 'react';
 import { Button } from '../../../../shared/ui/kit/button.tsx';
 import { Icon } from '../../../../shared/ui/kit/icon.tsx';

@@ -1,8 +1,9 @@
 // The editor's live log of a tab's requests: picks the tab to watch, connects to the
 // "ghostfetch-log" port of that tab's bridge (src/app/bridge/) and keeps the requests it reports.
-// The editor runs one for as long as it's open: Traffic lists it, and a rule says how often it
-// fired there. No DOM: a view draws snapshot() and draws again when subscribe() says it changed,
-// at most once a frame, however many requests arrive.
+// The editor runs one for as long as it's open: Traffic lists it, a rule says how often it fired
+// there, and New rule offers what the page just asked for. No DOM: a view draws snapshot() and
+// draws again when subscribe() says it changed, at most once a frame, however many requests
+// arrive.
 import type { LogEntry } from './log-entry.ts';
 import type { LogPortMessage, LogViewerMessage } from './messages.ts';
 

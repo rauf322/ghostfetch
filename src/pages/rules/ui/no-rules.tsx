@@ -1,18 +1,9 @@
-// What the Rules tab shows with nothing to edit: in the list (a narrow panel, where the editor's
-// side is hidden) when there are no rules yet, and in the editor's place when none is open.
-import { Button } from '../../../shared/ui/kit/button.tsx';
-import {
-  Empty,
-  EmptyDescription,
-  EmptyMedia,
-  EmptyTitle,
-} from '../../../shared/ui/kit/empty.tsx';
-import { Icon } from '../../../shared/ui/kit/icon.tsx';
+// What the rule list says when there are no rules yet, in a narrow panel, where New rule isn't
+// beside it to say it.
 import { ListEmpty } from '../../../shared/ui/list-detail.tsx';
 
 export function NoRulesYet() {
   return (
-    // In a narrow panel, where the editor's own empty state is hidden.
     <ListEmpty className="wide:hidden">
       <p>
         <strong>No rules yet.</strong> A rule answers the page's requests with the body,
@@ -26,35 +17,5 @@ export function NoRulesYet() {
         <b>Mock this response</b>.
       </p>
     </ListEmpty>
-  );
-}
-
-export function NoRuleSelected({
-  hasRules,
-  onCreate,
-}: {
-  hasRules: boolean;
-  onCreate: () => void;
-}) {
-  return (
-    <Empty>
-      <EmptyMedia>
-        <img src="/icons/icon128.png" width={56} height={56} alt="" />
-      </EmptyMedia>
-      <EmptyTitle>
-        {hasRules ? 'Select a rule to edit it' : 'Create your first rule'}
-      </EmptyTitle>
-      <EmptyDescription>
-        A rule answers the page's requests with the body, status, headers or delay you
-        choose, on every site Ghostfetch runs on while it's switched on. The quickest
-        start: open <b>Traffic</b>
-        {', click a request and choose '}
-        <b>Mock this response</b>.
-      </EmptyDescription>
-      <Button variant="primary" data-testid="empty-new-rule" onClick={onCreate}>
-        <Icon name="plus" size={14} />
-        New rule
-      </Button>
-    </Empty>
   );
 }

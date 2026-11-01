@@ -1,8 +1,8 @@
 // The full editor: a top bar with the Rules and Traffic tabs, the master switch and the ⋯ menu,
 // then the two views. Both stay mounted, and the log of the tab it watches runs for as long as the
-// editor is open: Traffic lists it, and a rule says how often it fired there. Between the views it
-// opens rules: one picked in Traffic, one made from a captured response, the first of an import,
-// and one the popup asks for.
+// editor is open: Traffic lists it, a rule says how often it fired there, and New rule offers what
+// the page just asked for. Between the views it opens rules: one picked in Traffic, one made from
+// a captured response, the first of an import, and one the popup asks for.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { RulesPage } from '../../pages/rules/index.ts';
 import { TrafficPage } from '../../pages/traffic/index.ts';
@@ -59,6 +59,8 @@ export function Editor({ inTab, windowId }: { inTab: boolean; windowId: number }
     [openRule],
   );
 
+  const openTraffic = useCallback(() => showView('traffic'), [showView]);
+
   // "Open this rule" from the popup.
   useEffect(() => watchRuleRequests(openRule), [openRule]);
 
@@ -90,6 +92,8 @@ export function Editor({ inTab, windowId }: { inTab: boolean; windowId: number }
           log={log}
           selectedId={selectedRule}
           onSelect={setSelectedRule}
+          onMock={mockRule}
+          onOpenTraffic={openTraffic}
           onImport={chooseFile}
           onExport={exportRules}
         />

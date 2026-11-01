@@ -1,6 +1,5 @@
 // "When a request matches": the requests a rule answers. A row each for the URL (how it's compared
 // and the pattern), the method and a GraphQL operation; a click opens the row's editor.
-import { useEffect, useRef } from 'react';
 import {
   MATCH_HINTS,
   MATCH_MODES,
@@ -19,13 +18,10 @@ export function MatchSettings({
   rule,
   open,
   onOpenChange,
-  focusUrl,
 }: {
   rule: Rule;
   open: string | null;
   onOpenChange: (id: string | null) => void;
-  // Put the cursor in the URL field, for a rule that was just created.
-  focusUrl: boolean;
 }) {
   const { match } = rule;
   const url = match.url.trim();
@@ -60,12 +56,15 @@ export function MatchSettings({
             </SegmentedItem>
           ))}
         </Segmented>
-        <UrlField
+        <Input
+          data-testid="match-url"
+          aria-label="URL pattern"
+          className="bg-background font-mono"
           value={match.url}
-          focus={focusUrl}
-          onChange={(value) =>
+          placeholder="/api/users"
+          onChange={(event) =>
             edit((current) => {
-              current.url = value;
+              current.url = event.target.value;
             })
           }
         />
@@ -128,32 +127,5 @@ export function MatchSettings({
         </CardHint>
       </SettingRow>
     </SettingsCard>
-  );
-}
-
-// The URL pattern. A rule that was just created opens with this row open and the cursor here.
-function UrlField({
-  value,
-  focus,
-  onChange,
-}: {
-  value: string;
-  focus: boolean;
-  onChange: (value: string) => void;
-}) {
-  const field = useRef<HTMLInputElement>(null);
-  useEffect(() => {
-    if (focus) field.current?.focus();
-  }, [focus]);
-  return (
-    <Input
-      ref={field}
-      data-testid="match-url"
-      aria-label="URL pattern"
-      className="bg-background font-mono"
-      value={value}
-      placeholder="/api/users"
-      onChange={(event) => onChange(event.target.value)}
-    />
   );
 }

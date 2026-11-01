@@ -396,15 +396,26 @@ try {
 
   await check('create a rule in the editor and it mocks immediately', async () => {
     await app.click('[data-testid="new-rule"]');
-    // A new rule opens with its URL row open and the cursor in the field.
+    // New rule asks for a URL, with the cursor in its field; Enter makes the rule and opens it
+    // with the cursor in its body, inside the {}.
     await app.waitForFunction(
-      () => document.activeElement?.dataset.testid === 'match-url',
+      () => document.activeElement?.dataset.testid === 'composer-input',
       null,
       { timeout: 3000 },
     );
     await app.keyboard.type('case=ui');
-    await app.fill('[data-testid="rule-name"]', 'Made in the UI');
+    await app.keyboard.press('Enter');
     const editor = app.locator('.code textarea');
+    await app.waitForFunction(
+      () => document.activeElement === document.querySelector('.code textarea'),
+      null,
+      { timeout: 3000 },
+    );
+    expect(
+      await editor.evaluate((textarea) => [textarea.value, textarea.selectionStart]),
+      ['{\n  \n}', 4],
+    );
+    await app.fill('[data-testid="rule-name"]', 'Made in the UI');
     await editor.fill('{"ui": true}');
     await app.click('[data-testid="row-status"]');
     await app.click('[data-testid="status-201"]');
@@ -1056,6 +1067,75 @@ try {
     await sleep(500);
     expect((await call('/api/user?case=live-check')).body, { fromTraffic: true });
   });
+  await check(
+    'New rule reads a cURL command, a starter sets the answer, and a recent request is one click from a rule',
+    async () => {
+      const stored = async (url) =>
+        (await worker.evaluate(() => chrome.storage.local.get('rules'))).rules.find(
+          (rule) => rule.match.url === url,
+        );
+      const remove = async () => {
+        await app.click('[data-testid="rule-menu"]');
+        await app.click('[data-testid="delete-rule"]');
+      };
+      await app.click('[data-testid="new-rule"]');
+      await app.waitForFunction(
+        () => document.activeElement?.dataset.testid === 'composer-input',
+        null,
+        { timeout: 3000 },
+      );
+      // As Chrome's Copy as cURL writes it, over three lines.
+      await app.fill(
+        '[data-testid="composer-input"]',
+        `curl '${ORIGIN}/api/user?case=composer' \\\n  -X 'POST' \\\n  -H 'accept: text/plain'`,
+      );
+      await app.click('[data-testid="starter-missing"]');
+      const picked = (name) =>
+        app.locator(`[data-testid="picker-${name}"]`).textContent();
+      expect(
+        [
+          await picked('method'),
+          await picked('mode'),
+          await picked('status'),
+          await picked('delay'),
+        ],
+        ['POST', 'URL contains', '404 Not Found', 'No delay'],
+      );
+      await app.click('[data-testid="composer-submit"]');
+      await app.waitForSelector('[data-testid="rule-name"]');
+      await sleep(400);
+      // The URL's path and query, so it answers on any host; the method and the Accept'ed type
+      // from the command; the starter's status and body.
+      const made = await stored('/api/user?case=composer');
+      expect(
+        [
+          made.match.method,
+          made.match.mode,
+          made.response.status,
+          made.response.body,
+          made.response.contentType,
+        ],
+        ['POST', 'contains', '404', '{\n  "error": "Not Found"\n}', 'text/plain'],
+      );
+      const answer = await call('/api/user?case=composer', { method: 'POST' });
+      expect([answer.status, answer.body], [404, { error: 'Not Found' }]);
+      await remove();
+      // A request no rule answered is offered under the input, and Mock makes a rule of it.
+      await call('/api/user?case=recent');
+      await app.click('[data-testid="new-rule"]');
+      const recent = app.locator('[data-testid="recent-request"]', {
+        hasText: 'case=recent',
+      });
+      await recent.waitFor({ timeout: 3000 });
+      await recent.locator('[data-testid="recent-mock"]').click();
+      await app.waitForSelector('[data-testid="rule-name"]');
+      expect(
+        await app.locator('[data-testid="row-url-value"]').textContent(),
+        '/api/user?case=recent',
+      );
+      await remove();
+    },
+  );
   await check('traffic reconnects after the page reloads', async () => {
     await app.click('[data-testid="tab-traffic"]');
     await page.reload();

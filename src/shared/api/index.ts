@@ -12,7 +12,7 @@ export {
   normalizeRules,
   ruleTitle,
 } from './rules/rule.ts';
-export { ruleFromEntry } from './rules/rule-from-entry.ts';
+export { graphqlOperation, ruleFromEntry } from './rules/rule-from-entry.ts';
 export { urlTester } from './rules/url-match.ts';
 export {
   addRule,

@@ -25,16 +25,16 @@ export function ruleFromEntry(entry: LogEntry) {
 }
 
 // The operation a GraphQL request body names: its operationName, or else the name after query,
-// mutation or subscription; '' when there's none.
-function graphqlOperation(body: string) {
+// mutation or subscription; '' when there's none. New rule reads a pasted cURL command's body
+// with it too.
+export function graphqlOperation(body: string): string {
   try {
     const parsed = JSON.parse(body);
     const first = Array.isArray(parsed) ? parsed[0] : parsed;
-    return (
+    const name =
       first?.operationName ||
-      /^\s*(?:query|mutation|subscription)\s+(\w+)/.exec(first?.query || '')?.[1] ||
-      ''
-    );
+      /^\s*(?:query|mutation|subscription)\s+(\w+)/.exec(first?.query || '')?.[1];
+    return typeof name === 'string' ? name : '';
   } catch {
     return '';
   }

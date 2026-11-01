@@ -42,7 +42,9 @@ export function RequestActions({
         <Icon name="wand" />
         Mock this response
       </Button>
-      <div className="grid auto-cols-fr grid-flow-col gap-1.5">
+      {/* Each as wide as its words, sharing what's left: the three fit a side panel side by
+          side, where equal thirds would cut "Copy as cURL" short. */}
+      <div className="flex flex-wrap gap-1.5">
         <Secondary icon="link" onClick={() => copy(entry.url, 'the URL')}>
           Copy URL
         </Secondary>
@@ -84,9 +86,9 @@ function Secondary({
   children: string;
 }) {
   return (
-    <Button onClick={onClick} className="h-9 min-w-0 gap-1.5 px-1.5 text-t80">
+    <Button onClick={onClick} className="h-9 flex-auto gap-1.5 px-2 text-t80">
       <Icon name={icon} size={14} className="flex-none" />
-      <span className="truncate">{children}</span>
+      {children}
     </Button>
   );
 }

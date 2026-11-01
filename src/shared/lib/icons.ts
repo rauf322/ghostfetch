@@ -34,6 +34,10 @@ const PATHS = {
   trash: '<path d="M4 7h16M10 11v6M14 11v6M5 7l1 13h12l1-13M9 7V4h6v3"/>',
   link: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
   terminal: '<path d="M4 17l6-5-6-5M12 19h8"/>',
+  brackets: '<path d="M8 4H5v16h3M16 4h3v16h-3"/>',
+  alert: '<circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/>',
+  logout: '<path d="M9 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h3M16 17l5-5-5-5M21 12H9"/>',
+  send: '<path d="M12 19V5M5 12l7-7 7 7"/>',
 };
 
 export type IconName = keyof typeof PATHS;

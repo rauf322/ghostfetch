@@ -1,9 +1,16 @@
-// Traffic's Copy as cURL, without a browser: the command for a request, and that nothing the page
-// put in the request can make a shell run anything but curl when the command is pasted.
+// cURL commands both ways, without a browser. Traffic's Copy as cURL: the command for a request,
+// and that nothing the page put in the request can make a shell run anything but curl when the
+// command is pasted. New rule: what it reads from a command (as the browsers' Copy as cURL writes
+// one, or as people type one), from a URL or from "GET /path", and the rule it makes.
 //
 //   node test/curl.mjs      (npm test runs it after test/matching.mjs)
 import { execFileSync } from 'node:child_process';
-import { curlCommand } from '../src/shared/lib/curl.ts';
+import {
+  NEW_DRAFT,
+  readTyped,
+  ruleFromDraft,
+} from '../src/pages/rules/lib/rule-draft.ts';
+import { curlCommand, parseCurl } from '../src/shared/lib/curl.ts';
 import { check, expect, finish } from './fixtures.mjs';
 
 const URL = 'https://api.example.test/api/users?page=2';
@@ -59,6 +66,173 @@ await check(
       '--data-raw',
       body,
     ]);
+  },
+);
+
+console.log('reading a command');
+
+await check("Chrome's Copy as cURL (bash), over several lines", () => {
+  const command = [
+    `curl '${URL}' \\`,
+    "  -H 'accept: application/json, text/plain, */*' \\",
+    "  -H 'accept-language: en-GB,en;q=0.9' \\",
+    "  -H 'user-agent: Mozilla/5.0 (Macintosh)' \\",
+    '  --compressed',
+  ].join('\n');
+  expect(parseCurl(command), {
+    url: URL,
+    method: 'GET',
+    headers: [
+      ['accept', 'application/json, text/plain, */*'],
+      ['accept-language', 'en-GB,en;q=0.9'],
+      ['user-agent', 'Mozilla/5.0 (Macintosh)'],
+    ],
+    body: '',
+  });
+});
+
+await check("a body in $'…' with escapes, which makes it a POST", () => {
+  const parsed = parseCurl(
+    `curl '${URL}' -H 'content-type: application/json' --data-raw $'{"name":"it\\'s","note":"a\\nb"}'`,
+  );
+  expect([parsed.method, parsed.body], ['POST', `{"name":"it's","note":"a\nb"}`]);
+});
+
+await check('-X, "double quotes", -G, -I, --url, and options that take a value', () => {
+  expect(
+    [
+      parseCurl(`curl -X PATCH "${URL}" -d "a=\\"1\\""`),
+      parseCurl(`curl -G --data-urlencode q=ada -A 'agent' ${URL}`),
+      parseCurl(`curl -I -u ada:secret --url ${URL}`),
+      parseCurl(`curl -XDELETE ${URL}`),
+    ].map((parsed) => [parsed.url, parsed.method, parsed.body]),
+    [
+      [URL, 'PATCH', 'a="1"'],
+      [URL, 'GET', 'q=ada'],
+      [URL, 'HEAD', ''],
+      [URL, 'DELETE', ''],
+    ],
+  );
+});
+
+await check('not a curl command, or one with no URL: nothing', () => {
+  expect(
+    [parseCurl('wget https://example.test'), parseCurl('curl -H "a: b"')],
+    [null, null],
+  );
+});
+
+await check(
+  'what Copy as cURL writes reads back as the same request, page tricks and all',
+  () => {
+    const requests = [
+      { method: 'GET', url: URL, body: '' },
+      {
+        method: 'POST',
+        url: `${URL}&q=it's'$(id)\`id\`;x`,
+        body: `{"a":"'; echo pwned; '"}`,
+      },
+      { method: 'PUT', url: URL, body: "line one\nline 'two'" },
+    ];
+    expect(
+      requests.map((request) => {
+        const parsed = parseCurl(curlCommand(request));
+        return { method: parsed.method, url: parsed.url, body: parsed.body };
+      }),
+      requests,
+    );
+  },
+);
+
+console.log("New rule's input");
+
+await check(
+  'a full URL becomes its path and query, so the rule answers on any host',
+  () => {
+    expect(
+      [
+        readTyped(`  ${URL}  `),
+        readTyped('/api/users'),
+        readTyped('api.example.test/users'),
+        readTyped('ftp://files.example.test/a'),
+      ].map((typed) => [typed.url, typed.method]),
+      [
+        ['/api/users?page=2', null],
+        ['/api/users', null],
+        ['api.example.test/users', null],
+        ['ftp://files.example.test/a', null],
+      ],
+    );
+  },
+);
+
+await check(
+  '"POST /api/users" names the method; "Any" or a word that isn\'t one doesn\'t',
+  () => {
+    expect(
+      [
+        readTyped('post /api/users'),
+        readTyped('any /api/users'),
+        readTyped('users /api'),
+      ].map((typed) => [typed.url, typed.method]),
+      [
+        ['/api/users', 'POST'],
+        ['any /api/users', null],
+        ['users /api', null],
+      ],
+    );
+  },
+);
+
+await check("a command's method, Accept and GraphQL operation", () => {
+  const graphql = JSON.stringify({
+    operationName: 'GetUser',
+    query: 'query GetUser { id }',
+  });
+  expect(
+    [
+      readTyped(`curl '${URL}' -H 'Accept: text/csv; q=1'`),
+      readTyped(`curl '${URL}' -H 'accept: */*'`),
+      readTyped(`curl https://api.example.test/graphql --data-raw '${graphql}'`),
+    ],
+    [
+      {
+        url: '/api/users?page=2',
+        method: 'GET',
+        graphqlOperation: '',
+        contentType: 'text/csv',
+      },
+      { url: '/api/users?page=2', method: 'GET', graphqlOperation: '', contentType: '' },
+      { url: '/graphql', method: 'POST', graphqlOperation: 'GetUser', contentType: '' },
+    ],
+  );
+});
+
+await check(
+  'the rule: the request from what was typed, the answer from the draft',
+  () => {
+    const rule = ruleFromDraft(`curl '${URL}' -X POST -H 'accept: text/plain'`, {
+      ...NEW_DRAFT,
+      method: 'POST',
+      mode: 'equals',
+      status: '404',
+      delay: 250,
+      body: '{"error": "Not Found"}',
+    });
+    expect(
+      [rule.match, rule.response.status, rule.response.delay, rule.response.contentType],
+      [
+        {
+          url: '/api/users?page=2',
+          mode: 'equals',
+          method: 'POST',
+          graphqlOperation: '',
+        },
+        '404',
+        250,
+        'text/plain',
+      ],
+    );
   },
 );
 

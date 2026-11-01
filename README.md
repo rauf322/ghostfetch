@@ -95,6 +95,15 @@ What's different in Firefox-based browsers:
     drag them to reorder. Import and export sit at the bottom of the list. A rule's switch
     is a green dot: it pulses while the rule is on, holds still while Ghostfetch is off, and
     is grey while the rule is off. Click it to turn the rule on or off.
+    **New rule** asks "What should Ghostfetch answer?" (beside the list it's also what shows
+    with no rule open). Paste a path, a full URL (it keeps the path and query, so the rule
+    works on any host) or a cURL command, as the browsers' Copy as cURL writes one: its
+    method, Accept type and GraphQL operation are read too, all inside the extension, with
+    nothing sent anywhere. Pickers under the input set the method, how the URL is compared,
+    the status and the delay, and the starters (**Empty list**, **Fail with 500**, **Not
+    found**, **Slow by 2 s**, **Logged out (401)**) set the answer in one click. **Enter**
+    makes the rule and opens it with the cursor in its body. Under the starters are the
+    requests the page just made that no rule answered, each with **Mock**.
     An open rule says what it does in one sentence under its name ("Answers GET requests
     whose URL contains /api/user with the JSON below, without calling the server."), and,
     while recording, how often it fired on the page the editor watches. Under that are its
@@ -104,7 +113,7 @@ What's different in Firefox-based browsers:
     edit it in place. **Try a URL** says whether the rule would answer a URL you paste. Then
     the body: **Replace body** sends yours without calling the server; **Keep server's
     body** makes the real request and keeps its body, so only the status, headers and delay
-    change. A new rule opens with the cursor in its URL.
+    change.
     In a wide window the settings and the body sit side by side, and the body editor takes
     the window's height; in a side panel the body comes after the settings, as tall as the
     body but never taller than the panel, and a longer body scrolls inside it. It colours
@@ -278,7 +287,7 @@ src/app/                         the extension's parts, one folder each, which W
   kit/                           the kit page; for npm run dev and the kit test, never in the extension
   styles/                        theme.css, the look's values (colours, the two fonts), and kit.css: those as Tailwind's theme (type sizes, corners)
 src/pages/                       what the screens show
-  rules/                         the Rules tab: the rule list, and the rule editor (ui/rule-editor/, a component per part: settings rows, the body, the URL to try)
+  rules/                         the Rules tab: the rule list, New rule (ui/new-rule/), and the rule editor (ui/rule-editor/, a component per part)
   traffic/                       the Traffic tab: a tab's live log grouped by time, a request's drawer (ui/request-detail/), Mock this response
   popup/                         the toolbar popup
   kit/                           the kit page: every kit component in its states
@@ -288,7 +297,7 @@ src/shared/                      what more than one part of the extension uses
     sites/                       the sites Ghostfetch runs on, the screens' copy of the ones you added, turning one on or off
     settings.ts                  the on/off and recording switches
     log-entry.ts                 a request in a tab's traffic log
-    traffic-log.ts               the editor's live log of the tab it watches (Traffic, and how often a rule fired)
+    traffic-log.ts               the editor's live log of the tab it watches (Traffic, how often a rule fired, New rule's recent requests)
     messages.ts                  the messages between the background, the bridge, the interceptor and the Traffic tab
     open-editor.ts               the editor in the side panel or a tab, and on a rule the popup picked
   lib/                           small libraries, a file each (index.ts): JSON, HTML, URLs, status names, cURL commands,
@@ -312,7 +321,7 @@ scripts/check-sources.mjs        rebuilds the sources zip in a clean folder and 
 scripts/oxlint-rules.mjs         two lint rules of its own (npm run lint): no export *, and the folders of src/app/ are the extension's parts
 test/json.mjs                    the body editor's JSON check against JSON.parse, and the pieces it colours a long body in
 test/matching.mjs                which URLs a rule's pattern matches, and that the rule editor's Try a URL says what the page does
-test/curl.mjs                    Traffic's Copy as cURL, and that nothing the page sent can break out of its quotes
+test/curl.mjs                    cURL commands both ways: Copy as cURL (nothing the page sent breaks out of its quotes), New rule's reading of one
 test/e2e.mjs                     end-to-end test in Chromium (Playwright)
 test/firefox.mjs                 end-to-end test in Zen or Firefox (puppeteer-core)
 test/kit.mjs                     the UI kit under the real CSP, in Chromium and Zen, driven with the keyboard and the mouse
@@ -406,13 +415,18 @@ compile, and no pattern with or without a GraphQL operation), and that the rule 
 says the same for every case: both use one function, `urlTester`. It needs no browser either, and
 `npm test` runs it next.
 
-`test/curl.mjs` checks Traffic's Copy as cURL: the command for a request, and that whatever the
-page put in it (quotes, `$(…)`, backticks, `;`, in the URL, the body or the method) stays inside
-its quotes when a shell reads the command. `npm test` runs it after `test/matching.mjs`.
+`test/curl.mjs` checks cURL commands both ways. Traffic's Copy as cURL: the command for a request,
+and that whatever the page put in it (quotes, `$(…)`, backticks, `;`, in the URL, the body or the
+method) stays inside its quotes when a shell reads the command. New rule: what it reads from a
+command (Chrome's Copy as cURL over several lines, `$'…'` bodies, `-X`, `-G`, `-I`, `--url`,
+options that take a value), that every command Copy as cURL writes reads back as the same request,
+what it reads from a URL or from "POST /path", and the rule it makes. `npm test` runs it after
+`test/matching.mjs`.
 
 `test/e2e.mjs` loads the built extension into Chromium, runs a local API and checks the rules
 against fetch and XHR (and that rules saved by older versions do what they should), the editor
-(including the rule's settings rows and its sentence, the body editor's marks for a JSON mistake,
+(including New rule from a typed path and from a cURL command with a starter, its recent requests'
+Mock, the rule's settings rows and its sentence, the body editor's marks for a JSON mistake,
 its height beside the settings and under them, text size, Format and colours on a body of 370,000
 characters, its own find and its vim keys), the traffic view (its filters, Keep on reload and
 Clear) and popup, plus the security properties above

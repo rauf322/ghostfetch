@@ -7,7 +7,7 @@
 // has room for, whatever the body; under them, as tall as the body, but never taller than the
 // pane (100cqh: the rule editor's pane is a size container), so all of it is on screen once you
 // scroll to it. code-editor.css reads both.
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BODY_MODES, editRule } from '../../../../shared/api/index.ts';
 import type { BodyMode, Rule } from '../../../../shared/api/index.ts';
 import { formatJson } from '../../../../shared/lib/index.ts';
@@ -31,6 +31,7 @@ export function BodyCard({
   rule,
   revision,
   status,
+  focus,
   className,
 }: {
   rule: Rule;
@@ -38,6 +39,9 @@ export function BodyCard({
   revision: number;
   // What the check found, as the editor shows it (useSettledStatus).
   status: CodeStatus | null;
+  // Put the cursor in the body, for a rule New rule just made: inside its {} or [] if that's all
+  // there is, so you can type the JSON straight away.
+  focus: boolean;
   className?: string;
 }) {
   const code = useRef<CodeEditorHandle | null>(null);
@@ -47,6 +51,16 @@ export function BodyCard({
   const problem = status?.problem ?? null;
   const bad = status?.tone === 'bad';
   const replaces = response.bodyMode === 'replace';
+
+  useEffect(() => {
+    const textarea = code.current?.textarea;
+    if (!focus || !textarea) return;
+    const { value } = textarea;
+    const blank = value.indexOf('\n  \n');
+    const at = blank >= 0 ? blank + 3 : value === '[]' ? 1 : value.length;
+    textarea.focus({ preventScroll: true });
+    textarea.setSelectionRange(at, at);
+  }, [focus]);
 
   function format() {
     const editor = code.current;

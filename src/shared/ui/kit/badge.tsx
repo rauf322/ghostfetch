@@ -1,33 +1,29 @@
 import { mergeProps } from '@base-ui/react/merge-props';
 import { useRender } from '@base-ui/react/use-render';
 import { cva } from 'class-variance-authority';
-import type { VariantProps } from 'class-variance-authority';
 import { cn } from '../cn.ts';
 
-// Labels and rule hits are words, not colours. "fired" puts the green square in front: a rule
-// fired. "error" is inverted white.
+// What a rule did to a request, in words rather than colours. "fired" puts the green square in
+// front: a rule fired. "error" is inverted white.
 const badgeVariants = cva(
   'inline-flex flex-none items-center text-micro font-medium uppercase tracking-badge',
   {
     variants: {
       variant: {
-        default: 'text-t40',
-        strong: 'text-t80',
         fired:
           "text-t80 before:mr-[7px] before:size-[7px] before:bg-signal before:content-['']",
         error: 'bg-foreground px-1 tracking-caps text-black',
       },
     },
-    defaultVariants: { variant: 'default' },
   },
 );
 
 export function Badge({
   className,
-  variant = 'default',
+  variant,
   render,
   ...props
-}: useRender.ComponentProps<'span'> & VariantProps<typeof badgeVariants>) {
+}: useRender.ComponentProps<'span'> & { variant: 'fired' | 'error' }) {
   return useRender({
     defaultTagName: 'span',
     props: mergeProps<'span'>(

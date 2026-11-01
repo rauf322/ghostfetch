@@ -1,18 +1,16 @@
-// Everything Ghostfetch keeps, as the background reads it: chrome.storage.local holds
-// { enabled, record, sites, rules }.
+// What the background reads of what Ghostfetch keeps: chrome.storage.local holds
+// { enabled, record, sites, rules }, and the content scripts and the badge need all but record.
 import { normalizeRules, normalizeSites } from '../../shared/api/index.ts';
 import type { Rule } from '../../shared/api/index.ts';
 
 export interface StoredState {
   enabled: boolean;
-  record: boolean;
   sites: string[];
   rules: Rule[];
 }
 
 const DEFAULTS: StoredState = {
   enabled: true,
-  record: true,
   sites: [],
   rules: [],
 };
@@ -22,7 +20,6 @@ export async function loadState(): Promise<StoredState> {
   const stored = (await chrome.storage.local.get(DEFAULTS)) as StoredState;
   return {
     enabled: stored.enabled,
-    record: stored.record,
     sites: normalizeSites(stored.sites),
     rules: normalizeRules(stored.rules),
   };

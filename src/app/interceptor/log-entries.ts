@@ -1,7 +1,7 @@
 // The requests the page makes, as entries for the tab's traffic log (sent with report()). Bodies
 // are kept as text only, none from event streams: a response's up to 1 MB, not read at all past
 // 5 MB by its Content-Length, and a request's up to 100 KB.
-import type { LogEntry, Rule } from '../../shared/api/index.ts';
+import type { EntryKind, LogEntry, Rule } from '../../shared/api/index.ts';
 import { report } from './page-channel.ts';
 import type { PageRequest, RuleResult } from './types.ts';
 
@@ -13,7 +13,7 @@ const TEXT_TYPE = /json|text|xml|javascript|graphql|x-www-form-urlencoded/i;
 let sequence = 0;
 
 export function makeEntry(
-  kind: 'fetch' | 'xhr',
+  kind: EntryKind,
   request: PageRequest,
   started: number,
   extra: Partial<LogEntry> = {},
@@ -54,7 +54,7 @@ export function ruleFields(rule: Rule) {
 }
 
 export function ruleEntry(
-  kind: 'fetch' | 'xhr',
+  kind: EntryKind,
   request: PageRequest,
   started: number,
   rule: Rule,

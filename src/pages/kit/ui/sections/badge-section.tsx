@@ -5,9 +5,6 @@ import { Cell, Row } from '../cell.tsx';
 export function BadgeSection({ index }: { index: number }) {
   return (
     <Cell index={index} title="Badge and status" note="words, not colours">
-      <Row label="A label">
-        <Badge>Draft</Badge>
-      </Row>
       <Row
         label="A rule fired · rule error"
         className="flex flex-wrap items-center gap-4"

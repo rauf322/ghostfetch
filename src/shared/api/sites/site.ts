@@ -1,17 +1,7 @@
 // The sites Ghostfetch runs on: the built-in hosts, and the sites you add.
 
-// Ghostfetch always runs on these hosts (localhost also covers *.localhost) and on hosts whose
-// name starts with "local." (see isLocalPrefixHost); the manifest's content_scripts declare
-// them. On top of that it runs on the sites you add, whose content scripts the background
-// registers at runtime, so any other site never sees Ghostfetch.
-export const BUILT_IN_SITES = ['localhost', '127.0.0.1'];
-
 // Hosts like local.myapp.com, the usual name for a dev build of a real domain.
 const LOCAL_PREFIX = /^local\.[a-z0-9]/;
-
-export function isLocalPrefixHost(host: string) {
-  return LOCAL_PREFIX.test(host);
-}
 
 export function siteOf(url: string | undefined): string {
   try {
@@ -24,13 +14,16 @@ export function siteOf(url: string | undefined): string {
 
 const IPV4 = /^\d{1,3}(\.\d{1,3}){3}$/;
 
-// Always on: localhost (any port or *.localhost subdomain), 127.0.0.1 and local.* hosts.
+// Always on: localhost (any port or *.localhost subdomain), 127.0.0.1 and local.* hosts, which
+// the manifest's content_scripts declare (wxt.config.ts). On top of them Ghostfetch runs on the
+// sites you add, whose content scripts the background registers at runtime, so any other site
+// never sees it.
 export function isBuiltInHost(host: string) {
   return (
     host === '127.0.0.1' ||
     host === 'localhost' ||
     host.endsWith('.localhost') ||
-    isLocalPrefixHost(host)
+    LOCAL_PREFIX.test(host)
   );
 }
 

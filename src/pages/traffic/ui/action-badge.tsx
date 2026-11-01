@@ -1,15 +1,17 @@
 // What a rule did to a request: the green square and a word, or an inverted "Rule error".
-import type { LogEntry } from '../../../shared/api/index.ts';
+import type { EntryAction, LogEntry } from '../../../shared/api/index.ts';
 import { Badge } from '../../../shared/ui/kit/badge.tsx';
 
-const ACTION_LABELS: Record<string, string> = {
+// Every action, so a new one can't go without its words. The bridge lets no other value into the
+// log (clean() in app/bridge).
+const ACTION_LABELS: Record<Exclude<EntryAction, ''>, string> = {
   mocked: 'Mocked',
   modified: 'Modified',
   error: 'Rule error',
 };
 
 export function ActionBadge({ entry, title }: { entry: LogEntry; title?: string }) {
-  if (!Object.hasOwn(ACTION_LABELS, entry.action)) return null;
+  if (!entry.action) return null;
   return (
     <Badge
       variant={entry.action === 'error' ? 'error' : 'fired'}

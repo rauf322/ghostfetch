@@ -26,9 +26,7 @@ export {
 } from './rules/store.ts';
 export type { RuleChange } from './rules/store.ts';
 export {
-  BUILT_IN_SITES,
   isBuiltInHost,
-  isLocalPrefixHost,
   isSiteEnabled,
   normalizeSite,
   normalizeSites,

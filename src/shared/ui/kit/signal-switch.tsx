@@ -38,6 +38,9 @@ export function SignalSwitch({
 
 // Every dot on the page pulses in step, however long ago each was switched on: a CSS
 // animation counts from when it started, so each one is moved to count from the page's start.
+// Only the pulse: the grey-to-green fade that starts with it is a CSS transition, which moved
+// back that far would end at once.
 function inStep(event: AnimationEvent<HTMLElement>) {
-  for (const animation of event.currentTarget.getAnimations()) animation.startTime = 0;
+  for (const animation of event.currentTarget.getAnimations())
+    if (animation instanceof CSSAnimation) animation.startTime = 0;
 }

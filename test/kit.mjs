@@ -211,7 +211,7 @@ async function runChecks(browser, open) {
   );
 
   await check(
-    `${browser}: a rule's switch pulses while on, in step with the others, and is still while paused or off`,
+    `${browser}: a rule's switch pulses while on, in step with the others, fades in, and is still while paused or off`,
     async () => {
       // Each dot: whether it's on, and its animations, with when each counts from.
       const state = () =>
@@ -235,6 +235,19 @@ async function runChecks(browser, open) {
         ],
         'at first',
       );
+      // Whether the dot's grey-to-green fade is still running once its pulse has been put in
+      // step: a listener on the document hears the pulse start after React's, at the root, has.
+      await kit.run(() =>
+        document.addEventListener('animationstart', (event) => {
+          if (!event.target.closest('[data-testid=kit-signal-off]')) return;
+          window.kitFadeRunning = event.target
+            .getAnimations()
+            .some(
+              (animation) =>
+                animation instanceof CSSTransition && animation.playState === 'running',
+            );
+        }),
+      );
       // Switched on a while after the others, it still pulses in step with them.
       await kit.click('[data-testid=kit-signal-off]');
       await settles(
@@ -247,6 +260,7 @@ async function runChecks(browser, open) {
         ],
         'switched on',
       );
+      expect(await kit.run(() => window.kitFadeRunning), true, 'fading in as it pulses');
       const everyPulse = await kit.run(() =>
         document
           .getAnimations()

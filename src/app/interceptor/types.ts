@@ -9,14 +9,14 @@ export interface PageRequest {
   body: string;
 }
 
-// What a matched rule gives the page, and what it did.
+// What a matched rule gives the page, and what it did: mocked it (Replace) or changed the real
+// response (Server's body).
 export interface RuleResult {
   status: number;
   statusText: string;
   headers: Headers;
   body: string | null;
-  action: EntryAction;
-  error: string;
+  action: Extract<EntryAction, 'mocked' | 'modified'>;
 }
 
 // A response rule, with its URL pattern made into a test.

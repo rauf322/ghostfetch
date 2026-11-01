@@ -16,7 +16,6 @@ import {
   TabsList,
   TabsTrigger,
 } from '../../../../shared/ui/kit/tabs.tsx';
-import { BODY_FIELDS } from '../../lib/body-fields.ts';
 import { codeStatus, regexError } from '../../lib/rule-checks.ts';
 import { formatDelay } from '../../lib/rule-summary.ts';
 import { useEditorRoom } from '../../model/use-editor-room.ts';
@@ -59,9 +58,7 @@ export function ResponseSection({
   const bodyPanel = useRef<HTMLDivElement>(null);
   useEditorRoom(section, bodyPanel);
   const { response, match } = rule;
-  const body = BODY_FIELDS[response.bodyMode];
-  const text = body ? response[body.field] : '';
-  const status = useSettledStatus(body ? codeStatus(rule, text) : null, text.length);
+  const status = useSettledStatus(codeStatus(rule), response.body.length);
   const mistake = status?.tone === 'bad' && Boolean(status.text);
 
   return (

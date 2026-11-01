@@ -274,7 +274,7 @@ await check(
       // Now and then a key with its colon on the next line, which a cut mustn't come between.
       if (random.int(10) === 0) text = text.replace('":', '"\n  :');
       // Small pieces, so that bodies of a few hundred characters are cut many times.
-      const pieces = chunks(text, 'json', 1 + random.int(40));
+      const pieces = chunks(text, 1 + random.int(40));
       if (pieces.length > 1) cut++;
       if (
         pieces.join('') !== text ||
@@ -289,7 +289,6 @@ await check(
       );
     // Many bodies are shorter than their piece size; enough of them have to be cut.
     if (cut < 2000) throw new Error(`only ${cut} bodies were cut into pieces`);
-    expect(chunks('x'.repeat(10_000), 'js', 100).length, 1, 'a script stays whole');
   },
 );
 

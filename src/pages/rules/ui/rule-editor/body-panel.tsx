@@ -1,8 +1,8 @@
-// The Body tab: how a response rule makes the body (replace, merge, script or keep it), the
-// Content-Type of a body it replaces, and the body editor for the text it uses, as tall as that
-// text down to the bottom of the pane. Under it, what the check found (a mistake is marked in the
-// editor too, and clicking it here puts the cursor there), the Vim switch and Format. The
-// editor sizes its own text, with Cmd/Ctrl and =, - or 0.
+// The Body tab: whether a response rule replaces the body or keeps the server's, and for Replace
+// the Content-Type and the body editor, as tall as the body down to the bottom of the pane. Under
+// it, what the check found (a mistake is marked in the editor too, and clicking it here puts the
+// cursor there), the Vim switch and Format. The editor sizes its own text, with Cmd/Ctrl and =, -
+// or 0.
 import { useRef, useState } from 'react';
 import { BODY_MODES, editRule } from '../../../../shared/api/index.ts';
 import type { BodyMode, Rule } from '../../../../shared/api/index.ts';
@@ -17,7 +17,6 @@ import { FieldLabel } from '../../../../shared/ui/kit/label.tsx';
 import { Segmented, SegmentedItem } from '../../../../shared/ui/kit/segmented.tsx';
 import { notify } from '../../../../shared/ui/kit/toast.tsx';
 import { Toggle } from '../../../../shared/ui/kit/toggle.tsx';
-import { BODY_FIELDS } from '../../lib/body-fields.ts';
 import type { CodeStatus } from '../../lib/rule-checks.ts';
 import { Verdict } from './verdict.tsx';
 
@@ -36,7 +35,6 @@ export function BodyPanel({
   // The Vim switch is one setting for every body editor, which the editor remembers (setVim()).
   const [vim, setVim] = useState(vimPreferred);
   const { response } = rule;
-  const body = BODY_FIELDS[response.bodyMode];
   const problem = status?.problem ?? null;
   const bad = status?.tone === 'bad';
 
@@ -71,40 +69,42 @@ export function BodyPanel({
         }
       >
         {(Object.keys(BODY_MODES) as BodyMode[]).map((mode) => (
-          <SegmentedItem key={mode} value={mode} title={BODY_MODES[mode].desc}>
-            {BODY_MODES[mode].short || BODY_MODES[mode].label}
+          <SegmentedItem
+            key={mode}
+            value={mode}
+            data-testid={`body-${mode}`}
+            title={BODY_MODES[mode].desc}
+          >
+            {BODY_MODES[mode].label}
           </SegmentedItem>
         ))}
       </Segmented>
       <CardHint>{BODY_MODES[response.bodyMode].desc}</CardHint>
       {response.bodyMode === 'replace' && (
-        <label className="flex min-w-0 items-center gap-2.5">
-          <FieldLabel className="flex-none">Content-Type</FieldLabel>
-          <Input
-            size="sm"
-            list="content-types"
-            value={response.contentType}
-            onChange={(event) =>
-              editRule(rule.id, (current) => {
-                current.response.contentType = event.target.value;
-              })
-            }
-            className="flex-1"
-          />
-        </label>
-      )}
-      {body && (
         <>
+          <label className="flex min-w-0 items-center gap-2.5">
+            <FieldLabel className="flex-none">Content-Type</FieldLabel>
+            <Input
+              size="sm"
+              list="content-types"
+              value={response.contentType}
+              onChange={(event) =>
+                editRule(rule.id, (current) => {
+                  current.response.contentType = event.target.value;
+                })
+              }
+              className="flex-1"
+            />
+          </label>
           <CodeEditor
-            key={`${body.field}:${revision}`}
+            key={revision}
             ref={code}
-            value={response[body.field]}
-            language={body.language}
+            value={response.body}
             fit
             problem={problem}
             onChange={(text) =>
               editRule(rule.id, (current) => {
-                current.response[body.field] = text;
+                current.response.body = text;
               })
             }
           />
@@ -137,17 +137,15 @@ export function BodyPanel({
             >
               Vim
             </Toggle>
-            {response.bodyMode !== 'script' && (
-              <Button
-                variant="ghost"
-                size="sm"
-                data-testid="format"
-                onClick={format}
-                className="border-input"
-              >
-                Format
-              </Button>
-            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              data-testid="format"
+              onClick={format}
+              className="border-input"
+            >
+              Format
+            </Button>
           </div>
         </>
       )}

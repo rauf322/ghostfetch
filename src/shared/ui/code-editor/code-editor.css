@@ -348,10 +348,3 @@
 .tk-lit {
   color: var(--tk-lit);
 }
-.tk-kw {
-  color: var(--tk-kw);
-}
-.tk-com {
-  color: var(--tk-com);
-  font-style: italic;
-}

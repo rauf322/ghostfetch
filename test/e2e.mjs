@@ -233,28 +233,31 @@ try {
     );
   });
   await check(
-    'merge: deep-merges objects, replaces arrays, keeps real headers',
+    "a Merge rule saved by 0.7 keeps the server's body and headers, its JSON unused",
     async () => {
       const r = await call('/api/user?case=merge');
       expect(r.body, {
         id: 1,
         name: 'Real',
-        role: 'admin',
-        profile: { city: 'Berlin', age: 30 },
-        tags: ['z'],
+        role: 'user',
+        profile: { city: 'Riga', age: 30 },
+        tags: ['a', 'b'],
       });
       expect(r.headers['x-real'], 'yes', 'real header');
     },
   );
-  await check('script: transforms the real response', async () => {
+  await check("a Script rule saved by 0.7 runs nothing: the server's body", async () => {
     const r = await call('/api/user?case=script');
-    expect([r.body.name, r.body.sawUrl], ['REAL', true]);
+    expect([r.body.name, 'sawUrl' in r.body], ['Real', false]);
   });
-  await check('broken merge JSON falls back to the real response', async () => {
-    const r = await call('/api/user?case=badmerge');
-    expect([r.status, r.body.name], [200, 'Real']);
-  });
-  await check('original + delay + status override', async () => {
+  await check(
+    "server's body that can't be fetched: the page gets the network error",
+    async () => {
+      const r = await call('http://127.0.0.1:1/api/user');
+      if (!/TypeError/.test(r.error)) throw new Error(`got ${JSON.stringify(r)}`);
+    },
+  );
+  await check("server's body + delay + status override", async () => {
     const r = await call('/api/user?case=delay');
     expect([r.status, r.body.name], [503, 'Real']);
     if (r.ms < 580) throw new Error(`only took ${Math.round(r.ms)} ms`);
@@ -307,17 +310,22 @@ try {
     if (!r.allHeaders.includes('x-mock: yes'))
       throw new Error(`getAllResponseHeaders: ${r.allHeaders}`);
   });
-  await check('merge with responseType "json"', async () => {
+  await check('server\'s body with responseType "json"', async () => {
     const r = await xhr('/api/user?case=merge', { responseType: 'json' });
     expect(
       [r.status, r.response.role, r.response.profile],
-      [200, 'admin', { city: 'Berlin', age: 30 }],
+      [200, 'user', { city: 'Riga', age: 30 }],
     );
   });
-  await check('POST body reaches the real server through a modifying rule', async () => {
-    const r = await xhr('/api/user?case=script', { method: 'POST', body: 'hello' });
-    expect(r.response && JSON.parse(r.response).name, 'REAL');
-  });
+  await check(
+    "POST body reaches the real server through a server's-body rule",
+    async () => {
+      // /api/echo answers with the request it got.
+      const r = await xhr('/api/echo?case=script', { method: 'POST', body: 'hello' });
+      const echoed = r.response && JSON.parse(r.response);
+      expect([echoed?.method, echoed?.body], ['POST', 'hello']);
+    },
+  );
   await check('unmatched XHR goes to the network untouched', async () => {
     const r = await xhr('/api/user?case=none', { responseType: 'json' });
     expect(
@@ -374,7 +382,7 @@ try {
   });
   if (SHOTS) {
     fs.mkdirSync(SHOTS, { recursive: true });
-    await app.locator('[data-testid="rule"]').nth(2).click();
+    await app.locator('[data-testid="rule"]').nth(1).click();
     await app.screenshot({ path: `${SHOTS}/wide-rules.png` });
   }
 
@@ -1400,17 +1408,46 @@ try {
     (await worker.evaluate(() => chrome.storage.local.get('rules'))).rules;
   await app.click('[data-testid="tab-rules"]');
   await check(
+    "an old Merge rule opens as Server's body, with no editor; Replace brings the editor",
+    async () => {
+      const row = app.locator('[data-testid="rule"]', { hasText: 'case=merge' }).first();
+      const summary = await row.textContent();
+      if (!summary.includes("Server's body"))
+        throw new Error(`the list says: ${summary}`);
+      await row.click();
+      await app.click('[data-testid="tab-body"]');
+      const state = async () => [
+        await app.getAttribute('[data-testid="body-original"]', 'aria-checked'),
+        await app.locator('.code').count(),
+        (await storedRules()).find((r) => r.match.url === 'case=merge').response.bodyMode,
+      ];
+      // Storage says merge until the rules are next saved, all of them cleaned up (normalizeRule):
+      // here, earlier checks have done that.
+      expect(await state(), ['true', 0, 'original']);
+      await app.click('[data-testid="body-replace"]');
+      await app.waitForSelector('.code');
+      await sleep(300);
+      expect(await state(), ['false', 1, 'replace']);
+      await app.click('[data-testid="body-original"]');
+      await sleep(300);
+      expect(await state(), ['true', 0, 'original']);
+      // Still the server's body for the page.
+      expect((await call('/api/user?case=merge')).body.role, 'user');
+    },
+  );
+  await check(
     'a rule edited in another view shows in the open editor, but not over what you are typing in the body',
     async () => {
       await app
-        .locator('[data-testid="rule"]', { hasText: 'case=merge' })
+        .locator('[data-testid="rule"]', { hasText: 'case=replace' })
         .first()
         .click();
+      await app.click('[data-testid="tab-body"]');
       await app.evaluate(() => document.activeElement?.blur());
       const original = await storedRules();
       const elsewhere = structuredClone(original);
-      const index = elsewhere.findIndex((r) => r.match.url === 'case=merge');
-      elsewhere[index].response.merge = '{"from": "elsewhere"}';
+      const index = elsewhere.findIndex((r) => r.match.url === '/api/user?case=replace');
+      elsewhere[index].response.body = '{"from": "elsewhere"}';
       await setStorage({ rules: elsewhere });
       await app.waitForFunction(
         () => document.querySelector('.code textarea')?.value === '{"from": "elsewhere"}',
@@ -1422,7 +1459,7 @@ try {
       await app.keyboard.press('End');
       await app.keyboard.type(' ');
       const typed = await body.inputValue();
-      elsewhere[index].response.merge = '{"from": "elsewhere again"}';
+      elsewhere[index].response.body = '{"from": "elsewhere again"}';
       await setStorage({ rules: elsewhere });
       await sleep(400);
       expect(await body.inputValue(), typed, 'while typing');

@@ -123,7 +123,7 @@ export function simulateXhr(
   };
 
   progress('loadstart');
-  applyRule(rule, request, sendReal, controller.signal).then(
+  applyRule(rule, sendReal, controller.signal).then(
     (outcome) => {
       if (meta.aborted) return;
       meta.finished = true;

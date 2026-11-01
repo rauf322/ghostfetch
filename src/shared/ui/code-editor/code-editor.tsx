@@ -14,14 +14,12 @@ import { cn } from '../cn.ts';
 import { createCodeEditor } from './engine/code-editor.ts';
 import type { CodeProblem, CodeEditor as Editor } from './engine/code-editor.ts';
 import { tokens } from './engine/highlight.ts';
-import type { Language } from './engine/highlight.ts';
 import './code-editor.css';
 
 interface CodeEditorProps extends Omit<ComponentProps<'div'>, 'onChange' | 'ref'> {
   // Only where the editor starts: it keeps its own text, undo history and vim state from then on.
-  // To start over with another value or language, give the component a new key.
+  // To start over with another value, give the component a new key.
   value: string;
-  language?: Language;
   // Every edit, as the whole text.
   onChange?: (value: string) => void;
   // As tall as the text, up to the room the page gives it in --code-max. Only where it starts.
@@ -35,7 +33,6 @@ interface CodeEditorProps extends Omit<ComponentProps<'div'>, 'onChange' | 'ref'
 
 export function CodeEditor({
   value,
-  language = 'json',
   onChange,
   fit = false,
   problem = null,
@@ -44,7 +41,7 @@ export function CodeEditor({
   ...props
 }: CodeEditorProps) {
   const slot = useRef<HTMLDivElement>(null);
-  const [editor] = useState(() => createCodeEditor({ value, language, fit }));
+  const [editor] = useState(() => createCodeEditor({ value, fit }));
   useImperativeHandle(ref, () => editor, [editor]);
   useEffect(() => {
     slot.current!.append(editor.root);

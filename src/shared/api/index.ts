@@ -11,14 +11,7 @@ export type {
   Rule,
   RuleType,
 } from './rules/types.ts';
-export {
-  BODY_MODES,
-  MATCH_HINTS,
-  MATCH_MODES,
-  METHODS,
-  SCRIPT_TEMPLATE,
-  TYPES,
-} from './rules/catalog.ts';
+export { BODY_MODES, MATCH_HINTS, MATCH_MODES, METHODS, TYPES } from './rules/catalog.ts';
 export { createRule, normalizeRule, ruleTitle } from './rules/rule.ts';
 export { dnrUrlFilter, testUrl } from './rules/url-match.ts';
 export {

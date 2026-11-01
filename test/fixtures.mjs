@@ -241,6 +241,8 @@ export function testRules(origin) {
         },
       },
     ),
+    // A Merge and a Script rule as 0.7 stored them, before 0.8.0 took both out: they keep the
+    // server's body now, and their JSON or script does nothing.
     rule(
       'response',
       { url: 'case=merge' },
@@ -262,11 +264,9 @@ export function testRules(origin) {
         },
       },
     ),
-    rule(
-      'response',
-      { url: 'case=badmerge' },
-      { response: { bodyMode: 'merge', merge: '{oops' } },
-    ),
+    // Keeps the server's body of a request that can't reach any server (port 1 is closed, and
+    // browsers refuse it anyway): the page gets the network error, and Traffic a "Rule error".
+    rule('response', { url: '127.0.0.1:1/' }, { response: { bodyMode: 'original' } }),
     rule(
       'response',
       { url: 'case=delay' },

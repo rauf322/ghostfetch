@@ -66,7 +66,6 @@ export function ruleEntry(
     contentType: result.headers.get('content-type') || '',
     ...clipBody(result.body ?? ''),
     action: result.action,
-    error: result.error,
   });
 }
 

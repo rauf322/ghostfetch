@@ -1,9 +1,9 @@
 // What a matched response rule gives the page, after its delay: its own body for Replace, which
-// never calls the server, or for Merge JSON, Script and Original the real response (sendReal),
-// changed. If a merge or a script fails, the page gets the real response and the log says why.
-// The rule's status and headers apply last.
-import type { EntryAction, Rule } from '../../shared/api/index.ts';
-import type { PageRequest, RuleResult } from './types.ts';
+// never calls the server, or the real response (sendReal) for Server's body. The rule's status and
+// headers apply last. Any other body mode counts as Server's body: rules reach the page as they're
+// stored, and one saved with Merge or Script (both taken out in 0.8.0) called the server too.
+import type { Rule } from '../../shared/api/index.ts';
+import type { RuleResult } from './types.ts';
 
 const NULL_BODY_STATUS = new Set([101, 103, 204, 205, 304]);
 const STATUS_TEXT: Record<number, string> = {
@@ -30,60 +30,34 @@ const STATUS_TEXT: Record<number, string> = {
   504: 'Gateway Timeout',
 };
 
-class RuleError extends Error {}
-
-// Resolves to { status, statusText, headers, body, action, error } for a matched rule.
-// `sendReal` performs the real request and resolves to a fetch Response.
+// Resolves to { status, statusText, headers, body, action } for a matched rule. `sendReal`
+// performs the real request and resolves to a fetch Response; if it fails, so does this.
 export async function applyRule(
   rule: Rule,
-  request: PageRequest,
   sendReal: () => Promise<Response>,
   signal?: AbortSignal | null,
 ): Promise<RuleResult> {
   const options: Partial<Rule['response']> = rule.response || {};
-  const mode = options.bodyMode || 'replace';
+  const replaces = (options.bodyMode || 'replace') === 'replace';
   const delay = Math.max(0, Number(options.delay) || 0);
   let status = 200;
   let statusText = 'OK';
   let headers = new Headers();
-  let body: string | null = '';
-  let action: EntryAction = mode === 'replace' ? 'mocked' : 'modified';
-  let error = '';
+  let body: string | null;
 
   if (delay) await wait(delay, signal);
 
-  if (mode === 'replace') {
+  if (replaces) {
     body = options.body ?? '';
     if (options.contentType) headers.set('content-type', options.contentType);
   } else {
     const real = await sendReal();
-    const text = await real.text();
+    body = await real.text();
     status = real.status;
     statusText = real.statusText;
     headers = new Headers(real.headers);
     headers.delete('content-length');
     headers.delete('content-encoding');
-    try {
-      if (mode === 'merge') {
-        const merged = deepMerge(
-          parseJson(text, 'The server response'),
-          parseJson(options.merge!, 'The merge JSON'),
-        );
-        body = JSON.stringify(merged);
-      } else if (mode === 'script') {
-        body = await runScript(options.script || '', text, request, status);
-      } else {
-        body = text;
-      }
-    } catch (problem) {
-      // Fall back to the untouched response so the page keeps working, and say why.
-      body = text;
-      action = 'error';
-      error =
-        problem instanceof RuleError
-          ? problem.message
-          : `Rule failed: ${(problem as Error).message}`;
-    }
   }
 
   const custom = Number(options.status);
@@ -102,74 +76,7 @@ export async function applyRule(
     }
   }
   if (NULL_BODY_STATUS.has(status)) body = null;
-  return { status, statusText, headers, body, action, error };
-}
-
-function parseJson(text: string, label: string) {
-  try {
-    return JSON.parse(text);
-  } catch (problem) {
-    throw new RuleError(`${label} is not valid JSON: ${(problem as Error).message}`);
-  }
-}
-
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
-
-// Objects merge key by key; arrays and plain values in the patch replace the original.
-function deepMerge(base: unknown, patch: unknown): unknown {
-  if (!isPlainObject(base) || !isPlainObject(patch)) return patch;
-  const merged = { ...base };
-  for (const [key, value] of Object.entries(patch)) {
-    merged[key] = key in base ? deepMerge(base[key], value) : value;
-  }
-  return merged;
-}
-
-async function runScript(
-  code: string,
-  text: string,
-  request: PageRequest,
-  status: number,
-) {
-  let response: unknown;
-  try {
-    response = JSON.parse(text);
-  } catch {
-    response = text;
-  }
-  let transform: Function;
-  try {
-    // eslint-disable-next-line no-new-func
-    transform = new Function(
-      'response',
-      'request',
-      `return (async () => {\n${code}\n})();`,
-    );
-  } catch (problem) {
-    if (problem instanceof EvalError) {
-      throw new RuleError(
-        "This page's Content-Security-Policy blocks scripts. Use Merge JSON or Replace instead.",
-      );
-    }
-    throw new RuleError(`Script has a syntax error: ${(problem as Error).message}`);
-  }
-  let result: unknown;
-  try {
-    result = await transform(response, {
-      url: request.url,
-      method: request.method,
-      body: request.body,
-      status,
-    });
-  } catch (problem) {
-    throw new RuleError(
-      `Script threw an error: ${(problem as Error | undefined)?.message ?? problem}`,
-    );
-  }
-  if (result === undefined) result = response;
-  return typeof result === 'string' ? result : JSON.stringify(result);
+  return { status, statusText, headers, body, action: replaces ? 'mocked' : 'modified' };
 }
 
 function wait(ms: number, signal?: AbortSignal | null) {

@@ -5,5 +5,4 @@ export type {
   CodeEditor as CodeEditorHandle,
   CodeProblem,
 } from './engine/code-editor.ts';
-export type { Language } from './engine/highlight.ts';
 export { vimPreferred } from './vim/vim.ts';

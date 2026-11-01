@@ -30,10 +30,10 @@ export function SegmentedSection({ index }: { index: number }) {
             </SegmentedItem>
           ))}
         </Segmented>
-        <Segmented defaultValue="merge" aria-label="Response body">
+        <Segmented defaultValue="original" aria-label="Response body">
           {Object.entries(BODY_MODES).map(([key, item]) => (
             <SegmentedItem key={key} value={key}>
-              {item.short ?? item.label}
+              {item.label}
             </SegmentedItem>
           ))}
         </Segmented>

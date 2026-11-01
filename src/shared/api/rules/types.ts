@@ -11,7 +11,9 @@ export type Method =
   | 'OPTIONS'
   | 'HEAD';
 export type MatchMode = 'contains' | 'equals' | 'wildcard' | 'regex';
-export type BodyMode = 'replace' | 'merge' | 'script' | 'original';
+// Replace sends `body` without calling the server; original (Server's body) calls the server and
+// keeps its body. Merge and Script, which went in 0.8.0, are read as original (normalizeRule).
+export type BodyMode = 'replace' | 'original';
 
 export interface HeaderRow {
   op: 'set' | 'remove';
@@ -28,9 +30,7 @@ export interface Rule {
   response: {
     bodyMode: BodyMode;
     body: string;
-    merge: string;
-    script: string;
-    // '' (keep the status, or 200 for Replace) or up to three digits.
+    // '' (keep the server's status, or 200 for Replace) or up to three digits.
     status: string;
     delay: number;
     contentType: string;

@@ -1,6 +1,6 @@
 // Lightweight code editor: a transparent <textarea> laid over a syntax-highlighted <pre>
-// (highlight.ts), plus a line-number gutter. Enough for JSON bodies and short transform scripts,
-// and a JSON body of a megabyte: only what's on screen gets its colours. Cmd/Ctrl+F inside it
+// (highlight.ts), plus a line-number gutter. Enough for JSON bodies, a body of a megabyte too:
+// only what's on screen gets its colours. Cmd/Ctrl+F inside it
 // opens its own find bar (find-bar.ts) instead of the browser's, which would search the whole
 // page, and Cmd/Ctrl with =, - and 0 sizes its text instead of zooming the page. With the Vim
 // switch on, vim.ts handles its keys. It marks a mistake it's given (setProblem), the way a
@@ -11,7 +11,6 @@ import { icon } from '../../../lib/index.ts';
 import { createVim, rememberVim, vimPreferred } from '../vim/vim.ts';
 import { createFindBar } from './find-bar.ts';
 import { chunks, tokens } from './highlight.ts';
-import type { Language } from './highlight.ts';
 
 export type CodeEditor = ReturnType<typeof createCodeEditor>;
 
@@ -61,7 +60,6 @@ function fontSizePreferred() {
 
 interface CodeEditorOptions {
   value?: string;
-  language?: Language;
   placeholder?: string;
   onChange?: (value: string) => void;
   // As tall as its text instead of a fixed 280 px: between 120 px and --code-max (code-editor.css),
@@ -71,7 +69,6 @@ interface CodeEditorOptions {
 
 export function createCodeEditor({
   value = '',
-  language = 'json',
   placeholder = '',
   onChange,
   fit = false,
@@ -147,7 +144,7 @@ export function createCodeEditor({
   // textarea does.
   function renderLayer() {
     const text = textarea.value;
-    pieces = chunks(text, language);
+    pieces = chunks(text);
     if (pieces.length === 1) {
       pieceElements = [];
       colour(layer, text);
@@ -196,7 +193,7 @@ export function createCodeEditor({
   // code-editor.css). Built from text nodes, so nothing in the body is ever read as HTML.
   function colour(element: HTMLElement, text: string) {
     const fragment = document.createDocumentFragment();
-    for (const [kind, part] of tokens(text, language))
+    for (const [kind, part] of tokens(text))
       fragment.append(kind ? span(`tk-${kind}`, part) : part);
     element.replaceChildren(fragment);
   }

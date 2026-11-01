@@ -1,7 +1,7 @@
 // Making rules: a new one, one rebuilt from data that can't be trusted, and the name a rule goes by.
 import type { Untrusted } from '../../lib/index.ts';
-import { BODY_MODES, MATCH_MODES, METHODS, SCRIPT_TEMPLATE, TYPES } from './catalog.ts';
-import type { HeaderRow, Method, Rule, RuleType } from './types.ts';
+import { BODY_MODES, MATCH_MODES, METHODS, TYPES } from './catalog.ts';
+import type { BodyMode, HeaderRow, Method, Rule, RuleType } from './types.ts';
 
 export function createRule(type: RuleType = 'response'): Rule {
   const now = Date.now();
@@ -14,8 +14,6 @@ export function createRule(type: RuleType = 'response'): Rule {
     response: {
       bodyMode: 'replace',
       body: '{\n  \n}',
-      merge: '{\n  \n}',
-      script: SCRIPT_TEMPLATE,
       status: '',
       delay: 0,
       contentType: 'application/json',
@@ -35,6 +33,14 @@ function isKey<T extends object>(options: T, key: unknown): key is keyof T {
 
 const isMethod = (value: unknown): value is Method =>
   (METHODS as readonly unknown[]).includes(value);
+
+// A stored body mode. Merge and Script, which 0.8.0 took out, called the server too, so a rule
+// saved with one keeps the server's body, as the page already gets it (apply-rule.ts), rather
+// than falling back to Replace and sending a body the rule never had.
+function bodyMode(mode: unknown): BodyMode {
+  if (isKey(BODY_MODES, mode)) return mode;
+  return mode === 'merge' || mode === 'script' ? 'original' : 'replace';
+}
 
 // Rebuilds a rule field by field from known keys and types, so stored, older or imported
 // rules (which may come from an untrusted file) can't carry unexpected values into the UI.
@@ -59,10 +65,8 @@ export function normalizeRule(input: unknown, { newId = false } = {}): Rule {
       graphqlOperation: text(match.graphqlOperation),
     },
     response: {
-      bodyMode: isKey(BODY_MODES, response.bodyMode) ? response.bodyMode : 'replace',
+      bodyMode: bodyMode(response.bodyMode),
       body: text(response.body, base.response.body),
-      merge: text(response.merge, base.response.merge),
-      script: text(response.script, base.response.script),
       status: /^\d{0,3}$/.test(status) ? status : '',
       delay: Math.min(Math.max(Math.round(Number(response.delay) || 0), 0), 600_000),
       contentType: text(response.contentType, base.response.contentType),

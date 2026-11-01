@@ -196,16 +196,16 @@ try {
     const r = await call('/api/user?case=replace');
     expect([r.status, r.body, r.headers['x-mock']], [404, { name: 'Mocked' }, 'yes']);
   });
-  await check('merge and script rules transform the real response', async () => {
+  await check("Merge and Script rules saved by 0.7 keep the server's body", async () => {
     expect((await call('/api/user?case=merge')).body, {
       id: 1,
       name: 'Real',
-      role: 'admin',
-      profile: { city: 'Berlin', age: 30 },
-      tags: ['z'],
+      role: 'user',
+      profile: { city: 'Riga', age: 30 },
+      tags: ['a', 'b'],
     });
     const scripted = await call('/api/user?case=script');
-    expect([scripted.body.name, scripted.body.sawUrl], ['REAL', true]);
+    expect([scripted.body.name, 'sawUrl' in scripted.body], ['Real', false]);
   });
   await check('GraphQL operation, method, wildcard and regex matching', async () => {
     const graphql = (operationName) =>

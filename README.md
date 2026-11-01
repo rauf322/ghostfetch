@@ -94,10 +94,12 @@ What's different in Firefox-based browsers:
   - **Rules**: create and edit rules. Changes save as you type and apply to open tabs
     immediately, without reloading. Rules are numbered in order; drag them to reorder, since
     for response rules the first match wins. Import and export sit at the bottom of the list.
-    A response rule is five tabs: **Body**, **Status** (the code with its name, and the
-    common ones by class), **Headers**, **Delay** and **Match** (what requests it answers; a
-    new rule opens there). Each tab's label shows what it's set to (`STATUS 404`,
-    `HEADERS 2`, `DELAY 1 S`, `MATCH POST`), so a rule reads at a glance.
+    A response rule is five tabs: **Body** (**Replace** sends your body without calling the
+    server; **Server's body** makes the real request and keeps its body, so only the status,
+    headers and delay change), **Status** (the code with its name, and the common ones by
+    class), **Headers**, **Delay** and **Match** (what requests it answers; a new rule opens
+    there). Each tab's label shows what it's set to (`STATUS 404`, `HEADERS 2`, `DELAY 1 S`,
+    `MATCH POST`), so a rule reads at a glance.
     The body editor is as tall as the body, down to the bottom of the window, and a longer
     body scrolls inside it. It colours what's on screen, so a body of a megabyte stays fast.
     A JSON body is checked as you type: once you pause, a mistake is marked where it is (a
@@ -122,7 +124,7 @@ rule fired". Errors and failed requests are inverted white instead of red.
 ### Vim keys
 
 The **Vim** switch under a body editor, next to **Format**, turns on vim keys. It's one
-setting for every body editor (Replace, Merge JSON and Script), remembered in this browser
+setting for every body editor, remembered in this browser
 and off by default. The editor then starts in Normal mode with a block cursor, and a status
 line along its bottom shows the mode, the keys typed so far and the cursor position: a hollow
 square in Normal mode, the green square in Insert mode, inverted white in Visual mode.
@@ -159,7 +161,7 @@ Motions and text objects behave like vim's own (`cw`, `dw` at the end of a line,
 
 | Type | What it does | How |
 | --- | --- | --- |
-| **Response** | Replace the body, deep-merge JSON into the real body, transform it with a script, or keep it and change only status / headers / delay | Wraps `fetch` and `XMLHttpRequest` in the page |
+| **Response** | Replace the body, or keep the server's body and change only status / headers / delay | Wraps `fetch` and `XMLHttpRequest` in the page |
 | **Redirect** | Send matching requests elsewhere, e.g. prod API → `localhost` | `declarativeNetRequest` |
 | **Headers** | Set or remove request and response headers (CORS, auth…) | `declarativeNetRequest` |
 | **Block** | Make requests fail, to test error states | `declarativeNetRequest` |
@@ -172,11 +174,11 @@ URL matching: *contains*, *equals* (response rules also accept a bare path such 
 
 - Response rules only see `fetch()` and `XMLHttpRequest` calls made by page scripts, not
   `<script>`/`<img>` loads, WebSockets, or requests from service workers.
-- **Script** mode runs your code with `new Function` in the page, so it fails on pages whose
-  Content-Security-Policy forbids `unsafe-eval`. Use Merge or Replace there; the Traffic
-  view shows a "Rule error" entry and the page gets the real response.
-- If a Merge or Script rule fails (invalid JSON, a thrown error), the page receives the
-  untouched real response and the Traffic view shows why.
+- A **Server's body** rule still makes the real request. If that fails, the page gets the
+  network error, as it would without Ghostfetch, and the Traffic view shows a "Rule error".
+- **Merge JSON** and **Script** bodies went in 0.8.0. A rule saved with either keeps the
+  server's body now; its JSON or script isn't used, and goes the next time the rules are
+  saved.
 - The Traffic log keeps the last 300 requests per tab and captures response bodies up to
   1 MB. Iframes from other sites (auth widgets, wallets) aren't captured unless Ghostfetch runs
   on their site too.
@@ -222,8 +224,8 @@ URL matching: *contains*, *equals* (response rules also accept a bare path such 
   Every site Ghostfetch runs on gets the same rules. Any host starting with `local.` counts, so
   only open `local.*` sites you control while Ghostfetch is on, only add sites you trust, and
   don't keep real secrets in rule bodies.
-- **Imported rules arrive switched off.** A rule can run a script inside your app or redirect
-  its requests, so treat a rules file from someone else like code and read it first.
+- **Imported rules arrive switched off.** A rule can change what your app receives or redirect
+  its requests, so read a rules file from someone else before you switch its rules on.
 - **Mind what you mock.** "Mock this response" copies a real response into a rule. Rules are
   stored unencrypted in your browser profile and included in exports, so strip tokens and
   personal data from bodies you keep or share.

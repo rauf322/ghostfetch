@@ -36,22 +36,18 @@ export function testResult(
   }
 }
 
-// What the line under the body says: whether the JSON is valid, or how a script is used. A
-// mistake that has a place comes with it (`problem`), for the body editor to mark.
+// What the line under the body says: whether a JSON body is valid. A mistake that has a place
+// comes with it (`problem`), for the body editor to mark.
 export interface CodeStatus {
   tone?: 'good' | 'bad';
   text: string;
   problem?: JsonProblem;
 }
 
-export function codeStatus(rule: Rule, text: string): CodeStatus | null {
-  const mode = rule.response.bodyMode;
-  if (mode === 'script')
-    return {
-      text: 'Runs in the page. Return the value the app should receive.',
-    };
-  if (mode === 'replace' && !/json/i.test(rule.response.contentType)) return null;
-  const problem = checkJson(text);
+// Nothing for a rule that keeps the server's body, or one whose Content-Type isn't JSON.
+export function codeStatus({ response }: Rule): CodeStatus | null {
+  if (response.bodyMode !== 'replace' || !/json/i.test(response.contentType)) return null;
+  const problem = checkJson(response.body);
   // An empty body is a mistake with no place to mark.
   if (problem && problem.to <= problem.from)
     return { tone: 'bad', text: problem.message };
@@ -60,11 +56,6 @@ export function codeStatus(rule: Rule, text: string): CodeStatus | null {
       tone: 'bad',
       text: `Line ${problem.line}: ${sentenceCase(problem.message)}`,
       problem,
-    };
-  if (mode === 'merge' && !/^\s*\{/.test(text))
-    return {
-      tone: 'bad',
-      text: 'Merge JSON should be an object, e.g. { "role": "admin" }',
     };
   return { tone: 'good', text: 'Valid JSON' };
 }

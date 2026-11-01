@@ -105,6 +105,10 @@ export default defineConfig({
       },
       gecko_android: { strict_min_version: '142.0' },
     },
+    // Up to 0.8, declarativeNetRequest too, for redirect, header and block rules. The browser
+    // keeps the dynamic rules 0.8 added, asleep while the permission is gone, in Chrome and in
+    // Firefox alike: if it ever comes back, remove them first (updateDynamicRules with every
+    // getDynamicRules() id), or the old rules apply again.
     permissions: ['storage', 'unlimitedStorage', 'sidePanel', 'scripting'],
     host_permissions: ['<all_urls>'],
     content_security_policy: { extension_pages: command === 'serve' ? DEV_CSP : CSP },

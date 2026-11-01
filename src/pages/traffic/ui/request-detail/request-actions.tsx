@@ -1,10 +1,10 @@
 // What to do with an open request: Mock this response, and a row of quieter ones: open the rule
 // that fired, copy the URL, copy the response.
+import { ruleFromEntry } from '../../../../shared/api/index.ts';
 import type { LogEntry, Rule } from '../../../../shared/api/index.ts';
 import { Button } from '../../../../shared/ui/kit/button.tsx';
 import { Icon } from '../../../../shared/ui/kit/icon.tsx';
 import { notify } from '../../../../shared/ui/kit/toast.tsx';
-import { ruleFromEntry } from '../../lib/rule-from-entry.ts';
 
 // The row of secondary actions under Mock this response: small outline buttons, side by side.
 const SECONDARY = 'min-w-0 px-2 text-t65';

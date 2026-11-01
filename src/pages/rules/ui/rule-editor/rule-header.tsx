@@ -1,10 +1,12 @@
-// The bar across the top of a rule: back to the list (in a narrow panel), the rule's name, its
-// switch (the green dot) and its ⋯ menu.
-import { editRule } from '../../../../shared/api/index.ts';
+// The bar across the top of a rule: back to the list (in a narrow panel), where you are (beside
+// the list), its ⋯ menu and its switch. In the list and the popup a rule's switch is the green dot;
+// here, with room for a word, it's a toggle that says On or Off.
+import { editRule, ruleTitle } from '../../../../shared/api/index.ts';
 import type { Rule } from '../../../../shared/api/index.ts';
-import { Input } from '../../../../shared/ui/kit/input.tsx';
-import { BackButton, PaneHead } from '../../../../shared/ui/list-detail.tsx';
-import { RuleSwitch } from '../../../../shared/ui/rule-switch.tsx';
+import { Button } from '../../../../shared/ui/kit/button.tsx';
+import { Icon } from '../../../../shared/ui/kit/icon.tsx';
+import { Switch } from '../../../../shared/ui/kit/switch.tsx';
+import { PaneHead } from '../../../../shared/ui/list-detail.tsx';
 import { RuleMenu } from './rule-menu.tsx';
 
 export function RuleHeader({
@@ -14,34 +16,39 @@ export function RuleHeader({
   rule: Rule;
   onSelect: (id: string | null) => void;
 }) {
-  const { match } = rule;
   return (
-    <PaneHead>
-      <BackButton
+    <PaneHead className="h-12 items-center gap-1.5 border-b-0 px-2">
+      <Button
+        variant="ghost"
+        size="sm"
         title="All rules"
         data-testid="rule-back"
         onClick={() => onSelect(null)}
-      />
-      <Input
-        variant="bare"
-        data-testid="rule-name"
-        aria-label="Rule name"
-        value={rule.name}
-        placeholder={match.graphqlOperation || match.url || 'Name this rule'}
-        onChange={(event) =>
-          editRule(rule.id, (current) => {
-            current.name = event.target.value;
-          })
-        }
-        className="flex-1 px-3.5 text-[16px] font-semibold tracking-tight text-white placeholder:text-t40 hover:bg-hover focus:bg-pressed"
-      />
-      {/* A rounded hover area around the dot, so more than the dot is clickable. */}
-      <RuleSwitch
-        rule={rule}
-        data-testid="rule-switch"
-        className="size-9 self-center rounded-md hover:bg-hover"
-      />
+        className="gap-1 pr-2.5 pl-1 text-control text-t80 wide:hidden"
+      >
+        <Icon name="back" size={18} />
+        Rules
+      </Button>
+      <span className="hidden min-w-0 truncate px-2.5 text-control text-t40 wide:block">
+        {'Rules '}
+        <span className="text-t30">/</span>{' '}
+        <span className="text-t80">{ruleTitle(rule)}</span>
+      </span>
+      <span className="ml-auto" />
       <RuleMenu rule={rule} onSelect={onSelect} />
+      <label className="flex h-8 cursor-pointer items-center gap-2 rounded-md bg-card pr-1.5 pl-3 text-control font-medium text-t80">
+        {rule.enabled ? 'On' : 'Off'}
+        <Switch
+          data-testid="rule-switch"
+          aria-label="Rule on"
+          checked={rule.enabled}
+          onCheckedChange={(on) =>
+            editRule(rule.id, (current) => {
+              current.enabled = on;
+            })
+          }
+        />
+      </label>
     </PaneHead>
   );
 }

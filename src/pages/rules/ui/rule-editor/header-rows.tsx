@@ -1,5 +1,6 @@
-// Set or remove headers, one row each: the operation, the name and (to set) the value. `pick` is
-// the rule's list these rows are (the Headers tab's: the headers of the response).
+// Set or remove headers, one row each: the operation, the name and (to set) the value, side by
+// side, or the value on a line of its own where there's less than 380 px. `pick` is the rule's
+// list these rows are (the Headers row's: the headers of the response).
 import { useRef } from 'react';
 import { flushSync } from 'react-dom';
 import { editRule } from '../../../../shared/api/index.ts';
@@ -44,11 +45,11 @@ export function HeaderRows({
   }
 
   return (
-    <div ref={list} className="flex flex-col items-start gap-1.5">
+    <div ref={list} className="@container flex flex-col items-start gap-1.5">
       {pick(rule).map((row, index) => (
         <div
           key={index}
-          className="grid w-full grid-cols-[92px_minmax(0,1fr)_minmax(0,1fr)_auto] gap-1.5"
+          className="grid w-full grid-cols-[92px_minmax(0,1fr)_auto] gap-1.5 @[380px]:grid-cols-[92px_minmax(0,1fr)_minmax(0,1fr)_auto]"
         >
           <Select
             items={OP_ITEMS}
@@ -59,7 +60,7 @@ export function HeaderRows({
               })
             }
           >
-            <SelectTrigger size="sm" aria-label="Operation">
+            <SelectTrigger size="sm" aria-label="Operation" className="bg-background">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -82,12 +83,15 @@ export function HeaderRows({
                 pick(current)[index]!.name = event.target.value;
               })
             }
-            className={cn('font-mono text-meta', row.op === 'remove' && 'col-span-2')}
+            className={cn(
+              'bg-background font-mono text-meta',
+              row.op === 'remove' && '@[380px]:col-span-2',
+            )}
           />
           {row.op !== 'remove' && (
             <Input
               size="sm"
-              className="font-mono text-meta"
+              className="col-start-2 row-start-2 bg-background font-mono text-meta @[380px]:col-start-3 @[380px]:row-start-1"
               aria-label="Header value"
               placeholder="Value"
               value={row.value}
@@ -102,6 +106,7 @@ export function HeaderRows({
             variant="ghost"
             size="icon-sm"
             title="Remove header"
+            className="col-start-3 row-start-1 @[380px]:col-start-4"
             onClick={() =>
               edit((current) => {
                 pick(current).splice(index, 1);

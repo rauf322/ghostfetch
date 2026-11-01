@@ -1,7 +1,7 @@
 // A rule's URL pattern, without a browser: which URLs the page's interceptor answers with it
 // (findRule, src/app/interceptor/matching.ts), for each way of comparing a URL, and that the
 // rule editor's URL tester (testResult, src/pages/rules/lib/rule-checks.ts) says the same for
-// every one of them, so trying a URL in the Match tab tells the truth.
+// every one of them, so Try a URL in the rule editor tells the truth.
 //
 //   node test/matching.mjs      (npm test runs it after test/json.mjs)
 import { compile, findRule } from '../src/app/interceptor/matching.ts';
@@ -82,7 +82,7 @@ await check(
   },
 );
 
-await check("the Match tab's URL tester says what the page does, for every case", () => {
+await check('Try a URL says what the page does, for every case', () => {
   const disagree = CASES.filter(([mode, pattern, operation, url]) => {
     const candidate = rule(mode, pattern, operation);
     return (testResult(candidate, url).tone === 'good') !== pageMatches(candidate, url);

@@ -20,9 +20,14 @@
   letter-spacing: 0;
 }
 /* fit: as tall as the text (--code-fit, which the editor works out), at least 120 px and at most
-   the room the page gives it (--code-max) */
+   the room the page gives it (--code-max). A page can also set --code-fill (such as 100%, of the
+   box the editor is in) to have it at least that tall, whatever the text. */
 .code[data-fit] {
-  height: clamp(120px, var(--code-fit, 280px), var(--code-max, 100vh));
+  height: clamp(
+    120px,
+    max(var(--code-fit, 280px), var(--code-fill, 0px)),
+    var(--code-max, 100vh)
+  );
   resize: none;
 }
 .code:focus-within {

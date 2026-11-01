@@ -1,7 +1,8 @@
 // The full editor: a top bar with the Rules and Traffic tabs, the master switch and the ⋯ menu,
-// then the two views. Both stay mounted, so Traffic keeps listening while Rules shows. Between
-// them it opens rules: one picked in Traffic, one made from a captured response, the first of an
-// import, and one the popup asks for.
+// then the two views. Both stay mounted, and the log of the tab it watches runs for as long as the
+// editor is open: Traffic lists it, and a rule says how often it fired there. Between the views it
+// opens rules: one picked in Traffic, one made from a captured response, the first of an import,
+// and one the popup asks for.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { RulesPage } from '../../pages/rules/index.ts';
 import { TrafficPage } from '../../pages/traffic/index.ts';
@@ -13,7 +14,7 @@ import {
   watchRuleRequests,
 } from '../../shared/api/index.ts';
 import type { Rule } from '../../shared/api/index.ts';
-import { useStore } from '../../shared/react/index.ts';
+import { useStore, useTrafficLog } from '../../shared/react/index.ts';
 import { Alert } from '../../shared/ui/kit/alert.tsx';
 import { Tabs, TabsContent } from '../../shared/ui/kit/tabs.tsx';
 import { notify } from '../../shared/ui/kit/toast.tsx';
@@ -31,6 +32,8 @@ export function Editor({ inTab, windowId }: { inTab: boolean; windowId: number }
   );
   const [selectedRule, setSelectedRule] = useState<string | null>(null);
   const [trafficCount, setTrafficCount] = useState(0);
+  // The side panel follows the active tab; the editor in a tab keeps the tab it picked.
+  const log = useTrafficLog(!inTab);
   const importInput = useRef<HTMLInputElement>(null);
   const chooseFile = () => importInput.current!.click();
 
@@ -84,6 +87,7 @@ export function Editor({ inTab, windowId }: { inTab: boolean; windowId: number }
         className="min-h-0 flex-1"
       >
         <RulesPage
+          log={log}
           selectedId={selectedRule}
           onSelect={setSelectedRule}
           onImport={chooseFile}
@@ -97,7 +101,7 @@ export function Editor({ inTab, windowId }: { inTab: boolean; windowId: number }
         className="min-h-0 flex-1"
       >
         <TrafficPage
-          followActiveTab={!inTab}
+          log={log}
           onMock={mockRule}
           onOpenRule={openRule}
           onCount={setTrafficCount}

@@ -23,12 +23,13 @@ export function testResult(
   url: string,
 ): { tone: 'good' | 'bad'; text: string } {
   try {
-    if (!urlTester(rule.match)(url)) return { tone: 'bad', text: 'No match' };
+    if (!urlTester(rule.match)(url))
+      return { tone: 'bad', text: 'No match: this rule leaves it alone' };
     return {
       tone: 'good',
       text: rule.match.graphqlOperation.trim()
-        ? 'URL matches (operation is checked at runtime)'
-        : 'Matches',
+        ? 'The URL matches; the GraphQL operation is checked on each request'
+        : 'Matches: this rule would answer it',
     };
   } catch (error) {
     return { tone: 'bad', text: (error as Error).message };

@@ -95,23 +95,29 @@ What's different in Firefox-based browsers:
     drag them to reorder. Import and export sit at the bottom of the list. A rule's switch
     is a green dot: it pulses while the rule is on, holds still while Ghostfetch is off, and
     is grey while the rule is off. Click it to turn the rule on or off.
-    A rule is five tabs: **Body** (**Replace** sends your body without calling the
-    server; **Server's body** makes the real request and keeps its body, so only the status,
-    headers and delay change), **Status** (the code with its name, and the common ones by
-    class), **Headers**, **Delay** and **Match** (what requests it answers; a new rule opens
-    there). Each tab's label shows what it's set to (`Status 404`, `Headers 2`, `Delay 1 s`,
-    `Match POST`), so a rule reads at a glance.
-    The body editor is as tall as the body, down to the bottom of the window, and a longer
-    body scrolls inside it. It colours what's on screen, so a body of a megabyte stays fast.
+    An open rule says what it does in one sentence under its name ("Answers GET requests
+    whose URL contains /api/user with the JSON below, without calling the server."), and,
+    while recording, how often it fired on the page the editor watches. Under that are its
+    settings, a row each with its value: **When a request matches** (the URL and how it's
+    compared, the method, a GraphQL operation) and **Respond with** (the status, with its
+    name and the common ones by class; the delay; headers to set or remove). Click a row to
+    edit it in place. **Try a URL** says whether the rule would answer a URL you paste. Then
+    the body: **Replace body** sends yours without calling the server; **Keep server's
+    body** makes the real request and keeps its body, so only the status, headers and delay
+    change. A new rule opens with the cursor in its URL.
+    In a wide window the settings and the body sit side by side, and the body editor takes
+    the window's height; in a side panel the body comes after the settings, as tall as the
+    body but never taller than the panel, and a longer body scrolls inside it. It colours
+    what's on screen, so a body of a megabyte stays fast.
     A JSON body is checked as you type: once you pause, a mistake is marked where it is (a
     squiggle, the line in the gutter, a few words at the end of the line and the whole
-    message on hover), the line under the editor says what it is (click it to go there), and
-    the Body tab gets a ✗. In a body editor, **⌘F / Ctrl+F** searches the body itself
-    instead of the page: **Enter** and **Shift+Enter** step through the matches, **Esc**
-    closes the search and leaves the current match selected. **⌘= / ⌘−** (Ctrl on Windows
-    and Linux) make its text larger or smaller and **⌘0** puts it back, instead of zooming
-    the page. The **Vim** switch under it turns on [vim keys](#vim-keys). The text size and
-    the Vim switch are remembered for every body editor. Format on a body of more than 300
+    message on hover), and the line under the editor says what it is (click it to go there).
+    In a body editor, **⌘F / Ctrl+F** searches the body itself instead of the page: **Enter**
+    and **Shift+Enter** step through the matches, **Esc** closes the search and leaves the
+    current match selected. **⌘= / ⌘−** (Ctrl on Windows and Linux) make its text larger or
+    smaller and **⌘0** puts it back, instead of zooming the page. **Vim keys** under it turns
+    on [vim keys](#vim-keys). The text size and the Vim switch are remembered for every body
+    editor. Format on a body of more than 300
     lines can't be undone with ⌘Z: the browser would take minutes to make it undoable.
   - **Traffic**: live `fetch`/XHR log of a tab. Requests a rule changed are marked in green
     (**Mocked**, **Modified**). **Rec**, **Preserve**, **Matched** and **Clear** are in the
@@ -127,7 +133,7 @@ that pulses while the rule is on. Errors and failed requests are inverted white 
 
 ### Vim keys
 
-The **Vim** switch under a body editor, next to **Format**, turns on vim keys. It's one
+**Vim keys** under a body editor, next to **Format**, turns on vim keys. It's one
 setting for every body editor, remembered in this browser
 and off by default. The editor then starts in Normal mode with a block cursor, and a status
 line along its bottom shows the mode, the keys typed so far and the cursor position: a hollow
@@ -267,7 +273,7 @@ src/app/                         the extension's parts, one folder each, which W
   kit/                           the kit page; for npm run dev and the kit test, never in the extension
   styles/                        theme.css, the look's values (colours, the two fonts), and kit.css: those as Tailwind's theme (type sizes, corners)
 src/pages/                       what the screens show
-  rules/                         the Rules tab: the rule list, and the rule editor (ui/rule-editor/, a component per tab)
+  rules/                         the Rules tab: the rule list, and the rule editor (ui/rule-editor/, a component per part: settings rows, the body, the URL to try)
   traffic/                       the Traffic tab: a tab's live log, a request's details (ui/request-detail/), Mock this response
   popup/                         the toolbar popup
   kit/                           the kit page: every kit component in its states
@@ -277,11 +283,12 @@ src/shared/                      what more than one part of the extension uses
     sites/                       the sites Ghostfetch runs on, the screens' copy of the ones you added, turning one on or off
     settings.ts                  the on/off and recording switches
     log-entry.ts                 a request in a tab's traffic log
+    traffic-log.ts               the editor's live log of the tab it watches (Traffic, and how often a rule fired)
     messages.ts                  the messages between the background, the bridge, the interceptor and the Traffic tab
     open-editor.ts               the editor in the side panel or a tab, and on a rule the popup picked
   lib/                           small libraries, a file each (index.ts): JSON, HTML, URLs, icons, file names, a download,
                                  the side panel, the stores' base, untrusted data
-  react/                         useStore(), which redraws a screen when a store changes (index.ts)
+  react/                         useStore(), which redraws a screen when a store changes, and the traffic log's hooks (index.ts)
   ui/                            components, a public file each
     kit/                         the UI kit: React components on Base UI, styled with Tailwind (see UI kit)
     code-editor/                 the body editor (plain DOM code, its find bar and vim keys) and its React component (index.ts)
@@ -299,7 +306,7 @@ public/icons/                    the Thorn Glass mark, generated by scripts/make
 scripts/check-sources.mjs        rebuilds the sources zip in a clean folder and compares it with the build
 scripts/oxlint-rules.mjs         two lint rules of its own (npm run lint): no export *, and the folders of src/app/ are the extension's parts
 test/json.mjs                    the body editor's JSON check against JSON.parse, and the pieces it colours a long body in
-test/matching.mjs                which URLs a rule's pattern matches, and that the Match tab's URL tester says what the page does
+test/matching.mjs                which URLs a rule's pattern matches, and that the rule editor's Try a URL says what the page does
 test/e2e.mjs                     end-to-end test in Chromium (Playwright)
 test/firefox.mjs                 end-to-end test in Zen or Firefox (puppeteer-core)
 test/kit.mjs                     the UI kit under the real CSP, in Chromium and Zen, driven with the keyboard and the mouse
@@ -389,7 +396,7 @@ needs no browser, and `npm test` runs it first.
 
 `test/matching.mjs` checks which URLs a rule's pattern matches in the page, for each way of
 comparing a URL (contains, equals with a full URL or a path, wildcard, regex, a regex that doesn't
-compile, and no pattern with or without a GraphQL operation), and that the Match tab's URL tester
+compile, and no pattern with or without a GraphQL operation), and that the rule editor's Try a URL
 says the same for every case: both use one function, `urlTester`. It needs no browser either, and
 `npm test` runs it next.
 

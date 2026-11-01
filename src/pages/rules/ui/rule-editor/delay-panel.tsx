@@ -1,4 +1,4 @@
-// The Delay tab: how long a response rule holds the response back, in whole milliseconds, typed or
+// The Delay row's editor: how long a rule holds the response back, in whole milliseconds, typed or
 // picked from a few common ones.
 import { editRule } from '../../../../shared/api/index.ts';
 import type { Rule } from '../../../../shared/api/index.ts';
@@ -30,7 +30,7 @@ export function DelayPanel({ rule }: { rule: Rule }) {
             value={delay || ''}
             placeholder="0"
             onChange={(event) => setDelay(Number(event.target.value))}
-            className="w-[120px] tabular-nums"
+            className="w-[120px] bg-background font-mono tabular-nums"
           />
           <span className="text-body text-t40">ms</span>
         </span>
@@ -40,6 +40,7 @@ export function DelayPanel({ rule }: { rule: Rule }) {
         aria-label="Common delays"
         value={[String(delay)]}
         onValueChange={(values) => setDelay(Number((values as string[])[0] ?? 0))}
+        className="grid grid-cols-3 bg-background"
       >
         {PRESETS.map((ms) => (
           <ToggleGroupItem key={ms} value={String(ms)} data-testid={`delay-${ms}`}>

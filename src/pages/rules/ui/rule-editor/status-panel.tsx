@@ -1,4 +1,4 @@
-// The Status tab: the status code a response rule sends (typed, with its name beside it, or picked
+// The Status row's editor: the status code a rule sends (typed, with its name beside it, or picked
 // from the common ones, grouped by class), and what an empty one means for the body mode.
 import { editRule } from '../../../../shared/api/index.ts';
 import type { Rule } from '../../../../shared/api/index.ts';
@@ -28,7 +28,7 @@ export function StatusPanel({ rule }: { rule: Rule }) {
             value={response.status}
             placeholder={replaces ? '200' : 'Keep'}
             onChange={(event) => setStatus(event.target.value)}
-            className="w-[88px] font-mono tabular-nums"
+            className="w-[88px] bg-background font-mono tabular-nums"
           />
           <span data-testid="status-name" className="truncate text-body text-t65">
             {statusName(response.status)}
@@ -48,7 +48,7 @@ export function StatusPanel({ rule }: { rule: Rule }) {
             aria-label={group.label}
             value={[response.status]}
             onValueChange={(values) => setStatus((values as string[])[0] ?? '')}
-            className="grid grid-cols-[repeat(auto-fill,minmax(168px,1fr))] gap-1 bg-transparent p-0"
+            className="grid grid-cols-[repeat(auto-fill,minmax(128px,1fr))] gap-1 bg-transparent p-0"
           >
             {group.codes.map((code) => (
               <ToggleGroupItem
@@ -56,7 +56,7 @@ export function StatusPanel({ rule }: { rule: Rule }) {
                 value={String(code)}
                 data-testid={`status-${code}`}
                 title={`${code} ${statusName(code)}`}
-                className="group/code flex h-8 items-center justify-start gap-2 bg-card px-2.5"
+                className="group/code flex h-8 items-center justify-start gap-2 bg-background px-2.5"
               >
                 <span className="font-mono text-meta text-foreground tabular-nums">
                   {code}

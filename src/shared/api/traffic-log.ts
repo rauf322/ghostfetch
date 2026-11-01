@@ -1,14 +1,20 @@
-// The Traffic view's live log: picks the tab to watch, connects to the "ghostfetch-log" port of
-// that tab's bridge (src/app/bridge/) and keeps the requests it reports. No DOM: the
-// view draws snapshot() and draws again when subscribe() says it changed, at most once a frame,
-// however many requests arrive.
-import type {
-  LogEntry,
-  LogPortMessage,
-  LogViewerMessage,
-} from '../../../shared/api/index.ts';
+// The editor's live log of a tab's requests: picks the tab to watch, connects to the
+// "ghostfetch-log" port of that tab's bridge (src/app/bridge/) and keeps the requests it reports.
+// The editor runs one for as long as it's open: Traffic lists it, and a rule says how often it
+// fired there. No DOM: a view draws snapshot() and draws again when subscribe() says it changed,
+// at most once a frame, however many requests arrive.
+import type { LogEntry } from './log-entry.ts';
+import type { LogPortMessage, LogViewerMessage } from './messages.ts';
 
 const MAX_ENTRIES = 500;
+
+// Preserve ("Keep on reload"): whether the requests from before a page load stay in the log when
+// the page reloads. One setting for the editor, remembered in this browser.
+const PRESERVE = 'ghostfetch.preserveLog';
+
+export const isPreserved = () => localStorage.getItem(PRESERVE) === '1';
+export const rememberPreserve = (on: boolean) =>
+  localStorage.setItem(PRESERVE, on ? '1' : '0');
 
 const isWebUrl = (url: string | undefined) => /^https?:/.test(url || '');
 

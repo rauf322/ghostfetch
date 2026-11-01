@@ -3,7 +3,13 @@
 // first), and the bar of switches under them.
 import { useState, useSyncExternalStore } from 'react';
 import type { ReactNode } from 'react';
-import { settingsStore, siteStore } from '../../../shared/api/index.ts';
+import {
+  isPreserved,
+  rememberPreserve,
+  settingsStore,
+  siteStore,
+} from '../../../shared/api/index.ts';
+import type { TrafficLog, TrafficSnapshot } from '../../../shared/api/index.ts';
 import { Label } from '../../../shared/ui/kit/label.tsx';
 import {
   List,
@@ -14,8 +20,6 @@ import {
   SectionRow,
 } from '../../../shared/ui/list-detail.tsx';
 import { filterEntries } from '../lib/filter-entries.ts';
-import { isPreserved, rememberPreserve } from '../model/preserve.ts';
-import type { TrafficLog, TrafficSnapshot } from '../model/traffic-log.ts';
 import { RequestRow } from './request-row.tsx';
 import { TabPicker } from './tab-picker.tsx';
 import { TrafficFooter } from './traffic-footer.tsx';

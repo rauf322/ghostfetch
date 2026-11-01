@@ -30,6 +30,6 @@ export const BODY_MODES: Record<BodyMode, { label: string; desc: string }> = {
   replace: { label: 'Replace', desc: 'Return this body without calling the server.' },
   original: {
     label: "Server's body",
-    desc: 'Call the server and keep its body. Change its status, headers or delay in the other tabs.',
+    desc: 'Call the server and keep its body. The status, headers and delay you set still apply.',
   },
 };

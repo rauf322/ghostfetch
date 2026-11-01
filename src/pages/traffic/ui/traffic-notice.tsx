@@ -10,7 +10,7 @@ import {
 } from '../../../shared/api/index.ts';
 import { Alert } from '../../../shared/ui/kit/alert.tsx';
 import { Button } from '../../../shared/ui/kit/button.tsx';
-import type { TrafficSnapshot } from '../model/traffic-log.ts';
+import type { TrafficSnapshot } from '../../../shared/api/index.ts';
 
 export function TrafficNotice({
   traffic,

@@ -396,7 +396,7 @@ try {
 
   await check('create a rule in the editor and it mocks immediately', async () => {
     await app.click('[data-testid="new-rule"]');
-    // A new rule opens on Match, with the cursor in the URL field.
+    // A new rule opens with its URL row open and the cursor in the field.
     await app.waitForFunction(
       () => document.activeElement?.dataset.testid === 'match-url',
       null,
@@ -404,22 +404,21 @@ try {
     );
     await app.keyboard.type('case=ui');
     await app.fill('[data-testid="rule-name"]', 'Made in the UI');
-    await app.click('[data-testid="tab-body"]');
     const editor = app.locator('.code textarea');
     await editor.fill('{"ui": true}');
-    await app.click('[data-testid="tab-status"]');
+    await app.click('[data-testid="row-status"]');
     await app.click('[data-testid="status-201"]');
-    await app.click('[data-testid="tab-body"]');
     await sleep(600);
     const r = await call('/api/user?case=ui');
     expect([r.status, r.body], [201, { ui: true }]);
     expect(await app.locator('[data-testid="code-status"]').textContent(), 'Valid JSON');
   });
   await check('tester and invalid JSON feedback', async () => {
-    await app.click('[data-testid="tab-match"]');
     await app.fill('[data-testid="tester"]', `${ORIGIN}/api/user?case=ui`);
-    expect(await app.locator('[data-testid="tester-result"]').textContent(), 'Matches');
-    await app.click('[data-testid="tab-body"]');
+    expect(
+      await app.locator('[data-testid="tester-result"]').textContent(),
+      'Matches: this rule would answer it',
+    );
     await app.locator('.code textarea').fill('{"ui": ');
     // A mistake shows once typing pauses.
     await app.waitForFunction(() =>
@@ -435,16 +434,19 @@ try {
     );
   });
   await check(
-    'the response tabs: status, delay, headers and match, each with its value on its tab',
+    'the settings: each row shows its value and opens its editor in place, one at a time',
     async () => {
-      const tab = (name) => app.locator(`[data-testid="tab-${name}"]`).textContent();
-      const sectionHeight = () =>
-        app
-          .locator('[data-testid="tab-body"]')
-          .evaluate((trigger) => trigger.closest('[data-slot="tabs"]').offsetHeight);
-      const height = await sectionHeight();
-      expect(await tab('status'), 'Status201');
-      await app.click('[data-testid="tab-status"]');
+      const value = (name) =>
+        app.locator(`[data-testid="row-${name}-value"]`).textContent();
+      const row = (name) => app.click(`[data-testid="row-${name}"]`);
+      const opened = () =>
+        app.evaluate(() =>
+          [
+            ...document.querySelectorAll('[data-testid^="row-"][aria-expanded="true"]'),
+          ].map((trigger) => trigger.dataset.testid),
+        );
+      // The status row is still open from the check before.
+      expect([await value('status'), await opened()], ['201 Created', ['row-status']]);
       expect(await app.locator('[data-testid="status-name"]').textContent(), 'Created');
       await app.fill('[data-testid="status-code"]', '418');
       expect(
@@ -453,32 +455,26 @@ try {
       );
       await app.click('[data-testid="status-404"]');
       expect(
-        [await tab('status'), await app.inputValue('[data-testid="status-code"]')],
-        ['Status404', '404'],
+        [await value('status'), await app.inputValue('[data-testid="status-code"]')],
+        ['404 Not Found', '404'],
       );
-      await app.click('[data-testid="tab-delay"]');
-      // The tab left behind goes a frame later.
-      await sleep(100);
-      expect(await sectionHeight(), height, 'a shorter tab keeps the Body tab’s height');
+      // Opening another row closes the one that was open, in either card.
+      await row('delay');
       expect(
-        await app
-          .locator('.code')
-          .evaluate((code) => code.closest('[role="tabpanel"]').inert),
-        true,
-        'the Body tab is inert behind the others',
+        [await opened(), await app.locator('[data-testid="status-code"]').count()],
+        [['row-delay'], 0],
       );
       await app.click('[data-testid="delay-1000"]');
-      expect(await tab('delay'), 'Delay1 s');
+      expect(await value('delay'), '1 s');
       // The chosen one again goes back to none.
       await app.click('[data-testid="delay-1000"]');
-      expect(await tab('delay'), 'Delay');
+      expect(await value('delay'), 'None');
       await app.fill('[data-testid="delay"]', '600');
-      await app.click('[data-testid="tab-headers"]');
-      await sleep(100);
-      expect(await sectionHeight(), height, 'a shorter tab keeps the Body tab’s height');
+      expect(await value('delay'), '600 ms');
+      await row('headers');
       await app.getByRole('button', { name: 'Add header' }).click();
       await app.keyboard.type('X-Tabbed');
-      expect(await tab('headers'), 'Headers1');
+      expect(await value('headers'), 'Sets 1');
       await sleep(400);
       const { rules } = await worker.evaluate(() => chrome.storage.local.get('rules'));
       const rule = rules.find((r) => r.match.url === 'case=ui');
@@ -491,36 +487,39 @@ try {
         ['404', 600, ['X-Tabbed']],
       );
       await app.getByTitle('Remove header').last().click();
-      await app.click('[data-testid="tab-delay"]');
+      expect(await value('headers'), 'No changes');
+      await row('delay');
       await app.click('[data-testid="delay-0"]');
-      await app.click('[data-testid="tab-status"]');
+      await row('status');
       await app.click('[data-testid="status-201"]');
-      // Match: the URL being tried is still there after the other tabs, and the label carries
-      // the method once it isn't Any.
-      await app.click('[data-testid="tab-match"]');
+      // The URL being tried is still there, and the method shows on its row and in the sentence.
+      await row('method');
+      await app.click('[data-testid="method-POST"]');
+      const description = () =>
+        app.locator('[data-testid="rule-description"]').textContent();
       expect(
         [
-          await tab('match'),
+          await value('method'),
+          await description(),
           await app.inputValue('[data-testid="tester"]'),
           await app.locator('[data-testid="tester-result"]').textContent(),
         ],
-        ['Match', `${ORIGIN}/api/user?case=ui`, 'Matches'],
+        [
+          'POST',
+          'Answers POST requests whose URL contains case=ui with a 201 and the JSON below, without calling the server.',
+          `${ORIGIN}/api/user?case=ui`,
+          'Matches: this rule would answer it',
+        ],
       );
-      const method = async (name) => {
-        await app.click('[title="HTTP method"]');
-        await app.getByRole('option', { name, exact: true }).click();
-      };
-      await method('POST');
-      expect(await tab('match'), 'MatchPOST');
-      await method('Any method');
-      expect(await tab('match'), 'Match');
-      await app.click('[data-testid="tab-body"]');
+      await app.click('[data-testid="method-ANY"]');
+      expect(await value('method'), 'Any');
+      await row('method');
+      expect(await opened(), []);
     },
   );
   await check(
     'a JSON mistake is marked where it is, and clicking it puts the cursor there',
     async () => {
-      await app.click('[data-testid="tab-body"]');
       const editor = app.locator('.code textarea');
       await editor.fill('{\n  "id": 42\n  "name": "Ada"\n}');
       expect(await app.locator('.code-error').count(), 0, 'not while typing');
@@ -532,16 +531,9 @@ try {
             '.code-error-note',
             '.code-lines .error',
             '[data-testid="code-status"]',
-            '[data-testid="tab-body"]',
           ].map((selector) => document.querySelector(selector).textContent.trim()),
         ),
-        [
-          '42',
-          'missing comma',
-          '2',
-          'Line 2: missing comma after 42',
-          'Body✗, has a mistake',
-        ],
+        ['42', 'missing comma', '2', 'Line 2: missing comma after 42'],
       );
       const mark = await app.locator('.code-error').boundingBox();
       await app.mouse.move(mark.x + mark.width / 2, mark.y + mark.height / 2);
@@ -573,7 +565,6 @@ try {
   await check(
     'text size: Cmd/Ctrl with =, - and 0 in the body, shown for a moment, remembered',
     async () => {
-      await app.click('[data-testid="tab-body"]');
       const editor = app.locator('.code textarea');
       const text = await editor.inputValue();
       // The size, what's remembered, and the size shown in the corner.
@@ -676,12 +667,12 @@ try {
     },
   );
   await check(
-    'the body editor is as tall as its text, down to the bottom of the pane',
+    'the body fills the pane beside the settings; under them, it is as tall as its text and never taller than the pane',
     async () => {
-      await app.click('[data-testid="tab-body"]');
       const editor = app.locator('.code textarea');
-      // The editor's height, and with the pane scrolled to the top, how far the section's bottom
-      // is from the pane's and whether the pane has anything to scroll.
+      const before = await editor.inputValue();
+      // The editor's height and the pane's; with the pane scrolled to the top, how far the body's
+      // section ends from the pane's bottom, and whether the pane has anything to scroll.
       const heights = () =>
         app.evaluate(() => {
           const code = document.querySelector('.code');
@@ -689,30 +680,49 @@ try {
           pane.scrollTop = 0;
           return {
             code: code.offsetHeight,
+            pane: pane.clientHeight,
             gap:
               pane.getBoundingClientRect().bottom -
-              code.closest('[data-slot="tabs"]').getBoundingClientRect().bottom,
+              document.querySelector('[data-testid="body-card"]').getBoundingClientRect()
+                .bottom,
             scrolls: pane.scrollHeight > pane.clientHeight,
           };
         });
-      await editor.fill('{"short": true}');
-      expect((await heights()).code, 120, 'a short body: the smallest editor');
-      await editor.fill(
-        '{\n  "a": 1,\n  "b": 2,\n  "c": 3,\n  "d": 4,\n  "e": 5,\n  "f": 6\n}',
+      const short = '{"short": true}';
+      const eight =
+        '{\n  "a": 1,\n  "b": 2,\n  "c": 3,\n  "d": 4,\n  "e": 5,\n  "f": 6\n}';
+      const long = JSON.stringify(
+        { items: Array.from({ length: 200 }, (_, id) => ({ id })) },
+        null,
+        2,
       );
+      // Beside the settings (this window is 1280 px wide): short or long, the body's section
+      // ends at the pane's bottom, less its 16 px of padding, and a long body scrolls inside.
+      await editor.fill(short);
+      const besideShort = await heights();
+      await editor.fill(long);
+      const besideLong = await heights();
+      for (const shape of [besideShort, besideLong])
+        if (
+          Math.abs(shape.gap - 16) > 1 ||
+          shape.scrolls ||
+          shape.code !== besideLong.code
+        )
+          throw new Error(`beside: ${JSON.stringify([besideShort, besideLong])}`);
+      // Under them, in a side panel 400 px wide.
+      await app.setViewportSize({ width: 400, height: 760 });
+      await editor.fill(short);
+      expect((await heights()).code, 120, 'a short body: the smallest editor');
+      await editor.fill(eight);
       // Eight lines of 20.125 px (11.5 px text, line height 1.75), its padding and border.
       expect((await heights()).code, 179, 'eight lines: eight lines tall');
-      await editor.fill(
-        JSON.stringify(
-          { items: Array.from({ length: 200 }, (_, id) => ({ id })) },
-          null,
-          2,
-        ),
-      );
-      // A long one: the section ends at the pane's bottom, and the body scrolls in the editor.
-      const tall = await heights();
-      if (Math.abs(tall.gap) > 1 || tall.scrolls)
-        throw new Error(`a long body: ${JSON.stringify(tall)}`);
+      // A long one: the pane less the room for the body's controls (body-card.tsx).
+      await editor.fill(long);
+      const under = await heights();
+      if (Math.abs(under.code - (under.pane - 120)) > 1)
+        throw new Error(`a long body, in one column: ${JSON.stringify(under)}`);
+      await app.setViewportSize({ width: 1280, height: 820 });
+      await editor.fill(before);
     },
   );
   await check('Cmd/Ctrl+F in the body searches only the body', async () => {
@@ -854,7 +864,7 @@ try {
   await check(
     'vim: u in the body never undoes another field (Chrome keeps one undo history per page)',
     async () => {
-      // The rule's name, which is on the page whichever tab is open.
+      // The rule's name, over its settings.
       const name = app.locator('[data-testid="rule-name"]');
       await name.click();
       await name.press('End');
@@ -893,15 +903,19 @@ try {
     'vim: dragging a selection starts Visual mode, a click goes back to Normal',
     async () => {
       const box = await body.boundingBox();
-      await app.mouse.move(box.x + 30, box.y + 30);
+      // On whole pixels, as a mouse reports them: from some fractional points, Chrome takes a drag
+      // that Playwright sends for a click that moves the cursor, and nothing gets selected.
+      const x = Math.round(box.x);
+      const y = Math.round(box.y);
+      await app.mouse.move(x + 30, y + 30);
       await app.mouse.down();
-      await app.mouse.move(box.x + 120, box.y + 30, { steps: 4 });
+      await app.mouse.move(x + 120, y + 30, { steps: 4 });
       await app.mouse.up();
       const selected = await vimState();
       expect(selected.mode, 'Visual');
       if (!/^\d+ chars?$/.test(selected.message))
         throw new Error(`selection size: ${selected.message}`);
-      await app.mouse.click(box.x + 30, box.y + 50);
+      await app.mouse.click(x + 30, y + 50);
       expect((await vimState()).mode, 'Normal');
     },
   );
@@ -1030,14 +1044,14 @@ try {
       .click();
     await app.click('[data-testid="mock"]');
     await app.waitForSelector('[data-testid="view-rules"]:not([hidden])');
-    // It opens on the body it captured; the URL is on the Match tab.
-    expect(JSON.parse(await body.inputValue()).name, 'Real');
-    await app.click('[data-testid="tab-match"]');
+    // It opens on the body it captured, and the URL row shows the request's path.
     expect(
-      await app.inputValue('[data-testid="match-url"]'),
-      '/api/user?case=live-check',
+      [
+        JSON.parse(await body.inputValue()).name,
+        await app.locator('[data-testid="row-url-value"]').textContent(),
+      ],
+      ['Real', '/api/user?case=live-check'],
     );
-    await app.click('[data-testid="tab-body"]');
     await body.fill('{"fromTraffic": true}');
     await sleep(500);
     expect((await call('/api/user?case=live-check')).body, { fromTraffic: true });
@@ -1062,11 +1076,12 @@ try {
     await app.setViewportSize({ width: 400, height: 760 });
     await app.click('[data-testid="tab-rules"]');
     await app.screenshot({ path: `${SHOTS}/narrow-editor.png` });
-    await app.click('[data-testid="tab-status"]');
+    await app.click('[data-testid="row-status"]');
     await app.screenshot({ path: `${SHOTS}/narrow-status.png` });
-    await app.click('[data-testid="tab-match"]');
+    await app.click('[data-testid="row-url"]');
     await app.screenshot({ path: `${SHOTS}/narrow-match.png` });
-    await app.click('[data-testid="tab-body"]');
+    await app.click('[data-testid="row-url"]');
+    await body.scrollIntoViewIfNeeded();
     const before = await body.inputValue();
     // A longer body, with every kind of value, that fills the editor down to the pane's bottom.
     const user = (id) => ({
@@ -1427,7 +1442,6 @@ try {
       if (!summary.includes("Server's body"))
         throw new Error(`the list says: ${summary}`);
       await row.click();
-      await app.click('[data-testid="tab-body"]');
       const state = async () => [
         await app.getAttribute('[data-testid="body-original"]', 'aria-checked'),
         await app.locator('.code').count(),
@@ -1461,7 +1475,6 @@ try {
         .locator('[data-testid="rule"]', { hasText: 'case=replace' })
         .first()
         .click();
-      await app.click('[data-testid="tab-body"]');
       await app.evaluate(() => document.activeElement?.blur());
       const original = await storedRules();
       const elsewhere = structuredClone(original);
@@ -1508,7 +1521,7 @@ try {
         .locator('[data-testid="rule"]', { hasText: 'case=replace' })
         .first()
         .click();
-      await app.click('[data-testid="tab-headers"]');
+      await app.click('[data-testid="row-headers"]');
       await app.getByRole('button', { name: 'Add header' }).click();
       expect(
         await app.evaluate(() => [

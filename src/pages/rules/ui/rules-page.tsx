@@ -2,6 +2,7 @@
 // two is visible at a time; from 760px wide they sit side by side.
 import { useEffect, useRef, useState } from 'react';
 import { addRule, createRule, findRule, ruleStore } from '../../../shared/api/index.ts';
+import type { TrafficLog } from '../../../shared/api/index.ts';
 import { useStore } from '../../../shared/react/index.ts';
 import { DetailPane, Split } from '../../../shared/ui/list-detail.tsx';
 import { FieldSuggestions } from './field-suggestions.tsx';
@@ -10,13 +11,21 @@ import { RuleEditor } from './rule-editor/rule-editor.tsx';
 import { RuleList } from './rule-list.tsx';
 
 interface RulesPageProps {
+  // The editor's log of the page it watches.
+  log: TrafficLog;
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   onImport: () => void;
   onExport: () => void;
 }
 
-export function RulesPage({ selectedId, onSelect, onImport, onExport }: RulesPageProps) {
+export function RulesPage({
+  log,
+  selectedId,
+  onSelect,
+  onImport,
+  onExport,
+}: RulesPageProps) {
   const { rules } = useStore(ruleStore);
   const [query, setQuery] = useState('');
   // A rule that was just created, whose URL field gets the cursor.
@@ -42,7 +51,7 @@ export function RulesPage({ selectedId, onSelect, onImport, onExport }: RulesPag
     onSelect(id);
   }
 
-  // A new rule goes first in the list, open on its Match tab.
+  // A new rule goes first in the list, open with its URL row open.
   function create() {
     setQuery('');
     const rule = addRule(createRule(), 0);
@@ -68,6 +77,7 @@ export function RulesPage({ selectedId, onSelect, onImport, onExport }: RulesPag
             <RuleEditor
               key={selected.id}
               rule={selected}
+              log={log}
               focusUrl={created === selected.id}
               revision={revision}
               onSelect={select}

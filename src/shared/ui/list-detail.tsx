@@ -11,7 +11,7 @@ export function Split({ className, ...props }: ComponentProps<'div'>) {
   return (
     <div
       className={cn(
-        'grid h-full min-h-0 grid-cols-[minmax(0,1fr)] wide:grid-cols-[minmax(320px,38%)_minmax(0,1fr)]',
+        'grid h-full min-h-0 grid-cols-[minmax(0,1fr)] wide:grid-cols-[minmax(300px,34%)_minmax(0,1fr)]',
         className,
       )}
       {...props}

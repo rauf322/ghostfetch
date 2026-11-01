@@ -22,7 +22,8 @@ interface CodeEditorProps extends Omit<ComponentProps<'div'>, 'onChange' | 'ref'
   value: string;
   // Every edit, as the whole text.
   onChange?: (value: string) => void;
-  // As tall as the text, up to the room the page gives it in --code-max. Only where it starts.
+  // As tall as the text, up to the room the page gives it in --code-max (and at least --code-fill,
+  // if the page sets that). Only where it starts.
   fit?: boolean;
   // A mistake in the current text to mark, or null.
   problem?: CodeProblem | null;

@@ -49,11 +49,10 @@ export function RuleMenu({
       <DropdownMenuTrigger
         render={
           <Button
-            variant="ghost"
             size="icon"
             title="More actions"
             data-testid="rule-menu"
-            className="mr-1.5 ml-0.5 self-center"
+            className="border border-input"
           />
         }
       >

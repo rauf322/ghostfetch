@@ -44,9 +44,9 @@ function PopupRule({ rule, windowId }: { rule: Rule; windowId: number }) {
     // The dot lines up with the "Rules" label above, 14 px in, and sits 11 px before the name.
     <li
       data-testid="popup-rule"
-      className="flex items-center gap-[3px] border-b border-line-soft px-3.5 py-[5px] hover:bg-hover"
+      className="flex items-center gap-[2px] border-b border-line-soft px-3.5 py-[5px] hover:bg-hover"
     >
-      <RuleSwitch rule={rule} immediate className="-ml-2" />
+      <RuleSwitch rule={rule} immediate className="-ml-[9px]" />
       <button
         type="button"
         title="Edit this rule"

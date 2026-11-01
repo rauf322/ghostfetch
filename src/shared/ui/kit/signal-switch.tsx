@@ -5,10 +5,10 @@ import { cn } from '../cn.ts';
 // A switch that's just a dot, for something live: green and pulsing while on (after T3 Code's
 // "working" dot), green and still while on but `paused`, grey while off. The kit's one round
 // thing: the other green marks are squares. A hairline ring around the dot on hover says it's a
-// control; the hit area is 25 px, or whatever className makes it. The dot is 9 px, as T3 Code's
-// is; the hit area is 25 px rather than 24 so the dot sits on whole pixels, 8 px in. It pulses
-// with reduced motion too, as T3 Code's dot does: the pulse is a fade, with nothing moving, and
-// fades are what Reduce Motion swaps movement for.
+// control; the hit area is 24 px, or whatever className makes it. The dot is 6 px, as T3 Code's
+// beside "Working" is, and sits on whole pixels, 9 px in. Unlike T3 Code's (motion-safe), it
+// pulses with reduced motion too: the pulse is a fade, with nothing moving, which is what Reduce
+// Motion swaps movement for, and without it a rule that's on wouldn't look live there.
 export function SignalSwitch({
   className,
   paused = false,
@@ -19,7 +19,7 @@ export function SignalSwitch({
       data-slot="switch"
       data-paused={paused || undefined}
       className={cn(
-        'group/signal relative inline-flex size-[25px] shrink-0 items-center justify-center data-disabled:cursor-default data-disabled:opacity-45',
+        'group/signal relative inline-flex size-6 shrink-0 items-center justify-center data-disabled:cursor-default data-disabled:opacity-45',
         className,
       )}
       {...props}
@@ -28,7 +28,7 @@ export function SignalSwitch({
         data-slot="switch-thumb"
         onAnimationStart={inStep}
         className={cn(
-          'pointer-events-none block size-[9px] rounded-full bg-t30 outline-offset-[3px] outline-input transition-[background-color] duration-150 group-hover/signal:outline group-data-disabled/signal:outline-0 data-checked:bg-signal',
+          'pointer-events-none block size-1.5 rounded-full bg-t30 outline-offset-[3px] outline-input transition-[background-color] duration-150 group-hover/signal:outline group-data-disabled/signal:outline-0 data-checked:bg-signal',
           !paused && 'data-checked:animate-signal-pulse',
         )}
       />

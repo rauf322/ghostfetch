@@ -574,7 +574,7 @@ async function inChromium() {
     args: [`--disable-extensions-except=${dir}`, `--load-extension=${dir}`],
     viewport: VIEWPORT,
     // As with macOS's Reduce motion on, which Zen picks up from the system: a rule's switch
-    // still pulses then.
+    // still pulses then (T3 Code's dot, which it follows, doesn't).
     reducedMotion: 'reduce',
   });
   try {

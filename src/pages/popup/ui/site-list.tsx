@@ -1,4 +1,4 @@
-// The sites Ghostfetch runs on, as a ticker line: the built-in hosts, then the sites you added,
+// The sites Ghostfetch runs on, in one line: the built-in hosts, then the sites you added,
 // each with a × that turns Ghostfetch off there.
 import { Fragment } from 'react';
 import { removeSite } from '../../../shared/api/index.ts';
@@ -14,8 +14,8 @@ export function SiteList({
   tab: chrome.tabs.Tab | undefined;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-x-2 gap-y-[5px] border-b border-border bg-code px-3.5 py-[9px] text-meta text-t65">
-      <Label className="mr-1 tracking-[0.2em]">Runs on</Label>
+    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 px-1 font-mono text-meta text-t65">
+      <Label className="mr-1 font-sans">Runs on</Label>
       <span>localhost</span>
       <Separator />
       <span>127.0.0.1</span>
@@ -26,7 +26,7 @@ export function SiteList({
           <Separator />
           <span
             data-testid="site-chip"
-            className="inline-flex items-center pl-1.5 text-foreground shadow-[inset_0_0_0_1px_var(--line-strong)]"
+            className="inline-flex items-center rounded-sm pl-1.5 text-foreground shadow-[inset_0_0_0_1px_var(--line-strong)]"
           >
             {site}
             <button
@@ -45,5 +45,5 @@ export function SiteList({
 }
 
 function Separator() {
-  return <i className="text-[7px] not-italic text-[rgba(255,255,255,0.45)]">■</i>;
+  return <i className="font-sans not-italic text-t30">·</i>;
 }

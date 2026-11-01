@@ -37,7 +37,7 @@ export function ListPane({
   );
 }
 
-// With nothing picked it shows an empty state, on the dotted grid.
+// With nothing picked it shows an empty state.
 export function DetailPane({
   picked,
   className,
@@ -47,7 +47,7 @@ export function DetailPane({
     <section
       className={cn(
         'flex min-h-0 min-w-0 flex-col',
-        !picked && 'bg-dots max-wide:hidden',
+        !picked && 'max-wide:hidden',
         className,
       )}
       {...props}
@@ -55,24 +55,22 @@ export function DetailPane({
   );
 }
 
+// The row over a list: its search field and the button that adds to it.
 export function PaneToolbar({ className, ...props }: ComponentProps<'div'>) {
   return (
     <div
-      className={cn(
-        'flex min-h-[42px] flex-none items-stretch border-b border-border',
-        className,
-      )}
+      className={cn('flex min-h-12 flex-none items-center gap-2 px-2.5', className)}
       {...props}
     />
   );
 }
 
-// A list's name and its count, as small labels.
+// A list's name and its count, as small grey labels over its rows.
 export function SectionRow({ className, ...props }: ComponentProps<'div'>) {
   return (
     <div
       className={cn(
-        'flex h-[34px] flex-none items-center justify-between gap-3 border-b border-border px-3.5',
+        'flex h-7 flex-none items-center justify-between gap-3 px-4',
         className,
       )}
       {...props}
@@ -80,12 +78,12 @@ export function SectionRow({ className, ...props }: ComponentProps<'div'>) {
   );
 }
 
-// The bar under a list, like the lesson player on effect.institute: a row of cells.
+// The bar under a list: a hairline, then a row of quiet buttons.
 export function PaneFooter({ className, ...props }: ComponentProps<'footer'>) {
   return (
     <footer
       className={cn(
-        'flex h-[38px] flex-none items-stretch border-t border-border',
+        'flex h-11 flex-none items-center gap-0.5 border-t border-border px-1.5',
         className,
       )}
       {...props}
@@ -93,10 +91,11 @@ export function PaneFooter({ className, ...props }: ComponentProps<'footer'>) {
   );
 }
 
+// Its rows are rounded and inset from the edges (Item).
 export function List({ className, ...props }: ComponentProps<'ul'>) {
   return (
     <ul
-      className={cn('min-h-0 flex-1 overflow-auto bg-dots scroll-thin', className)}
+      className={cn('min-h-0 flex-1 overflow-auto py-1 scroll-thin', className)}
       {...props}
     />
   );
@@ -105,10 +104,7 @@ export function List({ className, ...props }: ComponentProps<'ul'>) {
 // What a list says when it has nothing to show.
 export function ListEmpty({ className, ...props }: ComponentProps<'li'>) {
   return (
-    <li
-      className={cn('bg-background px-3.5 py-[18px] text-t50 [&_p]:mb-3', className)}
-      {...props}
-    />
+    <li className={cn('px-4 py-[18px] text-t50 [&_p]:mb-3', className)} {...props} />
   );
 }
 
@@ -143,7 +139,7 @@ export function BackButton({ className, ...props }: ComponentProps<typeof Button
     <Button
       variant="ghost"
       size="icon"
-      className={cn('h-full w-11 border-r border-border wide:hidden', className)}
+      className={cn('h-full w-10 rounded-none wide:hidden', className)}
       {...props}
     >
       <Icon name="back" size={18} />
@@ -151,35 +147,35 @@ export function BackButton({ className, ...props }: ComponentProps<typeof Button
   );
 }
 
-// A search field filling a cell of a toolbar, with the magnifier inside it. The field covers the
-// whole cell, magnifier included, so a click anywhere in it goes to the field.
+// A filled, rounded search field, with the magnifier inside it. The field covers the magnifier
+// too, so a click anywhere in it goes to the field.
 export function SearchField({ className, ...props }: ComponentProps<typeof Input>) {
   return (
     <div className="relative flex min-w-0 flex-1 items-center">
       <span
         aria-hidden="true"
-        className="pointer-events-none absolute left-3.5 flex text-t30"
+        className="pointer-events-none absolute left-3 flex text-t40"
       >
         <Icon name="search" size={14} />
       </span>
       <Input
         variant="bare"
         type="search"
-        className={cn('flex-1 pl-9', className)}
+        className={cn(
+          'h-8 flex-1 rounded-md bg-card pl-[34px] focus:shadow-[inset_0_0_0_1px_var(--line-strong)]',
+          className,
+        )}
         {...props}
       />
     </div>
   );
 }
 
-// An HTTP method, as in "GET /api/user".
+// An HTTP method, as in "GET /api/user": code, so in the monospace font.
 export function Method({ className, ...props }: ComponentProps<'span'>) {
   return (
     <span
-      className={cn(
-        'flex-none text-control font-medium tracking-[0.04em] text-t80',
-        className,
-      )}
+      className={cn('flex-none font-mono text-meta font-medium text-t80', className)}
       {...props}
     />
   );

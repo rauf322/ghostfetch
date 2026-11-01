@@ -19,7 +19,7 @@ export function RequestHeader({
       <Method className="self-center pl-3.5">{entry.method}</Method>
       <span
         title={entry.url}
-        className="min-w-0 flex-1 self-center truncate px-2.5 text-title font-medium text-white"
+        className="min-w-0 flex-1 self-center truncate px-2.5 font-mono text-title font-medium text-white"
       >
         {path}
       </span>

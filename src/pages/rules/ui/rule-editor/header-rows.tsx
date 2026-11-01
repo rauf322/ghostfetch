@@ -48,7 +48,7 @@ export function HeaderRows({
       {pick(rule).map((row, index) => (
         <div
           key={index}
-          className="grid w-full grid-cols-[84px_minmax(0,1fr)_minmax(0,1fr)_auto] gap-1.5"
+          className="grid w-full grid-cols-[92px_minmax(0,1fr)_minmax(0,1fr)_auto] gap-1.5"
         >
           <Select
             items={OP_ITEMS}
@@ -82,11 +82,12 @@ export function HeaderRows({
                 pick(current)[index]!.name = event.target.value;
               })
             }
-            className={cn(row.op === 'remove' && 'col-span-2')}
+            className={cn('font-mono text-meta', row.op === 'remove' && 'col-span-2')}
           />
           {row.op !== 'remove' && (
             <Input
               size="sm"
+              className="font-mono text-meta"
               aria-label="Header value"
               placeholder="Value"
               value={row.value}

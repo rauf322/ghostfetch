@@ -4,8 +4,8 @@ import type { VariantProps } from 'class-variance-authority';
 import type { ComponentProps } from 'react';
 import { cn } from '../cn.ts';
 
-// Institute's text field: a hairline box whose border turns white while it's focused. "bare" fills
-// a cell of a bar with no box of its own, like the search field and the rule's title, and is
+// Text fields: a hairline box with soft corners whose border brightens while it's focused. "bare"
+// fills a cell of a bar with no box of its own, like the search field and the rule's title, and is
 // underlined while focused. No width of its own: it stretches to its column; in a row, give it
 // flex-1.
 export const inputVariants = cva(
@@ -13,7 +13,8 @@ export const inputVariants = cva(
   {
     variants: {
       variant: {
-        default: 'border border-input hover:border-[#444] focus:border-foreground',
+        default:
+          'rounded-md border border-input hover:border-t20 focus:border-t50 focus-visible:outline-none',
         bare: 'border-0 bg-transparent focus:shadow-[inset_0_-1px_0_var(--text)]',
       },
       size: {
@@ -22,8 +23,8 @@ export const inputVariants = cva(
       },
     },
     compoundVariants: [
-      { variant: 'default', size: 'default', class: 'h-8' },
-      { variant: 'default', size: 'sm', class: 'h-7' },
+      { variant: 'default', size: 'default', class: 'h-9' },
+      { variant: 'default', size: 'sm', class: 'h-8' },
       { variant: 'bare', class: 'h-full' },
     ],
     defaultVariants: { variant: 'default', size: 'default' },

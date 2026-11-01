@@ -1,4 +1,4 @@
-// What a rule did to a request: the green square and a word, or an inverted "Rule error".
+// What a rule did to a request: the green dot and a word, or an inverted "Rule error".
 import type { EntryAction, LogEntry } from '../../../shared/api/index.ts';
 import { Badge } from '../../../shared/ui/kit/badge.tsx';
 

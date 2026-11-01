@@ -17,7 +17,7 @@ export function MasterSwitch({
     <label
       title={title}
       className={cn(
-        'flex cursor-pointer items-center gap-2 px-[9px] text-control whitespace-nowrap uppercase tracking-wider',
+        'flex cursor-pointer items-center gap-2 px-2 text-control font-medium whitespace-nowrap',
         enabled ? 'text-t80' : 'text-t40',
         className,
       )}

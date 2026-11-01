@@ -297,6 +297,7 @@ await check(
         'src/app/background/index.ts',
         'src/app/interceptor/index.ts',
         'public/fonts/CommitMono-VF.woff2',
+        'public/fonts/Geist-VF.woff2',
       ].filter((name) => !entries.includes(name)),
       [],
       'missing',

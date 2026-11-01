@@ -23,13 +23,13 @@ export function PopupPage({
   const dimmed = !enabled;
 
   return (
-    <>
+    <div className="flex flex-col gap-2.5 p-3">
       <PopupHeader />
       <CurrentSite tab={activeTab} sites={sites} dimmed={dimmed} />
       <SiteList sites={sites} tab={activeTab} />
       <RecordSwitch record={record} dimmed={dimmed} />
       <PopupRules rules={rules} windowId={windowId} dimmed={dimmed} />
       <PopupFooter windowId={windowId} />
-    </>
+    </div>
   );
 }

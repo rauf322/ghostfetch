@@ -10,26 +10,22 @@ import {
 } from '../../../../shared/ui/kit/tabs.tsx';
 import { Cell, Row } from '../cell.tsx';
 
-export function TabsSection({ index }: { index: number }) {
+export function TabsSection() {
   const [view, setView] = useState('rules');
   return (
-    <Cell
-      index={index}
-      title="Tabs"
-      note="the top bar's (live: arrows move, Enter opens)"
-    >
+    <Cell title="Tabs" note="the top bar's (live: arrows move, Enter opens)">
       <Tabs
         value={view}
         onValueChange={(next) => setView(next as string)}
         data-testid="kit-tabs"
-        className="w-[400px] flex-col border border-border"
+        className="w-[400px] flex-col rounded-lg border border-border"
       >
-        <div className="flex h-10 items-stretch border-b border-border">
-          <div className="flex items-center gap-2 pr-[9px] pl-3 text-meta font-bold whitespace-nowrap text-t65 uppercase tracking-[0.08em]">
+        <div className="flex h-12 items-stretch gap-2 border-b border-border px-2">
+          <div className="flex items-center gap-2 pr-1 pl-1.5 text-title font-semibold whitespace-nowrap text-foreground">
             <img
               src="/icons/icon32.png"
-              width={16}
-              height={16}
+              width={18}
+              height={18}
               alt=""
               className="block"
             />
@@ -37,7 +33,7 @@ export function TabsSection({ index }: { index: number }) {
           </div>
           <TabsList>
             <TabsTrigger value="rules">
-              Rules <TabsCount>08</TabsCount>
+              Rules <TabsCount>8</TabsCount>
             </TabsTrigger>
             <TabsTrigger value="traffic">
               Traffic <TabsCount>14</TabsCount>
@@ -53,10 +49,10 @@ export function TabsSection({ index }: { index: number }) {
       </Tabs>
       <Row
         label="Section labels: a list's name and its count"
-        className="flex h-[34px] w-[400px] items-center justify-between border border-border px-3.5"
+        className="flex h-7 w-[400px] items-center justify-between px-4"
       >
         <Label>Rules</Label>
-        <Label className="tracking-wider">6 / 8 on</Label>
+        <Label className="tabular-nums">6 of 8 on</Label>
       </Row>
     </Cell>
   );

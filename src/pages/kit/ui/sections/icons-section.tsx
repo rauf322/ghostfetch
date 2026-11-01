@@ -3,14 +3,9 @@
 import { ICON_NAMES, Icon } from '../../../../shared/ui/kit/icon.tsx';
 import { Cell } from '../cell.tsx';
 
-export function IconsSection({ index }: { index: number }) {
+export function IconsSection() {
   return (
-    <Cell
-      index={index}
-      title="Icons"
-      note="the same shapes as src/shared/lib/icons.ts"
-      wide
-    >
+    <Cell title="Icons" note="the same shapes as src/shared/lib/icons.ts" wide>
       <div
         data-testid="kit-icons"
         className="grid grid-cols-10 border-t border-l border-border"

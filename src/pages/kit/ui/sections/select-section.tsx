@@ -22,15 +22,11 @@ const METHODS = ['ANY', 'GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map((value) => 
   label: value === 'ANY' ? 'Any method' : value,
 }));
 
-export function SelectSection({ index, open }: { index: number; open: boolean }) {
+export function SelectSection({ open }: { open: boolean }) {
   const [method, setMethod] = useState('GET');
   const [action, setAction] = useState('');
   return (
-    <Cell
-      index={index}
-      title="Select and menu"
-      note="arrows move, Enter chooses, Esc closes"
-    >
+    <Cell title="Select and menu" note="arrows move, Enter chooses, Esc closes">
       <Row label="Live: a select and a menu" className="flex items-center gap-3">
         <div className="w-[150px]">
           <Select

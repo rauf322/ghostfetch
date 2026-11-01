@@ -1,8 +1,7 @@
 import type { ComponentProps, ReactNode } from 'react';
 import { cn } from '../cn.ts';
 
-// The rule editor's sections: full-width bands separated by hairlines, each with a title bar
-// numbered like the site's chapters, "02 — Match requests".
+// The rule editor's sections: full-width bands separated by hairlines, each with a title bar.
 export function Card({ className, ...props }: ComponentProps<'section'>) {
   return (
     <section
@@ -18,31 +17,21 @@ export function Card({ className, ...props }: ComponentProps<'section'>) {
 
 export function CardTitle({
   className,
-  index,
   note,
   children,
   ...props
-}: ComponentProps<'div'> & { index?: number; note?: ReactNode }) {
+}: ComponentProps<'div'> & { note?: ReactNode }) {
   return (
     <div
       data-slot="card-title"
       className={cn(
-        'mb-[3px] flex h-[34px] items-center border-b border-border bg-card px-3.5 text-control text-t80 uppercase tracking-wide',
+        'mb-[3px] flex h-11 items-center border-b border-border px-3.5 text-control font-medium text-t80',
         className,
       )}
       {...props}
     >
-      {index != null && (
-        <span data-slot="card-index" className="whitespace-pre">
-          {String(index).padStart(2, '0')} —{' '}
-        </span>
-      )}
       {children}
-      {note && (
-        <small className="ml-2 text-meta tracking-mono text-t40 normal-case">
-          {note}
-        </small>
-      )}
+      {note && <small className="ml-2 text-meta font-normal text-t40">{note}</small>}
     </div>
   );
 }

@@ -2,9 +2,9 @@
 import { Badge, StatusCode } from '../../../../shared/ui/kit/badge.tsx';
 import { Cell, Row } from '../cell.tsx';
 
-export function BadgeSection({ index }: { index: number }) {
+export function BadgeSection() {
   return (
-    <Cell index={index} title="Badge and status" note="words, not colours">
+    <Cell title="Badge and status" note="words, not colours">
       <Row
         label="A rule fired · rule error"
         className="flex flex-wrap items-center gap-4"

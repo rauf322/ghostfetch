@@ -33,13 +33,13 @@ export function RuleHeader({
             current.name = event.target.value;
           })
         }
-        className="flex-1 px-3.5 text-title font-medium text-white placeholder:text-t40 hover:bg-hover focus:bg-pressed"
+        className="flex-1 px-3.5 text-[16px] font-semibold tracking-tight text-white placeholder:text-t40 hover:bg-hover focus:bg-pressed"
       />
-      {/* The rule's switch fills a cell, so the whole cell is clickable. */}
+      {/* A rounded hover area around the dot, so more than the dot is clickable. */}
       <RuleSwitch
         rule={rule}
         data-testid="rule-switch"
-        className="h-auto w-14 self-stretch border-l border-border hover:bg-hover"
+        className="size-9 self-center rounded-md hover:bg-hover"
       />
       <RuleMenu rule={rule} onSelect={onSelect} />
     </PaneHead>

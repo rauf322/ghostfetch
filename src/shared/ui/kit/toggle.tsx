@@ -3,25 +3,25 @@ import { cva } from 'class-variance-authority';
 import type { VariantProps } from 'class-variance-authority';
 import { cn } from '../cn.ts';
 
-// Buttons that stay pressed: a small square, hollow when off and the green square when on, as for
-// Rec, Preserve, Matched and Vim. The "segment" look is for the options of a ToggleGroup.
+// Buttons that stay pressed: a small rounded mark, hollow when off and green when on, as for Rec,
+// Preserve, Matched and Vim. The "segment" look is for the options of a ToggleGroup.
 export const toggleVariants = cva(
-  'inline-flex shrink-0 items-center justify-center gap-[7px] whitespace-nowrap text-t50 uppercase transition-colors duration-120 select-none hover:bg-pressed hover:text-foreground disabled:pointer-events-none disabled:opacity-45',
+  'inline-flex shrink-0 items-center justify-center gap-[7px] whitespace-nowrap text-t50 transition-colors duration-120 select-none hover:bg-pressed hover:text-foreground disabled:pointer-events-none disabled:opacity-45',
   {
     variants: {
       variant: {
         square:
-          "before:size-[7px] before:flex-none before:shadow-[inset_0_0_0_1px_var(--t40)] before:content-[''] data-pressed:text-white data-pressed:before:bg-signal data-pressed:before:shadow-none",
-        // inverted white while chosen; a plain button, so the browser centres the label
+          "before:size-2 before:flex-none before:rounded-[3px] before:shadow-[inset_0_0_0_1px_var(--t40)] before:content-[''] data-pressed:text-white data-pressed:before:bg-signal data-pressed:before:shadow-none",
+        // a raised pill while chosen; a plain button, so the browser centres the label
         segment:
-          'block min-w-0 flex-1 overflow-hidden text-ellipsis data-pressed:bg-foreground data-pressed:font-medium data-pressed:text-black',
+          'block min-w-0 flex-1 overflow-hidden text-ellipsis data-pressed:bg-raised data-pressed:font-medium data-pressed:text-white',
       },
       size: {
         // the size of a small button, hairline included (give it border-input to show the hairline)
-        sm: 'h-[26px] border border-transparent px-[9px] text-label font-medium tracking-caps',
-        // a cell in a bar, like the footer's Rec / Preserve / Matched
-        cell: 'h-full border-l border-border px-[13px] text-label tracking-wide focus-visible:outline-offset-[-3px]',
-        segment: 'h-7 px-1.5 text-label tracking-caps',
+        sm: 'h-7 rounded-md border border-transparent px-2.5 text-label font-medium',
+        // a quiet button in a list's footer, like Rec / Preserve / Matched
+        cell: 'h-8 rounded-md px-2.5 text-control',
+        segment: 'h-7 rounded-[8px] px-2 text-control',
       },
     },
     defaultVariants: { variant: 'square', size: 'sm' },

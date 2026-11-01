@@ -4,10 +4,10 @@ import { Button } from '../../../../shared/ui/kit/button.tsx';
 import { Icon } from '../../../../shared/ui/kit/icon.tsx';
 import { Cell, FOCUS, HOVER, Output, Row } from '../cell.tsx';
 
-export function ButtonSection({ index }: { index: number }) {
+export function ButtonSection() {
   const [presses, setPresses] = useState(0);
   return (
-    <Cell index={index} title="Button" note="outline · primary · ghost · cell · link">
+    <Cell title="Button" note="outline · primary · ghost · cell · link">
       <Row label="Default · hover · primary · primary hover · ghost · disabled">
         <Button>Import</Button>
         <Button className={HOVER}>Import</Button>
@@ -45,14 +45,14 @@ export function ButtonSection({ index }: { index: number }) {
         <Button variant="primary" size="lg" className="w-full">
           <Icon name="wand" size={14} /> Mock this response
         </Button>
-        <div className="grid auto-cols-fr grid-flow-col border border-input">
-          <Button className="h-[30px] border-0 px-1.5 text-label tracking-[0.08em] text-t65">
+        <div className="grid auto-cols-fr grid-flow-col gap-2">
+          <Button size="sm" className="min-w-0 px-2 text-t65">
             <Icon name="rule" size={13} /> Open rule
           </Button>
-          <Button className="h-[30px] border-0 border-l border-input px-1.5 text-label tracking-[0.08em] text-t65">
+          <Button size="sm" className="min-w-0 px-2 text-t65">
             <Icon name="copy" size={13} /> Copy URL
           </Button>
-          <Button className="h-[30px] border-0 border-l border-input px-1.5 text-label tracking-[0.08em] text-t65">
+          <Button size="sm" className="min-w-0 px-2 text-t65">
             <Icon name="copy" size={13} /> Copy response
           </Button>
         </div>

@@ -91,16 +91,16 @@ What's different in Firefox-based browsers:
 - **Side panel (Chrome), sidebar (Firefox, Zen) or tab**: the full editor. Open it from the
   popup, or from the `⋯` menu.
   - **Rules**: create and edit rules. Changes save as you type and apply to open tabs
-    immediately, without reloading. Rules are numbered in order; drag them to reorder, since
-    the first match wins. Import and export sit at the bottom of the list. A rule's switch
+    immediately, without reloading. Rules apply in the list's order and the first match wins;
+    drag them to reorder. Import and export sit at the bottom of the list. A rule's switch
     is a green dot: it pulses while the rule is on, holds still while Ghostfetch is off, and
     is grey while the rule is off. Click it to turn the rule on or off.
     A rule is five tabs: **Body** (**Replace** sends your body without calling the
     server; **Server's body** makes the real request and keeps its body, so only the status,
     headers and delay change), **Status** (the code with its name, and the common ones by
     class), **Headers**, **Delay** and **Match** (what requests it answers; a new rule opens
-    there). Each tab's label shows what it's set to (`STATUS 404`, `HEADERS 2`, `DELAY 1 S`,
-    `MATCH POST`), so a rule reads at a glance.
+    there). Each tab's label shows what it's set to (`Status 404`, `Headers 2`, `Delay 1 s`,
+    `Match POST`), so a rule reads at a glance.
     The body editor is as tall as the body, down to the bottom of the window, and a longer
     body scrolls inside it. It colours what's on screen, so a body of a megabyte stays fast.
     A JSON body is checked as you type: once you pause, a mistake is marked where it is (a
@@ -113,15 +113,17 @@ What's different in Firefox-based browsers:
     the page. The **Vim** switch under it turns on [vim keys](#vim-keys). The text size and
     the Vim switch are remembered for every body editor. Format on a body of more than 300
     lines can't be undone with ⌘Z: the browser would take minutes to make it undoable.
-  - **Traffic**: live `fetch`/XHR log of a tab. Requests a rule changed are marked with a
-    green square. **Rec**, **Preserve**, **Matched** and **Clear** are in the bottom bar.
+  - **Traffic**: live `fetch`/XHR log of a tab. Requests a rule changed are marked in green
+    (**Mocked**, **Modified**). **Rec**, **Preserve**, **Matched** and **Clear** are in the
+    bottom bar.
     Click a request to see its response, then **Mock this response** to turn it into a rule
     pre-filled with the method, path, status and the real body, ready to edit.
 
-The look is monochrome and dark-only, after [effect.institute](https://www.effect.institute/):
-black, warm white, hairline cells and one colour, the green square, which means "on" or "a
-rule fired" (a rule's switch is the one round thing: a green dot that pulses while the rule is
-on). Errors and failed requests are inverted white instead of red.
+The look is dark-only and calm, after [T3 Code](https://github.com/pingdotgg/t3code), Revolut
+and ChatGPT: a near-black canvas with cards a step lighter, soft corners, Geist for words and
+Commit Mono for what is code (URLs, methods, status codes, headers, bodies), in sentence case.
+There is one colour, green, which means "on" or "a rule fired"; a rule's switch is a green dot
+that pulses while the rule is on. Errors and failed requests are inverted white instead of red.
 
 ### Vim keys
 
@@ -129,7 +131,7 @@ The **Vim** switch under a body editor, next to **Format**, turns on vim keys. I
 setting for every body editor, remembered in this browser
 and off by default. The editor then starts in Normal mode with a block cursor, and a status
 line along its bottom shows the mode, the keys typed so far and the cursor position: a hollow
-square in Normal mode, the green square in Insert mode, inverted white in Visual mode.
+mark in Normal mode, a green one in Insert mode, inverted white in Visual mode.
 
 | | Keys |
 | --- | --- |
@@ -263,7 +265,7 @@ src/app/                         the extension's parts, one folder each, which W
   popup/                         the toolbar popup's page
   sidepanel/                     the editor (Chrome's side panel, Firefox's sidebar, or a tab): its top bar, tabs and menus
   kit/                           the kit page; for npm run dev and the kit test, never in the extension
-  styles/                        theme.css, the look's values (colours, the font, the dotted grid), and kit.css: those as Tailwind's theme
+  styles/                        theme.css, the look's values (colours, the two fonts), and kit.css: those as Tailwind's theme (type sizes, corners)
 src/pages/                       what the screens show
   rules/                         the Rules tab: the rule list, and the rule editor (ui/rule-editor/, a component per tab)
   traffic/                       the Traffic tab: a tab's live log, a request's details (ui/request-detail/), Mock this response
@@ -292,7 +294,7 @@ wxt.config.ts                    the manifest (permissions, content scripts, CSP
 components.json                  settings for shadcn's CLI, for adding a kit component
 oxlint.config.ts                 the linter's settings (npm run lint), and the layers' rules for eslint-plugin-boundaries
 .oxfmtrc.json                    the formatter's settings (npm run format): single quotes, 90 columns
-public/fonts/                    Commit Mono by Eigil Nikolajsen (SIL Open Font License, see CommitMono-OFL.txt)
+public/fonts/                    Geist by Vercel and Commit Mono by Eigil Nikolajsen (SIL Open Font License, see Geist-OFL.txt and CommitMono-OFL.txt)
 public/icons/                    the Thorn Glass mark, generated by scripts/make-icons.mjs
 scripts/check-sources.mjs        rebuilds the sources zip in a clean folder and compares it with the build
 scripts/oxlint-rules.mjs         two lint rules of its own (npm run lint): no export *, and the folders of src/app/ are the extension's parts
@@ -310,8 +312,8 @@ web-ext-artifacts/               what npm run zip makes: the packages for each b
 ## UI kit
 
 `src/shared/ui/kit/` is the UI kit the popup and the editor are built from: React components on
-[Base UI](https://base-ui.com), styled with Tailwind to the look (black, warm white,
-hairlines, square corners, Commit Mono, the green square). `src/app/styles/kit.css` switches off
+[Base UI](https://base-ui.com), styled with Tailwind to the look (near-black cards, soft
+corners, Geist and Commit Mono, the green dot). `src/app/styles/kit.css` switches off
 Tailwind's own colours, fonts, type sizes, letter spacings, radii and shadows and gives it only
 this look's values, so a component can't drift from it. Base UI does the keyboard and
 screen-reader work: menus and selects open with Enter or the arrow keys, the arrows move, Esc

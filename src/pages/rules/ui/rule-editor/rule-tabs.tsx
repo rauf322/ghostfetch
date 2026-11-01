@@ -1,6 +1,6 @@
 // "Body · Status · Headers · Delay · Match": what a rule sends back and the requests it answers, a
-// tab for each, in the section's title bar. Each tab's label carries what it's set to (STATUS 404,
-// HEADERS 2, DELAY 1 S, MATCH POST), and BODY and MATCH a cross while the body has a mistake or
+// tab for each, in the section's title bar. Each tab's label carries what it's set to (Status 404,
+// Headers 2, Delay 1 s, Match POST), and Body and Match a cross while the body has a mistake or
 // the pattern doesn't compile. A rule that was just created opens on Match, with the cursor in its
 // URL field. The Body tab stays mounted under the others, invisible: the body editor keeps its
 // undo history and vim state, and the section is never shorter than the Body tab, so it doesn't
@@ -33,7 +33,7 @@ type Tab = 'body' | 'status' | 'headers' | 'delay' | 'match';
 const PANEL = 'col-start-1 row-start-1 flex min-w-0 flex-col gap-[9px] self-start';
 // In a section narrower than 460 px (a side panel) the tabs are closer together; narrower still,
 // they scroll sideways rather than being cut off.
-const TAB = '@max-[460px]:px-1.5';
+const TAB = '@max-[460px]:px-2';
 
 export function RuleTabs({
   rule,
@@ -63,18 +63,13 @@ export function RuleTabs({
       onValueChange={(value) => setTab(value as Tab)}
       className="@container flex-col gap-[9px] border-b border-border pb-3.5"
     >
-      {/* The first tab's label lines up with the panel under it, 14 px in: 5 + 9 px wide, 8 + 6
-          px narrow. */}
-      <CardTitle className="pr-0 pl-[5px] @max-[460px]:pl-2">
+      {/* The first pill lines up with the panel under it, 14 px in. */}
+      <CardTitle className="pr-2">
         <TabsList
           aria-label="Rule"
           className="min-w-0 overflow-x-auto [scrollbar-width:none]"
         >
-          <TabsTrigger
-            value="body"
-            data-testid="tab-body"
-            className={cn(TAB, 'border-l-0')}
-          >
+          <TabsTrigger value="body" data-testid="tab-body" className={TAB}>
             Body
             {mistake && <Cross label="has a mistake" />}
           </TabsTrigger>

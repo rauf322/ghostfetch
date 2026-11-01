@@ -21,7 +21,7 @@ export function TabPicker({
 }) {
   return (
     <PaneToolbar>
-      <div className="flex min-w-0 flex-1 items-center gap-2.5 pl-3.5">
+      <div className="flex h-9 min-w-0 flex-1 items-center gap-2.5 pl-1.5">
         <Label>Tab</Label>
         <Select
           items={tabs.map((tab) => ({

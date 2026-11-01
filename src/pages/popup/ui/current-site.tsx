@@ -28,16 +28,16 @@ export function CurrentSite({
   return (
     <div
       className={cn(
-        'flex items-center justify-between gap-3 border-b border-border bg-dots-strong px-3.5 py-4',
+        'flex items-center justify-between gap-3 rounded-lg bg-card px-3.5 py-3.5',
         dimmed && 'opacity-55',
       )}
     >
       <div className="min-w-0">
         <Label className="block">{enabledHere ? 'Active on' : 'Not active on'}</Label>
-        <div className="mt-[5px] mb-[3px] truncate text-hero font-medium tracking-[0.01em] text-white">
+        <div className="mt-1 mb-0.5 truncate font-mono text-hero font-semibold text-white">
           {host}
         </div>
-        <div className="text-label uppercase tracking-wide text-t40">
+        <div className="text-label text-t50">
           {builtIn
             ? 'Always on · built-in host'
             : enabledHere

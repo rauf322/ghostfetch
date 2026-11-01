@@ -1,6 +1,5 @@
 // The Rules tab's list: search and New rule along the top, how many rules are on, the rules in
-// their order (numbered by priority, even while a search hides some), and Import and Export along
-// the bottom.
+// their order (which is their priority), and Import and Export along the bottom.
 import { ruleStore } from '../../../shared/api/index.ts';
 import { useStore } from '../../../shared/react/index.ts';
 import { Button } from '../../../shared/ui/kit/button.tsx';
@@ -56,20 +55,15 @@ export function RuleList({
           placeholder="Search rules"
           aria-label="Search rules"
         />
-        <Button
-          variant="primary"
-          data-testid="new-rule"
-          onClick={onCreate}
-          className="mr-2 h-7 self-center"
-        >
+        <Button variant="primary" size="sm" data-testid="new-rule" onClick={onCreate}>
           <Icon name="plus" size={14} />
           New rule
         </Button>
       </PaneToolbar>
       <SectionRow>
         <Label>Rules</Label>
-        <Label className="tracking-wider">
-          {rules.length ? `${active} / ${rules.length} on` : ''}
+        <Label className="tabular-nums">
+          {rules.length ? `${active} of ${rules.length} on` : ''}
         </Label>
       </SectionRow>
 
@@ -84,9 +78,6 @@ export function RuleList({
           <RuleListItem
             key={rule.id}
             rule={rule}
-            // The rule's place in the whole list, which is its priority, even while a search
-            // hides some rules.
-            position={String(rules.indexOf(rule) + 1).padStart(2, '0')}
             selected={rule.id === selectedId}
             drag={drag(rule)}
             onSelect={onSelect}
@@ -95,7 +86,7 @@ export function RuleList({
       </List>
 
       <PaneFooter>
-        <span className="flex min-w-0 flex-1 items-center gap-[7px] overflow-hidden px-3.5 text-label whitespace-nowrap uppercase tracking-caps text-t30">
+        <span className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden px-2.5 text-label whitespace-nowrap text-t30">
           <Icon name="grip" size={13} />
           Drag to reorder
         </span>

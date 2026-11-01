@@ -23,21 +23,23 @@ export const RequestRow = memo(function RequestRow({
     <Item
       variant="request"
       data-testid="request"
-      hit={Boolean(entry.action)}
       selected={selected}
       title={entry.url}
       onClick={() => onSelect(entry.id)}
     >
       <Method>{entry.method}</Method>
-      <span className="flex min-w-0 flex-col">
-        <span data-testid="request-path" className="truncate text-foreground">
+      <span className="flex min-w-0 flex-col gap-0.5">
+        <span
+          data-testid="request-path"
+          className="truncate font-mono text-body text-foreground"
+        >
           {path}
         </span>
-        <span className="flex min-w-0 items-center gap-[7px] overflow-hidden text-control whitespace-nowrap text-t30">
+        <span className="flex min-w-0 items-center gap-1.5 overflow-hidden text-label whitespace-nowrap text-t40">
           {entry.action ? (
             <>
               <ActionBadge entry={entry} title={entry.error || entry.ruleName} />
-              <span className="truncate text-t40">{entry.error || entry.ruleName}</span>
+              <span className="truncate text-t65">{entry.error || entry.ruleName}</span>
             </>
           ) : (
             `${host}${entry.frame ? ' · in iframe' : ''}`
@@ -45,7 +47,7 @@ export const RequestRow = memo(function RequestRow({
         </span>
       </span>
       <StatusCode status={entry.status} failed={Boolean(entry.error)} />
-      <span className="text-right text-control text-t30 tabular-nums">
+      <span className="text-right font-mono text-meta text-t40 tabular-nums">
         {entry.duration != null ? `${entry.duration} ms` : ''}
       </span>
     </Item>

@@ -1,6 +1,6 @@
-/* The UI kit's stylesheet, and so the popup's and the editor's: Institute's values (theme.css) as
+/* The UI kit's stylesheet, and so the popup's and the editor's: the theme's values (theme.css) as
    Tailwind's theme. Tailwind's own palette, fonts, type sizes, letter spacings, radii and shadows
-   are switched off, so a component can only use Institute's values.
+   are switched off, so a component can only use the theme's values.
 
    Tailwind writes a rule for each class name it finds in src/ (source("../.."), from this
    folder), and only there: not in .output/ or anything else in the project folder, so the same
@@ -9,12 +9,12 @@
 @import './theme.css';
 
 :root {
-  /* shadcn's names pointed at Institute's, so a component borrowed from shadcn or 21st.dev starts
+  /* shadcn's names pointed at the theme's, so a component borrowed from shadcn or 21st.dev starts
      out close (README, "Adding a UI component") */
   --background: var(--bg);
   --foreground: var(--text);
   --card: var(--panel);
-  --popover: var(--bg);
+  --popover: var(--panel);
   --primary: var(--text);
   --primary-foreground: #000;
   --secondary: var(--pressed);
@@ -36,29 +36,32 @@
   --radius-*: initial;
   --shadow-*: initial;
 
-  --font-sans: 'Commit Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --font-sans: 'Geist', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-mono: 'Commit Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 
-  /* Institute's type sizes, named by what uses them */
-  --text-micro: 9.5px; /* field labels, badges */
-  --text-label: 10px; /* section labels, footer cells, segments */
-  --text-control: 10.5px; /* buttons, tabs, section titles */
-  --text-meta: 11px; /* rule meta, hints */
-  --text-small: 11.5px; /* menus, toasts, banners */
-  --text-body: 12px; /* inputs, body text */
-  --text-title: 13px; /* rule titles */
+  /* type sizes, named by what uses them */
+  --text-micro: 11px; /* badges, the labels over facts */
+  --text-label: 12px; /* section labels, small buttons, segments */
+  --text-control: 13px; /* buttons, tabs, section titles */
+  --text-meta: 12px; /* a rule's match, hints, durations */
+  --text-small: 13px; /* menus, toasts, banners */
+  --text-body: 13px; /* inputs, body text */
+  --text-title: 14px; /* a rule's or a request's name */
+  --text-heading: 18px; /* an empty state's title */
   --text-hero: 20px; /* the popup's site name */
 
-  /* letter spacing: none (counts), the body's, and the uppercase labels' */
+  /* letter spacing: none, and a little less for big titles */
   --tracking-normal: 0;
-  --tracking-mono: 0.02em;
-  --tracking-caps: 0.1em;
-  --tracking-wide: 0.12em;
-  --tracking-wider: 0.14em;
-  --tracking-badge: 0.16em;
-  --tracking-label: 0.3em;
+  --tracking-tight: -0.01em;
 
-  --shadow-menu: 0 12px 32px rgba(0, 0, 0, 0.7);
+  /* corners: small marks (a status code), controls (buttons, fields, rows), cards and menus, and
+     sheets. Only the rule's dot and the switches are round (rounded-full). */
+  --radius-sm: 5px;
+  --radius-md: 9px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+
+  --shadow-menu: 0 16px 48px rgba(0, 0, 0, 0.55);
 
   /* A rule that's on (SignalSwitch): the green dot dims to half and back every 2 s, after
      T3 Code's "working" dot. Long holds and stepped ramps, so the browser draws a dozen frames a
@@ -89,6 +92,7 @@
   --color-white: #fff;
   --color-black: #000;
   --color-signal: var(--signal);
+  --color-signal-soft: var(--signal-soft);
   --color-t80: var(--t80);
   --color-t65: var(--t65);
   --color-t50: var(--t50);
@@ -98,6 +102,7 @@
   --color-line-soft: var(--line-soft);
   --color-hover: var(--hover);
   --color-pressed: var(--pressed);
+  --color-raised: var(--raised);
   --color-code: var(--code-bg);
 
   --color-background: var(--background);
@@ -127,8 +132,7 @@ body {
 @layer base {
   body {
     font-size: var(--text-body);
-    line-height: 1.55;
-    letter-spacing: 0.02em;
+    line-height: 1.5;
     color: var(--text);
     background: var(--bg);
     -webkit-font-smoothing: antialiased;
@@ -139,10 +143,10 @@ body {
     font-weight: 600;
   }
   code {
-    font: inherit;
-    font-size: 11px;
-    padding: 0 4px;
-    border: 1px solid var(--line-strong);
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    padding: 1px 5px;
+    border-radius: var(--radius-sm);
     background: var(--pressed);
     color: var(--t80);
   }
@@ -150,7 +154,7 @@ body {
     background: rgba(255, 255, 255, 0.2);
   }
   :focus-visible {
-    outline: 1px solid var(--text);
+    outline: 1.5px solid var(--t65);
     outline-offset: 2px;
   }
   button:not(:disabled),
@@ -173,28 +177,18 @@ body {
   }
 }
 
-/* effect.institute's dotted grid, behind empty space; a brighter one behind the popup's site */
-@utility bg-dots {
-  background: var(--dots), var(--bg);
-}
-@utility bg-dots-strong {
-  background:
-    radial-gradient(circle, rgba(255, 255, 255, 0.16) 0.8px, transparent 1.2px) 7px 7px /
-      14px 14px,
-    var(--bg);
-}
 @utility scroll-thin {
   scrollbar-width: thin;
   scrollbar-color: var(--line-strong) transparent;
 }
-/* A select's small solid triangle, 11px in from the right edge: two 5px tiles, each half filled */
+/* A select's small solid triangle, 12px in from the right edge: two 5px tiles, each half filled */
 @utility select-arrow {
   background-image:
     linear-gradient(45deg, transparent 50%, var(--t50) 50%),
     linear-gradient(135deg, var(--t50) 50%, transparent 50%);
   background-position:
-    calc(100% - 16px) 50%,
-    calc(100% - 11px) 50%;
+    calc(100% - 17px) 50%,
+    calc(100% - 12px) 50%;
   background-size:
     5px 5px,
     5px 5px;

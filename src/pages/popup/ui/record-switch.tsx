@@ -7,7 +7,7 @@ export function RecordSwitch({ record, dimmed }: { record: boolean; dimmed: bool
   return (
     <div
       className={cn(
-        'flex items-center justify-between border-b border-border px-3.5 py-[11px] text-control uppercase tracking-wider text-t65',
+        'flex items-center justify-between rounded-lg bg-card px-3.5 py-2.5 text-control text-t80',
         dimmed && 'opacity-55',
       )}
     >

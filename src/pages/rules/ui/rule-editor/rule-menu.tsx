@@ -53,7 +53,7 @@ export function RuleMenu({
             size="icon"
             title="More actions"
             data-testid="rule-menu"
-            className="h-full w-[45px] border-l border-border"
+            className="mr-1.5 ml-0.5 self-center"
           />
         }
       >

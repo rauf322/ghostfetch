@@ -13,13 +13,20 @@ const KIND_LABELS: Record<LogEntry['kind'], string> = {
 export function RequestFacts({ entry }: { entry: LogEntry }) {
   return (
     <dl className="grid grid-cols-2 gap-x-4 px-3.5 pt-1 pb-3">
-      <Fact label="URL" wide className="break-all">
+      <Fact label="URL" wide className="font-mono text-meta break-all">
         {entry.url}
       </Fact>
-      <Fact label="Type">{`${KIND_LABELS[entry.kind]}${entry.frame ? ` in iframe ${entry.frame}` : ''}`}</Fact>
+      <Fact
+        label="Type"
+        className="font-mono text-meta"
+      >{`${KIND_LABELS[entry.kind]}${entry.frame ? ` in iframe ${entry.frame}` : ''}`}</Fact>
       {entry.duration != null && <Fact label="Duration">{`${entry.duration} ms`}</Fact>}
       <Fact label="Time">{new Date(entry.time).toLocaleTimeString()}</Fact>
-      {entry.contentType && <Fact label="Content-Type">{entry.contentType}</Fact>}
+      {entry.contentType && (
+        <Fact label="Content-Type" className="font-mono text-meta">
+          {entry.contentType}
+        </Fact>
+      )}
       {entry.ruleId && (
         <Fact label="Rule" wide>
           <ActionBadge entry={entry} />
@@ -46,7 +53,7 @@ function Fact({
     <div
       className={cn('min-w-0 border-b border-line-soft py-2', wide && 'col-span-full')}
     >
-      <dt className="mb-[3px] text-micro uppercase tracking-badge text-t40">{label}</dt>
+      <dt className="mb-0.5 text-label text-t40">{label}</dt>
       <dd
         className={cn(
           'flex min-w-0 flex-wrap items-center gap-2 text-foreground',

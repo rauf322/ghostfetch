@@ -9,8 +9,18 @@ import { extendTailwindMerge } from 'tailwind-merge';
 const twMerge = extendTailwindMerge({
   extend: {
     theme: {
-      text: ['micro', 'label', 'control', 'meta', 'small', 'body', 'title', 'hero'],
-      tracking: ['normal', 'mono', 'caps', 'wide', 'wider', 'badge', 'label'],
+      text: [
+        'micro',
+        'label',
+        'control',
+        'meta',
+        'small',
+        'body',
+        'title',
+        'heading',
+        'hero',
+      ],
+      tracking: ['normal', 'tight'],
       shadow: ['menu'],
     },
   },

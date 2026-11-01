@@ -6,10 +6,10 @@ import { Icon } from '../../../../shared/ui/kit/icon.tsx';
 import { Input } from '../../../../shared/ui/kit/input.tsx';
 import { Cell, Output, Row } from '../cell.tsx';
 
-export function InputSection({ index }: { index: number }) {
+export function InputSection() {
   const [url, setUrl] = useState('/api/user');
   return (
-    <Cell index={index} title="Input">
+    <Cell title="Input">
       <Row label="Empty · filled · hover · focus" className="grid grid-cols-4 gap-2">
         <Input placeholder="/api/users" aria-label="Empty" />
         <Input defaultValue="/api/user" aria-label="Filled" />

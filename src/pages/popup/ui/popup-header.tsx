@@ -3,21 +3,18 @@ import { MasterSwitch } from '../../../shared/ui/master-switch.tsx';
 
 export function PopupHeader() {
   return (
-    <header className="flex h-11 items-stretch border-b border-border">
+    <header className="flex h-9 items-stretch">
       <img
         src="/icons/icon32.png"
         width={18}
         height={18}
         alt=""
-        className="ml-3.5 self-center"
+        className="ml-1 self-center"
       />
-      <strong className="flex items-center pr-3 pl-[9px] text-small font-bold uppercase tracking-[0.08em] text-t80">
+      <strong className="flex items-center pl-2 text-title font-semibold text-foreground">
         Ghostfetch
       </strong>
-      <MasterSwitch
-        title="Turn Ghostfetch on or off"
-        className="ml-auto border-l border-border"
-      />
+      <MasterSwitch title="Turn Ghostfetch on or off" className="ml-auto pr-0.5" />
     </header>
   );
 }

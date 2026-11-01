@@ -1,5 +1,5 @@
-// The bar under the log, a row of cells: Rec (record requests), Preserve (keep them when the page
-// reloads), Matched (only the requests a rule matched) and Clear.
+// The bar under the log, a row of quiet buttons: Rec (record requests), Preserve (keep them when
+// the page reloads), Matched (only the requests a rule matched) and Clear.
 import { setFlag } from '../../../shared/api/index.ts';
 import { Button } from '../../../shared/ui/kit/button.tsx';
 import { Icon } from '../../../shared/ui/kit/icon.tsx';
@@ -28,7 +28,6 @@ export function TrafficFooter({
         pressed={record}
         onPressedChange={(on) => setFlag('record', on)}
         title="Capture requests. Rules apply either way."
-        className="border-l-0"
       >
         Rec
       </Toggle>

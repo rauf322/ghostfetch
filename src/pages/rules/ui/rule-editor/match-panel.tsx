@@ -100,6 +100,7 @@ export function MatchPanel({
         ref={urlField}
         data-testid="match-url"
         aria-label="URL pattern"
+        className="font-mono"
         value={match.url}
         placeholder="/api/users"
         onChange={(event) =>
@@ -114,9 +115,10 @@ export function MatchPanel({
       <label className="flex min-w-0 flex-col gap-[5px]">
         <FieldLabel>
           {'GraphQL operation '}
-          <em className="tracking-mono text-t30 not-italic normal-case">optional</em>
+          <em className="text-t30 not-italic">optional</em>
         </FieldLabel>
         <Input
+          className="font-mono"
           value={match.graphqlOperation}
           placeholder="GetUser"
           onChange={(event) =>
@@ -134,7 +136,7 @@ export function MatchPanel({
           placeholder="Paste a URL to test the pattern"
           value={testedUrl}
           onChange={(event) => onTestedUrlChange(event.target.value)}
-          className="flex-1"
+          className="flex-1 font-mono"
         />
         {tested && (
           <Verdict

@@ -8,15 +8,11 @@ import { Cell, Output, Row } from '../cell.tsx';
 
 const STATUS_PRESETS = [200, 201, 204, 400, 401, 403, 404, 409, 422, 429, 500, 503];
 
-export function SegmentedSection({ index }: { index: number }) {
+export function SegmentedSection() {
   const [mode, setMode] = useState<BodyMode>('replace');
   const [status, setStatus] = useState<string[]>(['404']);
   return (
-    <Cell
-      index={index}
-      title="Segmented and toggle group"
-      note="one answer always · chips that clear"
-    >
+    <Cell title="Segmented and toggle group" note="one answer always · chips that clear">
       <Row label="Segmented (live: arrow keys choose)" className="flex flex-col gap-2">
         <Segmented
           value={mode}
@@ -40,14 +36,14 @@ export function SegmentedSection({ index }: { index: number }) {
           onValueChange={(next) => setStatus(next as string[])}
           aria-label="Status code"
           data-testid="kit-chips"
-          className="grid grid-cols-6 border-0 border-t border-l"
+          className="grid grid-cols-6 gap-1 bg-transparent p-0"
         >
           {STATUS_PRESETS.map((code) => (
             <ToggleGroupItem
               key={code}
               value={String(code)}
               data-testid={`kit-chip-${code}`}
-              className="h-[26px] border-r border-b border-input px-0 text-meta tracking-[inherit] not-first:border-l-0"
+              className="bg-card px-0 font-mono text-meta"
             >
               {code}
             </ToggleGroupItem>

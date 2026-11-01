@@ -93,7 +93,7 @@ export function BodyPanel({
                   current.response.contentType = event.target.value;
                 })
               }
-              className="flex-1"
+              className="flex-1 font-mono text-meta"
             />
           </label>
           <CodeEditor

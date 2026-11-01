@@ -3,9 +3,9 @@ import type { AnimationEvent } from 'react';
 import { cn } from '../cn.ts';
 
 // A switch that's just a dot, for something live: green and pulsing while on (after T3 Code's
-// "working" dot), green and still while on but `paused`, grey while off. The kit's one round
-// thing: the other green marks are squares. A hairline ring around the dot on hover says it's a
-// control; the hit area is 24 px, or whatever className makes it. The dot is 6 px, as T3 Code's
+// "working" dot), green and still while on but `paused`, grey while off. A hairline ring around
+// the dot on hover says it's a control; the hit area is 24 px, or whatever className makes it.
+// The dot is 6 px, as T3 Code's
 // beside "Working" is, and sits on whole pixels, 9 px in. Unlike T3 Code's (motion-safe), it
 // pulses with reduced motion too: the pulse is a fade, with nothing moving, which is what Reduce
 // Motion swaps movement for, and without it a rule that's on wouldn't look live there.

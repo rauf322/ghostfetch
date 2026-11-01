@@ -5,7 +5,7 @@ import { Button } from '../../../../shared/ui/kit/button.tsx';
 import { Toaster, createToastManager, toast } from '../../../../shared/ui/kit/toast.tsx';
 import { Cell, Output, Row } from '../cell.tsx';
 
-export function AlertSection({ index }: { index: number }) {
+export function AlertSection() {
   const [undone, setUndone] = useState(0);
 
   const deleteRule = () => {
@@ -22,7 +22,7 @@ export function AlertSection({ index }: { index: number }) {
   };
 
   return (
-    <Cell index={index} title="Alert and toast" note="errors are inverted white, not red">
+    <Cell title="Alert and toast" note="errors are inverted white, not red">
       <Alert>Recording is paused. Rules still apply.</Alert>
       <Alert variant="error">TypeError: Failed to fetch</Alert>
       <Alert variant="paused">

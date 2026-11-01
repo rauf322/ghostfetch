@@ -4,10 +4,10 @@ import {
   Item,
   ItemContent,
   ItemDescription,
-  ItemNumber,
   ItemTitle,
 } from '../../../../shared/ui/kit/item.tsx';
 import { SignalSwitch } from '../../../../shared/ui/kit/signal-switch.tsx';
+import { Method } from '../../../../shared/ui/list-detail.tsx';
 import { Cell } from '../cell.tsx';
 
 const RULES: {
@@ -89,56 +89,54 @@ const REQUESTS: {
   },
 ];
 
-export function ItemSection({ index }: { index: number }) {
+export function ItemSection() {
   return (
-    <Cell index={index} title="Item" note="rule rows and request rows" wide>
+    <Cell title="Item" note="rule rows and request rows" wide>
       <div className="grid grid-cols-2 gap-6">
-        <ul className="m-0 list-none border border-b-0 border-border p-0">
+        <ul className="m-0 list-none py-1">
           {RULES.map((rule, position) => (
             <Item key={rule.name} variant="rule" selected={position === 1} off={!rule.on}>
-              <ItemNumber>{String(position + 1).padStart(2, '0')}</ItemNumber>
+              <SignalSwitch
+                defaultChecked={rule.on}
+                aria-label={`Turn “${rule.name}” on or off`}
+                className="-my-0.5 -ml-[9px] self-start"
+              />
               <ItemContent>
                 <ItemTitle>{rule.name}</ItemTitle>
                 <ItemDescription>
                   {rule.method !== 'ANY' && (
-                    <span className="flex-none text-control font-medium tracking-[0.04em] text-t80">
+                    <span className="flex-none font-mono font-medium text-t80">
                       {rule.method}
                     </span>
                   )}
-                  <span className="max-w-[62%] flex-none truncate text-t65">
+                  <span className="max-w-[62%] flex-none truncate font-mono text-t65">
                     {rule.url}
                   </span>
-                  <span className="min-w-0 flex-[0_10_auto] truncate text-t30">
+                  <span className="min-w-0 flex-[0_10_auto] truncate text-t40">
                     {rule.summary}
                   </span>
                 </ItemDescription>
               </ItemContent>
-              <SignalSwitch
-                defaultChecked={rule.on}
-                aria-label={`Turn “${rule.name}” on or off`}
-                className="-mr-[9px]"
-              />
             </Item>
           ))}
         </ul>
-        <ul className="m-0 list-none border border-b-0 border-border p-0">
+        <ul className="m-0 list-none py-1">
           {REQUESTS.map((entry, position) => (
             <Item
               key={entry.path + entry.method}
               variant="request"
-              hit={Boolean(entry.action)}
               selected={position === 2}
             >
-              <span className="text-control font-medium tracking-[0.04em] text-t80">
-                {entry.method}
-              </span>
-              <span className="flex min-w-0 flex-col">
-                <span className="truncate text-foreground">{entry.path}</span>
-                <span className="flex min-w-0 items-center gap-[7px] overflow-hidden text-control whitespace-nowrap text-t30">
+              <Method>{entry.method}</Method>
+              <span className="flex min-w-0 flex-col gap-0.5">
+                <span className="truncate font-mono text-body text-foreground">
+                  {entry.path}
+                </span>
+                <span className="flex min-w-0 items-center gap-1.5 overflow-hidden text-label whitespace-nowrap text-t40">
                   {entry.action ? (
                     <>
                       <Badge variant="fired">{entry.action}</Badge>
-                      <span className="truncate text-t40">{entry.rule}</span>
+                      <span className="truncate text-t65">{entry.rule}</span>
                     </>
                   ) : (
                     entry.host
@@ -146,7 +144,7 @@ export function ItemSection({ index }: { index: number }) {
                 </span>
               </span>
               <StatusCode status={entry.status} />
-              <span className="text-right text-control text-t30 tabular-nums">
+              <span className="text-right font-mono text-meta text-t40 tabular-nums">
                 {entry.ms != null ? `${entry.ms} ms` : ''}
               </span>
             </Item>

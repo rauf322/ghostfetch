@@ -6,10 +6,8 @@ import { Icon } from '../../../../shared/ui/kit/icon.tsx';
 import { notify } from '../../../../shared/ui/kit/toast.tsx';
 import { ruleFromEntry } from '../../lib/rule-from-entry.ts';
 
-// The row of secondary actions under Mock this response: cells in one hairline box, quieter than
-// other buttons (their words stay grey under the pointer).
-const SECONDARY =
-  'h-[30px] min-w-0 border-0 px-1.5 text-label tracking-[0.08em] text-t65 not-first:border-l not-first:border-input hover:text-t65';
+// The row of secondary actions under Mock this response: small outline buttons, side by side.
+const SECONDARY = 'min-w-0 px-2 text-t65';
 
 export function RequestActions({
   entry,
@@ -47,19 +45,24 @@ export function RequestActions({
         <Icon name="wand" />
         Mock this response
       </Button>
-      <div className="grid auto-cols-fr grid-flow-col border border-input">
+      <div className="grid auto-cols-fr grid-flow-col gap-2">
         {entry.ruleId && (
-          <Button className={SECONDARY} onClick={() => onOpenRule(entry.ruleId!)}>
+          <Button
+            size="sm"
+            className={SECONDARY}
+            onClick={() => onOpenRule(entry.ruleId!)}
+          >
             <Icon name="rule" size={13} />
             Open rule
           </Button>
         )}
-        <Button className={SECONDARY} onClick={() => copy(entry.url)}>
+        <Button size="sm" className={SECONDARY} onClick={() => copy(entry.url)}>
           <Icon name="copy" size={13} />
           Copy URL
         </Button>
         {entry.responseBody && (
           <Button
+            size="sm"
             className={SECONDARY}
             onClick={() => copy(pretty ?? entry.responseBody)}
           >

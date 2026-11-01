@@ -2,8 +2,8 @@ import { Toast as ToastPrimitive } from '@base-ui/react/toast';
 import type { ReactNode } from 'react';
 import { cn } from '../cn.ts';
 
-// Institute's toast: one inverted white bar at a time, centred over the bottom bar, with an
-// underlined action. An error is the same bar in black with a white border. Built on Base UI's
+// The toast: one inverted white pill at a time, centred over the bottom bar, with an underlined
+// action. An error is the same pill in black with a white border. Built on Base UI's
 // Toast: Sonner, shadcn's usual toast, adds a <style> tag the CSP blocks.
 //
 // notify() shows one; toast.add() takes all of Base UI's options.
@@ -47,10 +47,10 @@ function ToastList() {
       key={item.id}
       toast={item}
       data-slot="toast"
-      className="flex items-center gap-3.5 bg-foreground px-3.5 py-2.5 text-small text-black shadow-menu transition-[opacity,translate] duration-150 select-none data-ending-style:opacity-0 data-limited:hidden data-starting-style:translate-y-2 data-starting-style:opacity-0 data-[type=error]:border data-[type=error]:border-foreground data-[type=error]:bg-background data-[type=error]:text-foreground"
+      className="flex items-center gap-3.5 rounded-lg bg-foreground px-4 py-2.5 text-small font-medium text-black shadow-menu transition-[opacity,translate] duration-150 select-none data-ending-style:opacity-0 data-limited:hidden data-starting-style:translate-y-2 data-starting-style:opacity-0 data-[type=error]:border data-[type=error]:border-foreground data-[type=error]:bg-background data-[type=error]:text-foreground"
     >
       <ToastPrimitive.Title className="m-0 min-w-0 flex-1 font-normal" />
-      <ToastPrimitive.Action className="flex-none cursor-pointer text-control font-semibold uppercase tracking-wide underline underline-offset-3" />
+      <ToastPrimitive.Action className="flex-none cursor-pointer text-control font-semibold underline underline-offset-3" />
     </ToastPrimitive.Root>
   ));
 }

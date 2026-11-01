@@ -5,19 +5,16 @@ import { Icon } from '../../../shared/ui/kit/icon.tsx';
 
 export function PopupFooter({ windowId }: { windowId: number }) {
   return (
-    <footer className="grid grid-cols-2 border-t border-border">
-      <Button
-        onClick={() => openInSidePanel(windowId)}
-        className="h-11 border-0 bg-transparent tracking-[0.2em] text-white"
-      >
+    <footer className="grid grid-cols-2 gap-2">
+      <Button variant="primary" size="lg" onClick={() => openInSidePanel(windowId)}>
         Side panel <Icon name="arrow" size={13} />
       </Button>
       <Button
+        size="lg"
         onClick={() => {
           openInTab();
           window.close();
         }}
-        className="h-11 border-0 border-l border-border bg-transparent tracking-[0.2em] text-t40"
       >
         Open in tab <Icon name="external" size={13} />
       </Button>

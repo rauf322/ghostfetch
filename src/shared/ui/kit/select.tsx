@@ -1,10 +1,10 @@
 import { Select as SelectPrimitive } from '@base-ui/react/select';
 import { cn } from '../cn.ts';
 
-// A select in Institute's style: the trigger looks like an input, with a small solid triangle
-// (kit.css's select-arrow) at its right end; the list is a hairline box with hairlines between
-// options and a small white square next to the chosen one. Base UI does the keyboard: the arrow
-// keys or Enter open it, arrows move, Enter chooses, Esc closes, typing jumps to an option.
+// A select: the trigger looks like an input, with a small solid triangle (kit.css's select-arrow)
+// at its right end; the list is a rounded card of rounded rows, with a small white dot next to the
+// chosen one. Base UI does the keyboard: the arrow keys or Enter open it, arrows move, Enter
+// chooses, Esc closes, typing jumps to an option.
 export const Select = SelectPrimitive.Root;
 
 export function SelectValue({ className, ...props }: SelectPrimitive.Value.Props) {
@@ -36,8 +36,8 @@ export function SelectTrigger({
       data-size={size}
       className={cn(
         'flex w-full min-w-0 items-center bg-background pr-7 text-foreground outline-none select-arrow transition-[border-color] duration-120 select-none data-placeholder:text-t30',
-        'data-[size=default]:h-8 data-[size=default]:pl-2.5 data-[size=default]:text-body data-[size=sm]:h-7 data-[size=sm]:pl-2 data-[size=sm]:text-small',
-        'data-[variant=default]:border data-[variant=default]:border-input data-[variant=default]:hover:border-[#444] data-[variant=default]:focus-visible:border-foreground data-[variant=default]:data-popup-open:border-foreground',
+        'data-[size=default]:h-9 data-[size=default]:pl-2.5 data-[size=default]:text-body data-[size=sm]:h-8 data-[size=sm]:pl-2 data-[size=sm]:text-small',
+        'data-[variant=default]:rounded-md data-[variant=default]:border data-[variant=default]:border-input data-[variant=default]:hover:border-t20 data-[variant=default]:focus-visible:border-t50 data-[variant=default]:focus-visible:outline-none data-[variant=default]:data-popup-open:border-t50',
         // in a cell of a bar, like the Traffic tab's page picker: underlined while focused
         'data-[variant=bare]:h-full data-[variant=bare]:bg-transparent data-[variant=bare]:pl-0 data-[variant=bare]:focus-visible:shadow-[inset_0_-1px_0_var(--text)]',
         className,
@@ -53,7 +53,7 @@ export function SelectContent({
   className,
   children,
   side = 'bottom',
-  sideOffset = 1,
+  sideOffset = 4,
   align = 'start',
   alignItemWithTrigger = true,
   ...props
@@ -74,7 +74,7 @@ export function SelectContent({
         <SelectPrimitive.Popup
           data-slot="select-content"
           className={cn(
-            'max-h-(--available-height) min-w-(--anchor-width) overflow-y-auto border border-input bg-background shadow-menu outline-none scroll-thin',
+            'max-h-(--available-height) min-w-(--anchor-width) overflow-y-auto rounded-lg border border-border bg-popover p-1 shadow-menu outline-none scroll-thin',
             className,
           )}
           {...props}
@@ -95,7 +95,7 @@ export function SelectItem({
     <SelectPrimitive.Item
       data-slot="select-item"
       className={cn(
-        'flex w-full items-center gap-[9px] border-b border-line-soft px-3 py-[9px] text-small text-t80 outline-none select-none last:border-b-0 data-highlighted:bg-pressed data-highlighted:text-white data-selected:text-white',
+        'flex w-full items-center gap-[9px] rounded-md px-2.5 py-2 text-small text-t80 outline-none select-none data-highlighted:bg-raised data-highlighted:text-white data-selected:text-white',
         className,
       )}
       {...props}
@@ -103,10 +103,10 @@ export function SelectItem({
       <SelectPrimitive.ItemText className="min-w-0 flex-1 truncate">
         {children}
       </SelectPrimitive.ItemText>
-      {/* The square alone: Base UI puts a ✔️ in it unless its children are null. */}
+      {/* The dot alone: Base UI puts a ✔️ in it unless its children are null. */}
       <SelectPrimitive.ItemIndicator
         data-slot="select-item-indicator"
-        className="size-1.5 flex-none bg-foreground"
+        className="size-1.5 flex-none rounded-full bg-foreground"
       >
         {null}
       </SelectPrimitive.ItemIndicator>

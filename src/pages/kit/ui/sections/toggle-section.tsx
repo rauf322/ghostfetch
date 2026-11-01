@@ -1,4 +1,4 @@
-// Toggles and switches, in their states: cells in a bar as in Traffic's, the Vim toggle, a
+// Toggles and switches, in their states: a list's footer as in Traffic's, the Vim toggle, a
 // switch with its words that a click on either flips, and a rule's switch, the green dot.
 import { useState } from 'react';
 import { Button } from '../../../../shared/ui/kit/button.tsx';
@@ -8,16 +8,16 @@ import { Switch } from '../../../../shared/ui/kit/switch.tsx';
 import { Toggle } from '../../../../shared/ui/kit/toggle.tsx';
 import { Cell, FOCUS, Row } from '../cell.tsx';
 
-export function ToggleSection({ index }: { index: number }) {
+export function ToggleSection() {
   const [vim, setVim] = useState(true);
   const [ruleOn, setRuleOn] = useState(true);
   return (
-    <Cell index={index} title="Toggle and switch" note="the green square means on">
+    <Cell title="Toggle and switch" note="green means on">
       <Row
-        label="Cells in a bar: Rec on, Preserve off, Matched hover"
-        className="flex h-[38px] items-stretch border border-border"
+        label="A list's footer: Rec on, Preserve off, Matched hover"
+        className="flex h-11 items-center gap-0.5 border-t border-border px-1.5"
       >
-        <Toggle size="cell" className="border-l-0" defaultPressed>
+        <Toggle size="cell" defaultPressed>
           Rec
         </Toggle>
         <Toggle size="cell">Preserve</Toggle>

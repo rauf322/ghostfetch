@@ -78,7 +78,7 @@ export function CodeView({
     <pre
       data-slot="code-view"
       className={cn(
-        'max-h-[420px] overflow-auto border border-border bg-code px-3 py-2 text-small leading-[1.75] tracking-normal whitespace-pre text-t65 [tab-size:2] scroll-thin',
+        'max-h-[420px] overflow-auto rounded-lg border border-border bg-code px-3.5 py-2.5 font-mono text-[11.5px] leading-[1.75] whitespace-pre text-t65 [tab-size:2] scroll-thin',
         className,
       )}
     >

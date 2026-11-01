@@ -1,10 +1,19 @@
-/* Ghostfetch's look, after effect.institute: black, warm white at a few opacities, 1px hairline
-   cells, square corners and Commit Mono throughout. The one colour is the green square: it means
-   "on" or "a rule fired". Errors are inverted white instead of red.
+/* Ghostfetch's look, after T3 Code, Revolut and ChatGPT: a near-black canvas with cards a step
+   lighter, soft corners, Geist for words and Commit Mono for what is code (URLs, methods, status
+   codes, headers, bodies). The one colour is green: it means "on" or "a rule acted". Errors are
+   inverted white instead of red.
 
    These are its values, in plain CSS: kit.css makes them Tailwind's theme for the screens, and the
    body editor's own stylesheet (src/shared/ui/code-editor/code-editor.css) uses them as they
-   are. */
+   are. Both fonts ship with the extension (public/fonts/), so no page loads one from the web. */
+
+@font-face {
+  font-family: 'Geist';
+  src: url('/fonts/Geist-VF.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: block;
+}
 
 @font-face {
   font-family: 'Commit Mono';
@@ -16,7 +25,7 @@
 
 :root {
   color-scheme: dark;
-  --bg: #000;
+  --bg: #0b0b0c;
   --text: #f1efe8;
   --t80: rgba(255, 255, 255, 0.8);
   --t65: rgba(255, 255, 255, 0.65);
@@ -24,20 +33,22 @@
   --t40: rgba(255, 255, 255, 0.4);
   --t30: rgba(255, 255, 255, 0.3);
   --t20: rgba(255, 255, 255, 0.2);
-  --line: #222;
-  --line-strong: #333;
-  --line-soft: #181818;
-  --panel: rgba(255, 255, 255, 0.02);
-  --hover: #0a0a0a;
-  --pressed: #141414;
-  --code-bg: #050505;
+  --line: #26262a;
+  --line-strong: #34343a;
+  --line-soft: #1c1c1f;
+  /* surfaces, each a step lighter: a card, a row under the pointer, a picked row, and the chosen
+     option of a segmented control */
+  --panel: #141416;
+  --hover: #18181b;
+  --pressed: #1f1f23;
+  --raised: #2b2b30;
+  --code-bg: #0e0e10;
   --signal: #34d399;
-  --shadow: 0 12px 32px rgba(0, 0, 0, 0.7);
+  --signal-soft: rgba(52, 211, 153, 0.12);
+  --shadow: 0 16px 48px rgba(0, 0, 0, 0.55);
+  --font-ui: 'Geist', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font: 'Commit Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
-  /* effect.institute's dotted grid, behind empty space */
-  --dots: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0.8px, transparent 1.2px) 7px
-    7px / 14px 14px;
-  /* code keeps effect.institute's GitHub-dark colours, slightly dimmed */
+  /* code keeps GitHub-dark colours, slightly dimmed */
   --tk-key: #e1e4e8;
   --tk-str: rgba(158, 203, 255, 0.9);
   --tk-num: rgba(255, 171, 112, 0.9);

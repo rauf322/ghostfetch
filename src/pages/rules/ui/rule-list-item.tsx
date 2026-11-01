@@ -1,5 +1,5 @@
-// One rule in the list: its number (its priority), its name, what it matches and does, and its
-// switch, the green dot. Click it to open it; drag it to reorder.
+// One rule in the list: its switch (the green dot), its name, and what it matches and does. Its
+// place in the list is its priority. Click it to open it; drag it to reorder.
 import { ruleTitle } from '../../../shared/api/index.ts';
 import type { Rule } from '../../../shared/api/index.ts';
 import { cn } from '../../../shared/ui/cn.ts';
@@ -7,7 +7,6 @@ import {
   Item,
   ItemContent,
   ItemDescription,
-  ItemNumber,
   ItemTitle,
 } from '../../../shared/ui/kit/item.tsx';
 import { RuleSwitch } from '../../../shared/ui/rule-switch.tsx';
@@ -22,14 +21,11 @@ const DROP_MARK = cn(
 
 export function RuleListItem({
   rule,
-  position,
   selected,
   drag,
   onSelect,
 }: {
   rule: Rule;
-  // The rule's place in the whole list, zero-padded ("03").
-  position: string;
   selected: boolean;
   drag: RowDrag;
   onSelect: (id: string) => void;
@@ -56,26 +52,27 @@ export function RuleListItem({
       }}
       {...drag.handlers}
     >
-      <ItemNumber>{position}</ItemNumber>
+      {/* The dot lines up with the row's text, 12 px in, and with the name's line. */}
+      <RuleSwitch rule={rule} className="-my-0.5 -ml-[9px] self-start" />
       <ItemContent>
         <ItemTitle>{ruleTitle(rule)}</ItemTitle>
         <ItemDescription>
           {rule.match.method !== 'ANY' && (
-            <span className="flex-none text-control font-medium tracking-[0.04em] text-t80">
+            <span className="flex-none font-mono font-medium text-t80">
               {rule.match.method}
             </span>
           )}
           {pattern && (
-            <span className="max-w-[62%] flex-none truncate text-t65">{pattern}</span>
+            <span className="max-w-[62%] flex-none truncate font-mono text-t65">
+              {pattern}
+            </span>
           )}
           {/* the summary gives way before the URL does */}
-          <span className="min-w-0 flex-[0_10_auto] truncate text-t30">
+          <span className="min-w-0 flex-[0_10_auto] truncate text-t40">
             {ruleSummary(rule)}
           </span>
         </ItemDescription>
       </ItemContent>
-      {/* The dot sits 14 px in from the row's right edge, as the row's text does on the left. */}
-      <RuleSwitch rule={rule} className="-mr-[9px]" />
     </Item>
   );
 }

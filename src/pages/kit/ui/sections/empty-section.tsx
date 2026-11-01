@@ -1,4 +1,4 @@
-// Empty: what a pane shows with nothing to show, on the dotted grid.
+// Empty: what a pane shows with nothing to show.
 import { Button } from '../../../../shared/ui/kit/button.tsx';
 import {
   Empty,
@@ -9,10 +9,10 @@ import {
 import { Icon } from '../../../../shared/ui/kit/icon.tsx';
 import { Cell } from '../cell.tsx';
 
-export function EmptySection({ index }: { index: number }) {
+export function EmptySection() {
   return (
-    <Cell index={index} title="Empty" note="on the dotted grid" wide>
-      <div className="flex h-[230px] border border-border bg-dots">
+    <Cell title="Empty" note="on the canvas" wide>
+      <div className="flex h-[230px] rounded-lg border border-border">
         <Empty>
           <EmptyMedia>
             <img src="/icons/icon128.png" width={48} height={48} alt="" />

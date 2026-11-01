@@ -28,7 +28,7 @@ export function StatusPanel({ rule }: { rule: Rule }) {
             value={response.status}
             placeholder={replaces ? '200' : 'Keep'}
             onChange={(event) => setStatus(event.target.value)}
-            className="w-[88px] tabular-nums"
+            className="w-[88px] font-mono tabular-nums"
           />
           <span data-testid="status-name" className="truncate text-body text-t65">
             {statusName(response.status)}
@@ -48,7 +48,7 @@ export function StatusPanel({ rule }: { rule: Rule }) {
             aria-label={group.label}
             value={[response.status]}
             onValueChange={(values) => setStatus((values as string[])[0] ?? '')}
-            className="grid grid-cols-[repeat(auto-fill,minmax(168px,1fr))] border-0 border-t border-l"
+            className="grid grid-cols-[repeat(auto-fill,minmax(168px,1fr))] gap-1 bg-transparent p-0"
           >
             {group.codes.map((code) => (
               <ToggleGroupItem
@@ -56,12 +56,12 @@ export function StatusPanel({ rule }: { rule: Rule }) {
                 value={String(code)}
                 data-testid={`status-${code}`}
                 title={`${code} ${statusName(code)}`}
-                className="group/code flex h-[30px] items-center justify-start gap-1.5 border-r border-b border-input px-2.5 text-meta normal-case tracking-[inherit] not-first:border-l-0"
+                className="group/code flex h-8 items-center justify-start gap-2 bg-card px-2.5"
               >
-                <span className="text-small text-foreground tabular-nums group-data-pressed/code:text-black">
+                <span className="font-mono text-meta text-foreground tabular-nums">
                   {code}
                 </span>
-                <span className="truncate text-control text-t40 group-data-pressed/code:text-black/65">
+                <span className="truncate text-label text-t40 group-data-pressed/code:text-t65">
                   {presetName(code)}
                 </span>
               </ToggleGroupItem>

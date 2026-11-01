@@ -302,7 +302,7 @@ async function runChecks(browser, open) {
       await settles(
         kit,
         state,
-        { focus: 'Traffic 14', selected: ['Rules 08'], panels: ['The rule list.'] },
+        { focus: 'Traffic 14', selected: ['Rules 8'], panels: ['The rule list.'] },
         'after the arrow',
       );
       await kit.press('Enter');
@@ -373,7 +373,7 @@ async function runChecks(browser, open) {
       await kit.press('Enter');
       await selectOpen(kit);
       await focusOn(kit, '[data-testid=kit-select-GET]');
-      // The chosen option is marked by the white square alone (Base UI would put a ✔️ in it).
+      // The chosen option is marked by the white dot alone (Base UI would put a ✔️ in it).
       await settles(
         kit,
         () =>

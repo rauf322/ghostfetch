@@ -3,20 +3,17 @@ import { useRender } from '@base-ui/react/use-render';
 import { cva } from 'class-variance-authority';
 import { cn } from '../cn.ts';
 
-// What a rule did to a request, in words rather than colours. "fired" puts the green square in
-// front: a rule fired. "error" is inverted white.
-const badgeVariants = cva(
-  'inline-flex flex-none items-center text-micro font-medium uppercase tracking-badge',
-  {
-    variants: {
-      variant: {
-        fired:
-          "text-t80 before:mr-[7px] before:size-[7px] before:bg-signal before:content-['']",
-        error: 'bg-foreground px-1 tracking-caps text-black',
-      },
+// What a rule did to a request, in words. "fired" is green with the green dot in front: a rule
+// fired. "error" is inverted white.
+const badgeVariants = cva('inline-flex flex-none items-center text-label font-medium', {
+  variants: {
+    variant: {
+      fired:
+        "text-signal before:mr-1.5 before:size-1.5 before:rounded-full before:bg-signal before:content-['']",
+      error: 'rounded-sm bg-foreground px-1.5 font-semibold text-black',
     },
   },
-);
+});
 
 export function Badge({
   className,
@@ -35,15 +32,15 @@ export function Badge({
   });
 }
 
-// Status codes: plain when fine, outlined for 4xx, inverted for 5xx and for a request that failed
-// without one.
-const statusVariants = cva('flex-none text-meta tabular-nums', {
+// Status codes, in the monospace font: plain when fine, outlined for 4xx, inverted for 5xx and for
+// a request that failed without one.
+const statusVariants = cva('flex-none font-mono text-meta tabular-nums', {
   variants: {
     tone: {
       '2xx': 'text-t65',
       '3xx': 'text-t40',
-      '4xx': 'px-1 text-foreground shadow-[inset_0_0_0_1px_var(--t50)]',
-      '5xx': 'bg-foreground px-1 font-semibold text-black',
+      '4xx': 'rounded-sm px-1 text-foreground shadow-[inset_0_0_0_1px_var(--t50)]',
+      '5xx': 'rounded-sm bg-foreground px-1 font-semibold text-black',
       none: 'text-t30',
     },
   },

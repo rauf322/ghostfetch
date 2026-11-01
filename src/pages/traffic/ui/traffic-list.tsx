@@ -84,7 +84,7 @@ export function TrafficList({
       <TrafficNotice traffic={traffic} sites={sites} record={record} />
       <SectionRow>
         <Label>{`${entries.length} ${entries.length === 1 ? 'request' : 'requests'}`}</Label>
-        <Label className="tracking-wider">{hits ? `${hits} matched a rule` : ''}</Label>
+        <Label className="tabular-nums">{hits ? `${hits} matched a rule` : ''}</Label>
       </SectionRow>
 
       <List>

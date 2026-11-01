@@ -24,12 +24,7 @@ export function EditorMenu({
     <DropdownMenu>
       <DropdownMenuTrigger
         render={
-          <Button
-            variant="ghost"
-            size="icon"
-            title="More"
-            className="h-full w-[35px] border-l border-border"
-          />
+          <Button variant="ghost" size="icon" title="More" className="self-center" />
         }
       >
         <Icon name="more" size={18} />

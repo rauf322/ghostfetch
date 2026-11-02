@@ -188,8 +188,13 @@ mark in Normal mode, a green one in Insert mode, inverted white in Visual mode.
 Motions and text objects behave like vim's own (`cw`, `dw` at the end of a line, `ci"` and
 `di{` in formatted JSON, `dap`). Where it differs:
 
-- There's one register, shared by every body editor on the page. ⌘C and ⌘V (Ctrl+C and
-  Ctrl+V) keep using the system clipboard in every mode.
+- There's one register, shared by every body editor on the page. A yank (`y` in Visual mode,
+  `yy`, `Y`, `y` with a motion) also copies to the system clipboard, as vim's
+  `clipboard=unnamedplus` does, so you can paste it in another app; if the browser doesn't
+  allow it, the status line says "Couldn't copy to the clipboard". Deletes and changes (`d`,
+  `x`, `c`) only fill the register, so they don't overwrite what you copied, and `p` puts the
+  register: reading the clipboard would take a permission Ghostfetch doesn't ask for. ⌘C and
+  ⌘V (Ctrl+C and Ctrl+V) keep using the system clipboard in every mode.
 - Searches ignore case, as with vim's `ignorecase`.
 - `o`, `O`, `cc` and `S` keep the line's indentation. `o` below a line that opens a bracket,
   and `O` above one that closes it, go one level deeper, like Enter in the editor.
@@ -455,7 +460,8 @@ against fetch and XHR (and that rules saved by older versions do what they shoul
 (including New rule from a typed path and from a cURL command with a starter, its recent requests'
 Mock, the rule's settings rows and its sentence, the body editor's marks for a JSON mistake,
 its height beside the settings and under them, text size and that it keeps the cursor's line in
-place, Format and colours on a body of 370,000 characters, its own find and its vim keys), the
+place, Format and colours on a body of 370,000 characters, its own find and its vim keys, whose
+yanks it pastes back from the clipboard), the
 traffic view (its filters, Keep on reload and Clear), the list as a sidebar beside a rule and a
 request (hidden with the button and the key, its edge dragged to its narrowest, its widest, shut
 and open again, its keys, each tab's width after a reload, none in a narrow panel), a theme picked
@@ -485,7 +491,10 @@ into the body editor on a plain test page that loads the editor's TypeScript fro
 (Node strips the types). Both tests type the same vim session (`VIM_STEPS` in
 `test/fixtures.mjs`), which gives the same bodies and cursor positions as vim 9.1 typing the
 same keys. There it also sizes the text with Ctrl+= and Ctrl+−, and checks that vim's cursor
-stays where it is in the view, as Firefox scrolls a text area its own way.
+stays where it is in the view, as Firefox scrolls a text area its own way, and that a yank
+reaches the clipboard, which Firefox only lets a page write during a key press or a click.
+Both tests paste from the clipboard of the headless browser, which is its own, so running them
+leaves yours alone (with `HEADED=1` they use the real one).
 
 `test/kit.mjs` opens the UI kit page under the extension pages' real CSP, in Chromium and in
 Zen (served with the CSP as a response header there, since Firefox's automation can't open

@@ -984,6 +984,64 @@ try {
     },
   );
   await check(
+    'vim: a yank goes to the clipboard as well (in Visual mode, by lines, with a motion), a delete leaves it alone, and the status line says when the browser refuses',
+    async () => {
+      // Each write the editor makes, still the browser's own, kept so a paste can wait for it:
+      // Chrome checks its permission first, so for a moment after the key the clipboard still
+      // holds what was there before (far shorter than it takes a person to paste).
+      await app.evaluate(() => {
+        const write = navigator.clipboard.writeText.bind(navigator.clipboard);
+        navigator.clipboard.writeText = (text) => (window.lastWrite = write(text));
+      });
+      // What's on the clipboard: pasted with Cmd/Ctrl+V into a text area of its own, as into
+      // another app. A headless browser keeps a clipboard of its own, so this leaves yours alone
+      // (unless HEADED is set).
+      const clipboard = async () => {
+        await app.evaluate(() => {
+          const probe = document.createElement('textarea');
+          probe.id = 'paste-probe';
+          document.body.append(probe);
+          probe.focus();
+          return window.lastWrite;
+        });
+        await app.keyboard.press('ControlOrMeta+v');
+        const pasted = await app.evaluate(() => {
+          const probe = document.getElementById('paste-probe');
+          probe.remove();
+          return probe.value;
+        });
+        await body.focus();
+        return pasted;
+      };
+      await setBody(VIM_START);
+      const seen = [];
+      for (const keys of ['jwvi"y', 'Vjy', 'Gkf[y%', 'xu']) {
+        await typeVim(keys);
+        seen.push([keys, await clipboard()]);
+      }
+      await app.evaluate(() => delete navigator.clipboard.writeText);
+      expect(seen, [
+        ['jwvi"y', 'name'],
+        ['Vjy', '  "name": "Ada",\n  "role": "admin",\n'],
+        ['Gkf[y%', '[1, 2, 3]'],
+        ['xu', '[1, 2, 3]'],
+      ]);
+      // The browser refusing it, as Chrome does a page that isn't focused: the status line says
+      // so, and p still puts the yank.
+      await app.evaluate(() => {
+        navigator.clipboard.writeText = () =>
+          Promise.reject(new DOMException('Document is not focused.', 'NotAllowedError'));
+      });
+      await typeVim('yy');
+      const { message } = await vimState();
+      await app.evaluate(() => delete navigator.clipboard.writeText);
+      await typeVim('p');
+      const put = (await body.inputValue()).split('\n')[4];
+      await typeVim('u');
+      expect([message, put], ["Couldn't copy to the clipboard", '  "tags": [1, 2, 3]']);
+    },
+  );
+  await check(
     'vim: G, gg and 50% scroll a long body with the cursor in view',
     async () => {
       const long = JSON.stringify(

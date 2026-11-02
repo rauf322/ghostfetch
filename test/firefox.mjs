@@ -497,6 +497,58 @@ try {
       ]);
     },
   );
+  await check(
+    'vim: a yank goes to the clipboard as well, and a delete leaves it alone (Firefox lets a page write it only during a key press or a click)',
+    async () => {
+      const accel = process.platform === 'darwin' ? 'Meta' : 'Control';
+      // Each write the editor makes, still the browser's own, kept so a paste can wait for it to
+      // land (as in the Chrome test).
+      await editorTab.evaluate(() => {
+        const write = navigator.clipboard.writeText.bind(navigator.clipboard);
+        navigator.clipboard.writeText = (text) => (window.lastWrite = write(text));
+      });
+      // What's on the clipboard: pasted into a text area of its own, as into another app. A
+      // headless browser keeps a clipboard of its own, so this leaves yours alone (unless HEADED
+      // is set).
+      const clipboard = async () => {
+        await editorTab.evaluate(() => {
+          const probe = document.createElement('textarea');
+          probe.id = 'paste-probe';
+          document.body.append(probe);
+          probe.focus();
+          return window.lastWrite;
+        });
+        await editorTab.keyboard.down(accel);
+        await editorTab.keyboard.press('v');
+        await editorTab.keyboard.up(accel);
+        const pasted = await editorTab.evaluate(() => {
+          const probe = document.getElementById('paste-probe');
+          probe.remove();
+          return probe.value;
+        });
+        await editorTab.evaluate(() => window.editor.textarea.focus());
+        return pasted;
+      };
+      await editorTab.evaluate((text) => {
+        const { textarea } = window.editor;
+        textarea.value = text;
+        textarea.setSelectionRange(0, 0);
+        textarea.dispatchEvent(new Event('input'));
+      }, VIM_START);
+      const seen = [];
+      for (const keys of ['jwvi"y', 'Vjy', 'Gkf[y%', 'xu']) {
+        await typeVim(keys);
+        seen.push([keys, await clipboard()]);
+      }
+      await editorTab.evaluate(() => delete navigator.clipboard.writeText);
+      expect(seen, [
+        ['jwvi"y', 'name'],
+        ['Vjy', '  "name": "Ada",\n  "role": "admin",\n'],
+        ['Gkf[y%', '[1, 2, 3]'],
+        ['xu', '[1, 2, 3]'],
+      ]);
+    },
+  );
   await editorTab.close();
 
   await check('no uncaught errors in the pages', async () => {

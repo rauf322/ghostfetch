@@ -1,7 +1,8 @@
 // Vim keys for the code editor, behind the Vim switch under each body editor: Normal, Insert,
-// Visual and Visual Line modes, with motions, operators, text objects, counts, one register,
-// search and "." to repeat a change. Written for this extension, which ships no third-party
-// editor code, and smaller than vim on purpose: no ":" commands, macros, marks or named registers.
+// Visual and Visual Line modes, with motions, operators, text objects, counts, one register
+// (whose yanks go to the system clipboard too), search and "." to repeat a change. Written for
+// this extension, which ships no third-party editor code, and smaller than vim on purpose: no
+// ":" commands, macros, marks or named registers.
 //
 // Positions are offsets into the textarea's text. A line's "\n" (or the end of the text) is its
 // end-of-line position, where vim's own motions step to after the last character. Every change
@@ -104,6 +105,7 @@ export const rememberVim = (on: boolean) =>
   localStorage.setItem(STORAGE_KEY, on ? '1' : '0');
 
 // One unnamed register for every editor on the page: yank in one rule's body, put in another's.
+// A yank goes to the system clipboard as well (copy()).
 const register = { text: '', linewise: false };
 const MAX_PUT = 5_000_000;
 const MAX_UNDO = 100;
@@ -497,6 +499,25 @@ export function createVim({
     register.linewise = Boolean(linewise);
   }
 
+  // A yank: into the register, and onto the system clipboard as well, as vim's
+  // clipboard=unnamedplus has it, to paste in another app. Deletes and changes only fill the
+  // register, so they don't overwrite what you copied; and p puts the register, since reading the
+  // clipboard would take a permission the extension doesn't ask for (⌘V pastes it). It's written
+  // while the key is handled: a browser only lets a page write to the clipboard during a key press
+  // or a click.
+  async function copy(value: string, range: Range) {
+    store(value, range);
+    const copied = register.text;
+    try {
+      await navigator.clipboard.writeText(copied);
+    } catch {
+      // The browser didn't allow it. Say so, unless something else has been yanked since.
+      if (!active || register.text !== copied) return;
+      message = "Couldn't copy to the clipboard";
+      paint();
+    }
+  }
+
   function remove(range: Range) {
     const value = text();
     store(value, range);
@@ -534,7 +555,7 @@ export function createVim({
 
   // The cursor goes to the start of what was yanked: "yb" and "yiw" move it, "yy" and "yj" don't.
   function yank(range: Range) {
-    store(text(), range);
+    copy(text(), range);
     head = range.from ?? range.start;
   }
 
@@ -1098,10 +1119,12 @@ export function createVim({
         return remove(lines);
       case 'y':
         leave();
-        return store(value, range);
+        copy(value, range);
+        return undefined;
       case 'Y':
         leave(true);
-        return store(value, lines);
+        copy(value, lines);
+        return undefined;
       case 'c':
       case 's':
         leave();

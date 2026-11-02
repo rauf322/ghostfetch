@@ -12,10 +12,10 @@ export const toggleVariants = cva(
     variants: {
       variant: {
         square:
-          "before:size-2 before:flex-none before:rounded-[3px] before:shadow-[inset_0_0_0_1px_var(--t40)] before:content-[''] data-pressed:text-white data-pressed:before:bg-signal data-pressed:before:shadow-none",
+          "before:size-2 before:flex-none before:rounded-[3px] before:shadow-[inset_0_0_0_1px_var(--t40)] before:content-[''] data-pressed:text-strong data-pressed:before:bg-signal data-pressed:before:shadow-none",
         // a raised pill while chosen; a plain button, so the browser centres the label
         segment:
-          'block min-w-0 flex-1 overflow-hidden text-ellipsis data-pressed:bg-raised data-pressed:font-medium data-pressed:text-white',
+          'block min-w-0 flex-1 overflow-hidden text-ellipsis data-pressed:bg-raised data-pressed:font-medium data-pressed:text-strong',
       },
       size: {
         default: 'h-8 rounded-md border border-transparent px-3 text-control font-medium',

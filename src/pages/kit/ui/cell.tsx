@@ -5,7 +5,7 @@ import type { ReactNode } from 'react';
 import { cn } from '../../../shared/ui/cn.ts';
 import { FieldLabel } from '../../../shared/ui/kit/label.tsx';
 
-export const HOVER = 'bg-pressed text-white';
+export const HOVER = 'bg-pressed text-strong';
 export const FOCUS = 'outline outline-1 outline-offset-2 outline-foreground';
 
 export function Cell({

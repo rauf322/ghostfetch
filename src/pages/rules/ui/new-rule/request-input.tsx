@@ -121,7 +121,7 @@ export function RequestInput({
           title="Make the rule (Enter)"
           disabled={!text.trim()}
           onClick={onSubmit}
-          className="size-9 flex-none rounded-full text-black hover:text-black"
+          className="size-9 flex-none rounded-full text-inverse hover:text-inverse"
         >
           <Icon name="send" size={18} />
         </Button>

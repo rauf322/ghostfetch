@@ -24,7 +24,7 @@ export function SegmentedItem({ className, ...props }: Radio.Root.Props) {
       nativeButton
       render={(buttonProps) => <button {...buttonProps} />}
       className={cn(
-        'h-7 min-w-0 flex-1 truncate rounded-[8px] px-2 text-control text-t50 transition-colors duration-120 select-none hover:text-foreground data-checked:bg-raised data-checked:font-medium data-checked:text-white data-disabled:opacity-45',
+        'h-7 min-w-0 flex-1 truncate rounded-[8px] px-2 text-control text-t50 transition-colors duration-120 select-none hover:text-foreground data-checked:bg-raised data-checked:font-medium data-checked:text-strong data-disabled:opacity-45',
         className,
       )}
       {...props}

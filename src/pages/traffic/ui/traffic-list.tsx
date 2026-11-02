@@ -26,6 +26,8 @@ interface TrafficListProps {
   traffic: TrafficSnapshot;
   // A request is open, which hides the list in a narrow panel.
   picked: boolean;
+  // Hidden beside the open request, in a wide one (SidebarToggle).
+  collapsed: boolean;
   selectedId: string | null;
   onSelect: (id: string | null) => void;
 }
@@ -37,6 +39,7 @@ export function TrafficList({
   log,
   traffic,
   picked,
+  collapsed,
   selectedId,
   onSelect,
 }: TrafficListProps) {
@@ -66,7 +69,11 @@ export function TrafficList({
     );
 
   return (
-    <ListPane picked={picked} className="@container/traffic flex-1 wide:border-r-0">
+    <ListPane
+      picked={picked}
+      collapsed={collapsed}
+      className="@container/traffic wide:border-r-0"
+    >
       <TrafficToolbar
         traffic={traffic}
         record={record}

@@ -13,7 +13,7 @@ export function InputSection() {
       <Row label="Empty · filled · hover · focus" className="grid grid-cols-4 gap-2">
         <Input placeholder="/api/users" aria-label="Empty" />
         <Input defaultValue="/api/user" aria-label="Filled" />
-        <Input defaultValue="/api/user" aria-label="Hover" className="border-[#444]" />
+        <Input defaultValue="/api/user" aria-label="Hover" className="border-t20" />
         <Input
           defaultValue="/api/user"
           aria-label="Focus"
@@ -46,7 +46,7 @@ export function InputSection() {
             variant="bare"
             defaultValue="Logged-in admin user"
             aria-label="Rule name"
-            className="flex-1 px-3.5 text-title font-medium text-white"
+            className="flex-1 px-3.5 text-title font-medium text-strong"
           />
         </div>
       </Row>

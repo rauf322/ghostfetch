@@ -1,0 +1,180 @@
+/* The themes besides Ghostfetch's own (theme.css), picked in the editor's ⋯ menu: the same values,
+   each from its theme's palette, as its Neovim plugin has them (rose-pine/neovim,
+   catppuccin/nvim, vague2k/vague.nvim). The green that means "on" or "a rule acted" is the
+   theme's colour for what's added or fine; errors stay inverted, in the theme's text colour.
+   The code colours are its JSON ones: keys, strings, numbers, and true, false and null. Text
+   that's quieter is the theme's text, fainter, unless the theme has a step for it.
+
+   src/shared/ui/theme.ts lists them by name; public/theme.js puts the one you picked on <html>
+   before the page draws. */
+
+/* Rosé Pine: surfaces from base up (surface, overlay, highlight low, med and high); foam, its
+   colour for what's added, for green (its sage "ok", leaf, is too faint to tell a rule that's on
+   from one that's off); foam keys, gold strings and numbers, rose for true and false. */
+[data-theme='rose-pine'] {
+  color-scheme: dark;
+  --bg: #191724;
+  --text: #e0def4;
+  --strong: #e0def4;
+  --inverse: #191724;
+  --t80: rgba(224, 222, 244, 0.8);
+  --t65: rgba(224, 222, 244, 0.65);
+  --t50: rgba(224, 222, 244, 0.5);
+  --t40: rgba(224, 222, 244, 0.4);
+  --t30: rgba(224, 222, 244, 0.3);
+  --t20: rgba(224, 222, 244, 0.2);
+  --line: #403d52;
+  --line-strong: #524f67;
+  --line-soft: #26233a;
+  --panel: #1f1d2e;
+  --hover: #26233a;
+  --pressed: #403d52;
+  --raised: #524f67;
+  --code-bg: #1f1d2e;
+  --signal: #9ccfd8;
+  --signal-soft: rgba(156, 207, 216, 0.14);
+  --track: #524f67;
+  --knob: #908caa;
+  --selection: rgba(196, 167, 231, 0.15);
+  --shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+  --tk-key: #9ccfd8;
+  --tk-str: #f6c177;
+  --tk-num: #f6c177;
+  --tk-lit: #ebbcba;
+}
+
+/* Rosé Pine Moon: the same, a shade lighter. */
+[data-theme='rose-pine-moon'] {
+  color-scheme: dark;
+  --bg: #232136;
+  --text: #e0def4;
+  --strong: #e0def4;
+  --inverse: #232136;
+  --t80: rgba(224, 222, 244, 0.8);
+  --t65: rgba(224, 222, 244, 0.65);
+  --t50: rgba(224, 222, 244, 0.5);
+  --t40: rgba(224, 222, 244, 0.4);
+  --t30: rgba(224, 222, 244, 0.3);
+  --t20: rgba(224, 222, 244, 0.2);
+  --line: #44415a;
+  --line-strong: #56526e;
+  --line-soft: #393552;
+  --panel: #2a273f;
+  --hover: #393552;
+  --pressed: #44415a;
+  --raised: #56526e;
+  --code-bg: #2a273f;
+  --signal: #9ccfd8;
+  --signal-soft: rgba(156, 207, 216, 0.14);
+  --track: #56526e;
+  --knob: #908caa;
+  --selection: rgba(196, 167, 231, 0.15);
+  --shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
+  --tk-key: #9ccfd8;
+  --tk-str: #f6c177;
+  --tk-num: #f6c177;
+  --tk-lit: #ea9a97;
+}
+
+/* Rosé Pine Dawn, the light one: cards lighter than the page (surface), and each step after
+   them darker; pine for green, as foam is too pale on it. */
+[data-theme='rose-pine-dawn'] {
+  color-scheme: light;
+  --bg: #faf4ed;
+  --text: #464261;
+  --strong: #464261;
+  --inverse: #faf4ed;
+  --t80: rgba(70, 66, 97, 0.8);
+  --t65: rgba(70, 66, 97, 0.65);
+  --t50: rgba(70, 66, 97, 0.5);
+  --t40: rgba(70, 66, 97, 0.4);
+  --t30: rgba(70, 66, 97, 0.3);
+  --t20: rgba(70, 66, 97, 0.2);
+  --line: #dfdad9;
+  --line-strong: #cecacd;
+  --line-soft: #f2e9e1;
+  --panel: #fffaf3;
+  --hover: #f2e9e1;
+  --pressed: #dfdad9;
+  --raised: #cecacd;
+  --code-bg: #fffaf3;
+  --signal: #286983;
+  --signal-soft: rgba(40, 105, 131, 0.12);
+  --track: #cecacd;
+  --knob: #fffaf3;
+  --selection: rgba(144, 122, 169, 0.2);
+  --shadow: 0 16px 48px rgba(70, 66, 97, 0.16);
+  --tk-key: #56949f;
+  --tk-str: #ea9d34;
+  --tk-num: #ea9d34;
+  --tk-lit: #d7827e;
+}
+
+/* Catppuccin Macchiato: base for the page, mantle for cards, surface 0 to 2 for the steps on
+   them; its subtext and overlay greys for quieter text; green, lavender keys, green strings,
+   peach numbers, true, false and null. */
+[data-theme='catppuccin-macchiato'] {
+  color-scheme: dark;
+  --bg: #24273a;
+  --text: #cad3f5;
+  --strong: #cad3f5;
+  --inverse: #181926;
+  --t80: #b8c0e0;
+  --t65: #a5adcb;
+  --t50: #939ab7;
+  --t40: #8087a2;
+  --t30: #6e738d;
+  --t20: #5b6078;
+  --line: #363a4f;
+  --line-strong: #494d64;
+  --line-soft: #181926;
+  --panel: #1e2030;
+  --hover: #363a4f;
+  --pressed: #494d64;
+  --raised: #5b6078;
+  --code-bg: #1e2030;
+  --signal: #a6da95;
+  --signal-soft: rgba(166, 218, 149, 0.14);
+  --track: #5b6078;
+  --knob: #939ab7;
+  --selection: rgba(147, 154, 183, 0.25);
+  --shadow: 0 16px 48px rgba(24, 25, 38, 0.6);
+  --tk-key: #b7bdf8;
+  --tk-str: #a6da95;
+  --tk-num: #f5a97f;
+  --tk-lit: #f5a97f;
+}
+
+/* Vague: its floats' grey-blue for cards, the cursor line, selection and search colours for the
+   steps on them; its "added" green; property keys, string and number colours. */
+[data-theme='vague'] {
+  color-scheme: dark;
+  --bg: #141415;
+  --text: #cdcdcd;
+  --strong: #cdcdcd;
+  --inverse: #141415;
+  --t80: rgba(205, 205, 205, 0.8);
+  --t65: rgba(205, 205, 205, 0.65);
+  --t50: rgba(205, 205, 205, 0.5);
+  --t40: rgba(205, 205, 205, 0.4);
+  --t30: rgba(205, 205, 205, 0.3);
+  --t20: rgba(205, 205, 205, 0.2);
+  --line: #252530;
+  --line-strong: #333738;
+  --line-soft: #1c1c24;
+  --panel: #1c1c24;
+  --hover: #252530;
+  --pressed: #333738;
+  --raised: #405065;
+  --code-bg: #141415;
+  --signal: #7fa563;
+  --signal-soft: rgba(127, 165, 99, 0.14);
+  --track: #333738;
+  --knob: #878787;
+  --selection: #333738;
+  --shadow: 0 16px 48px rgba(0, 0, 0, 0.55);
+  --tk-key: #c3c3d5;
+  --tk-str: #e8b589;
+  --tk-num: #e0a363;
+  --tk-lit: #e0a363;
+}

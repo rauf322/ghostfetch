@@ -47,7 +47,7 @@ function ToastList() {
       key={item.id}
       toast={item}
       data-slot="toast"
-      className="flex items-center gap-3.5 rounded-lg bg-foreground px-4 py-2.5 text-small font-medium text-black shadow-menu transition-[opacity,translate] duration-150 select-none data-ending-style:opacity-0 data-limited:hidden data-starting-style:translate-y-2 data-starting-style:opacity-0 data-[type=error]:border data-[type=error]:border-foreground data-[type=error]:bg-background data-[type=error]:text-foreground"
+      className="flex items-center gap-3.5 rounded-lg bg-foreground px-4 py-2.5 text-small font-medium text-inverse shadow-menu transition-[opacity,translate] duration-150 select-none data-ending-style:opacity-0 data-limited:hidden data-starting-style:translate-y-2 data-starting-style:opacity-0 data-[type=error]:border data-[type=error]:border-foreground data-[type=error]:bg-background data-[type=error]:text-foreground"
     >
       <ToastPrimitive.Title className="m-0 min-w-0 flex-1 font-normal" />
       <ToastPrimitive.Action className="flex-none cursor-pointer text-control font-semibold underline underline-offset-3" />

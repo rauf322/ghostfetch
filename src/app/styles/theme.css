@@ -5,7 +5,9 @@
 
    These are its values, in plain CSS: kit.css makes them Tailwind's theme for the screens, and the
    body editor's own stylesheet (src/shared/ui/code-editor/code-editor.css) uses them as they
-   are. Both fonts ship with the extension (public/fonts/), so no page loads one from the web. */
+   are. Both fonts ship with the extension (public/fonts/), so no page loads one from the web.
+   The other themes (themes.css) give the same values under [data-theme=…], which
+   public/theme.js puts on <html>; a swatch in the theme menu puts one on itself. */
 
 @font-face {
   font-family: 'Geist';
@@ -23,10 +25,15 @@
   font-display: block;
 }
 
-:root {
+:root,
+[data-theme='ghostfetch'] {
   color-scheme: dark;
   --bg: #0b0b0c;
   --text: #f1efe8;
+  /* a step past --text, for titles and what's picked or under the pointer; and the text on what's
+     inverted (the primary button, a toast, an error's badge) */
+  --strong: #fff;
+  --inverse: #000;
   --t80: rgba(255, 255, 255, 0.8);
   --t65: rgba(255, 255, 255, 0.65);
   --t50: rgba(255, 255, 255, 0.5);
@@ -45,6 +52,11 @@
   --code-bg: #0e0e10;
   --signal: #34d399;
   --signal-soft: rgba(52, 211, 153, 0.12);
+  /* a switch that's off: its track and its knob */
+  --track: #3a3a3f;
+  --knob: #a1a1a6;
+  /* selected text */
+  --selection: rgba(255, 255, 255, 0.2);
   --shadow: 0 16px 48px rgba(0, 0, 0, 0.55);
   --font-ui: 'Geist', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font: 'Commit Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;

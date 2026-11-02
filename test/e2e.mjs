@@ -1136,6 +1136,90 @@ try {
       await remove();
     },
   );
+  await check(
+    'wide: the sidebar button and Cmd/Ctrl+B hide the list beside a rule, and beside a request in Traffic; it stays hidden after a reload; a narrow panel has no button',
+    async () => {
+      const key = `${process.platform === 'darwin' ? 'Meta' : 'Control'}+b`;
+      // The list of a view: its width, and whether it's drawn (it stays laid out while hidden).
+      const list = (view) =>
+        app.evaluate((name) => {
+          const aside = document.querySelector(`[data-testid="view-${name}"] aside`);
+          return {
+            width: Math.round(aside.getBoundingClientRect().width),
+            shown: getComputedStyle(aside).visibility === 'visible',
+          };
+        }, view);
+      const settled = (view, shown) =>
+        app.waitForFunction(
+          ([name, visible]) => {
+            const aside = document.querySelector(`[data-testid="view-${name}"] aside`);
+            const width = aside.getBoundingClientRect().width;
+            return visible
+              ? getComputedStyle(aside).visibility === 'visible' && width > 300
+              : getComputedStyle(aside).visibility === 'hidden' && width < 2;
+          },
+          [view, shown],
+          { timeout: 3000 },
+        );
+      const toggle = app.locator('[data-testid="sidebar-toggle"]:visible');
+      const seen = [];
+      await app.click('[data-testid="tab-rules"]');
+      await app.locator('[data-testid="rule"]').first().click();
+      seen.push((await list('rules')).shown);
+      await toggle.click();
+      await settled('rules', false);
+      seen.push(await toggle.getAttribute('aria-expanded'));
+      // The rule has the whole window.
+      const pane = await app
+        .locator('[data-testid="view-rules"] > div > section')
+        .boundingBox();
+      seen.push(pane.width > 1270);
+      // Remembered: a reload opens with the list hidden, beside New rule, which has the button too.
+      await app.reload();
+      await app.waitForSelector('[data-testid="composer-input"]');
+      await settled('rules', false);
+      await app.keyboard.press(key);
+      await settled('rules', true);
+      seen.push((await list('rules')).shown);
+      expect(seen, [true, 'false', true, true]);
+
+      // Traffic: the list only gives way to an open request, and is back when it's closed.
+      await toggle.click();
+      await app.click('[data-testid="tab-traffic"]');
+      await app.locator('[data-testid="request"]').first().waitFor({ timeout: 5000 });
+      expect(
+        await list('traffic'),
+        { width: 1280, shown: true },
+        'nothing open: the list',
+      );
+      await app.locator('[data-testid="request"]').first().click();
+      await settled('traffic', false);
+      // The drawer is a column in the middle of the window.
+      const drawer = await app.locator('[data-testid="request-detail"]').boundingBox();
+      if (Math.abs(drawer.width - 880) > 1 || Math.abs(drawer.x + 440 - 640) > 1)
+        throw new Error(`the drawer with the list hidden: ${JSON.stringify(drawer)}`);
+      await app.click('[data-testid="request-back"]');
+      await settled('traffic', true);
+      await app.locator('[data-testid="request"]').first().click();
+      await settled('traffic', false);
+      await app.keyboard.press(key);
+      await settled('traffic', true);
+      await app.click('[data-testid="request-back"]');
+
+      // A narrow panel shows the list or what's open anyway: no button, and the key does nothing.
+      await app.click('[data-testid="tab-rules"]');
+      await app.setViewportSize({ width: 400, height: 760 });
+      await app.keyboard.press(key);
+      expect(
+        [
+          await app.locator('[data-testid="sidebar-toggle"]').first().isVisible(),
+          await app.evaluate(() => localStorage.getItem('ghostfetch.sidebar')),
+        ],
+        [false, null],
+      );
+      await app.setViewportSize({ width: 1280, height: 820 });
+    },
+  );
   await check('traffic reconnects after the page reloads', async () => {
     await app.click('[data-testid="tab-traffic"]');
     await page.reload();
@@ -1213,6 +1297,56 @@ try {
     expect(rules[0].enabled, false);
     await first.locator('[role="switch"]').click();
   });
+  await check(
+    "the ⋯ menu's Theme recolours the editor and the open popup at once, a page draws in it from the start, and Ghostfetch's own comes back",
+    async () => {
+      // The theme on <html>, the page's colour, and what's remembered.
+      const look = (target) =>
+        target.evaluate(() => [
+          document.documentElement.dataset.theme ?? '',
+          getComputedStyle(document.body).backgroundColor,
+          localStorage.getItem('ghostfetch.theme'),
+        ]);
+      const pick = async (theme) => {
+        await app.click('[data-testid="editor-menu"]');
+        await app.click('[data-testid="theme-menu"]');
+        await app.click(`[data-testid="theme-${theme}"]`);
+        // The menu stays open, to try another.
+        await app.waitForSelector(`[data-testid="theme-${theme}"][data-checked]`);
+        await app.keyboard.press('Escape');
+        await app.keyboard.press('Escape');
+      };
+      const ROSE_PINE = ['rose-pine', 'rgb(25, 23, 36)', 'rose-pine'];
+      await pick('rose-pine');
+      const seen = [await look(app)];
+      // The popup, already open, follows (the storage event).
+      await popup.waitForFunction(
+        () => document.documentElement.dataset.theme === 'rose-pine',
+      );
+      seen.push(await look(popup));
+      // public/theme.js is a plain script in <head>, ahead of the page's modules, so the theme is
+      // on <html> before the page first draws.
+      await app.reload();
+      seen.push(
+        await app.evaluate(
+          () =>
+            [...document.head.querySelectorAll('script')].map(
+              (script) => `${script.type || 'classic'} ${new URL(script.src).pathname}`,
+            )[0],
+        ),
+        await look(app),
+      );
+      await pick('ghostfetch');
+      seen.push(await look(app));
+      expect(seen, [
+        ROSE_PINE,
+        ROSE_PINE,
+        'classic /theme.js',
+        ROSE_PINE,
+        ['', 'rgb(11, 11, 12)', null],
+      ]);
+    },
+  );
   if (SHOTS) await popup.screenshot({ path: `${SHOTS}/popup.png` });
 
   console.log('security');

@@ -24,7 +24,7 @@ export function RuleIntro({ rule, log }: { rule: Rule; log: TrafficLog }) {
             current.name = event.target.value;
           })
         }
-        className="-mx-2 h-auto w-[calc(100%+16px)] rounded-md px-2 py-0.5 text-[22px] leading-tight font-semibold tracking-tight text-white placeholder:text-t40 hover:bg-hover focus:bg-pressed focus:shadow-none pane-wide:text-[26px]"
+        className="-mx-2 h-auto w-[calc(100%+16px)] rounded-md px-2 py-0.5 text-[22px] leading-tight font-semibold tracking-tight text-strong placeholder:text-t40 hover:bg-hover focus:bg-pressed focus:shadow-none pane-wide:text-[26px]"
       />
       <p data-testid="rule-description" className="text-body leading-relaxed text-t50">
         {describeRule(rule)}

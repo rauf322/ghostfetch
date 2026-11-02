@@ -34,7 +34,7 @@ export function CurrentSite({
     >
       <div className="min-w-0">
         <Label className="block">{enabledHere ? 'Active on' : 'Not active on'}</Label>
-        <div className="mt-1 mb-0.5 truncate font-mono text-hero font-semibold text-white">
+        <div className="mt-1 mb-0.5 truncate font-mono text-hero font-semibold text-strong">
           {host}
         </div>
         <div className="text-label text-t50">

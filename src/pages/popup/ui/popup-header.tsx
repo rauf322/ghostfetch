@@ -9,7 +9,7 @@ export function PopupHeader() {
         width={18}
         height={18}
         alt=""
-        className="ml-1 self-center"
+        className="ml-1 self-center rounded-[4px]"
       />
       <strong className="flex items-center pl-2 text-title font-semibold text-foreground">
         Ghostfetch

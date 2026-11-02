@@ -12,8 +12,9 @@ const alertVariants = cva('text-small', {
       notice:
         'rounded-lg border border-border bg-card px-3.5 py-2.5 leading-[1.55] text-t80',
       error:
-        "rounded-lg border border-foreground px-3.5 py-2.5 leading-[1.5] text-foreground before:mr-2 before:rounded-sm before:bg-foreground before:px-1.5 before:py-px before:text-micro before:font-semibold before:text-black before:content-['Error']",
-      paused: 'bg-foreground px-3.5 py-2 text-center text-control font-medium text-black',
+        "rounded-lg border border-foreground px-3.5 py-2.5 leading-[1.5] text-foreground before:mr-2 before:rounded-sm before:bg-foreground before:px-1.5 before:py-px before:text-micro before:font-semibold before:text-inverse before:content-['Error']",
+      paused:
+        'bg-foreground px-3.5 py-2 text-center text-control font-medium text-inverse',
     },
   },
   defaultVariants: { variant: 'notice' },

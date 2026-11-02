@@ -4,15 +4,15 @@ import type { VariantProps } from 'class-variance-authority';
 import { cn } from '../cn.ts';
 
 // Buttons: a hairline pill with soft corners, in sentence case. The one filled button is the
-// inverted white primary.
+// primary, inverted: the theme's text colour, a little brighter under the pointer.
 export const buttonVariants = cva(
-  'inline-flex shrink-0 items-center justify-center gap-[7px] rounded-md border border-input bg-transparent font-medium whitespace-nowrap text-t80 transition-colors duration-120 select-none hover:bg-pressed hover:text-white disabled:pointer-events-none disabled:opacity-45 [&_svg]:pointer-events-none',
+  'inline-flex shrink-0 items-center justify-center gap-[7px] rounded-md border border-input bg-transparent font-medium whitespace-nowrap text-t80 transition-colors duration-120 select-none hover:bg-pressed hover:text-strong disabled:pointer-events-none disabled:opacity-45 [&_svg]:pointer-events-none',
   {
     variants: {
       variant: {
         outline: '',
         primary:
-          'border-foreground bg-foreground font-semibold text-black hover:border-white hover:bg-white hover:text-black',
+          'border-foreground bg-foreground font-semibold text-inverse hover:bg-foreground hover:text-inverse hover:brightness-110',
         ghost: 'border-transparent text-t50 hover:text-foreground',
         // a quiet button in a list's footer (Import, Export, Clear)
         cell: 'border-0 font-normal text-t50 hover:text-foreground',

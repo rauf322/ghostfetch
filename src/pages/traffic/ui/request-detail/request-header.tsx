@@ -1,10 +1,12 @@
-// The top of an open request: its method and path (the full URL as its title), and under them its
-// status with its name, how long it took and what made it, as chips; the × closes it.
+// The top of an open request: the button that hides the list beside it, its method and path (the
+// full URL as its title), and under them its status with its name, how long it took and what
+// made it, as chips; the × closes it.
 import type { LogEntry } from '../../../../shared/api/index.ts';
 import { formatDuration, splitUrl, statusName } from '../../../../shared/lib/index.ts';
 import { StatusCode } from '../../../../shared/ui/kit/badge.tsx';
 import { Button } from '../../../../shared/ui/kit/button.tsx';
 import { Icon } from '../../../../shared/ui/kit/icon.tsx';
+import { SidebarToggle } from '../../../../shared/ui/sidebar.tsx';
 import { KIND_LABELS } from '../../lib/entry-labels.ts';
 
 const CHIP =
@@ -21,10 +23,12 @@ export function RequestHeader({
   const name = entry.status ? statusName(entry.status) : '';
   return (
     <div className="flex flex-none items-start gap-3 px-4 pt-4 pb-3 wide:px-5">
+      {/* Its icon lined up with the title's first line and left edge. */}
+      <SidebarToggle className="-mt-1.5 -mr-1 -ml-2" />
       <div className="flex min-w-0 flex-1 flex-col gap-2.5">
         <h2
           title={entry.url}
-          className="line-clamp-2 font-mono text-title font-semibold break-all text-white"
+          className="line-clamp-2 font-mono text-title font-semibold break-all text-strong"
         >
           <span className="mr-2">{entry.method}</span>
           {path}

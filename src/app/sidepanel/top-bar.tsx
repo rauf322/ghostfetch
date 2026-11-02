@@ -22,7 +22,13 @@ export function TopBar({
   return (
     <header className="flex h-12 flex-none items-stretch gap-2 border-b border-border px-2">
       <div className="flex items-center gap-2 pr-1 pl-1.5 text-title font-semibold whitespace-nowrap text-foreground">
-        <img src="/icons/icon32.png" width={18} height={18} alt="" />
+        <img
+          src="/icons/icon32.png"
+          width={18}
+          height={18}
+          alt=""
+          className="rounded-[4px]"
+        />
         <span className="max-[390px]:hidden">Ghostfetch</span>
       </div>
       <TabsList>

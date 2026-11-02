@@ -89,7 +89,11 @@ What's different in Firefox-based browsers:
   added), record on/off, quick per-rule switches. Click a rule's name to open it in the
   editor.
 - **Side panel (Chrome), sidebar (Firefox, Zen) or tab**: the full editor. Open it from the
-  popup, or from the `⋯` menu.
+  popup, or from the `⋯` menu. From 760 px wide the list sits beside what's open, as a
+  sidebar: the button at the top left of a rule or a request (or **⌘B / Ctrl+B**) hides it and
+  gives its room to what's open, and brings it back; it stays hidden until you do. In Traffic
+  the list only gives way to an open request. The `⋯` menu's **Theme** picks the
+  [look](#themes).
   - **Rules**: create and edit rules. Changes save as you type and apply to open tabs
     immediately, without reloading. Rules apply in the list's order and the first match wins;
     drag them to reorder. Import and export sit at the bottom of the list. A rule's switch
@@ -139,11 +143,23 @@ What's different in Firefox-based browsers:
     and **Mock this response**, which turns it into a rule pre-filled with the method, path,
     status and the real body, ready to edit.
 
-The look is dark-only and calm, after [T3 Code](https://github.com/pingdotgg/t3code), Revolut
-and ChatGPT: a near-black canvas with cards a step lighter, soft corners, Geist for words and
-Commit Mono for what is code (URLs, methods, status codes, headers, bodies), in sentence case.
-There is one colour, green, which means "on" or "a rule fired"; a rule's switch is a green dot
-that pulses while the rule is on. Errors and failed requests are inverted white instead of red.
+The look is calm, after [T3 Code](https://github.com/pingdotgg/t3code), Revolut and ChatGPT: a
+near-black canvas with cards a step lighter, soft corners, Geist for words and Commit Mono for
+what is code (URLs, methods, status codes, headers, bodies), in sentence case. There is one
+colour, green, which means "on" or "a rule fired"; a rule's switch is a green dot that pulses
+while the rule is on. Errors and failed requests are inverted white instead of red.
+
+### Themes
+
+The editor's `⋯` menu has **Theme**: Ghostfetch's own (above, the default), **Rosé Pine**,
+**Rosé Pine Moon**, **Rosé Pine Dawn** (light), **Catppuccin Macchiato** and **Vague**. Each
+takes its colours from its theme's palette as its Neovim plugin has them: the page, the
+cards and the steps on them, quieter text, and the body editor's JSON colours. The green is the
+theme's colour for what's added or fine (Catppuccin's green, Vague's; foam in Rosé Pine and
+pine in Dawn, as its own "ok", leaf, is too faint to tell a rule that's on from one that's off),
+and errors stay inverted, in the theme's text colour. A theme recolours every page of
+Ghostfetch's at once, the popup too, and is remembered in this browser. Each page puts it on
+before it first draws (`public/theme.js`), so none flashes Ghostfetch's own colours first.
 
 ### Vim keys
 
@@ -285,7 +301,7 @@ src/app/                         the extension's parts, one folder each, which W
   popup/                         the toolbar popup's page
   sidepanel/                     the editor (Chrome's side panel, Firefox's sidebar, or a tab): its top bar, tabs and menus
   kit/                           the kit page; for npm run dev and the kit test, never in the extension
-  styles/                        theme.css, the look's values (colours, the two fonts), and kit.css: those as Tailwind's theme (type sizes, corners)
+  styles/                        theme.css, the look's values (colours, the two fonts); themes.css, the other themes' colours; and kit.css: those as Tailwind's theme (type sizes, corners)
 src/pages/                       what the screens show
   rules/                         the Rules tab: the rule list, New rule (ui/new-rule/), and the rule editor (ui/rule-editor/, a component per part)
   traffic/                       the Traffic tab: a tab's live log grouped by time, a request's drawer (ui/request-detail/), Mock this response
@@ -308,6 +324,8 @@ src/shared/                      what more than one part of the extension uses
     kit/                         the UI kit: React components on Base UI, styled with Tailwind (see UI kit)
     code-editor/                 the body editor (plain DOM code, its find bar and vim keys) and its React component (index.ts)
     list-detail.tsx              the editor's layout: a list, and what's picked in it
+    sidebar.tsx                  the list as a sidebar: whether it's hidden, and the button (and ⌘B) that hides it
+    theme.ts                     the themes, and the one in use; theme-menu.tsx, the ⋯ menus' Theme row
     master-switch.tsx            Ghostfetch on or off, in the popup and the editor's top bar
     rule-switch.tsx              a rule on or off (the pulsing green dot), in the list, the rule's top bar and the popup
     rules-file.tsx               rules files: export every rule or one, import one (its rules arrive switched off)
@@ -318,6 +336,7 @@ oxlint.config.ts                 the linter's settings (npm run lint), and the l
 .oxfmtrc.json                    the formatter's settings (npm run format): single quotes, 90 columns
 public/fonts/                    Geist by Vercel and Commit Mono by Eigil Nikolajsen (SIL Open Font License, see Geist-OFL.txt and CommitMono-OFL.txt)
 public/icons/                    the Thorn Glass mark, generated by scripts/make-icons.mjs
+public/theme.js                  puts the theme you picked on each page before it first draws
 scripts/check-sources.mjs        rebuilds the sources zip in a clean folder and compares it with the build
 scripts/oxlint-rules.mjs         two lint rules of its own (npm run lint): no export *, and the folders of src/app/ are the extension's parts
 test/json.mjs                    the body editor's JSON check against JSON.parse, and the pieces it colours a long body in
@@ -431,7 +450,9 @@ against fetch and XHR (and that rules saved by older versions do what they shoul
 Mock, the rule's settings rows and its sentence, the body editor's marks for a JSON mistake,
 its height beside the settings and under them, text size, Format and colours on a body of 370,000
 characters, its own find and its vim keys), the traffic view (its filters, Keep on reload and
-Clear) and popup, plus the security properties above
+Clear), the list hidden as a sidebar beside a rule and a request (the button, the key, after a
+reload, none in a narrow panel), a theme picked in the `⋯` menu (the editor and the open popup
+recoloured, and set before a page draws) and popup, plus the security properties above
 (channel theft, forged offers, patched built-ins, built-ins that try to reach the interceptor
 through `.caller`, HTML injection, hostile rule files, sites that aren't turned on getting
 nothing, `local.*` hosts and a lookalike URL, turning a site on from the Traffic view). Branded Google Chrome ignores `--load-extension`, so the test uses
@@ -460,7 +481,8 @@ same keys.
 `test/kit.mjs` opens the UI kit page under the extension pages' real CSP, in Chromium and in
 Zen (served with the CSP as a response header there, since Firefox's automation can't open
 extension pages). It fails on any CSP violation, uncaught error or console error, drives every
-live component with the keyboard and the mouse, and checks that the kit's icons draw the same as
+live component with the keyboard and the mouse (the menu's Theme row too, which recolours the
+kit page: open it to see every component in every theme), and checks that the kit's icons draw the same as
 `src/shared/lib/icons.ts`. Two self-checks make sure it can fail: a `<style>` tag added on purpose has
 to be caught, and so does Base UI's own when `CSPProvider`'s setting is off.
 

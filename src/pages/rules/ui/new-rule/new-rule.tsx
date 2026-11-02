@@ -88,7 +88,7 @@ export function NewRule({
       <PaneScroll className="@container/composer">
         <div className="mx-auto flex w-full max-w-[720px] flex-col gap-6 px-4 pt-[clamp(8px,9vh,88px)] pb-8">
           <header className="flex flex-col gap-2.5 text-center">
-            <h1 className="text-[24px] leading-tight font-semibold tracking-tight text-white @[520px]/composer:text-[30px]">
+            <h1 className="text-[24px] leading-tight font-semibold tracking-tight text-strong @[520px]/composer:text-[30px]">
               What should Ghostfetch answer?
             </h1>
             <p className="text-body leading-relaxed text-t50 @[520px]/composer:text-[15px]">

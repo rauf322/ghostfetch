@@ -10,7 +10,7 @@ const badgeVariants = cva('inline-flex flex-none items-center text-label font-me
     variant: {
       fired:
         "text-signal before:mr-1.5 before:size-1.5 before:rounded-full before:bg-signal before:content-['']",
-      error: 'rounded-sm bg-foreground px-1.5 font-semibold text-black',
+      error: 'rounded-sm bg-foreground px-1.5 font-semibold text-inverse',
     },
   },
 });
@@ -40,7 +40,7 @@ const statusVariants = cva('flex-none font-mono text-meta tabular-nums', {
       '2xx': 'text-foreground',
       '3xx': 'text-t40',
       '4xx': 'rounded-sm px-1 text-foreground shadow-[inset_0_0_0_1px_var(--t50)]',
-      '5xx': 'rounded-sm bg-foreground px-1 font-semibold text-black',
+      '5xx': 'rounded-sm bg-foreground px-1 font-semibold text-inverse',
       none: 'text-t30',
     },
   },

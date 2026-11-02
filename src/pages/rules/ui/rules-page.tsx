@@ -6,6 +6,7 @@ import { addRule, findRule, ruleStore } from '../../../shared/api/index.ts';
 import type { Rule, TrafficLog } from '../../../shared/api/index.ts';
 import { useStore } from '../../../shared/react/index.ts';
 import { DetailPane, Split } from '../../../shared/ui/list-detail.tsx';
+import { useSidebarHidden } from '../../../shared/ui/sidebar.tsx';
 import { FieldSuggestions } from './field-suggestions.tsx';
 import { NewRule } from './new-rule/new-rule.tsx';
 import { RuleEditor } from './rule-editor/rule-editor.tsx';
@@ -47,6 +48,8 @@ export function RulesPage({
   // copy then; with focus in the editor, what you're typing stays.
   const [revision, setRevision] = useState(0);
   const editorPane = useRef<HTMLElement>(null);
+  // The list hidden in a wide window; beside it there's always a rule or New rule.
+  const collapsed = useSidebarHidden();
   const selected = findRule(selectedId);
   const composingNow = composing && !selectedId;
 
@@ -82,10 +85,11 @@ export function RulesPage({
   const picked = Boolean(selected) || composingNow;
   return (
     <>
-      <Split>
+      <Split collapsed={collapsed}>
         <RuleList
           selectedId={selectedId}
           picked={picked}
+          collapsed={collapsed}
           query={query}
           onQueryChange={setQuery}
           onSelect={select}

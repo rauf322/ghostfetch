@@ -15,7 +15,7 @@ export function Switch({
       data-slot="switch"
       data-size={size}
       className={cn(
-        'group/switch relative inline-block shrink-0 rounded-full bg-[#3a3a3f] transition-[background-color] duration-150 data-checked:bg-signal data-disabled:cursor-default data-disabled:opacity-45',
+        'group/switch relative inline-block shrink-0 rounded-full bg-track transition-[background-color] duration-150 data-checked:bg-signal data-disabled:cursor-default data-disabled:opacity-45',
         'data-[size=default]:h-5 data-[size=default]:w-[34px] data-[size=sm]:h-4 data-[size=sm]:w-[26px]',
         className,
       )}
@@ -23,7 +23,7 @@ export function Switch({
     >
       <SwitchPrimitive.Thumb
         data-slot="switch-thumb"
-        className="pointer-events-none absolute top-[2px] left-[2px] block rounded-full bg-[#a1a1a6] transition-[translate,background-color] duration-150 group-data-[size=default]/switch:size-4 group-data-[size=sm]/switch:size-3 data-checked:bg-background group-data-[size=default]/switch:data-checked:translate-x-[14px] group-data-[size=sm]/switch:data-checked:translate-x-[10px]"
+        className="pointer-events-none absolute top-[2px] left-[2px] block rounded-full bg-knob transition-[translate,background-color] duration-150 group-data-[size=default]/switch:size-4 group-data-[size=sm]/switch:size-3 data-checked:bg-background group-data-[size=default]/switch:data-checked:translate-x-[14px] group-data-[size=sm]/switch:data-checked:translate-x-[10px]"
       />
     </SwitchPrimitive.Root>
   );

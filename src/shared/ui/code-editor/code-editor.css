@@ -111,10 +111,10 @@
 }
 .code-marks mark {
   color: transparent;
-  background: rgba(241, 239, 232, 0.16);
+  background: color-mix(in srgb, var(--text) 16%, transparent);
 }
 .code-marks mark.current {
-  background: rgba(52, 211, 153, 0.32);
+  background: color-mix(in srgb, var(--signal) 32%, transparent);
   box-shadow: 0 0 0 1px var(--signal);
 }
 .code-lines {
@@ -122,9 +122,9 @@
   padding: 0 9px 0 10px;
 }
 
-/* a mistake (setProblem), in white as every error is: its line tinted and its number white with a
-   bar beside it, a squiggle under it, a few words after the end of its line, and the whole
-   message on hover */
+/* a mistake (setProblem), in the text colour (white) as every error is: its line tinted and its
+   number bright with a bar beside it, a squiggle under it, a few words after the end of its line,
+   and the whole message on hover */
 .code-lines .error {
   color: var(--text);
 }
@@ -141,7 +141,7 @@
 }
 .code-error-band {
   right: 0;
-  background: rgba(255, 255, 255, 0.06);
+  background: color-mix(in srgb, var(--strong) 6%, transparent);
 }
 .code-main .code-errors {
   color: transparent;
@@ -227,14 +227,14 @@
 .code-main .code-marks {
   color: transparent;
 }
-/* vim's block cursor, on its own layer above the highlighted text: inverted white, or an outline
-   while the editor isn't focused. The textarea's own caret only shows in Insert mode. */
+/* vim's block cursor, on its own layer above the highlighted text: inverted, or an outline while
+   the editor isn't focused. The textarea's own caret only shows in Insert mode. */
 .code-main .code-cursor {
   color: transparent;
 }
 .code-cursor .cursor {
   background: var(--text);
-  color: #000;
+  color: var(--inverse);
 }
 .code:not(:focus-within) .code-cursor .cursor {
   background: none;
@@ -254,7 +254,7 @@
   scrollbar-color: var(--line-strong) transparent;
 }
 .code-main textarea::selection {
-  background: rgba(255, 255, 255, 0.18);
+  background: var(--selection);
   color: transparent;
 }
 .code-main textarea::placeholder {
@@ -286,7 +286,7 @@
   font-size: 11px;
   color: var(--t65);
 }
-/* a hollow mark in Normal, green while typing, inverted white while selecting */
+/* a hollow mark in Normal, green while typing, inverted while selecting */
 .code-vim-mode::before {
   content: '';
   flex: none;
@@ -296,7 +296,7 @@
   box-shadow: inset 0 0 0 1px var(--t40);
 }
 .code[data-vim='insert'] .code-vim-mode {
-  color: #fff;
+  color: var(--strong);
 }
 .code[data-vim='insert'] .code-vim-mode::before {
   background: var(--signal);
@@ -304,11 +304,11 @@
 }
 .code[data-vim^='visual'] .code-vim-mode {
   background: var(--text);
-  color: #000;
+  color: var(--inverse);
   font-weight: 500;
 }
 .code[data-vim^='visual'] .code-vim-mode::before {
-  background: #000;
+  background: var(--inverse);
   box-shadow: none;
 }
 .code-vim-keys {

@@ -70,7 +70,7 @@ export function ItemTitle({ className, ...props }: ComponentProps<'div'>) {
     <div
       data-slot="item-title"
       className={cn(
-        'truncate text-title font-medium text-white group-data-off/item:text-t50',
+        'truncate text-title font-medium text-strong group-data-off/item:text-t50',
         className,
       )}
       {...props}

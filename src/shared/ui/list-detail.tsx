@@ -1,16 +1,25 @@
 // The editor's layout, shared by the Rules and Traffic tabs: a list, and what's picked in it. From
-// 760px wide the two sit side by side; in a narrower side panel only one shows, the list until
-// something is picked, with a button to go back to it.
+// 760px wide the two sit side by side, and the list can be hidden like a sidebar (sidebar.tsx);
+// in a narrower side panel only one shows, the list until something is picked, with a button to
+// go back to it.
 import type { ComponentProps, ReactNode } from 'react';
 import { cn } from './cn.ts';
 import { Icon } from './kit/icon.tsx';
 import { Input } from './kit/input.tsx';
 
-export function Split({ className, ...props }: ComponentProps<'div'>) {
+// The list's column slides shut while `collapsed` (the list hidden), and what's open takes the
+// whole width.
+export function Split({
+  collapsed = false,
+  className,
+  ...props
+}: ComponentProps<'div'> & { collapsed?: boolean }) {
   return (
     <div
+      data-collapsed={collapsed || undefined}
       className={cn(
-        'grid h-full min-h-0 grid-cols-[minmax(0,1fr)] wide:grid-cols-[minmax(300px,34%)_minmax(0,1fr)]',
+        'grid h-full min-h-0 grid-cols-[minmax(0,1fr)] wide:grid-cols-[minmax(300px,34%)_minmax(0,1fr)] wide:data-collapsed:grid-cols-[minmax(0px,0%)_minmax(0,1fr)]',
+        'motion-safe:transition-[grid-template-columns] motion-safe:duration-200 motion-safe:ease-out',
         className,
       )}
       {...props}
@@ -18,16 +27,21 @@ export function Split({ className, ...props }: ComponentProps<'div'>) {
   );
 }
 
-// `picked`: something in the list is open, which hides the list in a narrow panel.
+// `picked`: something in the list is open, which hides the list in a narrow panel. `collapsed`:
+// the list is hidden beside what's open in a wide one. It's cut off as its column closes, and
+// once it has, gone (invisible, so nothing in it takes focus).
 export function ListPane({
   picked,
+  collapsed = false,
   className,
   ...props
-}: ComponentProps<'aside'> & { picked: boolean }) {
+}: ComponentProps<'aside'> & { picked: boolean; collapsed?: boolean }) {
   return (
     <aside
+      data-collapsed={collapsed || undefined}
       className={cn(
-        'flex min-h-0 min-w-0 flex-col wide:border-r wide:border-border',
+        'flex min-h-0 min-w-0 flex-col wide:overflow-hidden wide:border-r wide:border-border wide:data-collapsed:invisible',
+        'motion-safe:transition-[visibility] motion-safe:duration-200',
         picked && 'max-wide:hidden',
         className,
       )}

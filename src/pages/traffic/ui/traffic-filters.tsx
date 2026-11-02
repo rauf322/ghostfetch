@@ -37,10 +37,10 @@ export function TrafficFilters({
             key={name}
             value={name}
             data-testid={`filter-${name}`}
-            className="group/filter h-8 flex-none rounded-full bg-card px-3 data-checked:bg-foreground data-checked:text-black"
+            className="group/filter h-8 flex-none rounded-full bg-card px-3 data-checked:bg-foreground data-checked:text-inverse"
           >
             {FILTER_LABELS[name]}{' '}
-            <span className="ml-0.5 font-normal text-t40 tabular-nums group-data-checked/filter:text-black/55">
+            <span className="ml-0.5 font-normal text-t40 tabular-nums group-data-checked/filter:text-inverse/55">
               {counts[name]}
             </span>
           </SegmentedItem>

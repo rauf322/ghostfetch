@@ -23,6 +23,8 @@ interface RuleListProps {
   selectedId: string | null;
   // A rule is open, which hides the list in a narrow panel.
   picked: boolean;
+  // Hidden beside what's open, in a wide one (SidebarToggle).
+  collapsed: boolean;
   query: string;
   onQueryChange: (query: string) => void;
   onSelect: (id: string) => void;
@@ -34,6 +36,7 @@ interface RuleListProps {
 export function RuleList({
   selectedId,
   picked,
+  collapsed,
   query,
   onQueryChange,
   onSelect,
@@ -47,7 +50,7 @@ export function RuleList({
   const active = rules.filter((rule) => rule.enabled).length;
 
   return (
-    <ListPane picked={picked}>
+    <ListPane picked={picked} collapsed={collapsed}>
       <PaneToolbar>
         <SearchField
           value={query}

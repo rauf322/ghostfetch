@@ -14,7 +14,7 @@ export function ButtonSection() {
         <Button variant="primary">
           <Icon name="plus" size={14} /> New rule
         </Button>
-        <Button variant="primary" className="border-white bg-white">
+        <Button variant="primary" className="brightness-110">
           <Icon name="plus" size={14} /> New rule
         </Button>
         <Button variant="ghost">Format</Button>

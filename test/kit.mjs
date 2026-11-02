@@ -450,6 +450,54 @@ async function runChecks(browser, open) {
     },
   );
 
+  await check(
+    `${browser}: menu: the right arrow opens the Theme row's themes, Enter picks one and recolours the page with them still open, Esc closes them, then the menu`,
+    async () => {
+      const look = () =>
+        kit.run(() => [
+          document.documentElement.dataset.theme ?? '',
+          getComputedStyle(document.body).backgroundColor,
+        ]);
+      const themesOpen = () =>
+        kit.run(() =>
+          Boolean(
+            document.querySelector('[data-slot=dropdown-menu-sub-content][data-open]'),
+          ),
+        );
+      await kit.focus('[data-testid=kit-menu]');
+      await kit.press('Enter');
+      await menuOpen(kit);
+      await focusOn(kit, '[role=menuitem]');
+      // Up from the first row, round to the last: Theme.
+      await kit.press('ArrowUp');
+      await focusOn(kit, '[data-testid=theme-menu]');
+      await kit.press('ArrowRight');
+      await focusOn(kit, '[data-testid=theme-ghostfetch]');
+      await kit.press('ArrowDown');
+      await focusOn(kit, '[data-testid=theme-rose-pine]');
+      await kit.press('Enter');
+      const seen = [await look(), await themesOpen()];
+      await kit.press('Escape');
+      await focusOn(kit, '[data-testid=theme-menu]');
+      seen.push(await themesOpen());
+      await kit.press('ArrowRight');
+      await focusOn(kit, '[data-testid=theme-ghostfetch]');
+      await kit.press('Enter');
+      seen.push(await look());
+      await kit.press('Escape');
+      await focusOn(kit, '[data-testid=theme-menu]');
+      await kit.press('Escape');
+      await menuClosed(kit);
+      await focusOn(kit, '[data-testid=kit-menu]');
+      expect(seen, [
+        ['rose-pine', 'rgb(25, 23, 36)'],
+        true,
+        false,
+        ['', 'rgb(11, 11, 12)'],
+      ]);
+    },
+  );
+
   await check(`${browser}: toast: one shows at a time, and its Undo runs`, async () => {
     const toasts = () =>
       kit.run(() =>

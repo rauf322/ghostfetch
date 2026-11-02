@@ -1,10 +1,13 @@
-// A select and a menu, live, and with ?open (`open`) the same two held open for screenshots.
+// A select and a menu, live, and with ?open (`open`) the same two held open for screenshots. The
+// live menu ends in the editor's Theme row, which recolours this page too: every component here,
+// in every theme.
 import { useState } from 'react';
 import { Button } from '../../../../shared/ui/kit/button.tsx';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../../../../shared/ui/kit/dropdown-menu.tsx';
 import { Icon } from '../../../../shared/ui/kit/icon.tsx';
@@ -15,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../../../../shared/ui/kit/select.tsx';
+import { ThemeMenu } from '../../../../shared/ui/theme-menu.tsx';
 import { Cell, Output, Row } from '../cell.tsx';
 
 const METHODS = ['ANY', 'GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map((value) => ({
@@ -78,6 +82,8 @@ export function SelectSection({ open }: { open: boolean }) {
             >
               <Icon name="close" /> Delete
             </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <ThemeMenu />
           </DropdownMenuContent>
         </DropdownMenu>
         <Output testid="kit-picked">
@@ -132,7 +138,7 @@ function OpenPopups() {
           </DropdownMenuItem>
           <DropdownMenuItem
             variant="destructive"
-            className="bg-foreground text-black [&_[data-slot=icon]]:text-black"
+            className="bg-foreground text-inverse [&_[data-slot=icon]]:text-inverse"
           >
             <Icon name="close" /> Delete
           </DropdownMenuItem>

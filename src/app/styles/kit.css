@@ -1,12 +1,14 @@
-/* The UI kit's stylesheet, and so the popup's and the editor's: the theme's values (theme.css) as
-   Tailwind's theme. Tailwind's own palette, fonts, type sizes, letter spacings, radii and shadows
-   are switched off, so a component can only use the theme's values.
+/* The UI kit's stylesheet, and so the popup's and the editor's: the theme's values (theme.css, and
+   the other themes in themes.css) as Tailwind's theme. Tailwind's own palette (white and black
+   too), fonts, type sizes, letter spacings, radii and shadows are switched off, so a component can
+   only use the theme's values, and every theme reaches all of them.
 
    Tailwind writes a rule for each class name it finds in src/ (source("../.."), from this
    folder), and only there: not in .output/ or anything else in the project folder, so the same
    sources always give the same stylesheet. */
 @import 'tailwindcss' source("../..");
 @import './theme.css';
+@import './themes.css';
 
 :root {
   /* shadcn's names pointed at the theme's, so a component borrowed from shadcn or 21st.dev starts
@@ -16,12 +18,12 @@
   --card: var(--panel);
   --popover: var(--panel);
   --primary: var(--text);
-  --primary-foreground: #000;
+  --primary-foreground: var(--inverse);
   --secondary: var(--pressed);
   --muted: var(--hover);
   --muted-foreground: var(--t50);
   --accent: var(--pressed);
-  --accent-foreground: #fff;
+  --accent-foreground: var(--strong);
   --destructive: var(--text); /* errors are inverted white, not red */
   --border: var(--line);
   --input: var(--line-strong);
@@ -61,8 +63,6 @@
   --radius-lg: 14px;
   --radius-xl: 18px;
 
-  --shadow-menu: 0 16px 48px rgba(0, 0, 0, 0.55);
-
   /* A rule that's on (SignalSwitch): the green dot dims to half and back every 2 s, after
      T3 Code's "working" dot. Long holds and stepped ramps, so the browser draws a dozen frames a
      cycle rather than one every refresh. */
@@ -93,10 +93,14 @@
 @custom-variant pane-wide (@container pane (min-width: 760px));
 
 @theme inline {
-  --color-white: #fff;
-  --color-black: #000;
+  --shadow-menu: var(--shadow);
+
+  --color-strong: var(--strong);
+  --color-inverse: var(--inverse);
   --color-signal: var(--signal);
   --color-signal-soft: var(--signal-soft);
+  --color-track: var(--track);
+  --color-knob: var(--knob);
   --color-t80: var(--t80);
   --color-t65: var(--t65);
   --color-t50: var(--t50);
@@ -155,7 +159,7 @@ body {
     color: var(--t80);
   }
   ::selection {
-    background: rgba(255, 255, 255, 0.2);
+    background: var(--selection);
   }
   :focus-visible {
     outline: 1.5px solid var(--t65);

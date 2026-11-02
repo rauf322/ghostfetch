@@ -26,7 +26,7 @@ export function TabsTrigger({ className, ...props }: TabsPrimitive.Tab.Props) {
     <TabsPrimitive.Tab
       data-slot="tabs-trigger"
       className={cn(
-        'group/tab flex h-7 flex-none items-center gap-1.5 rounded-md px-2.5 text-control font-medium whitespace-nowrap text-t50 hover:bg-hover hover:text-t80 data-active:bg-pressed data-active:text-white',
+        'group/tab flex h-7 flex-none items-center gap-1.5 rounded-md px-2.5 text-control font-medium whitespace-nowrap text-t50 hover:bg-hover hover:text-t80 data-active:bg-pressed data-active:text-strong',
         className,
       )}
       {...props}

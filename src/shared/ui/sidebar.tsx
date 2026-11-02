@@ -78,9 +78,9 @@ function setDragging(view: SidebarView | null) {
 
 export const useSidebarHidden = () => useSyncExternalStore(subscribe, () => hidden);
 
-// The list's column, for a Split: the width it was dragged to, as --list-width (kept between
+// The list's width, for its ListPane: the width it was dragged to, as --list-width (kept between
 // MIN_LIST and what leaves MIN_OPEN for what's open, however wide the window gets), and whether
-// its edge is being dragged, while the columns follow the pointer instead of sliding.
+// its edge is being dragged, while the list follows the pointer instead of sliding.
 export function useListColumn(view: SidebarView) {
   const width = useSyncExternalStore(subscribe, () => widths[view]);
   const resizing = useSyncExternalStore(subscribe, () => dragging === view);
@@ -134,40 +134,61 @@ export function SidebarToggle({ className }: { className?: string }) {
   );
 }
 
-// For a SidebarHandle (`handle`, in the grid of the list with the id `list`): the grid's left side
-// and its width, and the list's width and the widest it can be.
+// While the edge is dragged (and while the list slides, ListPane), an element in the Split marked
+// data-keep-width keeps the width it had, and takes its new one when the edge is let go: the body
+// editor's text area, whose lines don't wrap, so its width changes nothing on screen, but laying a
+// long body out again on every frame made the drag stutter. Returns what it holds, for
+// releaseWidths().
+export function holdWidths(split: HTMLElement) {
+  const held = [...split.querySelectorAll<HTMLElement>('[data-keep-width]')];
+  // Measured first, then set, so it's laid out once.
+  const kept = held.map((element) => element.getBoundingClientRect().width);
+  held.forEach((element, index) => {
+    element.style.width = `${kept[index]}px`;
+  });
+  return held;
+}
+
+export function releaseWidths(held: HTMLElement[]) {
+  for (const element of held) element.style.width = '';
+}
+
+// For a SidebarHandle (`handle`, in the Split of the list with the id `list`): the Split's left
+// side and its width, and the list's width and the widest it can be.
 function measure(handle: HTMLElement, list: string) {
-  const grid = handle.parentElement!.getBoundingClientRect();
+  const split = handle.parentElement!.getBoundingClientRect();
   const shown = document.getElementById(list)?.getBoundingClientRect().width ?? 0;
   return {
-    left: grid.left,
-    room: grid.width,
+    left: split.left,
+    room: split.width,
     now: hidden ? 0 : Math.round(shown),
-    max: Math.max(MIN_LIST, Math.floor(grid.width - MIN_OPEN)),
+    max: Math.max(MIN_LIST, Math.floor(split.width - MIN_OPEN)),
   };
 }
 
-// The list's edge, over the line between the Split's two columns (`list`: the list's id). Drag
-// it to make the list wider or narrower, on past half its narrowest to hide it, and back out to
-// show it; double-click it for the list's usual width. With the list hidden it waits at the left
-// edge. It's a separator in the Tab order too: the arrow keys move it, Home and End to the
-// narrowest and the widest, and Enter hides or shows the list.
+// The list's edge, over the line between it and what's open (`list`: the list's id), and between
+// the two in a Split. Drag it to make the list wider or narrower, on past half its narrowest to
+// hide it, and back out to show it; double-click it for the list's usual width. With the list
+// hidden it waits at the left edge. It's a separator in the Tab order too: the arrow keys move it,
+// Home and End to the narrowest and the widest, and Enter hides or shows the list.
 export function SidebarHandle({ view, list }: { view: SidebarView; list: string }) {
   const isHidden = useSidebarHidden();
   const isDragging = useSyncExternalStore(subscribe, () => dragging === view);
   const handle = useRef<HTMLDivElement>(null);
-  // Where the drag started: how far right of the edge it was taken, the grid's left side and
-  // width, and the width to go back to if it ends with the list hidden.
+  // Where the drag started: how far right of the edge it was taken, the Split's left side and
+  // width, the width to go back to if it ends with the list hidden, and what keeps its width
+  // until it ends (holdWidths()).
   const drag = useRef<{
     offset: number;
     left: number;
     room: number;
     before: number | null;
+    held: HTMLElement[];
   } | null>(null);
   // The list's width and the widest it can be now, for screen readers.
   const [size, setSize] = useState<{ now: number; max: number } | null>(null);
 
-  // Measured again whenever the list or the grid changes size: a drag, the list sliding shut or
+  // Measured again whenever the list or the Split changes size: a drag, the list sliding shut or
   // open, the window.
   useEffect(() => {
     const element = handle.current!;
@@ -182,6 +203,7 @@ export function SidebarHandle({ view, list }: { view: SidebarView; list: string 
       observer.disconnect();
       // Gone in the middle of a drag (the request it was beside closed): it's over.
       if (drag.current) {
+        releaseWidths(drag.current.held);
         drag.current = null;
         setDragging(null);
       }
@@ -196,6 +218,7 @@ export function SidebarHandle({ view, list }: { view: SidebarView; list: string 
       left,
       room,
       before: widths[view],
+      held: holdWidths(event.currentTarget.parentElement!),
     };
     event.currentTarget.setPointerCapture(event.pointerId);
     setDragging(view);
@@ -217,6 +240,7 @@ export function SidebarHandle({ view, list }: { view: SidebarView; list: string 
 
   function onPointerEnd() {
     if (!drag.current) return;
+    releaseWidths(drag.current.held);
     drag.current = null;
     setWidth(view, widths[view]);
     setDragging(null);
@@ -274,7 +298,9 @@ export function SidebarHandle({ view, list }: { view: SidebarView; list: string 
         }}
         onKeyDown={onKeyDown}
         className={cn(
-          'absolute inset-y-0 left-0 z-10 col-start-2 w-2 -translate-x-1/2 cursor-col-resize touch-none outline-none select-none max-wide:hidden data-collapsed:translate-x-0 data-collapsed:cursor-e-resize',
+          // 8 px across the line, over 4 px of each side of it, and taking no room in the row;
+          // with the list hidden, the 8 px from the left edge.
+          'relative z-10 -mx-1 w-2 flex-none cursor-col-resize touch-none outline-none select-none max-wide:hidden data-collapsed:ml-0 data-collapsed:-mr-2 data-collapsed:cursor-e-resize',
           // Its line: the list's own hairline, wider and brighter under the pointer (after a
           // moment, so passing over it doesn't flash it), while it's dragged, and with focus.
           "after:absolute after:inset-y-0 after:left-1/2 after:w-0.5 after:-translate-x-1/2 after:transition-colors after:duration-150 after:content-[''] hover:after:bg-t30 hover:after:delay-150 focus-visible:after:bg-t65 data-dragging:after:bg-t50",

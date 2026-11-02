@@ -74,9 +74,12 @@ export function TrafficList({
   return (
     <ListPane
       id={id}
+      view="traffic"
       picked={picked}
+      beside={picked}
       collapsed={collapsed}
-      className="@container/traffic wide:border-r-0"
+      divider={false}
+      className="@container/traffic"
     >
       <TrafficToolbar
         traffic={traffic}

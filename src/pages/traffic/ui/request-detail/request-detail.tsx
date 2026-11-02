@@ -1,8 +1,8 @@
 // One request, opened from the list, in a drawer that floats beside it (or takes the list's place
 // in a narrow panel): its method and path with its status, duration and kind, then any error,
 // Mock this response and the quieter actions, what's known about it, and its bodies. As wide as
-// its column of TrafficPage's grid; with the list hidden (`full`), a column at most 880 px wide
-// in the middle of the window, as the list's own is. Memoized on the entry, which never
+// what the list leaves in TrafficPage's row; with the list hidden (`full`), a column at most 880 px
+// wide in the middle of the window, as the list's own is. Memoized on the entry, which never
 // changes: a long body is only formatted once.
 import { memo, useMemo } from 'react';
 import type { LogEntry, Rule } from '../../../../shared/api/index.ts';
@@ -35,7 +35,7 @@ export const RequestDetail = memo(function RequestDetail({
       aria-label="Request"
       data-testid="request-detail"
       data-full={full || undefined}
-      className="flex min-h-0 min-w-0 flex-col overflow-hidden wide:my-3 wide:mr-3 wide:rounded-xl wide:border wide:border-border wide:bg-card wide:shadow-menu wide:data-full:ml-3 wide:data-full:w-[min(880px,100%_-_24px)] wide:data-full:justify-self-center"
+      className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden wide:my-3 wide:mr-3 wide:rounded-xl wide:border wide:border-border wide:bg-card wide:shadow-menu wide:data-full:mx-auto wide:data-full:w-[min(880px,100%_-_24px)] wide:data-full:flex-none"
     >
       <RequestHeader entry={entry} onClose={onClose} />
       <PaneScroll className="gap-4 px-4 pb-4 wide:px-5">

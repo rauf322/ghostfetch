@@ -224,6 +224,14 @@
   pointer-events: none;
   color: var(--t65);
 }
+/* A layer's text, in a block of one fixed width, far wider than the editor: its lines never wrap,
+   so it looks the same at any width, and with the block's width fixed the browser keeps its layout
+   when the editor changes width (the window resized, the list's edge dragged) instead of laying
+   out a long body again. A longer line still runs on past the block, as it would anyway. */
+.code-text {
+  display: block;
+  width: 100000px;
+}
 .code-main .code-marks {
   color: transparent;
 }

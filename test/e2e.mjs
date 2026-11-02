@@ -665,7 +665,7 @@ try {
       // The pieces on the highlight layer, and the coloured tokens in them.
       const painted = () =>
         app.evaluate(() => {
-          const layer = document.querySelector('.code-highlight');
+          const layer = document.querySelector('.code-highlight .code-text');
           return {
             tokens: layer.querySelectorAll('[class^="tk-"]').length,
             pieces: layer.querySelectorAll(':scope > span').length,
@@ -712,7 +712,9 @@ try {
           await scroll(end);
           await app.waitForFunction(
             (atEnd) => {
-              const pieces = document.querySelectorAll('.code-highlight > span');
+              const pieces = document.querySelectorAll(
+                '.code-highlight .code-text > span',
+              );
               const coloured = (piece) => Boolean(piece.querySelector('[class^="tk-"]'));
               return (
                 coloured(pieces[atEnd ? pieces.length - 1 : 0]) &&
@@ -1449,6 +1451,56 @@ try {
       await app.setViewportSize({ width: 400, height: 760 });
       expect(await app.locator('[data-testid="sidebar-handle"]:visible').count(), 0);
       await app.setViewportSize({ width: 1280, height: 820 });
+    },
+  );
+  await check(
+    "wide: while the list's edge is dragged, the body's text area keeps its width and takes the new one when let go; the list's width isn't inherited, and the body's coloured text is as wide whatever the editor's width",
+    async () => {
+      // What lets a long body keep up with the drag (sidebar.tsx, list-detail.tsx and the body
+      // editor's .code-text): none of it shows, so it's checked here.
+      const sizes = () =>
+        app.evaluate(() => {
+          const pane = document.querySelector('[data-testid="view-rules"] aside');
+          const textarea = document.querySelector('.code textarea');
+          const round = (element) => Math.round(element.getBoundingClientRect().width);
+          return {
+            textarea: round(textarea),
+            column: round(textarea.parentElement),
+            text: round(document.querySelector('.code-highlight .code-text')),
+            set: getComputedStyle(pane).getPropertyValue('--list-width') !== '',
+            inherited: getComputedStyle(pane.firstElementChild).getPropertyValue(
+              '--list-width',
+            ),
+          };
+        });
+      await app.click('[data-testid="tab-rules"]');
+      await app.locator('[data-testid="rule"]').first().click();
+      const before = await sizes();
+      const box = await app
+        .locator('[data-testid="view-rules"] [data-testid="sidebar-handle"]')
+        .boundingBox();
+      const y = Math.round(box.y + box.height / 2);
+      await app.mouse.move(Math.round(box.x + box.width / 2), y);
+      await app.mouse.down();
+      await app.mouse.move(Math.round(box.x + box.width / 2) - 120, y, { steps: 6 });
+      const during = await sizes();
+      await app.mouse.up();
+      const after = await sizes();
+      await app
+        .locator('[data-testid="view-rules"] [data-testid="sidebar-handle"]')
+        .dblclick();
+      expect(
+        [
+          during.textarea === before.textarea,
+          during.column !== before.column,
+          during.set,
+          during.inherited,
+          after.textarea === after.column,
+          after.text === before.text,
+        ],
+        [true, true, true, '', true, true],
+        JSON.stringify({ before, during, after }),
+      );
     },
   );
   await check('traffic reconnects after the page reloads', async () => {

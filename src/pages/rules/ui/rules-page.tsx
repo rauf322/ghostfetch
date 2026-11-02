@@ -86,7 +86,7 @@ export function RulesPage({
   const picked = Boolean(selected) || composingNow;
   return (
     <>
-      <Split view="rules" collapsed={collapsed}>
+      <Split>
         <RuleList
           id="rule-list"
           selectedId={selectedId}

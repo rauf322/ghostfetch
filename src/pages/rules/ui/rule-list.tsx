@@ -53,7 +53,7 @@ export function RuleList({
   const active = rules.filter((rule) => rule.enabled).length;
 
   return (
-    <ListPane id={id} picked={picked} collapsed={collapsed}>
+    <ListPane id={id} view="rules" picked={picked} collapsed={collapsed}>
       <PaneToolbar>
         <SearchField
           value={query}

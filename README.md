@@ -334,8 +334,8 @@ src/shared/                      what more than one part of the extension uses
   ui/                            components, a public file each
     kit/                         the UI kit: React components on Base UI, styled with Tailwind (see UI kit)
     code-editor/                 the body editor (plain DOM code, its find bar and vim keys) and its React component (index.ts)
-    list-detail.tsx              the editor's layout: a list, as wide as its edge was dragged, and what's picked in it
-    sidebar.tsx                  the list as a sidebar: its width and whether it's hidden, the edge that resizes it, and the button (and ⌘B) that hides it
+    list-detail.tsx              the editor's layout: a list, as wide as its edge was dragged, and what's picked in it, in a row (a flexbox: Firefox lays a grid's items out again from scratch)
+    sidebar.tsx                  the list as a sidebar: its width and whether it's hidden, the edge that resizes it (and what keeps its width meanwhile), and the button (and ⌘B) that hides it
     theme.ts                     the themes, and the one in use; theme-menu.tsx, the ⋯ menus' Theme row
     master-switch.tsx            Ghostfetch on or off, in the popup and the editor's top bar
     rule-switch.tsx              a rule on or off (the pulsing green dot), in the list, the rule's top bar and the popup
@@ -464,7 +464,9 @@ place, Format and colours on a body of 370,000 characters, its own find and its 
 yanks it pastes back from the clipboard), the
 traffic view (its filters, Keep on reload and Clear), the list as a sidebar beside a rule and a
 request (hidden with the button and the key, its edge dragged to its narrowest, its widest, shut
-and open again, its keys, each tab's width after a reload, none in a narrow panel), a theme picked
+and open again, its keys, each tab's width after a reload, none in a narrow panel, and what keeps
+a drag beside a long body smooth: the body's text area holding its width until the edge is let
+go, a width only the list itself has, and coloured text laid out the same at any width), a theme picked
 in the `⋯` menu (the editor and the open popup
 recoloured, and set before a page draws) and popup, plus the security properties above
 (channel theft, forged offers, patched built-ins, built-ins that try to reach the interceptor

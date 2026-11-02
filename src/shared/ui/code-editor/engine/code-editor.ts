@@ -78,7 +78,11 @@ export function createCodeEditor({
   if (fit) root.dataset.fit = '';
   // The find marks and a mistake's marks sit on their own layers under the highlighted text, so
   // they never interfere with the syntax colours or with typing. Vim's block cursor sits above
-  // them, and its status line along the bottom.
+  // them, and its status line along the bottom. Each layer is a <pre> that scrolls along with the
+  // textarea, its text in a .code-text of a fixed width (code-editor.css): lines never wrap, so a
+  // long body is laid out once, not again whenever the editor changes width. The textarea keeps
+  // its width while the list's edge is dragged or the list slides (data-keep-width, see
+  // shared/ui/sidebar.tsx) for the same reason.
   root.innerHTML = `
     <div class="code-find" role="search" hidden>
       <span class="code-find-icon" aria-hidden="true">${icon('search', 13)}<span class="code-find-prompt"></span></span>
@@ -91,23 +95,25 @@ export function createCodeEditor({
     <div class="code-gutter" aria-hidden="true"><div class="code-error-bar" hidden></div><div class="code-lines"></div></div>
     <div class="code-main">
       <div class="code-error-band" hidden></div>
-      <pre class="code-marks" aria-hidden="true"></pre>
-      <pre class="code-errors" aria-hidden="true"></pre>
-      <pre class="code-highlight" aria-hidden="true"></pre>
-      <pre class="code-cursor" aria-hidden="true"></pre>
-      <textarea spellcheck="false" autocomplete="off" autocapitalize="off" wrap="off"></textarea>
+      <pre class="code-marks" aria-hidden="true"><span class="code-text"></span></pre>
+      <pre class="code-errors" aria-hidden="true"><span class="code-text"></span></pre>
+      <pre class="code-highlight" aria-hidden="true"><span class="code-text"></span></pre>
+      <pre class="code-cursor" aria-hidden="true"><span class="code-text"></span></pre>
+      <textarea spellcheck="false" autocomplete="off" autocapitalize="off" wrap="off" data-keep-width></textarea>
       <div class="code-error-tip" role="tooltip" hidden><strong></strong><span></span></div>
       <div class="code-size" aria-live="polite" hidden></div>
     </div>
     <div class="code-vim" hidden><span class="code-vim-mode" aria-live="polite"></span><span class="code-vim-keys"></span><span class="code-vim-pos"></span></div>`;
   const textarea = root.querySelector('textarea')!;
-  const layer = root.querySelector<HTMLElement>('.code-highlight')!;
-  const marks = root.querySelector<HTMLElement>('.code-marks')!;
-  const errors = root.querySelector<HTMLElement>('.code-errors')!;
+  // The layers that scroll with the textarea, and the text of each.
+  const scrollers = [...root.querySelectorAll<HTMLElement>('.code-main pre')];
+  const layer = root.querySelector<HTMLElement>('.code-highlight .code-text')!;
+  const marks = root.querySelector<HTMLElement>('.code-marks .code-text')!;
+  const errors = root.querySelector<HTMLElement>('.code-errors .code-text')!;
   const band = root.querySelector<HTMLElement>('.code-error-band')!;
   const bar = root.querySelector<HTMLElement>('.code-error-bar')!;
   const tip = root.querySelector<HTMLElement>('.code-error-tip')!;
-  const cursorLayer = root.querySelector<HTMLElement>('.code-cursor')!;
+  const cursorLayer = root.querySelector<HTMLElement>('.code-cursor .code-text')!;
   const lines = root.querySelector<HTMLElement>('.code-lines')!;
   const findBar = root.querySelector<HTMLElement>('.code-find')!;
   const statusLine = root.querySelector<HTMLElement>('.code-vim')!;
@@ -174,7 +180,8 @@ export function createCodeEditor({
     const screen = Math.ceil(textarea.clientHeight / lineHeight);
     const first = Math.floor((textarea.scrollTop - top) / lineHeight) - screen;
     const last = first + 3 * screen;
-    const view = layer.getBoundingClientRect();
+    // What the layer shows: its <pre>, as the text in it is far wider.
+    const view = layer.parentElement!.getBoundingClientRect();
     for (const [index, element] of pieceElements.entries()) {
       let near =
         pieceLines[index]! <= last && (pieceLines[index + 1] ?? lineCount) >= first;
@@ -280,7 +287,7 @@ export function createCodeEditor({
   }
 
   function sync() {
-    for (const pre of [layer, marks, errors, cursorLayer]) {
+    for (const pre of scrollers) {
       pre.scrollTop = textarea.scrollTop;
       pre.scrollLeft = textarea.scrollLeft;
     }

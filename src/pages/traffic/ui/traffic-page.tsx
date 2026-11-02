@@ -39,7 +39,7 @@ export const TrafficPage = memo(function TrafficPage({
   useEffect(() => onCount(entries.length), [entries.length, onCount]);
 
   return (
-    <Split view="traffic" open={Boolean(selected)} collapsed={collapsed}>
+    <Split>
       <TrafficList
         id="traffic-list"
         log={log}

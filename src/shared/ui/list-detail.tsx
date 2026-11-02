@@ -2,62 +2,95 @@
 // 760px wide the two sit side by side, and the list is a sidebar you can resize and hide
 // (sidebar.tsx); in a narrower side panel only one shows, the list until something is picked, with
 // a button to go back to it.
+import { useEffect, useRef } from 'react';
 import type { ComponentProps, ReactNode } from 'react';
 import { cn } from './cn.ts';
 import { Icon } from './kit/icon.tsx';
 import { Input } from './kit/input.tsx';
-import { useListColumn } from './sidebar.tsx';
+import { holdWidths, releaseWidths, useListColumn } from './sidebar.tsx';
 import type { SidebarView } from './sidebar.tsx';
 
-// `view`'s list, and beside it what's open, if anything is (`open`: always in Rules, a request in
-// Traffic). The list is as wide as its edge was dragged (a SidebarHandle, which goes between the
-// two), or else its usual share of the window: a third, at least 300 px, in Rules; in Traffic,
-// what the request's drawer leaves, which is 44% at most 600 px. Its column slides shut while
-// `collapsed` (the list hidden), and what's open takes the whole width; while the edge is dragged,
-// the columns follow the pointer instead.
-export function Split({
+// The list and what's open beside it, in a row: a ListPane, a SidebarHandle, then a DetailPane (or
+// Traffic's drawer). A flexbox rather than a grid: when the list's width changes, Firefox lays each
+// item of a grid out again from scratch, a long body and all (60 ms a frame beside 15,000 lines),
+// and a flex item only as far as its own width changed.
+export function Split({ className, ...props }: ComponentProps<'div'>) {
+  return <div className={cn('relative flex h-full min-h-0', className)} {...props} />;
+}
+
+// While the list's width slides (Cmd/Ctrl+B, or the arrow keys on its edge), what keeps its width
+// while the edge is dragged keeps it too (holdWidths()), so a long body isn't laid out again on
+// every frame of the slide. Returns what stops it.
+function holdWhileSliding(pane: HTMLElement) {
+  let held: HTMLElement[] = [];
+  const isWidth = (event: TransitionEvent) =>
+    event.target === pane && event.propertyName === 'width';
+  const start = (event: TransitionEvent) => {
+    if (!isWidth(event)) return;
+    releaseWidths(held);
+    held = holdWidths(pane.parentElement!);
+  };
+  const end = (event: TransitionEvent) => {
+    if (!isWidth(event)) return;
+    releaseWidths(held);
+    held = [];
+  };
+  pane.addEventListener('transitionrun', start);
+  pane.addEventListener('transitionend', end);
+  pane.addEventListener('transitioncancel', end);
+  return () => {
+    pane.removeEventListener('transitionrun', start);
+    pane.removeEventListener('transitionend', end);
+    pane.removeEventListener('transitioncancel', end);
+    releaseWidths(held);
+  };
+}
+
+// `view`'s list. `picked`: something in it is open, which hides the list in a narrow panel. From
+// 760px wide, while something is open beside it (`beside`: always in Rules, a request in
+// Traffic), it's a sidebar, as wide as its edge was dragged (a SidebarHandle) or else its usual
+// share of the window: a third, at least 300 px, in Rules; in Traffic, what the request's drawer
+// leaves, which is 44% at most 600 px. Otherwise it takes the whole width. `collapsed`: the
+// sidebar is hidden, its width sliding to nothing, and once it has, it's gone (invisible, so nothing
+// in it takes focus). While its edge is dragged it follows the pointer instead of sliding.
+// `divider`: a hairline along its right edge (Traffic's drawer floats as a card, so has none).
+export function ListPane({
   view,
-  open = true,
+  picked,
+  beside = true,
   collapsed = false,
+  divider = true,
   className,
   style,
   ...props
-}: ComponentProps<'div'> & { view: SidebarView; open?: boolean; collapsed?: boolean }) {
+}: Omit<ComponentProps<'aside'>, 'ref'> & {
+  view: SidebarView;
+  picked: boolean;
+  beside?: boolean;
+  collapsed?: boolean;
+  divider?: boolean;
+}) {
   const column = useListColumn(view);
+  const pane = useRef<HTMLElement>(null);
+  useEffect(() => holdWhileSliding(pane.current!), []);
   return (
-    <div
+    <aside
+      ref={pane}
       data-view={view}
-      data-open={open || undefined}
+      data-beside={beside || undefined}
       data-collapsed={collapsed || undefined}
       data-resizing={column.resizing || undefined}
       style={{ ...column.style, ...style }}
       className={cn(
-        'relative grid h-full min-h-0 grid-cols-[minmax(0,1fr)] data-[view=rules]:[--list-default:max(300px,34%)] data-[view=traffic]:[--list-default:max(56%,100%_-_600px)]',
-        // The collapsed columns name both attributes, so they outrank the open ones.
-        'wide:data-open:grid-cols-[var(--list-width,var(--list-default))_minmax(0,1fr)] wide:data-open:data-collapsed:grid-cols-[0px_minmax(0,1fr)]',
-        'motion-safe:transition-[grid-template-columns] motion-safe:duration-200 motion-safe:ease-out data-resizing:transition-none',
-        className,
-      )}
-      {...props}
-    />
-  );
-}
-
-// `picked`: something in the list is open, which hides the list in a narrow panel. `collapsed`:
-// the list is hidden beside what's open in a wide one. It's cut off as its column closes, and
-// once it has, gone (invisible, so nothing in it takes focus).
-export function ListPane({
-  picked,
-  collapsed = false,
-  className,
-  ...props
-}: ComponentProps<'aside'> & { picked: boolean; collapsed?: boolean }) {
-  return (
-    <aside
-      data-collapsed={collapsed || undefined}
-      className={cn(
-        'flex min-h-0 min-w-0 flex-col wide:overflow-hidden wide:border-r wide:border-border wide:data-collapsed:invisible',
-        'motion-safe:transition-[visibility] motion-safe:duration-200',
+        'flex min-h-0 min-w-0 flex-1 flex-col wide:overflow-hidden',
+        'data-[view=rules]:[--list-default:max(300px,34%)] data-[view=traffic]:[--list-default:max(56%,100%_-_600px)]',
+        // The collapsed width names one attribute more, so it outranks the open one.
+        'wide:data-beside:w-[var(--list-width,var(--list-default))] wide:data-beside:flex-none wide:data-beside:data-collapsed:invisible wide:data-beside:data-collapsed:w-0',
+        // Hidden, the hairline lies over what's open rather than beside it, so that starts at the
+        // window's edge.
+        divider &&
+          'wide:border-r wide:border-border wide:data-beside:data-collapsed:-mr-px',
+        'motion-safe:transition-[width,visibility] motion-safe:duration-200 motion-safe:ease-out data-resizing:transition-none',
         picked && 'max-wide:hidden',
         className,
       )}
@@ -66,7 +99,7 @@ export function ListPane({
   );
 }
 
-// With nothing picked it shows an empty state.
+// What's picked in the list, in the rest of the row. With nothing picked it shows an empty state.
 export function DetailPane({
   picked,
   className,
@@ -75,7 +108,7 @@ export function DetailPane({
   return (
     <section
       className={cn(
-        'flex min-h-0 min-w-0 flex-col',
+        'flex min-h-0 min-w-0 flex-1 flex-col',
         !picked && 'max-wide:hidden',
         className,
       )}

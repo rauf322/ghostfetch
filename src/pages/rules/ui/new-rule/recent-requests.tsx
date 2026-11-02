@@ -3,12 +3,13 @@
 // a link to Traffic for the rest. Nothing shows until the page has asked for something.
 import { ruleFromEntry } from '../../../../shared/api/index.ts';
 import type { Rule, TrafficLog } from '../../../../shared/api/index.ts';
-import { splitUrl } from '../../../../shared/lib/index.ts';
+import { formatDuration, splitUrl } from '../../../../shared/lib/index.ts';
 import { useTraffic } from '../../../../shared/react/index.ts';
 import { StatusCode } from '../../../../shared/ui/kit/badge.tsx';
 import { Button } from '../../../../shared/ui/kit/button.tsx';
 import { Icon } from '../../../../shared/ui/kit/icon.tsx';
-import { Method } from '../../../../shared/ui/list-detail.tsx';
+import { ItemList } from '../../../../shared/ui/kit/item.tsx';
+import { Method, PaneSection } from '../../../../shared/ui/list-detail.tsx';
 import { recentRequests } from '../../lib/recent-requests.ts';
 
 export function RecentRequests({
@@ -17,19 +18,17 @@ export function RecentRequests({
   onOpenTraffic,
 }: {
   log: TrafficLog;
-  onMock: (draft: Rule) => void;
+  onMock: (rule: Rule) => void;
   onOpenTraffic: () => void;
 }) {
   const traffic = useTraffic(log);
   const recent = recentRequests(traffic.entries);
   if (!recent.length) return null;
-  const page = traffic.tabs.find((tab) => tab.id === traffic.targetId)?.title;
+  const page = traffic.target?.title;
   return (
-    <section className="flex flex-col gap-2">
-      <div className="flex items-baseline justify-between gap-3 px-1">
-        <h2 className="min-w-0 truncate text-label font-medium text-t40">
-          Or mock something {page || 'the page'} just asked for
-        </h2>
+    <PaneSection
+      label={`Or mock something ${page || 'the page'} just asked for`}
+      aside={
         <Button
           variant="link"
           size="inline"
@@ -38,8 +37,9 @@ export function RecentRequests({
         >
           Open Traffic
         </Button>
-      </div>
-      <ul className="rounded-lg bg-card p-1">
+      }
+    >
+      <ItemList>
         {recent.map((entry) => (
           <li
             key={entry.id}
@@ -53,20 +53,19 @@ export function RecentRequests({
             </span>
             <span className="hidden flex-none items-center gap-1.5 font-mono text-label text-t40 @[520px]/composer:flex">
               <StatusCode status={entry.status} failed={Boolean(entry.error)} />
-              {entry.duration != null && `· ${entry.duration} ms`}
+              {entry.duration != null && `· ${formatDuration(entry.duration)}`}
             </span>
             <Button
-              size="sm"
               data-testid="recent-mock"
               onClick={() => onMock(ruleFromEntry(entry))}
-              className="h-8 flex-none"
+              className="flex-none"
             >
               <Icon name="wand" size={14} />
               Mock
             </Button>
           </li>
         ))}
-      </ul>
-    </section>
+      </ItemList>
+    </PaneSection>
   );
 }

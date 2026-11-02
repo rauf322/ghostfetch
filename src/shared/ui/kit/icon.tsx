@@ -24,12 +24,6 @@ const SHAPES = {
   external: (
     <path d="M14 4h6v6M20 4l-9 9M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5" />
   ),
-  clear: (
-    <>
-      <circle cx="12" cy="12" r="8" />
-      <path d="M6.5 17.5l11-11" />
-    </>
-  ),
   reload: <path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7" />,
   wand: (
     <>

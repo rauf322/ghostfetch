@@ -12,18 +12,17 @@ import {
 
 export function TabPicker({
   tabs,
-  targetId,
+  target,
   onPick,
 }: {
   tabs: TrafficTab[];
-  targetId: number | null;
+  target: TrafficTab | null;
   onPick: (id: number | null) => void;
 }) {
-  const current = tabs.find((tab) => tab.id === targetId);
   return (
     <Select
       items={tabs.map((tab) => ({ value: String(tab.id), label: tab.title }))}
-      value={targetId == null ? null : String(targetId)}
+      value={target ? String(target.id) : null}
       onValueChange={(value) => onPick(value ? Number(value) : null)}
     >
       <SelectTrigger
@@ -32,21 +31,22 @@ export function TabPicker({
         aria-label="Page to watch"
         className="h-9 w-auto max-w-full min-w-0 flex-[0_1_auto] gap-2 rounded-md pr-8 pl-1.5 hover:bg-hover focus-visible:shadow-none"
       >
-        {current && (
+        {target && (
           <span
             aria-hidden
             className="flex size-5 flex-none items-center justify-center rounded-[5px] bg-raised text-micro font-semibold text-foreground"
           >
-            {current.title.trim().charAt(0).toUpperCase() || '·'}
+            {/* The first character, whole: an emoji is two code units, and charAt would split it. */}
+            {[...target.title.trim()][0]?.toUpperCase() || '·'}
           </span>
         )}
         <SelectValue
           placeholder="No web pages open"
           className="flex-[0_1_auto] font-medium"
         />
-        {current && (
+        {target && (
           <span className="hidden min-w-0 flex-[0_2_auto] truncate font-mono text-meta text-t40 @[520px]/traffic:inline">
-            {splitUrl(current.url).host}
+            {splitUrl(target.url).host}
           </span>
         )}
       </SelectTrigger>

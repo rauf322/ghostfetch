@@ -1,8 +1,9 @@
 // "Respond with": what a rule changes about the response besides its body. A row each for the
 // status code, the delay and the headers; a click opens the row's editor.
 import type { Rule } from '../../../../shared/api/index.ts';
+import { formatDuration } from '../../../../shared/lib/index.ts';
 import { CardHint } from '../../../../shared/ui/kit/card.tsx';
-import { formatDelay, headersValue, statusValue } from '../../lib/rule-summary.ts';
+import { headersValue, statusValue } from '../../lib/rule-summary.ts';
 import { DelayPanel } from './delay-panel.tsx';
 import { HeaderRows } from './header-rows.tsx';
 import { SettingRow, SettingsCard } from './settings-card.tsx';
@@ -33,7 +34,7 @@ export function ResponseSettings({
         id="delay"
         icon="timer"
         label="Delay"
-        value={response.delay ? formatDelay(response.delay) : 'None'}
+        value={response.delay ? formatDuration(response.delay) : 'None'}
         quiet={!response.delay}
       >
         <DelayPanel rule={rule} />

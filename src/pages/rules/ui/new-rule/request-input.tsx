@@ -2,39 +2,36 @@
 // paste, and under it the pickers (method, how the URL is compared, status, delay) and the button
 // that makes the rule. Enter makes it too; Shift+Enter starts a new line.
 import type { RefObject } from 'react';
-import { METHODS } from '../../../../shared/api/index.ts';
+import { MATCH_MODES, METHODS } from '../../../../shared/api/index.ts';
 import type { MatchMode, Method } from '../../../../shared/api/index.ts';
-import { statusName } from '../../../../shared/lib/index.ts';
+import { formatDuration, statusLabel } from '../../../../shared/lib/index.ts';
 import { Button } from '../../../../shared/ui/kit/button.tsx';
 import { Icon } from '../../../../shared/ui/kit/icon.tsx';
+import { SERVER_RESPONSE, chooseStatus, statusChoice } from '../../lib/rule-draft.ts';
 import type { Draft } from '../../lib/rule-draft.ts';
-import { URL_LABELS, formatDelay } from '../../lib/rule-summary.ts';
+import { STATUS_GROUPS } from '../../lib/status-codes.ts';
 import { Picker } from './picker.tsx';
 
 const METHOD_ITEMS = METHODS.map((method) => ({
   value: method,
   label: method === 'ANY' ? 'Any method' : method,
 }));
-const MODE_ITEMS = (Object.entries(URL_LABELS) as [MatchMode, string][]).map(
-  ([value, label]) => ({ value, label }),
-);
+const MODE_ITEMS = (Object.keys(MATCH_MODES) as MatchMode[]).map((value) => ({
+  value,
+  label: MATCH_MODES[value].row,
+}));
 // "Server's response" keeps the server's body and status; the codes answer with your body.
-const SERVER = 'server';
 const STATUS_ITEMS = [
-  { value: SERVER, label: "Server's response" },
-  ...[200, 201, 204, 400, 401, 403, 404, 409, 422, 429, 500, 503].map((code) => ({
+  { value: SERVER_RESPONSE, label: "Server's response" },
+  ...STATUS_GROUPS.flatMap((group) => group.codes).map((code) => ({
     value: String(code),
-    label: `${code} ${statusName(code)}`,
+    label: statusLabel(code),
   })),
 ];
 const DELAY_ITEMS = [0, 250, 500, 1000, 2000, 5000].map((ms) => ({
   value: String(ms),
-  label: ms ? formatDelay(ms) : 'No delay',
+  label: ms ? formatDuration(ms) : 'No delay',
 }));
-
-// The field is as tall as what's in it, up to 10 rem (a longer command scrolls): by itself where
-// the browser has field-sizing (Chrome), at any width; elsewhere, measured as you type.
-const SIZES_ITSELF = CSS.supports('field-sizing', 'content');
 
 export function RequestInput({
   field,
@@ -54,30 +51,33 @@ export function RequestInput({
 }) {
   return (
     <div className="flex flex-col gap-3 rounded-xl border border-line-strong bg-card p-3 shadow-menu transition-colors duration-150 focus-within:border-t30">
-      <textarea
-        ref={field}
-        data-testid="composer-input"
-        aria-label="URL or cURL command"
-        rows={1}
-        spellCheck={false}
-        value={text}
-        placeholder="/api/orders, a full URL, or a cURL command"
-        onChange={(event) => {
-          const box = event.target;
-          if (!SIZES_ITSELF) {
-            box.style.height = 'auto';
-            box.style.height = `${box.scrollHeight}px`;
-          }
-          onTextChange(box.value);
-        }}
-        onKeyDown={(event) => {
-          if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing)
-            return;
-          event.preventDefault();
-          onSubmit();
-        }}
-        className="max-h-40 w-full resize-none bg-transparent px-1.5 pt-1 font-mono text-body leading-relaxed text-foreground outline-none [field-sizing:content] scroll-thin placeholder:font-sans placeholder:text-t30"
-      />
+      {/* The field and a hidden copy of its text (::after) share one cell of a grid, so the cell
+          is as tall as the text and the field stretches to it, in every browser. The copy wraps
+          as the field does only with the field's padding, font and line height, written out on
+          both (Tailwind only knows classes it can read whole); it ends with a space, so a last
+          empty line counts. Both stop at 10 rem, and a longer command scrolls in the field. */}
+      <div
+        data-value={`${text} `}
+        className="grid after:invisible after:col-start-1 after:row-start-1 after:max-h-40 after:overflow-hidden after:px-1.5 after:pt-1 after:font-mono after:text-body after:leading-relaxed after:break-words after:whitespace-pre-wrap after:content-[attr(data-value)]"
+      >
+        <textarea
+          ref={field}
+          data-testid="composer-input"
+          aria-label="URL or cURL command"
+          rows={1}
+          spellCheck={false}
+          value={text}
+          placeholder="/api/orders, a full URL, or a cURL command"
+          onChange={(event) => onTextChange(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing)
+              return;
+            event.preventDefault();
+            onSubmit();
+          }}
+          className="col-start-1 row-start-1 max-h-40 w-full resize-none bg-transparent px-1.5 pt-1 font-mono text-body leading-relaxed break-words text-foreground outline-none scroll-thin placeholder:font-sans placeholder:text-t30"
+        />
+      </div>
       <div className="flex items-end gap-2">
         <div className="flex min-w-0 flex-1 flex-wrap gap-1.5">
           <Picker
@@ -100,15 +100,9 @@ export function RequestInput({
             icon="hash"
             label="Status"
             testid="picker-status"
-            value={draft.bodyMode === 'original' ? SERVER : draft.status || '200'}
+            value={statusChoice(draft)}
             items={STATUS_ITEMS}
-            onChange={(status) =>
-              onDraftChange(
-                status === SERVER
-                  ? { bodyMode: 'original', status: '' }
-                  : { bodyMode: 'replace', status: status === '200' ? '' : status },
-              )
-            }
+            onChange={(status) => onDraftChange(chooseStatus(status))}
           />
           <Picker
             icon="timer"

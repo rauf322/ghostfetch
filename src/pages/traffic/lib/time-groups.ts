@@ -1,14 +1,20 @@
 // The requests in groups by how long ago they were made, as a bank statement groups its payments
-// by day: "Just now", "1 minute ago", "12 minutes ago", then "Over an hour ago". `entries` come
-// newest first, and so do the groups.
+// by day: a handful of stretches ("Just now", "A few minutes ago", "About 10 minutes ago"), so a
+// session's log reads as a few cards rather than one a minute. `entries` come newest first, and
+// so do the groups.
 import type { LogEntry } from '../../../shared/api/index.ts';
 
-export interface TimeGroup {
-  label: string;
-  entries: LogEntry[];
-}
+// Each stretch ends `until` minutes ago.
+const STRETCHES: [until: number, label: string][] = [
+  [1, 'Just now'],
+  [5, 'A few minutes ago'],
+  [15, 'About 10 minutes ago'],
+  [45, 'About half an hour ago'],
+  [90, 'About an hour ago'],
+  [Infinity, 'Over an hour ago'],
+];
 
-export function groupByTime(entries: LogEntry[], now: number): TimeGroup[] {
+export function groupByTime(entries: LogEntry[], now: number) {
   const groups = new Map<string, LogEntry[]>();
   for (const entry of entries) {
     const label = ago(now - entry.time);
@@ -20,8 +26,6 @@ export function groupByTime(entries: LogEntry[], now: number): TimeGroup[] {
 }
 
 function ago(ms: number) {
-  const minutes = Math.floor(ms / 60_000);
-  if (minutes < 1) return 'Just now';
-  if (minutes < 60) return minutes === 1 ? '1 minute ago' : `${minutes} minutes ago`;
-  return 'Over an hour ago';
+  const minutes = ms / 60_000;
+  return STRETCHES.find(([until]) => minutes < until)![1];
 }

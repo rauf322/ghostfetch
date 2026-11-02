@@ -5,7 +5,7 @@ import { setFlag } from '../../../shared/api/index.ts';
 import type { TrafficSnapshot } from '../../../shared/api/index.ts';
 import { Button } from '../../../shared/ui/kit/button.tsx';
 import { Icon } from '../../../shared/ui/kit/icon.tsx';
-import { Switch } from '../../../shared/ui/kit/switch.tsx';
+import { SwitchPill } from '../../../shared/ui/kit/switch.tsx';
 import { Toggle } from '../../../shared/ui/kit/toggle.tsx';
 import { TabPicker } from './tab-picker.tsx';
 
@@ -29,29 +29,27 @@ export function TrafficToolbar({
 }) {
   return (
     <div className="flex h-14 flex-none items-center gap-1.5 px-3">
-      <TabPicker tabs={traffic.tabs} targetId={traffic.targetId} onPick={onPick} />
+      <TabPicker tabs={traffic.tabs} target={traffic.target} onPick={onPick} />
       <span className="ml-auto" />
-      <label
+      <SwitchPill
+        checked={record}
+        onCheckedChange={(on) => setFlag('record', on)}
+        aria-label="Recording"
         title="Capture requests. Rules apply either way."
-        className="flex h-8 flex-none cursor-pointer items-center gap-2 rounded-md bg-card pr-1.5 pl-3 text-control font-medium text-t80 @max-[560px]/traffic:pl-1.5"
+        className="@max-[560px]/traffic:pl-1.5"
       >
         <span className={WIDE_ONLY}>Recording</span>
-        <Switch
-          checked={record}
-          onCheckedChange={(on) => setFlag('record', on)}
-          aria-label="Recording"
-        />
-      </label>
+      </SwitchPill>
       <Toggle
         pressed={preserve}
         onPressedChange={onPreserveChange}
         title="Keep requests when the page reloads"
-        className="h-8 border-input"
+        className="border-input"
       >
         <Icon name="history" size={14} className="@[560px]/traffic:hidden" />
         <span className={WIDE_ONLY}>Keep on reload</span>
       </Toggle>
-      <Button size="sm" title="Clear the log" onClick={onClear} className="h-8 flex-none">
+      <Button title="Clear the log" onClick={onClear}>
         <Icon name="trash" size={14} />
         <span className={WIDE_ONLY}>Clear</span>
       </Button>

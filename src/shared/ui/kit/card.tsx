@@ -1,39 +1,13 @@
-import type { ComponentProps, ReactNode } from 'react';
+import type { ComponentProps } from 'react';
 import { cn } from '../cn.ts';
 
-// The rule editor's sections: full-width bands separated by hairlines, each with a title bar.
-export function Card({ className, ...props }: ComponentProps<'section'>) {
-  return (
-    <section
-      data-slot="card"
-      className={cn(
-        'flex flex-col gap-[9px] border-b border-border pb-3.5 *:not-data-[slot=card-title]:mx-3.5 [&>:first-child:not([data-slot=card-title])]:mt-3.5',
-        className,
-      )}
-      {...props}
-    />
-  );
-}
+// The card: a step lighter than the canvas, with soft corners, as Revolut's and T3 Code's
+// settings. A rule's settings, Traffic's groups of requests and a request's facts sit in one;
+// what's inside brings its own padding (a list of rows wants 4 px, words want 14).
+export const CARD = 'rounded-lg bg-card';
 
-export function CardTitle({
-  className,
-  note,
-  children,
-  ...props
-}: ComponentProps<'div'> & { note?: ReactNode }) {
-  return (
-    <div
-      data-slot="card-title"
-      className={cn(
-        'mb-[3px] flex h-11 items-center border-b border-border px-3.5 text-control font-medium text-t80',
-        className,
-      )}
-      {...props}
-    >
-      {children}
-      {note && <small className="ml-2 text-meta font-normal text-t40">{note}</small>}
-    </div>
-  );
+export function Card({ className, ...props }: ComponentProps<'div'>) {
+  return <div data-slot="card" className={cn(CARD, className)} {...props} />;
 }
 
 // Grey guidance under a field; "bad" turns it white, with a cross, when what's in the field is wrong.

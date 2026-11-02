@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import type { LogEntry } from '../../../../shared/api/index.ts';
 import { cn } from '../../../../shared/ui/cn.ts';
 import { Button } from '../../../../shared/ui/kit/button.tsx';
+import { CARD } from '../../../../shared/ui/kit/card.tsx';
 import { ActionBadge } from '../action-badge.tsx';
 
 export function RequestFacts({
@@ -14,7 +15,7 @@ export function RequestFacts({
   onOpenRule: (id: string) => void;
 }) {
   return (
-    <dl className="flex flex-col rounded-lg bg-card px-3.5 wide:bg-background">
+    <dl className={cn(CARD, 'flex flex-col px-3.5 wide:bg-background')}>
       <Fact label="URL" className="font-mono text-meta break-all">
         {entry.url}
       </Fact>

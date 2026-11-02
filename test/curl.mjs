@@ -69,6 +69,26 @@ await check(
   },
 );
 
+await check(
+  "a URL that starts with a dash is named with --url, so curl can't take it for an option",
+  () => {
+    const command = curlCommand({ method: 'GET', url: '-o/tmp/gf-pwned' });
+    expect(
+      [command, words(command)],
+      ["curl --url '-o/tmp/gf-pwned'", ['--url', '-o/tmp/gf-pwned']],
+    );
+  },
+);
+
+await check("a ' at the very start or end of a body stays in it", () => {
+  const body = "'quoted'";
+  expect(words(curlCommand({ method: 'POST', url: URL, body })), [
+    URL,
+    '--data-raw',
+    body,
+  ]);
+});
+
 console.log('reading a command');
 
 await check("Chrome's Copy as cURL (bash), over several lines", () => {
@@ -115,6 +135,26 @@ await check('-X, "double quotes", -G, -I, --url, and options that take a value',
   );
 });
 
+await check("Chrome's $'…' escapes: \\u for ! and control characters, \\x, octal", () => {
+  const parsed = parseCurl(
+    `curl '${URL}' --data-raw $'{"msg":"Hi\\u0021\\x41\\101\\t"}'`,
+  );
+  expect(parsed.body, '{"msg":"Hi!AA\t"}');
+});
+
+await check(
+  'options that take a value before the URL, known to the parser or not',
+  () => {
+    expect(
+      [
+        parseCurl(`curl --retry 3 --max-redirs 5 -U ada:pw ${URL}`),
+        parseCurl(`curl --made-up thing ${URL}`),
+      ].map((parsed) => parsed.url),
+      [URL, URL],
+    );
+  },
+);
+
 await check('not a curl command, or one with no URL: nothing', () => {
   expect(
     [parseCurl('wget https://example.test'), parseCurl('curl -H "a: b"')],
@@ -133,6 +173,7 @@ await check(
         body: `{"a":"'; echo pwned; '"}`,
       },
       { method: 'PUT', url: URL, body: "line one\nline 'two'" },
+      { method: 'GET', url: '-o/tmp/gf-pwned', body: '' },
     ];
     expect(
       requests.map((request) => {
@@ -162,6 +203,34 @@ await check(
         ['api.example.test/users', null],
         ['ftp://files.example.test/a', null],
       ],
+    );
+  },
+);
+
+await check(
+  'a bare origin keeps its host: its path alone, "/", would match every URL',
+  () => {
+    expect(
+      [
+        readTyped('https://api.example.test'),
+        readTyped('https://api.example.test:8080/'),
+        readTyped('https://api.example.test/?x=1'),
+      ].map((typed) => typed.url),
+      ['api.example.test/', 'api.example.test:8080/', '/?x=1'],
+    );
+  },
+);
+
+await check(
+  "a command's Accept becomes the Content-Type only when it's a media type and nothing else",
+  () => {
+    expect(
+      [
+        readTyped(`curl '${URL}' -H 'accept: text/plain; charset=utf-8'`),
+        readTyped(`curl '${URL}' -H 'accept: plain'`),
+        readTyped(`curl '${URL}' -H 'accept: text/plain\u0000'`),
+      ].map((typed) => typed.contentType),
+      ['text/plain', '', ''],
     );
   },
 );

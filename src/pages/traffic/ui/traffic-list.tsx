@@ -1,6 +1,6 @@
 // The Traffic tab's list, after a bank statement: the page it watches and the switches along the
 // top, the filters, a notice when nothing is coming in, then the requests, newest first, in a card
-// for each stretch of time ("Just now", "1 minute ago").
+// for each stretch of time ("Just now", "A few minutes ago").
 import { useState, useSyncExternalStore } from 'react';
 import type { ReactNode } from 'react';
 import {
@@ -10,7 +10,8 @@ import {
   siteStore,
 } from '../../../shared/api/index.ts';
 import type { TrafficLog, TrafficSnapshot } from '../../../shared/api/index.ts';
-import { ListPane } from '../../../shared/ui/list-detail.tsx';
+import { ItemList } from '../../../shared/ui/kit/item.tsx';
+import { ListPane, PaneSection } from '../../../shared/ui/list-detail.tsx';
 import { countEntries, filterEntries } from '../lib/filter-entries.ts';
 import type { TrafficFilter } from '../lib/filter-entries.ts';
 import { groupByTime } from '../lib/time-groups.ts';
@@ -97,9 +98,8 @@ export function TrafficList({
         <div className={`${COLUMN} flex flex-col gap-4 pb-4`}>
           {groups.length
             ? groups.map((group) => (
-                <section key={group.label} className="flex flex-col gap-1.5">
-                  <h3 className="px-1 text-label font-medium text-t40">{group.label}</h3>
-                  <ul className="rounded-lg bg-card p-1">
+                <PaneSection key={group.label} label={group.label} className="gap-1.5">
+                  <ItemList>
                     {group.entries.map((entry) => (
                       <RequestRow
                         key={entry.id}
@@ -108,8 +108,8 @@ export function TrafficList({
                         onSelect={onSelect}
                       />
                     ))}
-                  </ul>
-                </section>
+                  </ItemList>
+                </PaneSection>
               ))
             : waiting && <p className="px-1 py-2 text-t50">{waiting}</p>}
         </div>

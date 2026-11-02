@@ -9,14 +9,6 @@ import type { LogPortMessage, LogViewerMessage } from './messages.ts';
 
 const MAX_ENTRIES = 500;
 
-// Preserve ("Keep on reload"): whether the requests from before a page load stay in the log when
-// the page reloads. One setting for the editor, remembered in this browser.
-const PRESERVE = 'ghostfetch.preserveLog';
-
-export const isPreserved = () => localStorage.getItem(PRESERVE) === '1';
-export const rememberPreserve = (on: boolean) =>
-  localStorage.setItem(PRESERVE, on ? '1' : '0');
-
 const isWebUrl = (url: string | undefined) => /^https?:/.test(url || '');
 
 export interface TrafficTab {
@@ -31,6 +23,9 @@ export interface TrafficSnapshot {
   // Every web page open, for the page picker.
   tabs: TrafficTab[];
   targetId: number | null;
+  // The page being watched, as the list of tabs last had it, or null with no web page open.
+  target: TrafficTab | null;
+  // Its URL, kept up to date as it navigates, ahead of the list of tabs.
   targetUrl: string;
   // The page's log has arrived, so new requests show as they happen.
   connected: boolean;
@@ -42,7 +37,7 @@ export interface TrafficSnapshot {
 interface TrafficLogOptions {
   // The side panel follows the active tab; the editor in a tab keeps the tab it picked.
   followActiveTab: boolean;
-  // Whether the requests from before a page load stay when it reloads (Preserve).
+  // Whether the requests from before a page load stay when it reloads (Keep on reload).
   preserve: () => boolean;
 }
 
@@ -69,6 +64,7 @@ export function createTrafficLog({ followActiveTab, preserve }: TrafficLogOption
       entries: [...entries.values()],
       tabs,
       targetId,
+      target: tabs.find((tab) => tab.id === targetId) ?? null,
       targetUrl,
       connected,
       connecting: Boolean(port) || retryTimer !== undefined,

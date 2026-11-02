@@ -3,6 +3,7 @@
 import { openRuleInEditor, ruleTitle } from '../../../shared/api/index.ts';
 import type { Rule } from '../../../shared/api/index.ts';
 import { cn } from '../../../shared/ui/cn.ts';
+import { ItemList } from '../../../shared/ui/kit/item.tsx';
 import { RuleSwitch } from '../../../shared/ui/rule-switch.tsx';
 
 export function PopupRules({
@@ -23,16 +24,16 @@ export function PopupRules({
           {rules.length ? `${active} of ${rules.length} on` : ''}
         </span>
       </div>
-      <ul
+      <ItemList
         className={cn(
-          'max-h-[300px] overflow-auto rounded-lg bg-card p-1 scroll-thin empty:hidden',
+          'max-h-[300px] overflow-auto scroll-thin empty:hidden',
           dimmed && 'opacity-55',
         )}
       >
         {rules.map((rule) => (
           <PopupRule key={rule.id} rule={rule} windowId={windowId} />
         ))}
-      </ul>
+      </ItemList>
       {!rules.length && (
         <p className="px-1 text-small text-t40">
           No rules yet. Open the editor to create one.

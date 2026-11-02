@@ -2,11 +2,11 @@
 // picked from a few common ones.
 import { editRule } from '../../../../shared/api/index.ts';
 import type { Rule } from '../../../../shared/api/index.ts';
+import { formatDuration } from '../../../../shared/lib/index.ts';
 import { CardHint } from '../../../../shared/ui/kit/card.tsx';
 import { Input } from '../../../../shared/ui/kit/input.tsx';
 import { FieldLabel } from '../../../../shared/ui/kit/label.tsx';
 import { ToggleGroup, ToggleGroupItem } from '../../../../shared/ui/kit/toggle-group.tsx';
-import { formatDelay } from '../../lib/rule-summary.ts';
 
 const PRESETS = [0, 250, 500, 1000, 2000, 5000];
 
@@ -44,7 +44,7 @@ export function DelayPanel({ rule }: { rule: Rule }) {
       >
         {PRESETS.map((ms) => (
           <ToggleGroupItem key={ms} value={String(ms)} data-testid={`delay-${ms}`}>
-            {ms ? formatDelay(ms) : 'None'}
+            {ms ? formatDuration(ms) : 'None'}
           </ToggleGroupItem>
         ))}
       </ToggleGroup>

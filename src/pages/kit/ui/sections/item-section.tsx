@@ -1,9 +1,12 @@
-// Items: rows of rules and of requests, as the two lists show them, one of each selected.
+// Items: rows of rules and of requests, as the two lists show them, one of each selected. The
+// requests sit in a card (ItemList), as Traffic's groups do.
+import { formatDuration } from '../../../../shared/lib/index.ts';
 import { Badge, StatusCode } from '../../../../shared/ui/kit/badge.tsx';
 import {
   Item,
   ItemContent,
   ItemDescription,
+  ItemList,
   ItemTitle,
 } from '../../../../shared/ui/kit/item.tsx';
 import { SignalSwitch } from '../../../../shared/ui/kit/signal-switch.tsx';
@@ -91,7 +94,7 @@ const REQUESTS: {
 
 export function ItemSection() {
   return (
-    <Cell title="Item" note="rule rows and request rows" wide>
+    <Cell title="Item" note="rule rows, and request rows in a card" wide>
       <div className="grid grid-cols-2 gap-6">
         <ul className="m-0 list-none py-1">
           {RULES.map((rule, position) => (
@@ -120,7 +123,7 @@ export function ItemSection() {
             </Item>
           ))}
         </ul>
-        <ul className="m-0 list-none rounded-lg bg-card p-1">
+        <ItemList>
           {REQUESTS.map((entry, position) => (
             <Item
               key={entry.path + entry.method}
@@ -141,19 +144,19 @@ export function ItemSection() {
                       <span className="truncate pl-0.5 text-t65">{entry.rule}</span>
                     </>
                   ) : (
-                    `${entry.host} · fetch`
+                    `${entry.host} · fetch()`
                   )}
                 </span>
               </span>
               <span className="flex flex-col items-end gap-0.5">
                 <StatusCode status={entry.status} />
                 <span className="font-mono text-label text-t40 tabular-nums">
-                  {entry.ms != null ? `${entry.ms} ms` : ''}
+                  {entry.ms != null ? formatDuration(entry.ms) : ''}
                 </span>
               </span>
             </Item>
           ))}
-        </ul>
+        </ItemList>
       </div>
     </Cell>
   );

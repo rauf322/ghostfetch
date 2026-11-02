@@ -3,10 +3,10 @@
 // found (a mistake is marked in the editor too, and clicking it here puts the cursor there), the
 // Vim switch and Format. The editor sizes its own text, with Cmd/Ctrl and =, - or 0.
 //
-// How tall the editor is: beside the settings (a pane 760 px wide or more), as tall as the pane
-// has room for, whatever the body; under them, as tall as the body, but never taller than the
-// pane (100cqh: the rule editor's pane is a size container), so all of it is on screen once you
-// scroll to it. code-editor.css reads both.
+// How tall the editor is: beside the settings (a pane 760 px wide or more, `pane-wide:`), as tall
+// as the pane has room for, whatever the body; under them, as tall as the body, but never taller
+// than the pane (100cqh: the rule editor's pane is a size container), so all of it is on screen
+// once you scroll to it. code-editor.css reads both.
 import { useEffect, useRef, useState } from 'react';
 import { BODY_MODES, editRule } from '../../../../shared/api/index.ts';
 import type { BodyMode, Rule } from '../../../../shared/api/index.ts';
@@ -15,6 +15,7 @@ import { cn } from '../../../../shared/ui/cn.ts';
 import { CodeEditor, vimPreferred } from '../../../../shared/ui/code-editor/index.ts';
 import type { CodeEditorHandle } from '../../../../shared/ui/code-editor/index.ts';
 import { Button } from '../../../../shared/ui/kit/button.tsx';
+import { Card } from '../../../../shared/ui/kit/card.tsx';
 import { Input } from '../../../../shared/ui/kit/input.tsx';
 import { Segmented, SegmentedItem } from '../../../../shared/ui/kit/segmented.tsx';
 import { notify } from '../../../../shared/ui/kit/toast.tsx';
@@ -22,16 +23,12 @@ import { Toggle } from '../../../../shared/ui/kit/toggle.tsx';
 import type { CodeStatus } from '../../lib/rule-checks.ts';
 import { Verdict } from './verdict.tsx';
 
-const MODE_LABELS: Record<BodyMode, string> = {
-  replace: 'Replace body',
-  original: "Keep server's body",
-};
-
 export function BodyCard({
   rule,
   revision,
   status,
   focus,
+  onFocused,
   className,
 }: {
   rule: Rule;
@@ -40,8 +37,9 @@ export function BodyCard({
   // What the check found, as the editor shows it (useSettledStatus).
   status: CodeStatus | null;
   // Put the cursor in the body, for a rule New rule just made: inside its {} or [] if that's all
-  // there is, so you can type the JSON straight away.
+  // there is, so you can type the JSON straight away. `onFocused` says it's there.
   focus: boolean;
+  onFocused: () => void;
   className?: string;
 }) {
   const code = useRef<CodeEditorHandle | null>(null);
@@ -60,7 +58,8 @@ export function BodyCard({
     const at = blank >= 0 ? blank + 3 : value === '[]' ? 1 : value.length;
     textarea.focus({ preventScroll: true });
     textarea.setSelectionRange(at, at);
-  }, [focus]);
+    onFocused();
+  }, [focus, onFocused]);
 
   function format() {
     const editor = code.current;
@@ -87,7 +86,7 @@ export function BodyCard({
       aria-label="Response body"
       className={cn(
         'flex flex-col gap-2',
-        '[--code-max:calc(100cqh-120px)] @[760px]/pane:[--code-fill:100%] @[760px]/pane:[--code-max:100%]',
+        '[--code-max:calc(100cqh-120px)] pane-wide:[--code-fill:100%] pane-wide:[--code-max:100%]',
         className,
       )}
     >
@@ -102,7 +101,7 @@ export function BodyCard({
           }
           className="flex-none"
         >
-          {(Object.keys(MODE_LABELS) as BodyMode[]).map((mode) => (
+          {(Object.keys(BODY_MODES) as BodyMode[]).map((mode) => (
             <SegmentedItem
               key={mode}
               value={mode}
@@ -110,7 +109,7 @@ export function BodyCard({
               title={BODY_MODES[mode].desc}
               className="flex-none px-3"
             >
-              {MODE_LABELS[mode]}
+              {BODY_MODES[mode].option}
             </SegmentedItem>
           ))}
         </Segmented>
@@ -143,7 +142,7 @@ export function BodyCard({
                 current.response.body = text;
               })
             }
-            className="flex min-h-0 flex-col @[760px]/pane:flex-1"
+            className="flex min-h-0 flex-col pane-wide:flex-1"
           />
           <div className="flex min-h-8 items-center gap-1.5">
             <Verdict
@@ -166,6 +165,7 @@ export function BodyCard({
               )}
             </Verdict>
             <Toggle
+              size="sm"
               data-testid="vim"
               pressed={vim}
               onPressedChange={switchVim}
@@ -186,10 +186,10 @@ export function BodyCard({
           </div>
         </>
       ) : (
-        <p className="rounded-lg bg-card px-3.5 py-3 text-body leading-relaxed text-t50">
+        <Card className="px-3.5 py-3 text-body leading-relaxed text-t50">
           Ghostfetch lets the request through and passes the server's body on as it is.
           The status, headers and delay you set still apply.
-        </p>
+        </Card>
       )}
     </section>
   );

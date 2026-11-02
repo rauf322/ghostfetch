@@ -3,7 +3,6 @@
 // states add, given to a still copy so that a screenshot shows them.
 import type { ReactNode } from 'react';
 import { cn } from '../../../shared/ui/cn.ts';
-import { Card, CardTitle } from '../../../shared/ui/kit/card.tsx';
 import { FieldLabel } from '../../../shared/ui/kit/label.tsx';
 
 export const HOVER = 'bg-pressed text-white';
@@ -21,10 +20,15 @@ export function Cell({
   children: ReactNode;
 }) {
   return (
-    <Card className={cn('border-b-0 bg-background pb-5', wide && 'col-span-2')}>
-      <CardTitle note={note}>{title}</CardTitle>
-      <div className="flex flex-col gap-4 pt-1">{children}</div>
-    </Card>
+    <section
+      className={cn('flex flex-col gap-[9px] bg-background pb-5', wide && 'col-span-2')}
+    >
+      <div className="mb-[3px] flex h-11 items-center border-b border-border px-3.5 text-control font-medium text-t80">
+        {title}
+        {note && <small className="ml-2 text-meta font-normal text-t40">{note}</small>}
+      </div>
+      <div className="mx-3.5 flex flex-col gap-4 pt-1">{children}</div>
+    </section>
   );
 }
 

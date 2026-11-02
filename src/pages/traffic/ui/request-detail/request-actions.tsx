@@ -19,8 +19,13 @@ export function RequestActions({
   onMock: (draft: Rule) => void;
 }) {
   async function copy(text: string, what: string) {
-    await navigator.clipboard.writeText(text);
-    notify(`Copied ${what}`);
+    try {
+      await navigator.clipboard.writeText(text);
+      notify(`Copied ${what}`);
+    } catch {
+      // The browser kept the clipboard: Firefox's sidebar without focus, or no permission.
+      notify(`Couldn't copy ${what}: the browser didn't allow it`, { kind: 'error' });
+    }
   }
 
   return (
@@ -86,7 +91,7 @@ function Secondary({
   children: string;
 }) {
   return (
-    <Button onClick={onClick} className="h-9 flex-auto gap-1.5 px-2 text-t80">
+    <Button size="lg" onClick={onClick} className="flex-auto gap-1.5 px-2 text-t80">
       <Icon name={icon} size={14} className="flex-none" />
       {children}
     </Button>

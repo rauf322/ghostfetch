@@ -1,10 +1,11 @@
 // Toggles and switches, in their states: the bar over Traffic's log, the Vim keys toggle, a
-// switch with its words that a click on either flips, and a rule's switch, the green dot.
+// switch with its words that a click on either flips, a rule's On/Off, and a rule's switch in a
+// list, the green dot.
 import { useState } from 'react';
 import { Button } from '../../../../shared/ui/kit/button.tsx';
 import { Icon } from '../../../../shared/ui/kit/icon.tsx';
 import { SignalSwitch } from '../../../../shared/ui/kit/signal-switch.tsx';
-import { Switch } from '../../../../shared/ui/kit/switch.tsx';
+import { Switch, SwitchPill } from '../../../../shared/ui/kit/switch.tsx';
 import { Toggle } from '../../../../shared/ui/kit/toggle.tsx';
 import { Cell, FOCUS, Row } from '../cell.tsx';
 
@@ -17,21 +18,29 @@ export function ToggleSection() {
         label="Traffic's bar: Recording on, Keep on reload off, the same with the pointer over it, Clear"
         className="flex items-center gap-1.5"
       >
-        <label className="flex h-8 cursor-pointer items-center gap-2 rounded-md bg-card pr-1.5 pl-3 text-control font-medium text-t80">
+        <SwitchPill defaultChecked aria-label="Recording">
           Recording
-          <Switch defaultChecked aria-label="Recording" />
-        </label>
-        <Toggle className="h-8 border-input">Keep on reload</Toggle>
-        <Toggle className="h-8 border-input bg-pressed text-foreground">
+        </SwitchPill>
+        <Toggle className="border-input">Keep on reload</Toggle>
+        <Toggle className="border-input bg-pressed text-foreground">
           Keep on reload
         </Toggle>
-        <Button size="sm" className="h-8">
+        <Button>
           <Icon name="trash" size={14} /> Clear
         </Button>
       </Row>
-      <Row label="Vim keys off · on (live: Space)">
-        <Toggle className="border-input">Vim keys</Toggle>
+      <Row label="A rule's switch over its settings: on · off">
+        <SwitchPill defaultChecked aria-label="Rule on">
+          On
+        </SwitchPill>
+        <SwitchPill aria-label="Rule on">Off</SwitchPill>
+      </Row>
+      <Row label="Vim keys off · on (live: Space), the small size">
+        <Toggle size="sm" className="border-input">
+          Vim keys
+        </Toggle>
         <Toggle
+          size="sm"
           data-testid="kit-toggle"
           pressed={vim}
           onPressedChange={setVim}

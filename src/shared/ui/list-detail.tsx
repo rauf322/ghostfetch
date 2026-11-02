@@ -1,7 +1,7 @@
 // The editor's layout, shared by the Rules and Traffic tabs: a list, and what's picked in it. From
 // 760px wide the two sit side by side; in a narrower side panel only one shows, the list until
 // something is picked, with a button to go back to it.
-import type { ComponentProps } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 import { cn } from './cn.ts';
 import { Icon } from './kit/icon.tsx';
 import { Input } from './kit/input.tsx';
@@ -129,6 +129,34 @@ export function PaneScroll({ className, ...props }: ComponentProps<'div'>) {
       className={cn('flex min-h-0 flex-1 flex-col overflow-auto scroll-thin', className)}
       {...props}
     />
+  );
+}
+
+// A labelled part of a pane: a small grey label, with room for a link or a note at its right end,
+// over a card or a list ("When a request matches", "Just now", "Response body"). `level` is the
+// heading's: 2 under a pane's title, 3 under a request's name in Traffic's drawer.
+export function PaneSection({
+  label,
+  aside,
+  level = 2,
+  className,
+  children,
+}: {
+  label: ReactNode;
+  aside?: ReactNode;
+  level?: 2 | 3;
+  className?: string;
+  children: ReactNode;
+}) {
+  const Heading = `h${level}` as const;
+  return (
+    <section className={cn('flex flex-col gap-2', className)}>
+      <Heading className="flex items-baseline justify-between gap-3 px-1 text-label font-medium text-t40">
+        <span className="min-w-0 truncate">{label}</span>
+        {aside}
+      </Heading>
+      {children}
+    </section>
   );
 }
 

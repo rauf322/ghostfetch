@@ -1,7 +1,7 @@
 // "Try a URL": paste a URL and see whether this rule would answer it, decided as the page decides
 // it (testResult). The URL stays as you open and close the settings.
 import type { Rule } from '../../../../shared/api/index.ts';
-import { CardHint } from '../../../../shared/ui/kit/card.tsx';
+import { Card, CardHint } from '../../../../shared/ui/kit/card.tsx';
 import { Input } from '../../../../shared/ui/kit/input.tsx';
 import { testResult } from '../../lib/rule-checks.ts';
 import { Verdict } from './verdict.tsx';
@@ -17,7 +17,7 @@ export function UrlTester({
 }) {
   const tested = url.trim() ? testResult(rule, url.trim()) : null;
   return (
-    <div className="flex flex-col gap-2.5 rounded-lg bg-card p-3">
+    <Card className="flex flex-col gap-2.5 p-3">
       <Input
         data-testid="tester"
         aria-label="URL to try"
@@ -37,6 +37,6 @@ export function UrlTester({
       ) : (
         <CardHint className="px-0.5">See whether this rule would answer it.</CardHint>
       )}
-    </div>
+    </Card>
   );
 }

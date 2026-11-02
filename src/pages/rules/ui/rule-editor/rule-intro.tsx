@@ -2,7 +2,7 @@
 // watches ("Mocking · fired 3× on Acme dashboard"), its name, which you edit in place, and one
 // sentence that says what it does.
 import { editRule, settingsStore } from '../../../../shared/api/index.ts';
-import type { Rule, TrafficLog } from '../../../../shared/api/index.ts';
+import type { Rule, TrafficLog, TrafficSnapshot } from '../../../../shared/api/index.ts';
 import { useStore, useTrafficValue } from '../../../../shared/react/index.ts';
 import { cn } from '../../../../shared/ui/cn.ts';
 import { Input } from '../../../../shared/ui/kit/input.tsx';
@@ -24,7 +24,7 @@ export function RuleIntro({ rule, log }: { rule: Rule; log: TrafficLog }) {
             current.name = event.target.value;
           })
         }
-        className="-mx-2 h-auto w-[calc(100%+16px)] rounded-md px-2 py-0.5 text-[22px] leading-tight font-semibold tracking-tight text-white placeholder:text-t40 hover:bg-hover focus:bg-pressed focus:shadow-none @[760px]/pane:text-[26px]"
+        className="-mx-2 h-auto w-[calc(100%+16px)] rounded-md px-2 py-0.5 text-[22px] leading-tight font-semibold tracking-tight text-white placeholder:text-t40 hover:bg-hover focus:bg-pressed focus:shadow-none pane-wide:text-[26px]"
       />
       <p data-testid="rule-description" className="text-body leading-relaxed text-t50">
         {describeRule(rule)}
@@ -33,26 +33,31 @@ export function RuleIntro({ rule, log }: { rule: Rule; log: TrafficLog }) {
   );
 }
 
+// How often the rule answered on the page the editor watches (`failed`: how often it went wrong
+// there instead).
+const times = (traffic: TrafficSnapshot, id: string, failed: boolean) =>
+  traffic.entries.filter(
+    (entry) => entry.ruleId === id && (entry.action === 'error') === failed,
+  ).length;
+
 // The chip over the name. Green while the rule answers requests, with how often it has on the page
 // the editor watches (while recording, which is how Ghostfetch knows); grey while it's off, or on
-// while Ghostfetch is off.
+// while Ghostfetch is off. Only what the log has seen: it starts over with Clear and, unless Keep
+// on reload is on, with a page load, so a count of none goes unsaid.
 function RuleState({ rule, log }: { rule: Rule; log: TrafficLog }) {
   const { enabled, record } = useStore(settingsStore);
-  const hits = useTrafficValue(
-    log,
-    (traffic) => traffic.entries.filter((entry) => entry.ruleId === rule.id).length,
-  );
-  const page = useTrafficValue(
-    log,
-    (traffic) => traffic.tabs.find((tab) => tab.id === traffic.targetId)?.title ?? '',
-  );
+  const hits = useTrafficValue(log, (traffic) => times(traffic, rule.id, false));
+  const failures = useTrafficValue(log, (traffic) => times(traffic, rule.id, true));
+  const page = useTrafficValue(log, (traffic) => traffic.target?.title ?? '');
   const live = rule.enabled && enabled;
   let words = 'Off';
   if (rule.enabled && !enabled) words = 'Paused while Ghostfetch is off';
   else if (live) {
     words = rule.response.bodyMode === 'replace' ? 'Mocking' : 'Modifying';
-    if (record && hits) words += ` · fired ${hits}× on ${page || 'this page'}`;
-    else if (record && page) words += ` · no matches on ${page} yet`;
+    const fired = [hits && `fired ${hits}×`, failures && `failed ${failures}×`]
+      .filter(Boolean)
+      .join(', ');
+    if (record && fired) words += ` · ${fired} on ${page || 'this page'}`;
   }
   return (
     <span

@@ -34,9 +34,10 @@ export function Picker({
     >
       <SelectTrigger
         variant="bare"
+        size="sm"
         aria-label={label}
         data-testid={testid}
-        className="h-8 w-auto flex-none gap-1.5 rounded-md bg-pressed pr-7 pl-2.5 text-control hover:bg-raised focus-visible:shadow-none"
+        className="w-auto flex-none gap-1.5 rounded-md bg-pressed pr-7 pl-2.5 text-control hover:bg-raised focus-visible:shadow-none"
       >
         <Icon name={icon} size={14} className="flex-none text-t50" />
         <SelectValue className="flex-none" />

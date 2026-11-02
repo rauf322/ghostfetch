@@ -1,16 +1,11 @@
 // The top of an open request: its method and path (the full URL as its title), and under them its
 // status with its name, how long it took and what made it, as chips; the × closes it.
 import type { LogEntry } from '../../../../shared/api/index.ts';
-import { splitUrl, statusName } from '../../../../shared/lib/index.ts';
+import { formatDuration, splitUrl, statusName } from '../../../../shared/lib/index.ts';
 import { StatusCode } from '../../../../shared/ui/kit/badge.tsx';
 import { Button } from '../../../../shared/ui/kit/button.tsx';
 import { Icon } from '../../../../shared/ui/kit/icon.tsx';
-import { formatDuration } from '../request-row.tsx';
-
-const KINDS: Record<LogEntry['kind'], string> = {
-  fetch: 'fetch()',
-  xhr: 'XMLHttpRequest',
-};
+import { KIND_LABELS } from '../../lib/entry-labels.ts';
 
 const CHIP =
   'inline-flex h-7 items-center gap-1.5 rounded-full bg-pressed px-2.5 font-mono text-label text-t80';
@@ -42,7 +37,7 @@ export function RequestHeader({
           {entry.duration != null && (
             <span className={CHIP}>{formatDuration(entry.duration)}</span>
           )}
-          <span className={CHIP}>{KINDS[entry.kind]}</span>
+          <span className={CHIP}>{KIND_LABELS[entry.kind]}</span>
           {entry.frame && (
             <span className={`${CHIP} min-w-0`}>
               <span className="font-sans text-t50">in</span>

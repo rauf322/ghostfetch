@@ -58,3 +58,8 @@ const NAMES: Record<number, string> = {
 export function statusName(code: string | number) {
   return NAMES[Number(code)] ?? '';
 }
+
+// "404 Not Found", or just the code when it has no standard name.
+export function statusLabel(code: string | number) {
+  return [String(code), statusName(code)].filter(Boolean).join(' ');
+}

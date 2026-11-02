@@ -1,12 +1,14 @@
-// The time now, moving on every `every` ms, so "1 minute ago" becomes "2 minutes ago" without a
-// new request coming in.
+// The time now, moving on every 15 s, so "Just now" becomes "A few minutes ago" without a new
+// request coming in.
 import { useEffect, useState } from 'react';
 
-export function useNow(every = 15_000) {
+const EVERY = 15_000;
+
+export function useNow() {
   const [now, setNow] = useState(Date.now);
   useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), every);
+    const timer = setInterval(() => setNow(Date.now()), EVERY);
     return () => clearInterval(timer);
-  }, [every]);
+  }, []);
   return now;
 }

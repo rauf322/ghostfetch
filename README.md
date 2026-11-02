@@ -128,12 +128,12 @@ What's different in Firefox-based browsers:
     on [vim keys](#vim-keys). The text size and the Vim switch are remembered for every body
     editor. Format on a body of more than 300
     lines can't be undone with ⌘Z: the browser would take minutes to make it undoable.
-  - **Traffic**: live `fetch`/XHR log of a tab, newest first, grouped by when ("Just now",
-    "1 minute ago"). What a rule did is in green ("Mocked by Feature flags"). The bar along
-    the top picks the page to watch and has **Recording**, **Keep on reload** (keep the log
-    when the page reloads) and **Clear**; under it, **All**, **Matched** and **Errors** (a
-    status of 400 or more, a failed request or a rule's error), each with its count, and a
-    search by URL, status or rule.
+  - **Traffic**: live `fetch`/XHR log of a tab, newest first, grouped by when ("Just now", "A
+    few minutes ago", "About 10 minutes ago"). What a rule did is in green ("Mocked by Feature
+    flags"). The bar along the top picks the page to watch and has **Recording**, **Keep on
+    reload** (keep the log when the page reloads) and **Clear**; under it, **All**, **Matched**
+    and **Errors** (a status of 400 or more, a failed request or a rule's error), each with its
+    count, and a search by URL, status or rule.
     Click a request to open it in a drawer beside the log: its status, time and Content-Type,
     the rule that acted on it, its bodies, **Copy URL**, **Copy as cURL** and **Copy body**,
     and **Mock this response**, which turns it into a rule pre-filled with the method, path,
@@ -298,10 +298,11 @@ src/shared/                      what more than one part of the extension uses
     settings.ts                  the on/off and recording switches
     log-entry.ts                 a request in a tab's traffic log
     traffic-log.ts               the editor's live log of the tab it watches (Traffic, how often a rule fired, New rule's recent requests)
+    preserve.ts                  Keep on reload: whether that log keeps what it has when the page reloads
     messages.ts                  the messages between the background, the bridge, the interceptor and the Traffic tab
     open-editor.ts               the editor in the side panel or a tab, and on a rule the popup picked
-  lib/                           small libraries, a file each (index.ts): JSON, HTML, URLs, status names, cURL commands,
-                                 icons, file names, a download, the side panel, the stores' base, untrusted data
+  lib/                           small libraries, a file each (index.ts): JSON, HTML, URLs, durations, status names, cURL
+                                 commands, icons, file names, a download, the side panel, the stores' base, untrusted data
   react/                         useStore(), which redraws a screen when a store changes, and the traffic log's hooks (index.ts)
   ui/                            components, a public file each
     kit/                         the UI kit: React components on Base UI, styled with Tailwind (see UI kit)
@@ -417,11 +418,12 @@ says the same for every case: both use one function, `urlTester`. It needs no br
 
 `test/curl.mjs` checks cURL commands both ways. Traffic's Copy as cURL: the command for a request,
 and that whatever the page put in it (quotes, `$(…)`, backticks, `;`, in the URL, the body or the
-method) stays inside its quotes when a shell reads the command. New rule: what it reads from a
-command (Chrome's Copy as cURL over several lines, `$'…'` bodies, `-X`, `-G`, `-I`, `--url`,
-options that take a value), that every command Copy as cURL writes reads back as the same request,
-what it reads from a URL or from "POST /path", and the rule it makes. `npm test` runs it after
-`test/matching.mjs`.
+method, a URL that starts with a dash) stays inside its quotes when a shell reads the command. New
+rule: what it reads from a command (Chrome's Copy as cURL over several lines, `$'…'` bodies and
+their `\u`, `\x` and octal escapes, `-X`, `-G`, `-I`, `--url`, options that take a value, known to
+it or not), that every command Copy as cURL writes reads back as the same request, what it reads
+from a URL (a bare origin keeps its host) or from "POST /path", which Accept values become the
+Content-Type, and the rule it makes. `npm test` runs it after `test/matching.mjs`.
 
 `test/e2e.mjs` loads the built extension into Chromium, runs a local API and checks the rules
 against fetch and XHR (and that rules saved by older versions do what they should), the editor

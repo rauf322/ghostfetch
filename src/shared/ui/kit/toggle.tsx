@@ -4,7 +4,8 @@ import type { VariantProps } from 'class-variance-authority';
 import { cn } from '../cn.ts';
 
 // Buttons that stay pressed: a small rounded mark, hollow when off and green when on, as for Keep
-// on reload and Vim keys. The "segment" look is for the options of a ToggleGroup.
+// on reload and Vim keys. The sizes are the Button's (give one border-input to show the
+// hairline). The "segment" look is for the options of a ToggleGroup.
 export const toggleVariants = cva(
   'inline-flex shrink-0 items-center justify-center gap-[7px] whitespace-nowrap text-t50 transition-colors duration-120 select-none hover:bg-pressed hover:text-foreground disabled:pointer-events-none disabled:opacity-45',
   {
@@ -17,19 +18,19 @@ export const toggleVariants = cva(
           'block min-w-0 flex-1 overflow-hidden text-ellipsis data-pressed:bg-raised data-pressed:font-medium data-pressed:text-white',
       },
       size: {
-        // the size of a small button, hairline included (give it border-input to show the hairline)
+        default: 'h-8 rounded-md border border-transparent px-3 text-control font-medium',
         sm: 'h-7 rounded-md border border-transparent px-2.5 text-label font-medium',
         segment: 'h-7 rounded-[8px] px-2 text-control',
       },
     },
-    defaultVariants: { variant: 'square', size: 'sm' },
+    defaultVariants: { variant: 'square', size: 'default' },
   },
 );
 
 export function Toggle({
   className,
   variant = 'square',
-  size = 'sm',
+  size = 'default',
   ...props
 }: TogglePrimitive.Props & VariantProps<typeof toggleVariants>) {
   return (

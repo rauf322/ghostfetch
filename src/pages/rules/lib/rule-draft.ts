@@ -4,6 +4,7 @@
 import { METHODS, createRule, graphqlOperation } from '../../../shared/api/index.ts';
 import type { BodyMode, MatchMode, Method, Rule } from '../../../shared/api/index.ts';
 import { parseCurl } from '../../../shared/lib/index.ts';
+import type { IconName } from '../../../shared/lib/index.ts';
 
 export interface Draft {
   method: Method;
@@ -18,9 +19,9 @@ export interface Draft {
 }
 
 // What the rule answers with, as a starter sets it: the rest of a draft is the request.
-export type Answer = Pick<Draft, 'bodyMode' | 'status' | 'delay' | 'body'>;
+type Answer = Pick<Draft, 'bodyMode' | 'status' | 'delay' | 'body'>;
 
-export const EMPTY_BODY = '{\n  \n}';
+const EMPTY_BODY = '{\n  \n}';
 
 // 200 OK, at once, with a body to fill in.
 export const PLAIN_ANSWER: Answer = {
@@ -43,7 +44,7 @@ export type StarterId = 'empty' | 'fail' | 'missing' | 'slow' | 'logged-out';
 export const STARTERS: {
   id: StarterId;
   label: string;
-  icon: 'brackets' | 'alert' | 'search' | 'timer' | 'logout';
+  icon: IconName;
   answer: Answer;
 }[] = [
   {
@@ -93,7 +94,21 @@ export const STARTERS: {
   },
 ];
 
-export interface TypedRequest {
+// The status picker offers the server's own response (its body and status) alongside the codes,
+// which answer with your body. A draft keeps that as its body mode and status; this is the one
+// place that translates between the two.
+export const SERVER_RESPONSE = 'server';
+
+export function statusChoice({ bodyMode, status }: Draft) {
+  return bodyMode === 'original' ? SERVER_RESPONSE : status || '200';
+}
+
+export function chooseStatus(choice: string): Partial<Draft> {
+  if (choice === SERVER_RESPONSE) return { bodyMode: 'original', status: '' };
+  return { bodyMode: 'replace', status: choice === '200' ? '' : choice };
+}
+
+interface TypedRequest {
   // The URL pattern: a full http(s) URL's path and query, so the rule answers on any host the app
   // runs on (localhost, a local.* domain, staging); anything else as typed.
   url: string;
@@ -107,9 +122,14 @@ export interface TypedRequest {
 const isMethod = (word: string): word is Method =>
   word !== 'ANY' && (METHODS as readonly string[]).includes(word);
 
+// A media type and nothing else ("text/plain"): a header value goes into the response the page
+// gets, and one with anything more in it (*/*, a parameter, a stray character) would make every
+// match a rule error.
+const MEDIA_TYPE = /^[\w.+-]+\/[\w.+-]+$/;
+
 export function readTyped(text: string): TypedRequest {
   const typed = text.trim();
-  const curl = /^curl\s/i.test(typed) ? parseCurl(typed) : null;
+  const curl = parseCurl(typed);
   if (curl) {
     const accept = curl.headers.find(([name]) => name === 'accept')?.[1] ?? '';
     const type = accept.split(',')[0]!.split(';')[0]!.trim();
@@ -117,7 +137,7 @@ export function readTyped(text: string): TypedRequest {
       url: pattern(curl.url),
       method: isMethod(curl.method) ? curl.method : null,
       graphqlOperation: graphqlOperation(curl.body),
-      contentType: type && !type.includes('*') ? type : '',
+      contentType: MEDIA_TYPE.test(type) ? type : '',
     };
   }
   const [, verb = '', rest = ''] = /^([A-Za-z]+)\s+(\S[\s\S]*)$/.exec(typed) ?? [];
@@ -134,8 +154,11 @@ export function readTyped(text: string): TypedRequest {
 function pattern(url: string) {
   try {
     const parsed = new URL(url);
-    if (parsed.protocol === 'http:' || parsed.protocol === 'https:')
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      // A bare origin's path is "/", which every URL contains: its host says what was meant.
+      if (parsed.pathname === '/' && !parsed.search) return `${parsed.host}/`;
       return parsed.pathname + parsed.search;
+    }
   } catch {
     // Not a full URL: a path or a part of one, kept as typed.
   }

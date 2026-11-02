@@ -359,6 +359,28 @@ async function runChecks(browser, open) {
     },
   );
 
+  await check(
+    `${browser}: accordion: a click opens a row and closes the open one, Enter opens a row, Space closes it`,
+    async () => {
+      const seen = [await read(kit, 'kit-accordion-open')];
+      await kit.click('[data-testid=kit-accordion-method]');
+      seen.push(await read(kit, 'kit-accordion-open'));
+      await kit.focus('[data-testid=kit-accordion-url]');
+      await kit.press('Enter');
+      seen.push(await read(kit, 'kit-accordion-open'));
+      await kit.press('Space');
+      seen.push(await read(kit, 'kit-accordion-open'));
+      expect(seen, ['open: url', 'open: method', 'open: url', 'open: none']);
+      // A closed row's editor leaves the page.
+      await settles(
+        kit,
+        () => document.querySelectorAll('[data-slot=accordion-panel]').length,
+        0,
+        'no panel open',
+      );
+    },
+  );
+
   await check(`${browser}: input: typing changes its value`, async () => {
     await kit.focus('[data-testid=kit-input]');
     await kit.run(() => document.querySelector('[data-testid=kit-input]').select());

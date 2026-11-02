@@ -4,6 +4,7 @@ import { cva } from 'class-variance-authority';
 import type { VariantProps } from 'class-variance-authority';
 import type { ComponentProps } from 'react';
 import { cn } from '../cn.ts';
+import { CARD } from './card.tsx';
 
 // List rows: a rule, or a request in Traffic. Rounded and inset from the list's edges; the
 // selected row is a filled pill, and a rule that's off fades. A rule's row starts with its dot, a
@@ -46,6 +47,18 @@ export function Item({
     render,
     state: { slot: 'item', variant },
   });
+}
+
+// Rows in a card (Traffic's groups, the popup's rules, New rule's recent requests): 4 px around
+// them, so give each row mx-0, flush with the card.
+export function ItemList({ className, ...props }: ComponentProps<'ul'>) {
+  return (
+    <ul
+      data-slot="item-list"
+      className={cn(CARD, 'm-0 list-none p-1', className)}
+      {...props}
+    />
+  );
 }
 
 export function ItemContent({ className, ...props }: ComponentProps<'div'>) {

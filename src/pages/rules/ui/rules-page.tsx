@@ -1,7 +1,7 @@
 // Rules tab: the rule list, and beside it the open rule or, with none open, New rule ("What should
 // Ghostfetch answer?"). In a narrow side panel only one of the two is visible at a time: the list,
 // until a rule is opened or New rule is clicked. From 760px wide they sit side by side.
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { addRule, findRule, ruleStore } from '../../../shared/api/index.ts';
 import type { Rule, TrafficLog } from '../../../shared/api/index.ts';
 import { useStore } from '../../../shared/react/index.ts';
@@ -17,7 +17,7 @@ interface RulesPageProps {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   // Makes a rule of a captured request and opens it (the editor's, as Traffic's Mock does).
-  onMock: (draft: Rule) => void;
+  onMock: (rule: Rule) => void;
   onOpenTraffic: () => void;
   onImport: () => void;
   onExport: () => void;
@@ -35,16 +35,20 @@ export function RulesPage({
   // Draws again when the rules change, here or in another view.
   useStore(ruleStore);
   const [query, setQuery] = useState('');
-  // New rule was clicked: in a narrow panel it takes the list's place, with the cursor in it.
+  // New rule was clicked: in a narrow panel it takes the list's place, with the cursor in it. Only
+  // while nothing is open: the popup, Traffic's Mock and an import open a rule without coming
+  // through here, and that closes it.
   const [composing, setComposing] = useState(false);
-  // A rule New rule just made, whose body gets the cursor.
+  // A rule New rule just made, whose body gets the cursor, once: the body says when it has it.
   const [created, setCreated] = useState<string | null>(null);
+  const forgetCreated = useCallback(() => setCreated(null), []);
   // Counts the times the rules were changed in another view (the popup, another window) while the
   // editor didn't have focus. The body editor keeps its own text, so it starts over from the new
   // copy then; with focus in the editor, what you're typing stays.
   const [revision, setRevision] = useState(0);
   const editorPane = useRef<HTMLElement>(null);
   const selected = findRule(selectedId);
+  const composingNow = composing && !selectedId;
 
   useEffect(
     () =>
@@ -75,7 +79,7 @@ export function RulesPage({
     setCreated(added.id);
   }
 
-  const picked = Boolean(selected) || composing;
+  const picked = Boolean(selected) || composingNow;
   return (
     <>
       <Split>
@@ -96,17 +100,18 @@ export function RulesPage({
               rule={selected}
               log={log}
               focusBody={created === selected.id}
+              onBodyFocused={forgetCreated}
               revision={revision}
               onSelect={select}
             />
           ) : (
             <NewRule
               log={log}
-              focus={composing}
+              focus={composingNow}
               onCreate={create}
-              onMock={(draft) => {
+              onMock={(rule) => {
                 setComposing(false);
-                onMock(draft);
+                onMock(rule);
               }}
               onCancel={() => setComposing(false)}
               onOpenTraffic={onOpenTraffic}

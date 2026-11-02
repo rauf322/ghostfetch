@@ -88,6 +88,10 @@
   --breakpoint-wide: 760px;
 }
 
+/* A rule's pane 760px wide or more (`pane-wide:`): its settings and its body side by side. The
+   pane names itself with @container-size/pane. */
+@custom-variant pane-wide (@container pane (min-width: 760px));
+
 @theme inline {
   --color-white: #fff;
   --color-black: #000;

@@ -4,16 +4,12 @@
 // is shown as text, never as HTML.
 import { memo } from 'react';
 import type { LogEntry } from '../../../shared/api/index.ts';
-import { splitUrl } from '../../../shared/lib/index.ts';
+import { formatDuration, splitUrl } from '../../../shared/lib/index.ts';
 import { StatusCode } from '../../../shared/ui/kit/badge.tsx';
 import { Item } from '../../../shared/ui/kit/item.tsx';
 import { Method } from '../../../shared/ui/list-detail.tsx';
+import { KIND_LABELS } from '../lib/entry-labels.ts';
 import { ActionBadge } from './action-badge.tsx';
-
-const KIND_LABELS: Record<LogEntry['kind'], string> = {
-  fetch: 'fetch',
-  xhr: 'XHR',
-};
 
 export const RequestRow = memo(function RequestRow({
   entry,
@@ -70,8 +66,3 @@ export const RequestRow = memo(function RequestRow({
     </Item>
   );
 });
-
-// "2 ms", "640 ms", "1.5 s"
-export function formatDuration(ms: number) {
-  return ms < 1000 ? `${ms} ms` : `${Number((ms / 1000).toFixed(1))} s`;
-}

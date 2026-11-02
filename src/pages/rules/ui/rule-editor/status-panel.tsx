@@ -6,7 +6,7 @@ import { CardHint } from '../../../../shared/ui/kit/card.tsx';
 import { Input } from '../../../../shared/ui/kit/input.tsx';
 import { FieldLabel } from '../../../../shared/ui/kit/label.tsx';
 import { ToggleGroup, ToggleGroupItem } from '../../../../shared/ui/kit/toggle-group.tsx';
-import { statusName } from '../../../../shared/lib/index.ts';
+import { statusLabel, statusName } from '../../../../shared/lib/index.ts';
 import { STATUS_GROUPS, presetName } from '../../lib/status-codes.ts';
 
 export function StatusPanel({ rule }: { rule: Rule }) {
@@ -56,7 +56,7 @@ export function StatusPanel({ rule }: { rule: Rule }) {
                 key={code}
                 value={String(code)}
                 data-testid={`status-${code}`}
-                title={`${code} ${statusName(code)}`}
+                title={statusLabel(code)}
                 className="group/code flex h-8 items-center justify-start gap-2 bg-background px-2.5"
               >
                 <span className="font-mono text-meta text-foreground tabular-nums">

@@ -1,17 +1,11 @@
 // "When a request matches": the requests a rule answers. A row each for the URL (how it's compared
 // and the pattern), the method and a GraphQL operation; a click opens the row's editor.
-import {
-  MATCH_HINTS,
-  MATCH_MODES,
-  METHODS,
-  editRule,
-} from '../../../../shared/api/index.ts';
+import { MATCH_MODES, METHODS, editRule } from '../../../../shared/api/index.ts';
 import type { MatchMode, Method, Rule } from '../../../../shared/api/index.ts';
 import { CardHint } from '../../../../shared/ui/kit/card.tsx';
 import { Input } from '../../../../shared/ui/kit/input.tsx';
 import { Segmented, SegmentedItem } from '../../../../shared/ui/kit/segmented.tsx';
 import { regexError } from '../../lib/rule-checks.ts';
-import { URL_LABELS } from '../../lib/rule-summary.ts';
 import { SettingRow, SettingsCard } from './settings-card.tsx';
 
 export function MatchSettings({
@@ -35,7 +29,7 @@ export function MatchSettings({
       <SettingRow
         id="url"
         icon="globe"
-        label={URL_LABELS[match.mode]}
+        label={MATCH_MODES[match.mode].row}
         value={problem ? "✗ Doesn't compile" : url || 'Not set'}
         code={Boolean(url) && !problem}
         quiet={!url}
@@ -50,9 +44,9 @@ export function MatchSettings({
           }
           className="bg-background"
         >
-          {(Object.entries(MATCH_MODES) as [MatchMode, string][]).map(([mode, label]) => (
+          {(Object.keys(MATCH_MODES) as MatchMode[]).map((mode) => (
             <SegmentedItem key={mode} value={mode} data-testid={`mode-${mode}`}>
-              {label}
+              {MATCH_MODES[mode].label}
             </SegmentedItem>
           ))}
         </Segmented>
@@ -69,7 +63,7 @@ export function MatchSettings({
           }
         />
         <CardHint tone={problem ? 'bad' : 'default'}>
-          {problem || MATCH_HINTS[match.mode]}
+          {problem || MATCH_MODES[match.mode].hint}
         </CardHint>
       </SettingRow>
       <SettingRow

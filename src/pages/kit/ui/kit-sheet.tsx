@@ -3,10 +3,10 @@
 // appear in a still screenshot. The rest is live, and test/kit.mjs drives it with the keyboard and
 // the mouse (data-testid="kit-..."). With ?open the select and the menu are also shown held open,
 // for screenshots.
+import { AccordionSection } from './sections/accordion-section.tsx';
 import { AlertSection } from './sections/alert-section.tsx';
 import { BadgeSection } from './sections/badge-section.tsx';
 import { ButtonSection } from './sections/button-section.tsx';
-import { EmptySection } from './sections/empty-section.tsx';
 import { IconsSection } from './sections/icons-section.tsx';
 import { InputSection } from './sections/input-section.tsx';
 import { ItemSection } from './sections/item-section.tsx';
@@ -26,8 +26,8 @@ export function KitSheet({ open }: { open: boolean }) {
       <SelectSection open={open} />
       <BadgeSection />
       <AlertSection />
+      <AccordionSection />
       <ItemSection />
-      <EmptySection />
       <IconsSection />
     </div>
   );

@@ -4,10 +4,8 @@
 // cursor in its body. Beside the list it's also what shows with no rule open; in a narrow panel it
 // takes the list's place, with a button back to it.
 import { useEffect, useRef, useState } from 'react';
-import type { Rule, TrafficLog } from '../../../../shared/api/index.ts';
-import { Button } from '../../../../shared/ui/kit/button.tsx';
-import { Icon } from '../../../../shared/ui/kit/icon.tsx';
-import { PaneHead, PaneScroll } from '../../../../shared/ui/list-detail.tsx';
+import type { Method, Rule, TrafficLog } from '../../../../shared/api/index.ts';
+import { PaneScroll } from '../../../../shared/ui/list-detail.tsx';
 import {
   NEW_DRAFT,
   PLAIN_ANSWER,
@@ -16,6 +14,7 @@ import {
   ruleFromDraft,
 } from '../../lib/rule-draft.ts';
 import type { Draft, StarterId } from '../../lib/rule-draft.ts';
+import { RulesHead } from '../rules-head.tsx';
 import { RecentRequests } from './recent-requests.tsx';
 import { RequestInput } from './request-input.tsx';
 import { Starters } from './starters.tsx';
@@ -32,27 +31,33 @@ export function NewRule({
   // Put the cursor in the input: New rule was clicked.
   focus: boolean;
   onCreate: (rule: Rule) => void;
-  onMock: (draft: Rule) => void;
+  onMock: (rule: Rule) => void;
   onCancel: () => void;
   onOpenTraffic: () => void;
 }) {
   const [text, setText] = useState('');
   const [draft, setDraft] = useState<Draft>(NEW_DRAFT);
+  // The method the picker was set to, for when what's typed stops naming one.
+  const [picked, setPicked] = useState<Method>(NEW_DRAFT.method);
   const field = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (focus) field.current?.focus();
   }, [focus]);
 
-  // A method in what's typed ("POST /api/…", or a cURL command's) picks the method.
-  function type(next: string) {
+  // A method in what's typed ("POST /api/…", or a cURL command's) sets the method as it appears,
+  // and the picker's own choice comes back when it goes. In between, the text is only read for a
+  // change, so what the picker was set to stays as you type.
+  function changeText(next: string) {
+    const was = readTyped(text).method;
+    const now = readTyped(next).method;
     setText(next);
-    const { method } = readTyped(next);
-    if (method) setDraft((current) => ({ ...current, method }));
+    if (now !== was) setDraft((current) => ({ ...current, method: now ?? picked }));
   }
 
   // A picker's change. The status and the delay are the answer's, so they unpick the starter.
   function change(next: Partial<Draft>) {
+    if (next.method) setPicked(next.method);
     const answers = Object.keys(PLAIN_ANSWER).some((key) => key in next);
     setDraft((current) => ({
       ...current,
@@ -79,23 +84,7 @@ export function NewRule({
 
   return (
     <>
-      <PaneHead className="h-12 items-center gap-1.5 border-b-0 px-2">
-        <Button
-          variant="ghost"
-          size="sm"
-          title="All rules"
-          data-testid="composer-back"
-          onClick={onCancel}
-          className="gap-1 pr-2.5 pl-1 text-control text-t80 wide:hidden"
-        >
-          <Icon name="back" size={18} />
-          Rules
-        </Button>
-        <span className="hidden px-2.5 text-control text-t40 wide:block">
-          {'Rules '}
-          <span className="text-t30">/</span> <span className="text-t80">New rule</span>
-        </span>
-      </PaneHead>
+      <RulesHead title="New rule" backTestId="composer-back" onBack={onCancel} />
       <PaneScroll className="@container/composer">
         <div className="mx-auto flex w-full max-w-[720px] flex-col gap-6 px-4 pt-[clamp(8px,9vh,88px)] pb-8">
           <header className="flex flex-col gap-2.5 text-center">
@@ -111,7 +100,7 @@ export function NewRule({
             field={field}
             text={text}
             draft={draft}
-            onTextChange={type}
+            onTextChange={changeText}
             onDraftChange={change}
             onSubmit={submit}
           />

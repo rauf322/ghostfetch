@@ -459,6 +459,44 @@ try {
       ]);
     },
   );
+  await check(
+    "text size: Ctrl with = and - grow and shrink the text around the cursor's line, which stays where it is in the view",
+    async () => {
+      // How far down the text area the middle of vim's cursor is, once Firefox has scrolled (two
+      // frames).
+      const cursorMiddle = () =>
+        editorTab.evaluate(
+          () =>
+            new Promise((resolve) =>
+              requestAnimationFrame(() =>
+                requestAnimationFrame(() => {
+                  const cursor = document
+                    .querySelector('.code-cursor .cursor')
+                    .getBoundingClientRect();
+                  const view = window.editor.textarea.getBoundingClientRect();
+                  resolve((cursor.top + cursor.bottom) / 2 - view.top);
+                }),
+              ),
+            ),
+        );
+      await typeVim('gg120G');
+      const start = await cursorMiddle();
+      const seen = [];
+      for (const key of ['=', '=', '=', '-', '0']) {
+        await editorTab.keyboard.down('Control');
+        await editorTab.keyboard.press(key);
+        await editorTab.keyboard.up('Control');
+        seen.push([key, Math.abs((await cursorMiddle()) - start) <= 1]);
+      }
+      expect(seen, [
+        ['=', true],
+        ['=', true],
+        ['=', true],
+        ['-', true],
+        ['0', true],
+      ]);
+    },
+  );
   await editorTab.close();
 
   await check('no uncaught errors in the pages', async () => {

@@ -605,6 +605,59 @@ try {
     },
   );
   await check(
+    "text size: the text grows and shrinks around the cursor's line, and with the cursor out of view, around the middle of the view",
+    async () => {
+      const editor = app.locator('.code textarea');
+      const before = await editor.inputValue();
+      await editor.fill(
+        JSON.stringify(
+          { items: Array.from({ length: 80 }, (_, id) => ({ id, name: `item ${id}` })) },
+          null,
+          2,
+        ),
+      );
+      // How far down the view the middle of the cursor's line is, and where in the lines the
+      // middle of the view is.
+      const view = () =>
+        editor.evaluate((textarea) => {
+          const style = getComputedStyle(textarea);
+          const lineHeight = parseFloat(style.lineHeight);
+          const top = parseFloat(style.paddingTop);
+          const line = textarea.value
+            .slice(0, textarea.selectionStart)
+            .split('\n').length;
+          return {
+            cursor: top + (line - 0.5) * lineHeight - textarea.scrollTop,
+            middle: (textarea.scrollTop + textarea.clientHeight / 2 - top) / lineHeight,
+          };
+        });
+      // The cursor on line 150, a third of the way down the view.
+      await editor.evaluate((textarea) => {
+        const start = textarea.value.split('\n').slice(0, 149).join('\n').length + 1;
+        textarea.setSelectionRange(start + 4, start + 4);
+        const lineHeight = parseFloat(getComputedStyle(textarea).lineHeight);
+        textarea.scrollTop = 149 * lineHeight - textarea.clientHeight / 3;
+      });
+      const seen = [];
+      const { cursor } = await view();
+      for (const key of ['=', '=', '=', '=', '-', '0']) {
+        await app.keyboard.press(`ControlOrMeta+${key}`);
+        seen.push(Math.abs((await view()).cursor - cursor) <= 1);
+      }
+      // The view back at the top, so the cursor is out of it.
+      await editor.evaluate((textarea) => {
+        textarea.scrollTop = 120;
+      });
+      const { middle } = await view();
+      for (const key of ['=', '=', '0']) {
+        await app.keyboard.press(`ControlOrMeta+${key}`);
+        seen.push(Math.abs((await view()).middle - middle) <= 0.1);
+      }
+      await editor.fill(before);
+      expect(seen, Array(9).fill(true));
+    },
+  );
+  await check(
     'a long body is coloured where it is on screen, and only there',
     async () => {
       const editor = app.locator('.code textarea');
@@ -1217,6 +1270,126 @@ try {
         ],
         [false, null],
       );
+      await app.setViewportSize({ width: 1280, height: 820 });
+    },
+  );
+  await check(
+    "wide: dragging the list's edge sizes it (at least 260 px, leaving 320), past half of that hides it and out again shows it; each tab keeps its width, after a reload too; the keys move it; a double-click gives the usual width back",
+    async () => {
+      const handle = (view) =>
+        app.locator(`[data-testid="view-${view}"] [data-testid="sidebar-handle"]`);
+      // The list's width once its column has stopped sliding: 0 while it's hidden (its column is
+      // shut, though the list's own border is still 1 px wide, and it only goes invisible once the
+      // column has slid shut).
+      const width = async (view) => {
+        let last;
+        for (let tries = 0; tries < 40; tries++) {
+          const now = await app.evaluate((name) => {
+            const aside = document.querySelector(`[data-testid="view-${name}"] aside`);
+            const shown = Math.round(aside.getBoundingClientRect().width);
+            return getComputedStyle(aside).visibility === 'visible' && shown > 1
+              ? shown
+              : 0;
+          }, view);
+          if (now === last) return now;
+          last = now;
+          await new Promise((resolve) => setTimeout(resolve, 60));
+        }
+        return last;
+      };
+      const saved = (view) =>
+        app.evaluate(
+          (name) => localStorage.getItem(`ghostfetch.sidebar-width.${name}`),
+          view,
+        );
+      // Takes the edge by its middle and lets go of it at `x` (whole pixels).
+      const drag = async (view, x, { release = true } = {}) => {
+        const box = await handle(view).boundingBox();
+        const y = Math.round(box.y + box.height / 2);
+        await app.mouse.move(Math.round(box.x + box.width / 2), y);
+        await app.mouse.down();
+        await app.mouse.move(x, y, { steps: 8 });
+        if (release) await app.mouse.up();
+      };
+      const seen = [];
+      await app.click('[data-testid="tab-rules"]');
+      await app.locator('[data-testid="rule"]').first().click();
+      // The usual width: a third of the window, at least 300 px.
+      seen.push(await width('rules'));
+      // While it's dragged, the columns follow the pointer instead of sliding.
+      await drag('rules', 360, { release: false });
+      seen.push(await app.locator('[data-view="rules"][data-resizing]').count());
+      await app.mouse.up();
+      seen.push(await width('rules'), await saved('rules'));
+      await drag('rules', 150);
+      seen.push(await width('rules'));
+      await drag('rules', 1200);
+      seen.push(await width('rules'));
+      // Past half the narrowest: hidden, and the width from before this drag is kept for later.
+      await drag('rules', 60);
+      seen.push(
+        await width('rules'),
+        await app
+          .locator('[data-testid="sidebar-toggle"]:visible')
+          .getAttribute('aria-expanded'),
+        await saved('rules'),
+      );
+      // The edge waits at the left; taken there (4 px into it), it brings the list back.
+      await drag('rules', 500);
+      seen.push(await width('rules'));
+      expect(seen, [435, 1, 360, '360', 260, 960, 0, 'false', '960', 496]);
+
+      // Traffic's list has its own width: what the drawer leaves (44%, at most 600 px).
+      await app.click('[data-testid="tab-traffic"]');
+      await app.locator('[data-testid="request"]').first().click();
+      const traffic = [await width('traffic')];
+      await drag('traffic', 500);
+      traffic.push(await width('traffic'));
+      // Remembered after a reload, each its own.
+      await app.reload();
+      await app.locator('[data-testid="request"]').first().click();
+      traffic.push(await width('traffic'));
+      await app.click('[data-testid="tab-rules"]');
+      traffic.push(await width('rules'));
+      expect(traffic, [717, 500, 500, 496]);
+
+      // The keys, with the edge focused, and what it says it is.
+      await app.click('[data-testid="tab-traffic"]');
+      await handle('traffic').focus();
+      const keyed = [];
+      for (const key of [
+        'ArrowLeft',
+        'Shift+ArrowRight',
+        'Home',
+        'End',
+        'Enter',
+        'Enter',
+      ]) {
+        await app.keyboard.press(key);
+        const now = await width('traffic');
+        keyed.push([key, now, await handle('traffic').getAttribute('aria-valuenow')]);
+      }
+      expect(keyed, [
+        ['ArrowLeft', 484, '484'],
+        ['Shift+ArrowRight', 548, '548'],
+        ['Home', 260, '260'],
+        ['End', 960, '960'],
+        ['Enter', 0, '0'],
+        ['Enter', 960, '960'],
+      ]);
+
+      // A double-click: the usual width again, and nothing kept.
+      await handle('traffic').dblclick();
+      await app.click('[data-testid="request-back"]');
+      await app.click('[data-testid="tab-rules"]');
+      await handle('rules').dblclick();
+      expect(
+        [await width('rules'), await saved('rules'), await saved('traffic')],
+        [435, null, null],
+      );
+      // A narrow panel has no edge to drag.
+      await app.setViewportSize({ width: 400, height: 760 });
+      expect(await app.locator('[data-testid="sidebar-handle"]:visible').count(), 0);
       await app.setViewportSize({ width: 1280, height: 820 });
     },
   );

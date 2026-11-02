@@ -1,20 +1,47 @@
-// The list beside what's open (the rules, or Traffic's requests) as a sidebar you can hide, from
-// 760px wide: the button at the top left of what's open, or Cmd/Ctrl+B, gives the list's room to
-// the rule or the request, and brings the list back. Remembered in this browser (localStorage).
-// A narrow side panel shows one of the two at a time anyway, so the button isn't there.
-import { useEffect, useRef, useSyncExternalStore } from 'react';
+// The list beside what's open (the rules, or Traffic's requests) as a sidebar, from 760px wide.
+// Drag its edge (SidebarHandle) to make it wider or narrower, on past its narrowest to hide it,
+// and back out to show it again; double-click the edge for its usual width. The button at the
+// top left of what's open (SidebarToggle), or Cmd/Ctrl+B, hides and shows it too. Whether it's
+// hidden (one setting for both tabs) and each tab's width are remembered in this browser
+// (localStorage). A narrow side panel shows one of the two at a time anyway, so neither the edge
+// nor the button is there.
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import type {
+  CSSProperties,
+  KeyboardEvent as ReactKeyboardEvent,
+  PointerEvent as ReactPointerEvent,
+} from 'react';
 import { cn } from './cn.ts';
 import { Button } from './kit/button.tsx';
 import { Icon } from './kit/icon.tsx';
 
-const KEY = 'ghostfetch.sidebar';
-const listeners = new Set<() => void>();
-let hidden = localStorage.getItem(KEY) === 'hidden';
+export type SidebarView = 'rules' | 'traffic';
 
-function toggle() {
-  hidden = !hidden;
-  if (hidden) localStorage.setItem(KEY, 'hidden');
-  else localStorage.removeItem(KEY);
+// While it shows, the list is at least this wide, and leaves what's open at least this much room.
+const MIN_LIST = 260;
+const MIN_OPEN = 320;
+// How far an arrow key moves the edge (with Shift, four times as far).
+const STEP = 16;
+
+const HIDDEN_KEY = 'ghostfetch.sidebar';
+const widthKey = (view: SidebarView) => `ghostfetch.sidebar-width.${view}`;
+function savedWidth(view: SidebarView) {
+  const width = Number(localStorage.getItem(widthKey(view)));
+  return width > 0 ? width : null;
+}
+
+let hidden = localStorage.getItem(HIDDEN_KEY) === 'hidden';
+// Each tab's width in px, or null for its usual one (a share of the window, Split's
+// --list-default).
+const widths: Record<SidebarView, number | null> = {
+  rules: savedWidth('rules'),
+  traffic: savedWidth('traffic'),
+};
+// The tab whose list's edge is being dragged.
+let dragging: SidebarView | null = null;
+const listeners = new Set<() => void>();
+
+function changed() {
   for (const listener of listeners) listener();
 }
 
@@ -25,7 +52,46 @@ function subscribe(listener: () => void) {
   };
 }
 
+function setHidden(next: boolean) {
+  if (next === hidden) return;
+  hidden = next;
+  if (hidden) localStorage.setItem(HIDDEN_KEY, 'hidden');
+  else localStorage.removeItem(HIDDEN_KEY);
+  changed();
+}
+
+// `remember`: false while the edge is being dragged; it's remembered once it's let go.
+function setWidth(view: SidebarView, width: number | null, remember = true) {
+  if (widths[view] !== width) {
+    widths[view] = width;
+    changed();
+  }
+  if (!remember) return;
+  if (width === null) localStorage.removeItem(widthKey(view));
+  else localStorage.setItem(widthKey(view), String(width));
+}
+
+function setDragging(view: SidebarView | null) {
+  dragging = view;
+  changed();
+}
+
 export const useSidebarHidden = () => useSyncExternalStore(subscribe, () => hidden);
+
+// The list's column, for a Split: the width it was dragged to, as --list-width (kept between
+// MIN_LIST and what leaves MIN_OPEN for what's open, however wide the window gets), and whether
+// its edge is being dragged, while the columns follow the pointer instead of sliding.
+export function useListColumn(view: SidebarView) {
+  const width = useSyncExternalStore(subscribe, () => widths[view]);
+  const resizing = useSyncExternalStore(subscribe, () => dragging === view);
+  const style =
+    width === null
+      ? undefined
+      : ({
+          '--list-width': `clamp(${MIN_LIST}px, ${width}px, 100% - ${MIN_OPEN}px)`,
+        } as CSSProperties);
+  return { style, resizing };
+}
 
 // ⌘B on a Mac and Ctrl+B elsewhere, as code editors have it.
 const MAC = /Mac/.test(navigator.userAgent);
@@ -44,7 +110,7 @@ export function SidebarToggle({ className }: { className?: string }) {
         return;
       if (event.defaultPrevented || !button.current?.checkVisibility()) return;
       event.preventDefault();
-      if (!event.repeat) toggle();
+      if (!event.repeat) setHidden(!hidden);
     }
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
@@ -60,10 +126,163 @@ export function SidebarToggle({ className }: { className?: string }) {
       aria-label={label}
       aria-expanded={!isHidden}
       title={`${label} (${SHORTCUT})`}
-      onClick={toggle}
+      onClick={() => setHidden(!hidden)}
       className={cn('flex-none max-wide:hidden', className)}
     >
       <Icon name="sidebar" size={18} />
     </Button>
+  );
+}
+
+// For a SidebarHandle (`handle`, in the grid of the list with the id `list`): the grid's left side
+// and its width, and the list's width and the widest it can be.
+function measure(handle: HTMLElement, list: string) {
+  const grid = handle.parentElement!.getBoundingClientRect();
+  const shown = document.getElementById(list)?.getBoundingClientRect().width ?? 0;
+  return {
+    left: grid.left,
+    room: grid.width,
+    now: hidden ? 0 : Math.round(shown),
+    max: Math.max(MIN_LIST, Math.floor(grid.width - MIN_OPEN)),
+  };
+}
+
+// The list's edge, over the line between the Split's two columns (`list`: the list's id). Drag
+// it to make the list wider or narrower, on past half its narrowest to hide it, and back out to
+// show it; double-click it for the list's usual width. With the list hidden it waits at the left
+// edge. It's a separator in the Tab order too: the arrow keys move it, Home and End to the
+// narrowest and the widest, and Enter hides or shows the list.
+export function SidebarHandle({ view, list }: { view: SidebarView; list: string }) {
+  const isHidden = useSidebarHidden();
+  const isDragging = useSyncExternalStore(subscribe, () => dragging === view);
+  const handle = useRef<HTMLDivElement>(null);
+  // Where the drag started: how far right of the edge it was taken, the grid's left side and
+  // width, and the width to go back to if it ends with the list hidden.
+  const drag = useRef<{
+    offset: number;
+    left: number;
+    room: number;
+    before: number | null;
+  } | null>(null);
+  // The list's width and the widest it can be now, for screen readers.
+  const [size, setSize] = useState<{ now: number; max: number } | null>(null);
+
+  // Measured again whenever the list or the grid changes size: a drag, the list sliding shut or
+  // open, the window.
+  useEffect(() => {
+    const element = handle.current!;
+    const observer = new ResizeObserver(() => {
+      const { now, max } = measure(element, list);
+      setSize((was) => (was?.now === now && was.max === max ? was : { now, max }));
+    });
+    observer.observe(element.parentElement!);
+    const listPane = document.getElementById(list);
+    if (listPane) observer.observe(listPane);
+    return () => {
+      observer.disconnect();
+      // Gone in the middle of a drag (the request it was beside closed): it's over.
+      if (drag.current) {
+        drag.current = null;
+        setDragging(null);
+      }
+    };
+  }, [list]);
+
+  function onPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
+    if (event.button !== 0) return;
+    const { left, room, now } = measure(event.currentTarget, list);
+    drag.current = {
+      offset: event.clientX - (left + now),
+      left,
+      room,
+      before: widths[view],
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setDragging(view);
+  }
+
+  function onPointerMove(event: ReactPointerEvent<HTMLDivElement>) {
+    const from = drag.current;
+    if (!from) return;
+    const wanted = event.clientX - from.offset - from.left;
+    if (wanted < MIN_LIST / 2) {
+      setWidth(view, from.before, false);
+      setHidden(true);
+      return;
+    }
+    setHidden(false);
+    const widest = Math.max(MIN_LIST, from.room - MIN_OPEN);
+    setWidth(view, Math.round(Math.min(Math.max(wanted, MIN_LIST), widest)), false);
+  }
+
+  function onPointerEnd() {
+    if (!drag.current) return;
+    drag.current = null;
+    setWidth(view, widths[view]);
+    setDragging(null);
+  }
+
+  function onKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    const { now, max } = measure(event.currentTarget, list);
+    // From where the last key put it, rather than where it has slid to so far.
+    const from = Math.min(widths[view] ?? now, max);
+    const step = event.shiftKey ? STEP * 4 : STEP;
+    const to = (width: number) => {
+      setHidden(false);
+      setWidth(view, Math.min(Math.max(width, MIN_LIST), max));
+    };
+    if (event.key === 'ArrowLeft') {
+      if (!isHidden) to(from - step);
+    } else if (event.key === 'ArrowRight') {
+      if (isHidden) setHidden(false);
+      else to(from + step);
+    } else if (event.key === 'Home') to(MIN_LIST);
+    else if (event.key === 'End') to(max);
+    else if (event.key === 'Enter') setHidden(!isHidden);
+    else return;
+    event.preventDefault();
+  }
+
+  const now = isHidden ? 0 : size?.now;
+  return (
+    <>
+      <div
+        ref={handle}
+        // A window splitter: a separator that takes focus and the pointer, and says where it is
+        // (aria-value*). The linter would have an <hr>, which it then won't let do either.
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- it's a splitter widget
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="List width"
+        aria-controls={list}
+        aria-valuemin={0}
+        aria-valuemax={size?.max}
+        aria-valuenow={now}
+        aria-valuetext={isHidden ? 'Hidden' : now === undefined ? undefined : `${now} px`}
+        tabIndex={0}
+        data-testid="sidebar-handle"
+        data-collapsed={isHidden || undefined}
+        data-dragging={isDragging || undefined}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerEnd}
+        onPointerCancel={onPointerEnd}
+        onLostPointerCapture={onPointerEnd}
+        onDoubleClick={() => {
+          setHidden(false);
+          setWidth(view, null);
+        }}
+        onKeyDown={onKeyDown}
+        className={cn(
+          'absolute inset-y-0 left-0 z-10 col-start-2 w-2 -translate-x-1/2 cursor-col-resize touch-none outline-none select-none max-wide:hidden data-collapsed:translate-x-0 data-collapsed:cursor-e-resize',
+          // Its line: the list's own hairline, wider and brighter under the pointer (after a
+          // moment, so passing over it doesn't flash it), while it's dragged, and with focus.
+          "after:absolute after:inset-y-0 after:left-1/2 after:w-0.5 after:-translate-x-1/2 after:transition-colors after:duration-150 after:content-[''] hover:after:bg-t30 hover:after:delay-150 focus-visible:after:bg-t65 data-dragging:after:bg-t50",
+        )}
+      />
+      {/* While it's dragged, the resize cursor everywhere, and nothing else under the pointer
+          lights up. */}
+      {isDragging && <div className="fixed inset-0 z-50 cursor-col-resize" />}
+    </>
   );
 }

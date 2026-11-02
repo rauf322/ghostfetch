@@ -1,25 +1,41 @@
 // The editor's layout, shared by the Rules and Traffic tabs: a list, and what's picked in it. From
-// 760px wide the two sit side by side, and the list can be hidden like a sidebar (sidebar.tsx);
-// in a narrower side panel only one shows, the list until something is picked, with a button to
-// go back to it.
+// 760px wide the two sit side by side, and the list is a sidebar you can resize and hide
+// (sidebar.tsx); in a narrower side panel only one shows, the list until something is picked, with
+// a button to go back to it.
 import type { ComponentProps, ReactNode } from 'react';
 import { cn } from './cn.ts';
 import { Icon } from './kit/icon.tsx';
 import { Input } from './kit/input.tsx';
+import { useListColumn } from './sidebar.tsx';
+import type { SidebarView } from './sidebar.tsx';
 
-// The list's column slides shut while `collapsed` (the list hidden), and what's open takes the
-// whole width.
+// `view`'s list, and beside it what's open, if anything is (`open`: always in Rules, a request in
+// Traffic). The list is as wide as its edge was dragged (a SidebarHandle, which goes between the
+// two), or else its usual share of the window: a third, at least 300 px, in Rules; in Traffic,
+// what the request's drawer leaves, which is 44% at most 600 px. Its column slides shut while
+// `collapsed` (the list hidden), and what's open takes the whole width; while the edge is dragged,
+// the columns follow the pointer instead.
 export function Split({
+  view,
+  open = true,
   collapsed = false,
   className,
+  style,
   ...props
-}: ComponentProps<'div'> & { collapsed?: boolean }) {
+}: ComponentProps<'div'> & { view: SidebarView; open?: boolean; collapsed?: boolean }) {
+  const column = useListColumn(view);
   return (
     <div
+      data-view={view}
+      data-open={open || undefined}
       data-collapsed={collapsed || undefined}
+      data-resizing={column.resizing || undefined}
+      style={{ ...column.style, ...style }}
       className={cn(
-        'grid h-full min-h-0 grid-cols-[minmax(0,1fr)] wide:grid-cols-[minmax(300px,34%)_minmax(0,1fr)] wide:data-collapsed:grid-cols-[minmax(0px,0%)_minmax(0,1fr)]',
-        'motion-safe:transition-[grid-template-columns] motion-safe:duration-200 motion-safe:ease-out',
+        'relative grid h-full min-h-0 grid-cols-[minmax(0,1fr)] data-[view=rules]:[--list-default:max(300px,34%)] data-[view=traffic]:[--list-default:max(56%,100%_-_600px)]',
+        // The collapsed columns name both attributes, so they outrank the open ones.
+        'wide:data-open:grid-cols-[var(--list-width,var(--list-default))_minmax(0,1fr)] wide:data-open:data-collapsed:grid-cols-[0px_minmax(0,1fr)]',
+        'motion-safe:transition-[grid-template-columns] motion-safe:duration-200 motion-safe:ease-out data-resizing:transition-none',
         className,
       )}
       {...props}

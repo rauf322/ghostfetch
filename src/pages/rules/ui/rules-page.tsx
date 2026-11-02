@@ -1,12 +1,13 @@
 // Rules tab: the rule list, and beside it the open rule or, with none open, New rule ("What should
 // Ghostfetch answer?"). In a narrow side panel only one of the two is visible at a time: the list,
-// until a rule is opened or New rule is clicked. From 760px wide they sit side by side.
+// until a rule is opened or New rule is clicked. From 760px wide they sit side by side, the list
+// as a sidebar you can resize by its edge and hide.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { addRule, findRule, ruleStore } from '../../../shared/api/index.ts';
 import type { Rule, TrafficLog } from '../../../shared/api/index.ts';
 import { useStore } from '../../../shared/react/index.ts';
 import { DetailPane, Split } from '../../../shared/ui/list-detail.tsx';
-import { useSidebarHidden } from '../../../shared/ui/sidebar.tsx';
+import { SidebarHandle, useSidebarHidden } from '../../../shared/ui/sidebar.tsx';
 import { FieldSuggestions } from './field-suggestions.tsx';
 import { NewRule } from './new-rule/new-rule.tsx';
 import { RuleEditor } from './rule-editor/rule-editor.tsx';
@@ -85,8 +86,9 @@ export function RulesPage({
   const picked = Boolean(selected) || composingNow;
   return (
     <>
-      <Split collapsed={collapsed}>
+      <Split view="rules" collapsed={collapsed}>
         <RuleList
+          id="rule-list"
           selectedId={selectedId}
           picked={picked}
           collapsed={collapsed}
@@ -97,6 +99,7 @@ export function RulesPage({
           onImport={onImport}
           onExport={onExport}
         />
+        <SidebarHandle view="rules" list="rule-list" />
         <DetailPane ref={editorPane} picked={picked}>
           {selected ? (
             <RuleEditor

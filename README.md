@@ -90,10 +90,14 @@ What's different in Firefox-based browsers:
   editor.
 - **Side panel (Chrome), sidebar (Firefox, Zen) or tab**: the full editor. Open it from the
   popup, or from the `⋯` menu. From 760 px wide the list sits beside what's open, as a
-  sidebar: the button at the top left of a rule or a request (or **⌘B / Ctrl+B**) hides it and
-  gives its room to what's open, and brings it back; it stays hidden until you do. In Traffic
-  the list only gives way to an open request. The `⋯` menu's **Theme** picks the
-  [look](#themes).
+  sidebar. Drag its edge to make it wider or narrower (it's at least 260 px wide and leaves
+  what's open at least 320), on past half its narrowest to hide it, and back out from the
+  window's left edge to show it again; double-click the edge for its usual width. The edge
+  also takes focus (Tab): the arrow keys move it, and **Enter** hides or shows the list. The
+  button at the top left of a rule or a request (or **⌘B / Ctrl+B**) hides it too, giving its
+  room to what's open, and brings it back. Rules and Traffic each remember their own width,
+  and the list stays hidden until you bring it back. In Traffic the list only gives way to an
+  open request. The `⋯` menu's **Theme** picks the [look](#themes).
   - **Rules**: create and edit rules. Changes save as you type and apply to open tabs
     immediately, without reloading. Rules apply in the list's order and the first match wins;
     drag them to reorder. Import and export sit at the bottom of the list. A rule's switch
@@ -128,7 +132,9 @@ What's different in Firefox-based browsers:
     In a body editor, **⌘F / Ctrl+F** searches the body itself instead of the page: **Enter**
     and **Shift+Enter** step through the matches, **Esc** closes the search and leaves the
     current match selected. **⌘= / ⌘−** (Ctrl on Windows and Linux) make its text larger or
-    smaller and **⌘0** puts it back, instead of zooming the page. **Vim keys** under it turns
+    smaller and **⌘0** puts it back, instead of zooming the page. The text grows and shrinks
+    around the cursor's line, which stays where it is in the view (or with the cursor out of
+    view, around the middle of the view). **Vim keys** under it turns
     on [vim keys](#vim-keys). The text size and the Vim switch are remembered for every body
     editor. Format on a body of more than 300
     lines can't be undone with ⌘Z: the browser would take minutes to make it undoable.
@@ -323,8 +329,8 @@ src/shared/                      what more than one part of the extension uses
   ui/                            components, a public file each
     kit/                         the UI kit: React components on Base UI, styled with Tailwind (see UI kit)
     code-editor/                 the body editor (plain DOM code, its find bar and vim keys) and its React component (index.ts)
-    list-detail.tsx              the editor's layout: a list, and what's picked in it
-    sidebar.tsx                  the list as a sidebar: whether it's hidden, and the button (and ⌘B) that hides it
+    list-detail.tsx              the editor's layout: a list, as wide as its edge was dragged, and what's picked in it
+    sidebar.tsx                  the list as a sidebar: its width and whether it's hidden, the edge that resizes it, and the button (and ⌘B) that hides it
     theme.ts                     the themes, and the one in use; theme-menu.tsx, the ⋯ menus' Theme row
     master-switch.tsx            Ghostfetch on or off, in the popup and the editor's top bar
     rule-switch.tsx              a rule on or off (the pulsing green dot), in the list, the rule's top bar and the popup
@@ -448,10 +454,12 @@ Content-Type, and the rule it makes. `npm test` runs it after `test/matching.mjs
 against fetch and XHR (and that rules saved by older versions do what they should), the editor
 (including New rule from a typed path and from a cURL command with a starter, its recent requests'
 Mock, the rule's settings rows and its sentence, the body editor's marks for a JSON mistake,
-its height beside the settings and under them, text size, Format and colours on a body of 370,000
-characters, its own find and its vim keys), the traffic view (its filters, Keep on reload and
-Clear), the list hidden as a sidebar beside a rule and a request (the button, the key, after a
-reload, none in a narrow panel), a theme picked in the `⋯` menu (the editor and the open popup
+its height beside the settings and under them, text size and that it keeps the cursor's line in
+place, Format and colours on a body of 370,000 characters, its own find and its vim keys), the
+traffic view (its filters, Keep on reload and Clear), the list as a sidebar beside a rule and a
+request (hidden with the button and the key, its edge dragged to its narrowest, its widest, shut
+and open again, its keys, each tab's width after a reload, none in a narrow panel), a theme picked
+in the `⋯` menu (the editor and the open popup
 recoloured, and set before a page draws) and popup, plus the security properties above
 (channel theft, forged offers, patched built-ins, built-ins that try to reach the interceptor
 through `.caller`, HTML injection, hostile rule files, sites that aren't turned on getting
@@ -476,7 +484,8 @@ vim keys depend on the browser's editing, undo and scrolling, so this test also 
 into the body editor on a plain test page that loads the editor's TypeScript from `src/`
 (Node strips the types). Both tests type the same vim session (`VIM_STEPS` in
 `test/fixtures.mjs`), which gives the same bodies and cursor positions as vim 9.1 typing the
-same keys.
+same keys. There it also sizes the text with Ctrl+= and Ctrl+−, and checks that vim's cursor
+stays where it is in the view, as Firefox scrolls a text area its own way.
 
 `test/kit.mjs` opens the UI kit page under the extension pages' real CSP, in Chromium and in
 Zen (served with the CSP as a response header there, since Firefox's automation can't open

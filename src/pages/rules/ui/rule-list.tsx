@@ -20,6 +20,8 @@ import { NoRulesYet } from './no-rules.tsx';
 import { RuleListItem } from './rule-list-item.tsx';
 
 interface RuleListProps {
+  // For the edge that resizes it (SidebarHandle).
+  id: string;
   selectedId: string | null;
   // A rule is open, which hides the list in a narrow panel.
   picked: boolean;
@@ -34,6 +36,7 @@ interface RuleListProps {
 }
 
 export function RuleList({
+  id,
   selectedId,
   picked,
   collapsed,
@@ -50,7 +53,7 @@ export function RuleList({
   const active = rules.filter((rule) => rule.enabled).length;
 
   return (
-    <ListPane picked={picked} collapsed={collapsed}>
+    <ListPane id={id} picked={picked} collapsed={collapsed}>
       <PaneToolbar>
         <SearchField
           value={query}

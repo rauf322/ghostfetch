@@ -329,14 +329,91 @@ export function createCodeEditor({
     root.style.fontSize = fontSize === DEFAULT_FONT_SIZE ? '' : `${fontSize}px`;
   }
 
+  // The cursor (the end of the selection that moves, where vim keeps its cursor too): its line and
+  // its column, from 0.
+  function cursorAt() {
+    const { selectionStart, selectionEnd, selectionDirection } = textarea;
+    const before = textarea.value.slice(
+      0,
+      selectionDirection === 'backward' ? selectionStart : selectionEnd,
+    );
+    const start = before.lastIndexOf('\n') + 1;
+    return { line: before.split('\n').length - 1, column: before.length - start };
+  }
+
+  // Sizes the text around what you're looking at, instead of around the top line (where the
+  // browser would keep it, so the lines under it slid down and out of view): the middle of the
+  // cursor's line stays where it is in the view, so the text grows evenly up and down from it, or
+  // with the cursor out of view, the middle of the view does. Along the lines, the column at the
+  // left edge stays there, unless the cursor would go out of view.
+  // What it keeps in place (`held`): a point down the lines (in lines from the top of the text,
+  // with a fraction) and how far down the view it is, the column at the left edge (null at the
+  // start of the lines), and the cursor while it's to stay in view. Steps in a row keep the same
+  // place while nothing else has moved, rather than drifting a pixel each as the browser rounds
+  // where it scrolls to.
+  let held: {
+    at: string;
+    line: number;
+    y: number;
+    edge: number | null;
+    cursor: { line: number; column: number } | null;
+  } | null = null;
+  const where = () =>
+    [
+      textarea.scrollTop,
+      textarea.scrollLeft,
+      textarea.selectionStart,
+      textarea.selectionEnd,
+      textarea.value.length,
+      document.activeElement === textarea,
+    ].join();
+
+  function resizeInPlace(size: number) {
+    const was = metrics();
+    const wasWidth = charWidth(was.style);
+    if (held?.at !== where()) {
+      const { scrollTop, scrollLeft, clientHeight, clientWidth } = textarea;
+      const cursor = cursorAt();
+      const cursorY = was.top + cursor.line * was.lineHeight - scrollTop;
+      const cursorX = was.left + cursor.column * wasWidth - scrollLeft;
+      const focused = document.activeElement === textarea;
+      const lineShown =
+        focused && cursorY >= 0 && cursorY + was.lineHeight <= clientHeight;
+      const columnShown = cursorX >= 0 && cursorX + wasWidth <= clientWidth;
+      const line = lineShown
+        ? cursor.line + 0.5
+        : (scrollTop + clientHeight / 2 - was.top) / was.lineHeight;
+      held = {
+        at: '',
+        line,
+        y: was.top + line * was.lineHeight - scrollTop,
+        edge: scrollLeft ? (scrollLeft - was.left) / wasWidth : null,
+        cursor: lineShown && columnShown ? cursor : null,
+      };
+    }
+
+    fontSize = size;
+    applyFontSize();
+    fitHeight();
+
+    const now = metrics();
+    const width = charWidth(now.style);
+    textarea.scrollTop = now.top + held.line * now.lineHeight - held.y;
+    let left = held.edge === null ? 0 : now.left + held.edge * width;
+    if (held.cursor) {
+      const x = now.left + held.cursor.column * width;
+      left = Math.min(Math.max(left, x + width - textarea.clientWidth), x - now.left);
+    }
+    textarea.scrollLeft = Math.max(0, left);
+    held.at = where();
+  }
+
   // The text size, in px: one of FONT_SIZES, remembered for every body editor (and forgotten again
   // at the default). The new size shows in the corner for a moment.
   function setFontSize(size: number) {
-    fontSize = size;
     if (size === DEFAULT_FONT_SIZE) localStorage.removeItem(FONT_SIZE_KEY);
     else localStorage.setItem(FONT_SIZE_KEY, String(size));
-    applyFontSize();
-    fitHeight();
+    resizeInPlace(size);
     sync();
     sizeBadge.textContent = `${size} px`;
     sizeBadge.hidden = false;

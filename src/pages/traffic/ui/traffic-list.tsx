@@ -22,6 +22,8 @@ import { TrafficNotice } from './traffic-notice.tsx';
 import { TrafficToolbar } from './traffic-toolbar.tsx';
 
 interface TrafficListProps {
+  // For the edge that resizes it (SidebarHandle).
+  id: string;
   log: TrafficLog;
   traffic: TrafficSnapshot;
   // A request is open, which hides the list in a narrow panel.
@@ -36,6 +38,7 @@ interface TrafficListProps {
 const COLUMN = 'mx-auto w-full max-w-[880px] px-3';
 
 export function TrafficList({
+  id,
   log,
   traffic,
   picked,
@@ -70,6 +73,7 @@ export function TrafficList({
 
   return (
     <ListPane
+      id={id}
       picked={picked}
       collapsed={collapsed}
       className="@container/traffic wide:border-r-0"
@@ -78,9 +82,9 @@ export function TrafficList({
         traffic={traffic}
         record={record}
         preserve={preserve}
-        onPick={(id) => {
+        onPick={(tabId) => {
           onSelect(null);
-          log.setTarget(id);
+          log.setTarget(tabId);
         }}
         onPreserveChange={(on) => {
           setPreserve(on);

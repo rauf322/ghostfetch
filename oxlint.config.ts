@@ -1,19 +1,19 @@
-// The linter (oxlint, `npm run lint`), set up like bst-admin's. The imports between the layers
-// of src/ (README, "Files") are checked by eslint-plugin-boundaries, which oxlint loads as a JS
-// plugin, and the two checks that are about WXT and the public APIs' shape by the rules in
+// The linter (oxlint, `npm run lint`). The imports between the layers of src/ (README,
+// "Files") are checked by eslint-plugin-boundaries, which oxlint loads as a JS plugin,
+// and the two checks that are about WXT and the public APIs' shape by the rules in
 // scripts/oxlint-rules.mjs.
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'oxlint';
 
 const rootPath = fileURLToPath(new URL('.', import.meta.url));
 
-// The layers, from the top: app, pages, shared (Feature-Sliced Design's "pages first", as in
-// bst-admin). A page is used through its index.ts. shared has segments instead of slices: api,
-// lib, react and ui. api, lib and react are each used through their index.ts; shared/ui has a
+// The layers, from the top: app, pages, shared (Feature-Sliced Design's "pages first").
+// A page is used through its index.ts. shared has segments instead of slices: api, lib,
+// react and ui. api, lib and react are each used through their index.ts; shared/ui has a
 // public file per component, so a screen bundles only what it shows, and the body editor
-// (code-editor/) is used through its index.ts. The editor's engine/ and vim/ are plain TypeScript
-// the Zen test serves straight from src/: they import only .ts files by relative path, and no npm
-// package. The first descriptor a file matches decides what it is.
+// (code-editor/) is used through its index.ts. The editor's engine/ and vim/ are plain
+// TypeScript the Zen test serves straight from src/: they import only .ts files by
+// relative path, and no npm package. The first descriptor a file matches is its type.
 const elements = [
   {
     type: 'editor-engine',
@@ -145,7 +145,8 @@ export default defineConfig({
     // does reactive-value analysis this legacy syntactic port doesn't - keeping both enabled
     // produces contradictory diagnostics on the same line.
     'react/exhaustive-deps': 'off',
-    // Off in bst-admin, whose Yup schemas need objects with a `then` key.
+    // Off: a Vim search an operator waits on ("d/foo") carries the operator's command as
+    // `then` (vim/vim.ts, openSearch; engine/find-bar.ts).
     'unicorn/no-thenable': 'off',
     'unicorn/consistent-function-scoping': 'off',
     'boundaries/dependencies': [

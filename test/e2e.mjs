@@ -371,11 +371,18 @@ try {
   console.log('editor UI');
   const app = await context.newPage();
   // Rules or Traffic: the sidebar's row from 760px wide, the top bar's tab in a narrow panel.
-  const show = (view) =>
-    app
+  // Base UI keeps the other view's panel displayed for a frame after the switch (its exit
+  // transition, though there's none, gets a frame to start; the panel is hidden before the
+  // frame is painted), so wait for it to be hidden: a `:visible` locator would match both views.
+  const show = async (view) => {
+    await app
       .locator(`[data-testid="nav-${view}"]:visible, [data-testid="tab-${view}"]:visible`)
       .first()
       .click();
+    await app
+      .locator(`[data-testid="view-${view === 'rules' ? 'traffic' : 'rules'}"]`)
+      .waitFor({ state: 'hidden', timeout: 3000 });
+  };
   app.on('pageerror', (error) => errors.push(`app: ${error.message}`));
   app.on(
     'console',
@@ -2180,7 +2187,7 @@ try {
     },
   );
   await check(
-    'the sidebar: Rules and Traffic with their counts; the rules in two groups, on and off, in their order, and a drag stays within a group; + by On starts a new rule; "/" puts the cursor in the search field, but not from a field; Duplicate in a rule\'s header copies it',
+    'the sidebar: Rules and Traffic with their counts; the rules in their order under how many are on, and one turned off stays in its place, greyed, and can still be dragged; + starts a new rule; "/" puts the cursor in the search field, but not from a field; Duplicate in a rule\'s header copies it',
     async () => {
       await show('rules');
       // The rows say which view is open, and count what's in it.
@@ -2205,57 +2212,42 @@ try {
       );
       expect(onRules[0][1], `Rules${original.length}`, 'the count');
 
-      // The second rule turned off elsewhere: it moves to the Off group, and each group keeps
-      // the stored order.
-      const groups = () =>
-        app.evaluate(() =>
-          [...document.querySelectorAll('[data-testid="rule-list"] section')].map(
-            (section) => [
-              section.querySelector('h2').textContent,
-              [...section.querySelectorAll('[data-testid="rule"]')].map(
-                (row) => row.title,
-              ),
-            ],
-          ),
-        );
-      const urls = (rules) => rules.map((rule) => rule.match.url);
+      // The second rule turned off elsewhere: it stays in its place, greyed (data-off), and the
+      // heading over the list counts it.
+      const listed = () =>
+        app.evaluate(() => [
+          document.querySelector('[data-testid="rule-list"] h2').textContent,
+          [...document.querySelectorAll('[data-testid="rule"]')].map((row) => [
+            row.title,
+            row.hasAttribute('data-off'),
+          ]),
+        ]);
       const changed = structuredClone(original);
       changed[1].enabled = false;
       await setStorage({ rules: changed });
       await app.waitForFunction(
-        (url) =>
-          document
-            .querySelector('[data-testid="rule-list"] section:nth-of-type(2)')
-            ?.querySelector(`[data-testid="rule"][title="${url}"]`),
+        (url) => document.querySelector(`[data-testid="rule"][title="${url}"][data-off]`),
         changed[1].match.url,
         { timeout: 3000 },
       );
-      const on = changed.filter((rule) => rule.enabled);
-      const off = changed.filter((rule) => !rule.enabled);
-      expect(await groups(), [
-        [`On · ${on.length}`, urls(on)],
-        [`Off · ${off.length}`, urls(off)],
+      expect(await listed(), [
+        `${changed.filter((rule) => rule.enabled).length} of ${changed.length} on`,
+        changed.map((rule) => [rule.match.url, !rule.enabled]),
       ]);
-      // Dragged onto the other group's rules, a rule stays where it is: onto the last one that's
-      // on, right above it, so both are in view (a drag starts on whatever is under the pointer
-      // once the list has scrolled the target into view).
-      const offRow = app
-        .locator('[data-testid="rule-list"] section:nth-of-type(2) [data-testid="rule"]')
-        .first();
-      const onRow = app
-        .locator('[data-testid="rule-list"] section:nth-of-type(1) [data-testid="rule"]')
-        .last();
-      await offRow.dragTo(onRow, { targetPosition: { x: 40, y: 50 } });
+      // Off, it's dragged like any other: onto the lower half of the rule below it, it moves
+      // below that one.
+      const ruleRows = app.locator('[data-testid="rule"]');
+      await ruleRows.nth(1).dragTo(ruleRows.nth(2), { targetPosition: { x: 40, y: 50 } });
       await sleep(300);
       expect(
-        (await storedRules()).map((rule) => rule.id),
-        changed.map((rule) => rule.id),
-        'a drag onto the other group',
+        (await storedRules()).map((rule) => rule.id).slice(0, 3),
+        [changed[0].id, changed[2].id, changed[1].id],
+        'the rule that is off, dragged below the next',
       );
       await setStorage({ rules: original });
       await sleep(300);
 
-      // + by On: New rule, with the cursor in it.
+      // +: New rule, with the cursor in it.
       await app.click('[data-testid="new-rule"]');
       await app.waitForFunction(
         () => document.activeElement?.dataset.testid === 'composer-input',

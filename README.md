@@ -91,8 +91,8 @@ What's different in Firefox-based browsers:
 - **Side panel (Chrome), sidebar (Firefox, Zen) or tab**: the full editor. Open it from the
   popup, or from the `⋯` menu. From 760 px wide a sidebar stands beside what's open: the
   master switch, a search field (**/** puts the cursor in it), **Rules** and **Traffic** with
-  their counts, the rules in two groups (**On** and **Off**, with **+** by On for a new rule),
-  and the `⋯` menu, **Import** and **Export** along the bottom. Drag its edge to make it wider
+  their counts, the rules in your order under how many are on (with **+** for a new rule), and
+  the `⋯` menu, **Import** and **Export** along the bottom. Drag its edge to make it wider
   or narrower (it's at least 260 px wide and leaves what's open at least 320), on past half
   its narrowest to hide it, and back out from the window's left edge to show it again;
   double-click the edge for its usual width. The edge also takes focus (Tab): the arrow keys
@@ -103,9 +103,10 @@ What's different in Firefox-based browsers:
   one at a time. The `⋯` menu's **Theme** picks the [look](#themes).
   - **Rules**: create and edit rules. Changes save as you type and apply to open tabs
     immediately, without reloading. Rules apply in the list's order and the first match wins;
-    drag one to reorder it within its group. A rule's switch is a green dot: it pulses while
-    the rule is on, holds still while Ghostfetch is off, and is grey while the rule is off.
-    Click it to turn the rule on or off. **Duplicate**, in an open rule's header, copies it.
+    drag them to reorder. A rule's switch is a green dot: it pulses while the rule is on, holds
+    still while Ghostfetch is off, and is grey while the rule is off. Click it to turn the rule
+    on or off; a rule that's off keeps its place in the list. **Duplicate**, in an open rule's
+    header, copies it.
     **New rule** (the **+**) asks "What should Ghostfetch answer?" (beside the sidebar it's
     also what shows
     with no rule open). Paste a path, a full URL (it keeps the path and query, so the rule
@@ -319,7 +320,7 @@ src/app/                         the extension's parts, one folder each, which W
   kit/                           the kit page; for npm run dev and the kit test, never in the extension
   styles/                        theme.css, the look's values (colours, the two fonts); themes.css, the other themes' colours; and kit.css: those as Tailwind's theme (type sizes, corners)
 src/pages/                       what the screens show
-  rules/                         the Rules view: the sidebar's rule list (its two groups), New rule (ui/new-rule/), and the rule editor (ui/rule-editor/, a component per part)
+  rules/                         the Rules view: the sidebar's rule list, New rule (ui/new-rule/), and the rule editor (ui/rule-editor/, a component per part)
   traffic/                       the Traffic view: a tab's live log grouped by time, a request's drawer (ui/request-detail/), Mock this response
   popup/                         the toolbar popup
   kit/                           the kit page: every kit component in its states
@@ -470,8 +471,9 @@ place, Format and colours on a body of 370,000 characters, its own find and its 
 yanks it pastes back from the clipboard), the
 traffic view (its filters, Keep on reload and Clear), the sidebar beside a rule and beside
 Traffic (hidden with the button and the key, its edge dragged to its narrowest, its widest, shut
-and open again, its keys, its one width after a reload, none in a narrow panel, its two groups of
-rules and a drag within one, "/" to its search field, Duplicate, and what keeps
+and open again, its keys, its one width after a reload, none in a narrow panel, its rules in
+their order with one turned off kept in its place and counted, "/" to its search field,
+Duplicate, and what keeps
 a drag beside a long body smooth: the body's text area holding its width until the edge is let
 go, a width only the list itself has, and coloured text laid out the same at any width; and what
 keeps typing in one quick: only the piece typed into redrawn, a new line only adding its number,

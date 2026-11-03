@@ -416,7 +416,7 @@ try {
     }
   });
   await check(
-    'vim keeps the cursor in view on a long body (Firefox also scrolls to the caret itself)',
+    'vim keeps the cursor in view on a long body (Firefox also scrolls to the caret itself), the block exactly on its character 15,000 lines down',
     async () => {
       const long = JSON.stringify(
         { items: Array.from({ length: 80 }, (_, id) => ({ id, name: `item ${id}` })) },
@@ -450,12 +450,82 @@ try {
         await typeVim(keys);
         seen.push([keys, await inView()]);
       }
+      // The cursor's layer holds its line alone, and scrolls as far as the textarea does.
+      seen.push(
+        await editorTab.evaluate(() => {
+          const text = document.querySelector('.code-cursor .code-text');
+          const { textarea } = window.editor;
+          return [
+            text.textContent.includes('\n'),
+            text.parentElement.scrollHeight >= textarea.scrollHeight,
+          ];
+        }),
+      );
+      // The block sits exactly on its character, where the coloured text has it, in a body of
+      // 15,000 lines: a line height off by a hair would add up that far down.
+      await editorTab.evaluate(
+        (text) => {
+          const { textarea } = window.editor;
+          textarea.value = text;
+          textarea.setSelectionRange(0, 0);
+          textarea.dispatchEvent(new Event('input'));
+        },
+        JSON.stringify(
+          {
+            items: Array.from({ length: 3000 }, (_, id) => ({ id, name: `item ${id}` })),
+          },
+          null,
+          2,
+        ),
+      );
+      const onItsCharacter = () =>
+        editorTab.evaluate(
+          () =>
+            new Promise((resolve) =>
+              requestAnimationFrame(() =>
+                requestAnimationFrame(() => {
+                  const { textarea } = window.editor;
+                  const block = document
+                    .querySelector('.code-cursor .cursor')
+                    .getBoundingClientRect();
+                  const walker = document.createTreeWalker(
+                    document.querySelector('.code-highlight .code-text'),
+                    NodeFilter.SHOW_TEXT,
+                  );
+                  let offset = textarea.selectionStart;
+                  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+                    if (offset < node.length) {
+                      const range = document.createRange();
+                      range.setStart(node, offset);
+                      range.setEnd(node, offset + 1);
+                      const char = range.getBoundingClientRect();
+                      resolve(
+                        Math.abs(char.top - block.top) < 1 &&
+                          Math.abs(char.left - block.left) < 1,
+                      );
+                      return;
+                    }
+                    offset -= node.length;
+                  }
+                  resolve(false);
+                }),
+              ),
+            ),
+        );
+      for (const keys of ['G', '50%', 'gg']) {
+        await typeVim(keys);
+        seen.push([`${keys} on its character`, await onItsCharacter()]);
+      }
       expect(seen, [
         ['G', true],
         ['gg', true],
         ['50%', true],
         ['<C-d>', true],
         ['<C-u>', true],
+        [false, true],
+        ['G on its character', true],
+        ['50% on its character', true],
+        ['gg on its character', true],
       ]);
     },
   );

@@ -21,7 +21,16 @@
 }
 /* fit: as tall as the text (--code-fit, which the editor works out), at least 120 px and at most
    the room the page gives it (--code-max). A page can also set --code-fill (such as 100%, of the
-   box the editor is in) to have it at least that tall, whatever the text. */
+   box the editor is in) to have it at least that tall, whatever the text. The two are the
+   editor's own, not inherited (below): a change to an inherited property has the browser restyle
+   everything under it, the thousands of lines inside the text area included, and the room
+   changes as the page's layout does. So they come from the editor's parent by name (inherit),
+   and a page sets them on that parent (the CodeEditor component's own element), or on an
+   element above it with the same `inherit` on each in between. */
+.code {
+  --code-max: inherit;
+  --code-fill: inherit;
+}
 .code[data-fit] {
   height: clamp(
     120px,
@@ -29,6 +38,14 @@
     var(--code-max, 100vh)
   );
   resize: none;
+}
+@property --code-max {
+  syntax: '*';
+  inherits: false;
+}
+@property --code-fill {
+  syntax: '*';
+  inherits: false;
 }
 .code:focus-within {
   border-color: var(--t50);
@@ -230,7 +247,21 @@
    out a long body again. A longer line still runs on past the block, as it would anyway. */
 .code-text {
   display: block;
+  box-sizing: border-box;
   width: 100000px;
+}
+/* A piece of whole lines of a long body (the editor's chunks()): a block of its own, so an edit
+   has the browser lay out the piece it's in and leave the rest. The pieces of a long line are
+   inline, and run on from one another. */
+.code-piece {
+  display: block;
+}
+/* The height of the text (fitHeight), which the editor sets on every edit: not inherited, so an
+   edit that adds a line doesn't have the browser restyle everything in the editor, the thousands
+   of lines inside the text area included. */
+@property --code-fit {
+  syntax: '*';
+  inherits: false;
 }
 .code-main .code-marks {
   color: transparent;

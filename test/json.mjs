@@ -2,11 +2,16 @@
 // which the editor marks mistakes with, agrees with JSON.parse on what's valid, for mistakes
 // picked by hand and for thousands of valid bodies broken at random, and says where each mistake
 // is and what it is. And the pieces chunks() cuts a long body into, which the editor colours one
-// by one: they make up the body and colour exactly as the whole of it does.
+// by one, and cuts again only where an edit changed it (rechunk()): they make up the body and
+// colour exactly as the whole of it does.
 //
 //   node test/json.mjs      (npm test runs it first)
 import { checkJson } from '../src/shared/lib/index.ts';
-import { chunks, tokens } from '../src/shared/ui/code-editor/engine/highlight.ts';
+import {
+  chunks,
+  rechunk,
+  tokens,
+} from '../src/shared/ui/code-editor/engine/highlight.ts';
 import { check, expect, finish } from './fixtures.mjs';
 
 const parses = (text) => {
@@ -289,6 +294,53 @@ await check(
       );
     // Many bodies are shorter than their piece size; enough of them have to be cut.
     if (cut < 2000) throw new Error(`only ${cut} bodies were cut into pieces`);
+  },
+);
+await check(
+  'after edits, the pieces cut again only where the text changed still join back into it and colour exactly as the whole of it does',
+  async () => {
+    const random = generator(20261103);
+    const coloured = (text) =>
+      tokens(text)
+        .map(([kind, part]) => (kind ? `[${kind}:${part}]` : part))
+        .join('');
+    const wrong = [];
+    let kept = 0;
+    let before = 0;
+    for (let round = 0; round < 10_000 && wrong.length < 5; round++) {
+      // A longer body than above: a list of values, so there are pieces to keep.
+      const indent = [0, 2][random.int(2)];
+      const values = Array.from({ length: 3 + random.int(28) }, () => random.value(1));
+      let text = JSON.stringify(values, null, indent);
+      if (random.int(10) === 0) text = text.replace('":', '"\n  :');
+      const size = 1 + random.int(80);
+      let pieces = chunks(text, size);
+      // A few edits in a row, as typing makes them: each cuts again from the pieces the last
+      // one left.
+      for (let times = 1 + random.int(4); times > 0 && !wrong.length; times--) {
+        const edited = random.mutate(text);
+        const { first, last, fresh } = rechunk(pieces, edited, size);
+        const next = [...pieces.slice(0, first), ...fresh, ...pieces.slice(last + 1)];
+        // How many pieces stay where they hold whole lines, as the editor's do (a line longer
+        // than a piece is always cut again whole).
+        if (indent && size >= 40) {
+          before += pieces.length;
+          kept += pieces.length - (last - first + 1);
+        }
+        if (
+          next.join('') !== edited ||
+          next.some((piece) => !piece) ||
+          next.map((piece) => coloured(piece)).join('') !== coloured(edited)
+        )
+          wrong.push(`${JSON.stringify(text)} edited to ${JSON.stringify(edited)}`);
+        text = edited;
+        pieces = next;
+      }
+    }
+    if (wrong.length) throw new Error(`cut wrong:\n${wrong.join('\n')}`);
+    // An edit changes one place; in a body of many lines, most of the pieces have to be kept,
+    // or this proves little.
+    if (kept < before / 2) throw new Error(`kept only ${kept} pieces of ${before}`);
   },
 );
 

@@ -142,7 +142,9 @@ export function BodyCard({
                 current.response.body = text;
               })
             }
-            className="flex min-h-0 flex-col pane-wide:flex-1"
+            // The sizes above reach the editor by name (code-editor.css), not by inheritance,
+            // which would carry them into everything in it on each change.
+            className="flex min-h-0 flex-1 flex-col [--code-fill:inherit] [--code-max:inherit]"
           />
           <div className="flex min-h-8 items-center gap-1.5">
             <Verdict

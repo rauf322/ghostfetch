@@ -10,7 +10,7 @@
 import { icon } from '../../../lib/index.ts';
 import { createVim, rememberVim, vimPreferred } from '../vim/vim.ts';
 import { createFindBar } from './find-bar.ts';
-import { chunks, tokens } from './highlight.ts';
+import { CHUNK, rechunk, tokens } from './highlight.ts';
 
 export type CodeEditor = ReturnType<typeof createCodeEditor>;
 
@@ -57,6 +57,50 @@ function fontSizePreferred() {
   const size = Number(localStorage.getItem(FONT_SIZE_KEY));
   return FONT_SIZES.includes(size) ? size : DEFAULT_FONT_SIZE;
 }
+
+export function countLines(text: string) {
+  let count = 1;
+  for (let at = text.indexOf('\n'); at !== -1; at = text.indexOf('\n', at + 1)) count++;
+  return count;
+}
+
+const span = (className: string, text: string) => {
+  const element = document.createElement('span');
+  element.className = className;
+  element.textContent = text;
+  return element;
+};
+
+// Puts text in an element as its tokens, a span for each coloured one (the tk-* classes in
+// code-editor.css). Built from text nodes, so nothing in the body is ever read as HTML. The body
+// editor colours its pieces with it, and CodeView (../code-editor.tsx) a captured response's.
+export function colour(element: HTMLElement, text: string) {
+  const fragment = document.createDocumentFragment();
+  for (const [kind, part] of tokens(text))
+    fragment.append(kind ? span(`tk-${kind}`, part) : part);
+  element.replaceChildren(fragment);
+}
+
+// The line numbers from `from` to `to`, one a line.
+function numbers(from: number, to: number) {
+  let text = '';
+  for (let number = from; number <= to; number++)
+    text += number === from ? number : `\n${number}`;
+  return text;
+}
+
+// How long numbers(1, count) is.
+function numbersLength(count: number) {
+  let length = count - 1;
+  for (let digits = 1, from = 1; from <= count; digits++, from *= 10)
+    length += (Math.min(count, from * 10 - 1) - from + 1) * digits;
+  return length;
+}
+
+// Whether a piece of a body (chunks()) is whole lines: it starts a line (`index` 0, or after a
+// piece that ends one) and ends with a line break.
+const wholeLines = (pieces: string[], index: number) =>
+  (index === 0 || pieces[index - 1]!.endsWith('\n')) && pieces[index]!.endsWith('\n');
 
 interface CodeEditorOptions {
   value?: string;
@@ -121,23 +165,25 @@ export function createCodeEditor({
   textarea.value = value;
   textarea.placeholder = placeholder;
   let lineCount = 0;
-  let gutter = '';
   let escaped = false;
   // The mistake being marked, and the line it's on (from 0), or -1.
   let problem: CodeProblem | null = null;
   let problemLine = -1;
   let fontSize = fontSizePreferred();
   let sizeShown: ReturnType<typeof setTimeout> | undefined;
+  // The text area's line height, padding and font (metrics()), read once.
+  let measured: ReturnType<typeof measure> | null = null;
   applyFontSize();
-  // A long JSON body's pieces on the highlight layer (chunks()): their text, the line each starts
-  // on, the element each is in, and whether that one has its colours.
+  // A long JSON body's pieces on the highlight layer (chunks()): their text, how many line breaks
+  // each has and the line each starts on, the element each is in, and whether that one has its
+  // colours.
   let pieces: string[] = [];
+  let pieceBreaks: number[] = [];
   let pieceLines: number[] = [];
   let pieceElements: HTMLElement[] = [];
   let painted: boolean[] = [];
 
   function render() {
-    lineCount = textarea.value.split('\n').length;
     renderLayer();
     renderGutter();
     find.refresh();
@@ -146,34 +192,62 @@ export function createCodeEditor({
   }
 
   // The highlight layer: a short body coloured whole, a long one as its pieces, uncoloured until
-  // paintPieces() finds them on screen. The trailing newlines let the layer scroll as far as the
-  // textarea does.
+  // paintPieces() finds them on screen. An edit gives only the pieces it touched a new element
+  // (typing touches one, rechunk()): the rest keep theirs, with their colours, and the browser
+  // keeps their layout. A piece of whole lines is a block of its own (code-editor.css), so the
+  // browser lays out the one that changed and leaves the others; the pieces of a long line run on
+  // from one another. The trailing newlines let the layer scroll as far as the textarea does.
   function renderLayer() {
     const text = textarea.value;
-    pieces = chunks(text);
-    if (pieces.length === 1) {
+    if (text.length <= CHUNK) {
+      lineCount = countLines(text);
+      pieces = [];
+      pieceBreaks = [];
+      pieceLines = [];
       pieceElements = [];
+      painted = [];
       colour(layer, text);
       layer.append('\n\n');
       return;
     }
-    let line = 0;
-    pieceLines = [];
-    pieceElements = pieces.map((piece) => {
-      pieceLines.push(line);
-      for (let at = piece.indexOf('\n'); at !== -1; at = piece.indexOf('\n', at + 1))
-        line++;
+    const { first, last, fresh } = rechunk(pieces, text);
+    const elements = fresh.map((piece) => {
       const element = document.createElement('span');
       element.textContent = piece;
       return element;
     });
-    painted = pieces.map(() => false);
-    layer.replaceChildren(...pieceElements, '\n\n');
+    if (!pieceElements.length) layer.replaceChildren(...elements, '\n\n');
+    else {
+      // Before the first piece that stays after them, or the trailing newlines.
+      const before = pieceElements[last + 1] ?? layer.lastChild;
+      for (const element of pieceElements.slice(first, last + 1)) element.remove();
+      const fragment = document.createDocumentFragment();
+      fragment.append(...elements);
+      layer.insertBefore(fragment, before);
+    }
+    const count = last - first + 1;
+    pieces.splice(first, count, ...fresh);
+    pieceBreaks.splice(first, count, ...fresh.map((piece) => countLines(piece) - 1));
+    pieceElements.splice(first, count, ...elements);
+    painted.splice(first, count, ...fresh.map(() => false));
+    pieceLines = [];
+    let line = 0;
+    pieces.forEach((piece, index) => {
+      pieceLines.push(line);
+      line += pieceBreaks[index]!;
+      // Whether a piece is whole lines can change with the piece before it: the one after the
+      // fresh pieces is told again.
+      if (index >= first && index <= first + fresh.length)
+        pieceElements[index]!.classList.toggle('code-piece', wholeLines(pieces, index));
+    });
+    lineCount = line + 1;
   }
 
   // Colours the pieces on screen and a screen's worth around them, and takes the colours off the
   // rest, so the layer holds a few thousand coloured tokens at most, however long the body. The
   // lines tell which pieces are near; the pieces of a long line are told apart by where they are.
+  // It reads first and writes after: a write between reads would have each read lay the layer
+  // out again.
   function paintPieces() {
     if (!pieceElements.length) return;
     const { lineHeight, top } = metrics();
@@ -181,62 +255,53 @@ export function createCodeEditor({
     const first = Math.floor((textarea.scrollTop - top) / lineHeight) - screen;
     const last = first + 3 * screen;
     // What the layer shows: its <pre>, as the text in it is far wider.
-    const view = layer.parentElement!.getBoundingClientRect();
-    for (const [index, element] of pieceElements.entries()) {
-      let near =
-        pieceLines[index]! <= last && (pieceLines[index + 1] ?? lineCount) >= first;
-      if (near) {
-        const box = element.getBoundingClientRect();
-        near = box.right >= view.left - view.width && box.left <= view.right + view.width;
-      }
-      if (near === painted[index]) continue;
-      painted[index] = near;
-      if (near) colour(element, pieces[index]!);
-      else element.textContent = pieces[index]!;
-    }
+    let view: DOMRect | undefined;
+    const near = pieceElements.map((element, index) => {
+      if (pieceLines[index]! > last || (pieceLines[index + 1] ?? lineCount) < first)
+        return false;
+      if (element.classList.contains('code-piece')) return true;
+      view ??= layer.parentElement!.getBoundingClientRect();
+      const box = element.getBoundingClientRect();
+      return box.right >= view.left - view.width && box.left <= view.right + view.width;
+    });
+    near.forEach((isNear, index) => {
+      if (isNear === painted[index]) return;
+      painted[index] = isNear;
+      if (isNear) colour(pieceElements[index]!, pieces[index]!);
+      else pieceElements[index]!.textContent = pieces[index]!;
+    });
   }
 
-  // Puts text in an element as its tokens, a span for each coloured one (the tk-* classes in
-  // code-editor.css). Built from text nodes, so nothing in the body is ever read as HTML.
-  function colour(element: HTMLElement, text: string) {
-    const fragment = document.createDocumentFragment();
-    for (const [kind, part] of tokens(text))
-      fragment.append(kind ? span(`tk-${kind}`, part) : part);
-    element.replaceChildren(fragment);
-  }
-
-  // The line numbers, the marked line's in white.
+  // The line numbers, the marked line's in white. Lines typed or deleted add numbers at the end
+  // or take them off, which the browser lays out without going over the rest.
+  let gutterLines = 0;
+  let gutterProblem = -1;
   function renderGutter() {
-    const key = `${lineCount}:${problemLine}`;
-    if (key === gutter) return;
-    gutter = key;
-    const numbers = Array.from({ length: lineCount }, (_, index) => index + 1);
-    if (problemLine < 0 || problemLine >= lineCount) {
-      lines.textContent = numbers.join('\n');
-      return;
+    const marked = problemLine >= 0 && problemLine < lineCount ? problemLine : -1;
+    if (lineCount === gutterLines && marked === gutterProblem) return;
+    const text = lines.firstChild;
+    if (marked >= 0) {
+      lines.replaceChildren(
+        marked ? `${numbers(1, marked)}\n` : '',
+        span('error', String(marked + 1)),
+        marked + 1 < lineCount ? `\n${numbers(marked + 2, lineCount)}` : '',
+      );
+    } else if (gutterProblem >= 0 || !gutterLines || !(text instanceof Text)) {
+      lines.textContent = numbers(1, lineCount);
+    } else if (lineCount > gutterLines) {
+      text.appendData(`\n${numbers(gutterLines + 1, lineCount)}`);
+    } else {
+      text.deleteData(numbersLength(lineCount), text.length);
     }
-    lines.replaceChildren(
-      numbers
-        .slice(0, problemLine)
-        .map((number) => `${number}\n`)
-        .join(''),
-      span('error', String(problemLine + 1)),
-      numbers
-        .slice(problemLine + 1)
-        .map((number) => `\n${number}`)
-        .join(''),
-    );
+    gutterLines = lineCount;
+    gutterProblem = marked;
   }
 
-  const span = (className: string, text: string) => {
-    const element = document.createElement('span');
-    element.className = className;
-    element.textContent = text;
-    return element;
-  };
-
-  // The marks for the mistake: the text up to it invisible, a squiggle under it, its note after
-  // the end of its line.
+  // The marks for the mistake: the text of its line up to it invisible, a squiggle under it, its
+  // note after the end of the line. Only that line is on the layer, set down as many line heights
+  // as there are lines above it (lh, which follows the text size), so marking a mistake costs the
+  // same in a long body as in a short one; the layer still scrolls as far as the textarea does
+  // (fitLayers()).
   function renderProblem() {
     const text = textarea.value;
     tip.hidden = true;
@@ -252,37 +317,60 @@ export function createCodeEditor({
     let end = text.indexOf('\n', from);
     if (end === -1) end = text.length;
     const to = Math.min(problem.to, Math.max(end, from + 1));
-    problemLine = text.slice(0, from).split('\n').length - 1;
-    // Built from text nodes, so nothing in the body is ever read as HTML. The trailing newlines
-    // let the layer scroll as far as the textarea does.
+    const start = from ? text.lastIndexOf('\n', from - 1) + 1 : 0;
+    problemLine = countLines(text.slice(0, from)) - 1;
+    // Built from text nodes, so nothing in the body is ever read as HTML.
     errors.replaceChildren(
-      text.slice(0, from),
+      text.slice(start, from),
       span('code-error', text.slice(from, to)),
       text.slice(to, end),
       ...(note ? [span('code-error-note', `   ${note}`)] : []),
-      `${text.slice(end)}\n\n`,
     );
+    errors.style.paddingTop = `${problemLine}lh`;
     band.hidden = false;
     bar.hidden = false;
     renderGutter();
     sync();
   }
 
-  function metrics() {
+  // The layers that hold one line (the mistake's, vim's cursor's) are made as tall as the whole
+  // text and the two lines the highlight layer adds, so they scroll as far as the textarea does.
+  function fitLayers() {
+    const height = `${lineCount + 2}lh`;
+    errors.style.minHeight = height;
+    cursorLayer.style.minHeight = height;
+  }
+
+  // The text area's line height, padding and font, read once: reading its line height from the
+  // browser lays the page out if anything has changed, which in the middle of a redraw laid the
+  // whole body out again. Read again after the text size changes, or the text area is resized.
+  function measure() {
     const style = getComputedStyle(textarea);
     return {
       lineHeight: parseFloat(style.lineHeight),
       top: parseFloat(style.paddingTop),
+      bottom: parseFloat(style.paddingBottom),
       left: parseFloat(style.paddingLeft),
-      style,
+      right: parseFloat(style.paddingRight),
+      fontSize: parseFloat(style.fontSize),
+      font: `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`,
     };
+  }
+  function metrics() {
+    // Off the page (as the editor is made) there's nothing to read yet.
+    if (!measured) {
+      const now = measure();
+      if (!textarea.isConnected) return now;
+      measured = now;
+    }
+    return measured;
   }
 
   // Every character is as wide as the next in the editor's monospace font.
   const ruler = document.createElement('canvas').getContext('2d');
-  function charWidth(style: CSSStyleDeclaration) {
-    if (!ruler) return parseFloat(style.fontSize) * 0.6;
-    ruler.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+  function charWidth(of: ReturnType<typeof measure>) {
+    if (!ruler) return of.fontSize * 0.6;
+    ruler.font = of.font;
     return ruler.measureText('0'.repeat(20)).width / 20;
   }
 
@@ -306,12 +394,13 @@ export function createCodeEditor({
   // With `fit`, the height of the whole text: lines, padding, a horizontal scrollbar if there is
   // one, and the find bar and vim's status line while they show. The stylesheet clamps it.
   function fitHeight() {
+    fitLayers();
     if (!fit) return;
-    const { lineHeight, style } = metrics();
+    const { lineHeight, top, bottom } = metrics();
     const height =
       lineCount * lineHeight +
-      parseFloat(style.paddingTop) +
-      parseFloat(style.paddingBottom) +
+      top +
+      bottom +
       (textarea.offsetHeight - textarea.clientHeight) +
       findBar.offsetHeight +
       statusLine.offsetHeight +
@@ -328,12 +417,14 @@ export function createCodeEditor({
   // or the window changes: a narrower one can grow a horizontal scrollbar, and different pieces of
   // a long body are on screen.
   new ResizeObserver(() => {
+    measured = null;
     fitHeight();
     paintPieces();
   }).observe(textarea);
 
   function applyFontSize() {
     root.style.fontSize = fontSize === DEFAULT_FONT_SIZE ? '' : `${fontSize}px`;
+    measured = null;
   }
 
   // The cursor (the end of the selection that moves, where vim keeps its cursor too): its line and
@@ -377,7 +468,7 @@ export function createCodeEditor({
 
   function resizeInPlace(size: number) {
     const was = metrics();
-    const wasWidth = charWidth(was.style);
+    const wasWidth = charWidth(was);
     if (held?.at !== where()) {
       const { scrollTop, scrollLeft, clientHeight, clientWidth } = textarea;
       const cursor = cursorAt();
@@ -404,7 +495,7 @@ export function createCodeEditor({
     fitHeight();
 
     const now = metrics();
-    const width = charWidth(now.style);
+    const width = charWidth(now);
     textarea.scrollTop = now.top + held.line * now.lineHeight - held.y;
     let left = held.edge === null ? 0 : now.left + held.edge * width;
     if (held.cursor) {
@@ -454,8 +545,8 @@ export function createCodeEditor({
   // line, or above it when there's no room below.
   function hover(event: MouseEvent) {
     if (problemLine < 0 || !problem) return;
-    const { lineHeight, top, left, style } = metrics();
-    const width = charWidth(style);
+    const { lineHeight, top, left } = metrics();
+    const width = charWidth(metrics());
     const box = textarea.getBoundingClientRect();
     const line = Math.floor(
       (event.clientY - box.top - top + textarea.scrollTop) / lineHeight,
@@ -544,6 +635,7 @@ export function createCodeEditor({
     find: find.findFrom,
     openSearch: find.open,
     sync,
+    metrics,
     execute: command,
     active: vimPreferred(),
   });

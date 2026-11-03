@@ -61,6 +61,49 @@ export function chunks(text: string, size = CHUNK) {
   return pieces;
 }
 
+// After an edit to a body cut into pieces (chunks()): the new text's pieces, cut again only
+// where the edit changed it, so the rest keep their elements in the editor. The pieces before
+// `first` and after `last` stay as they are, and `fresh` takes the place of those between. A
+// piece that stays starts a line, and not one a key's colon goes on to: a long line's pieces are
+// cut again together, as chunks() cuts one after a comma outside a string, and an edit before
+// that comma can move it into one. Typed right where two pieces meet, the text goes in with the
+// piece before (or at the very start, the one after) rather than in a piece of its own.
+export function rechunk(pieces: string[], text: string, size = CHUNK) {
+  let first = 0;
+  let at = 0;
+  let last = pieces.length - 1;
+  let end = text.length;
+  // The pieces the text still starts with, and then those it still ends with, short of them.
+  while (first <= last && text.startsWith(pieces[first]!, at))
+    at += pieces[first++]!.length;
+  while (
+    last >= first &&
+    end - pieces[last]!.length >= at &&
+    text.endsWith(pieces[last]!, end)
+  )
+    end -= pieces[last--]!.length;
+  if (first > last) {
+    if (first > 0) at -= pieces[--first]!.length;
+    else if (last < pieces.length - 1) end += pieces[++last]!.length;
+  }
+  while (first > 0 && !startsPiece(text, at)) at -= pieces[--first]!.length;
+  while (last < pieces.length - 1 && !startsPiece(text, end))
+    end += pieces[++last]!.length;
+  return {
+    first,
+    last,
+    fresh: at < end ? chunks(text.slice(at, end), size) : [],
+  };
+}
+
+// Whether a piece that stays can start at `at`: either end of the text, or the start of a line
+// that a key's colon doesn't go on to.
+function startsPiece(text: string, at: number) {
+  return (
+    at <= 0 || at >= text.length || (text[at - 1] === '\n' && !keyGoesOn(text, at - 1))
+  );
+}
+
 // Whether the line break at `newline` comes between a key and its colon.
 function keyGoesOn(text: string, newline: number) {
   return /^\s*:/.test(text.slice(newline + 1, newline + 200));

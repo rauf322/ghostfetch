@@ -733,6 +733,111 @@ try {
     },
   );
   await check(
+    "typing in a long body redraws only the piece typed into, a new line only adds its number, the editor's sizes are its own, and the boxes around it change only in size between its two layouts",
+    async () => {
+      // What keeps typing in a long body quick (code-editor.ts, code-editor.css and the rule
+      // editor's layout): none of it shows, so it's checked here.
+      const editor = app.locator('.code textarea');
+      const before = await editor.inputValue();
+      const items = Array.from({ length: 5000 }, (_, id) => ({ id, name: `user ${id}` }));
+      // Put in as one edit (fill() would type it a line at a time, 25,000 times).
+      await editor.evaluate(
+        (textarea, text) => {
+          textarea.value = text;
+          textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        },
+        JSON.stringify({ items }, null, 2),
+      );
+      await sleep(300);
+      // The pieces and the gutter's text are marked, then a character and a line are typed
+      // near the top.
+      const marked = await app.evaluate(() => {
+        const pieces = document.querySelectorAll('.code-highlight .code-text > span');
+        pieces.forEach((piece, index) => {
+          piece.dataset.probe = String(index);
+        });
+        window.gutterProbe = document.querySelector('.code-lines').firstChild;
+        return pieces.length;
+      });
+      await editor.click({ position: { x: 200, y: 60 } });
+      await app.keyboard.type('x');
+      await app.keyboard.press('Enter');
+      await sleep(200);
+      const after = await app.evaluate(() => {
+        const pieces = [
+          ...document.querySelectorAll('.code-highlight .code-text > span'),
+        ];
+        const textarea = document.querySelector('.code textarea');
+        const lines = document.querySelector('.code-lines');
+        const code = document.querySelector('.code');
+        const own = (name) => [
+          getComputedStyle(code).getPropertyValue(name) !== '',
+          getComputedStyle(textarea).getPropertyValue(name),
+        ];
+        return {
+          pieces: pieces.length,
+          kept: pieces.filter((piece) => piece.dataset.probe).length,
+          gutter: [
+            lines.firstChild === window.gutterProbe,
+            lines.textContent.split('\n').at(-1),
+          ],
+          lines: textarea.value.split('\n').length,
+          fit: own('--code-fit'),
+          max: own('--code-max'),
+        };
+      });
+      // The boxes around the body editor, from the editor up to the pane: between the settings
+      // beside the body and under it, each keeps its display, flex, order, padding and gaps (a
+      // change to any of them has a browser lay the body out again from scratch), and changes
+      // only its size and margins.
+      const boxes = () =>
+        app.evaluate(() => {
+          const seen = [];
+          for (
+            let box = document.querySelector('.code');
+            box.dataset.slot !== 'pane-scroll';
+            box = box.parentElement
+          ) {
+            const style = getComputedStyle(box);
+            seen.push(
+              [
+                style.display,
+                style.flexDirection,
+                style.flexWrap,
+                style.flex,
+                style.order,
+                style.padding,
+                style.rowGap,
+                style.columnGap,
+              ].join(' '),
+            );
+          }
+          return seen;
+        });
+      const beside = await boxes();
+      await app.setViewportSize({ width: 1000, height: 820 });
+      const under = await boxes();
+      await app.setViewportSize({ width: 1280, height: 820 });
+      // Back as it was, as one edit too.
+      await editor.evaluate((textarea, text) => {
+        textarea.value = text;
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+      }, before);
+      expect(
+        [
+          after.pieces >= marked - 1 && after.pieces <= marked + 2,
+          after.kept >= marked - 2,
+          after.gutter,
+          after.fit,
+          after.max,
+          beside.length > 3 && JSON.stringify(under) === JSON.stringify(beside),
+        ],
+        [true, true, [true, String(after.lines)], [true, ''], [true, ''], true],
+        JSON.stringify({ marked, after, beside, under }),
+      );
+    },
+  );
+  await check(
     'the body fills the pane beside the settings; under them, it is as tall as its text and never taller than the pane',
     async () => {
       const editor = app.locator('.code textarea');
@@ -1044,7 +1149,7 @@ try {
     },
   );
   await check(
-    'vim: G, gg and 50% scroll a long body with the cursor in view',
+    'vim: G, gg and 50% scroll a long body with the cursor in view, the block exactly on its character 15,000 lines down',
     async () => {
       const long = JSON.stringify(
         { items: Array.from({ length: 80 }, (_, id) => ({ id, name: `item ${id}` })) },
@@ -1066,6 +1171,19 @@ try {
         [`${long.split('\n').length}:1`, true],
         'G',
       );
+      // The cursor's layer holds its line alone, and scrolls as far as the textarea does.
+      expect(
+        await app.evaluate(() => {
+          const text = document.querySelector('.code-cursor .code-text');
+          const textarea = document.querySelector('.code textarea');
+          return [
+            text.textContent.includes('\n'),
+            text.parentElement.scrollHeight >= textarea.scrollHeight,
+          ];
+        }),
+        [false, true],
+        'cursor layer',
+      );
       await typeVim('gg');
       expect(
         [await body.evaluate((textarea) => textarea.scrollTop), await inView()],
@@ -1074,6 +1192,62 @@ try {
       );
       await typeVim('50%');
       expect(await inView(), true, '50%');
+      // The block sits exactly on its character, where the coloured text has it, in a body of
+      // 15,000 lines: a line height off by a hair would add up that far down. Put in as one
+      // edit (fill() would type it a line at a time).
+      await body.evaluate(
+        (textarea, text) => {
+          textarea.value = text;
+          textarea.setSelectionRange(0, 0);
+          textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        },
+        JSON.stringify(
+          {
+            items: Array.from({ length: 3000 }, (_, id) => ({ id, name: `item ${id}` })),
+          },
+          null,
+          2,
+        ),
+      );
+      const onItsCharacter = () =>
+        app.evaluate(() => {
+          const textarea = document.querySelector('.code textarea');
+          const block = document
+            .querySelector('.code-cursor .cursor')
+            .getBoundingClientRect();
+          const walker = document.createTreeWalker(
+            document.querySelector('.code-highlight .code-text'),
+            NodeFilter.SHOW_TEXT,
+          );
+          let offset = textarea.selectionStart;
+          for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+            if (offset < node.length) {
+              const range = document.createRange();
+              range.setStart(node, offset);
+              range.setEnd(node, offset + 1);
+              const char = range.getBoundingClientRect();
+              return (
+                Math.abs(char.top - block.top) < 1 && Math.abs(char.left - block.left) < 1
+              );
+            }
+            offset -= node.length;
+          }
+          return false;
+        });
+      const placed = [];
+      for (const keys of ['G', '50%', 'gg']) {
+        await typeVim(keys);
+        placed.push([keys, await onItsCharacter()]);
+      }
+      expect(
+        placed,
+        [
+          ['G', true],
+          ['50%', true],
+          ['gg', true],
+        ],
+        'on its character',
+      );
     },
   );
   await check('vim: Format still works in Normal mode', async () => {

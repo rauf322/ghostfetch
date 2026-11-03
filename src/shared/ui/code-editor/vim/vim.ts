@@ -91,6 +91,8 @@ interface VimOptions {
   ) => { index: number; wrapped: boolean } | null;
   openSearch: (line: SearchLine) => void;
   sync: () => void;
+  // The textarea's line height and padding, as the editor keeps them.
+  metrics: () => { lineHeight: number; top: number; left: number; right: number };
   // Runs a browser editing command (insertText, delete, undo, redo) on the body, and fires one
   // input for it, however many the browser makes of a long one.
   execute: (name: string, value?: string) => boolean;
@@ -153,11 +155,12 @@ const NATIVE_EDITS = new Set([
   'historyRedo',
 ]);
 
-// Wires vim into a code editor. The editor lends it its textarea, a <pre> above the highlighted
-// text for the block cursor, the status line, and three hooks: find(query, from, options) for
-// n, N, * and #; openSearch({ backward, from, then }) to open the find bar as vim's search line,
-// where `then` is an operator waiting for the match ("d/foo"); and sync() to bring the layers
-// along after vim scrolls the textarea.
+// Wires vim into a code editor. The editor lends it its textarea, the text of a <pre> above the
+// highlighted text for the block cursor, the status line, and four hooks: find(query, from,
+// options) for n, N, * and #; openSearch({ backward, from, then }) to open the find bar as vim's
+// search line, where `then` is an operator waiting for the match ("d/foo"); sync() to bring the
+// layers along after vim scrolls the textarea; and metrics() for the textarea's line height and
+// padding.
 export function createVim({
   root,
   textarea,
@@ -166,6 +169,7 @@ export function createVim({
   find,
   openSearch,
   sync,
+  metrics,
   execute,
   active: startActive = false,
 }: VimOptions) {
@@ -940,11 +944,10 @@ export function createVim({
   // ---------------------------------------------------------- running commands
 
   function scroll(name: string, count: number) {
-    const style = getComputedStyle(textarea);
-    const lineHeight = parseFloat(style.lineHeight);
+    const { lineHeight, top: padding } = metrics();
     const visible = Math.max(1, Math.floor(textarea.clientHeight / lineHeight));
     if (name === 'zz' || name === 'zt' || name === 'zb') {
-      const top = parseFloat(style.paddingTop) + lineIndex(text(), head) * lineHeight;
+      const top = padding + lineIndex(text(), head) * lineHeight;
       const margin = scrollMargin(lineHeight);
       if (name === 'zt') textarea.scrollTop = top - margin;
       else if (name === 'zb')
@@ -1214,15 +1217,20 @@ export function createVim({
   function paint() {
     if (!active) return;
     const value = text();
-    root.dataset.vim = mode;
+    if (root.dataset.vim !== mode) root.dataset.vim = mode;
     if (mode === 'insert') {
       cursorLayer.replaceChildren();
     } else {
-      // The layer holds the whole text, invisible, so the block lands exactly on its character.
+      // The layer holds the cursor's line, invisible, so the block lands exactly on its
+      // character, set down as many line heights as there are lines above it (lh, which
+      // follows the text size): only that line, so moving the cursor costs the same in a long
+      // body as in a short one. The editor keeps the layer as tall as the whole text, so it
+      // scrolls as far as the textarea does.
       const size = atLineEnd(value, head) ? 0 : next(value, head) - head;
-      before.data = value.slice(0, head);
+      before.data = value.slice(lineStart(value, head), head);
       block.textContent = size ? value.slice(head, head + size) : ' ';
-      after.data = `${value.slice(head + size)}\n\n`;
+      after.data = value.slice(head + size, lineEnd(value, head));
+      cursorLayer.style.paddingTop = `${lineIndex(value, head)}lh`;
       if (block.parentNode !== cursorLayer)
         cursorLayer.replaceChildren(before, block, after);
     }
@@ -1247,16 +1255,14 @@ export function createVim({
   // Scrolls the textarea so the cursor stays in view, two lines from the edge where it can.
   function reveal() {
     if (mode === 'insert' || !block.isConnected) return;
-    const style = getComputedStyle(textarea);
-    const lineHeight = parseFloat(style.lineHeight);
+    const { lineHeight, top: padding, left: padLeft, right: padRight } = metrics();
     const margin = scrollMargin(lineHeight);
-    const top = parseFloat(style.paddingTop) + lineIndex(text(), head) * lineHeight;
+    const top = padding + lineIndex(text(), head) * lineHeight;
     if (top - margin < textarea.scrollTop) textarea.scrollTop = top - margin;
     else if (top + lineHeight + margin > textarea.scrollTop + textarea.clientHeight)
       textarea.scrollTop = top + lineHeight + margin - textarea.clientHeight;
-    const leftEdge = block.offsetLeft - parseFloat(style.paddingLeft);
-    const rightEdge =
-      block.offsetLeft + block.offsetWidth + parseFloat(style.paddingRight);
+    const leftEdge = block.offsetLeft - padLeft;
+    const rightEdge = block.offsetLeft + block.offsetWidth + padRight;
     if (leftEdge < textarea.scrollLeft) textarea.scrollLeft = leftEdge;
     else if (rightEdge > textarea.scrollLeft + textarea.clientWidth)
       textarea.scrollLeft = rightEdge - textarea.clientWidth;

@@ -370,6 +370,12 @@ try {
 
   console.log('editor UI');
   const app = await context.newPage();
+  // Rules or Traffic: the sidebar's row from 760px wide, the top bar's tab in a narrow panel.
+  const show = (view) =>
+    app
+      .locator(`[data-testid="nav-${view}"]:visible, [data-testid="tab-${view}"]:visible`)
+      .first()
+      .click();
   app.on('pageerror', (error) => errors.push(`app: ${error.message}`));
   app.on(
     'console',
@@ -422,7 +428,10 @@ try {
     await sleep(600);
     const r = await call('/api/user?case=ui');
     expect([r.status, r.body], [201, { ui: true }]);
-    expect(await app.locator('[data-testid="code-status"]').textContent(), 'Valid JSON');
+    expect(
+      await app.locator('[data-testid="code-status"]').textContent(),
+      'Valid JSON · 1 line',
+    );
   });
   await check('tester and invalid JSON feedback', async () => {
     await app.fill('[data-testid="tester"]', `${ORIGIN}/api/user?case=ui`);
@@ -569,7 +578,7 @@ try {
           await app.locator('.code-error').count(),
           await app.locator('[data-testid="code-status"]').textContent(),
         ],
-        [0, 'Valid JSON'],
+        [0, 'Valid JSON · 4 lines'],
       );
     },
   );
@@ -1313,7 +1322,7 @@ try {
     expect(await app.locator('[data-testid="rule"]').count(), before);
   });
   await check('traffic view shows captured requests live', async () => {
-    await app.click('[data-testid="tab-traffic"]');
+    await show('traffic');
     await app.waitForSelector('[data-testid="request"]', { timeout: 5000 });
     await call('/api/user?case=live-check');
     await app.waitForSelector(
@@ -1424,77 +1433,78 @@ try {
     },
   );
   await check(
-    'wide: the sidebar button and Cmd/Ctrl+B hide the list beside a rule, and beside a request in Traffic; it stays hidden after a reload; a narrow panel has no button',
+    'wide: the sidebar button and Cmd/Ctrl+B hide the sidebar beside a rule and in Traffic; it stays hidden after a reload; a narrow panel has no button',
     async () => {
       const key = `${process.platform === 'darwin' ? 'Meta' : 'Control'}+b`;
-      // The list of a view: its width, and whether it's drawn (it stays laid out while hidden).
-      const list = (view) =>
-        app.evaluate((name) => {
-          const aside = document.querySelector(`[data-testid="view-${name}"] aside`);
+      // The sidebar: its width, and whether it's drawn (it stays laid out while hidden).
+      const sidebar = () =>
+        app.evaluate(() => {
+          const aside = document.querySelector('[data-testid="sidebar"]');
           return {
             width: Math.round(aside.getBoundingClientRect().width),
             shown: getComputedStyle(aside).visibility === 'visible',
           };
-        }, view);
-      const settled = (view, shown) =>
+        });
+      const settled = (shown) =>
         app.waitForFunction(
-          ([name, visible]) => {
-            const aside = document.querySelector(`[data-testid="view-${name}"] aside`);
+          (visible) => {
+            const aside = document.querySelector('[data-testid="sidebar"]');
             const width = aside.getBoundingClientRect().width;
             return visible
-              ? getComputedStyle(aside).visibility === 'visible' && width > 300
+              ? getComputedStyle(aside).visibility === 'visible' && width >= 260
               : getComputedStyle(aside).visibility === 'hidden' && width < 2;
           },
-          [view, shown],
+          shown,
           { timeout: 3000 },
         );
       const toggle = app.locator('[data-testid="sidebar-toggle"]:visible');
       const seen = [];
-      await app.click('[data-testid="tab-rules"]');
+      await show('rules');
       await app.locator('[data-testid="rule"]').first().click();
-      seen.push((await list('rules')).shown);
+      seen.push((await sidebar()).shown);
       await toggle.click();
-      await settled('rules', false);
+      await settled(false);
       seen.push(await toggle.getAttribute('aria-expanded'));
       // The rule has the whole window.
       const pane = await app
-        .locator('[data-testid="view-rules"] > div > section')
+        .locator('[data-testid="view-rules"] > section')
         .boundingBox();
       seen.push(pane.width > 1270);
-      // Remembered: a reload opens with the list hidden, beside New rule, which has the button too.
+      // Remembered: a reload opens with the sidebar hidden, beside New rule, which has the button
+      // too.
       await app.reload();
       await app.waitForSelector('[data-testid="composer-input"]');
-      await settled('rules', false);
+      await settled(false);
       await app.keyboard.press(key);
-      await settled('rules', true);
-      seen.push((await list('rules')).shown);
+      await settled(true);
+      seen.push((await sidebar()).shown);
       expect(seen, [true, 'false', true, true]);
 
-      // Traffic: the list only gives way to an open request, and is back when it's closed.
-      await toggle.click();
-      await app.click('[data-testid="tab-traffic"]');
+      // Traffic: the same sidebar, and the button is in the bar over the list. Hidden, the list
+      // has the whole window, and a request opens in a drawer beside it: 44% of the window, 12 px
+      // from its right edge.
+      await show('traffic');
       await app.locator('[data-testid="request"]').first().waitFor({ timeout: 5000 });
-      expect(
-        await list('traffic'),
-        { width: 1280, shown: true },
-        'nothing open: the list',
-      );
+      const traffic = [(await sidebar()).shown];
+      await toggle.click();
+      await settled(false);
+      const list = await app.locator('[data-testid="traffic-list"]').boundingBox();
       await app.locator('[data-testid="request"]').first().click();
-      await settled('traffic', false);
-      // The drawer is a column in the middle of the window.
       const drawer = await app.locator('[data-testid="request-detail"]').boundingBox();
-      if (Math.abs(drawer.width - 880) > 1 || Math.abs(drawer.x + 440 - 640) > 1)
-        throw new Error(`the drawer with the list hidden: ${JSON.stringify(drawer)}`);
-      await app.click('[data-testid="request-back"]');
-      await settled('traffic', true);
-      await app.locator('[data-testid="request"]').first().click();
-      await settled('traffic', false);
+      traffic.push(
+        list.width > 1270,
+        Math.abs(drawer.width - 1280 * 0.44) <= 1 &&
+          Math.abs(drawer.x + drawer.width - 1268) <= 1,
+      );
       await app.keyboard.press(key);
-      await settled('traffic', true);
+      await settled(true);
+      traffic.push((await sidebar()).shown);
       await app.click('[data-testid="request-back"]');
+      expect(traffic, [true, true, true, true], JSON.stringify({ list, drawer }));
 
-      // A narrow panel shows the list or what's open anyway: no button, and the key does nothing.
-      await app.click('[data-testid="tab-rules"]');
+      // A narrow panel shows the sidebar or what's open anyway: no button, and the key does
+      // nothing.
+      await show('rules');
       await app.setViewportSize({ width: 400, height: 760 });
       await app.keyboard.press(key);
       expect(
@@ -1508,37 +1518,33 @@ try {
     },
   );
   await check(
-    "wide: dragging the list's edge sizes it (at least 260 px, leaving 320), past half of that hides it and out again shows it; each tab keeps its width, after a reload too; the keys move it; a double-click gives the usual width back",
+    "wide: dragging the sidebar's edge sizes it (at least 260 px, leaving 320), past half of that hides it and out again shows it; the width is one for both views, kept after a reload; the keys move it; a double-click gives the usual width back",
     async () => {
-      const handle = (view) =>
-        app.locator(`[data-testid="view-${view}"] [data-testid="sidebar-handle"]`);
-      // The list's width once its column has stopped sliding: 0 while it's hidden (its column is
-      // shut, though the list's own border is still 1 px wide, and it only goes invisible once the
+      const handle = () => app.locator('[data-testid="sidebar-handle"]');
+      // The sidebar's width once its column has stopped sliding: 0 while it's hidden (its column
+      // is shut, though its own border is still 1 px wide, and it only goes invisible once the
       // column has slid shut).
-      const width = async (view) => {
+      const width = async () => {
         let last;
         for (let tries = 0; tries < 40; tries++) {
-          const now = await app.evaluate((name) => {
-            const aside = document.querySelector(`[data-testid="view-${name}"] aside`);
+          const now = await app.evaluate(() => {
+            const aside = document.querySelector('[data-testid="sidebar"]');
             const shown = Math.round(aside.getBoundingClientRect().width);
             return getComputedStyle(aside).visibility === 'visible' && shown > 1
               ? shown
               : 0;
-          }, view);
+          });
           if (now === last) return now;
           last = now;
           await new Promise((resolve) => setTimeout(resolve, 60));
         }
         return last;
       };
-      const saved = (view) =>
-        app.evaluate(
-          (name) => localStorage.getItem(`ghostfetch.sidebar-width.${name}`),
-          view,
-        );
+      const saved = () =>
+        app.evaluate(() => localStorage.getItem('ghostfetch.sidebar-width'));
       // Takes the edge by its middle and lets go of it at `x` (whole pixels).
-      const drag = async (view, x, { release = true } = {}) => {
-        const box = await handle(view).boundingBox();
+      const drag = async (x, { release = true } = {}) => {
+        const box = await handle().boundingBox();
         const y = Math.round(box.y + box.height / 2);
         await app.mouse.move(Math.round(box.x + box.width / 2), y);
         await app.mouse.down();
@@ -1546,50 +1552,48 @@ try {
         if (release) await app.mouse.up();
       };
       const seen = [];
-      await app.click('[data-testid="tab-rules"]');
+      await show('rules');
       await app.locator('[data-testid="rule"]').first().click();
-      // The usual width: a third of the window, at least 300 px.
-      seen.push(await width('rules'));
+      // The usual width: 272 px (a fifth of a wider window, at most 340).
+      seen.push(await width());
       // While it's dragged, the columns follow the pointer instead of sliding.
-      await drag('rules', 360, { release: false });
-      seen.push(await app.locator('[data-view="rules"][data-resizing]').count());
+      await drag(360, { release: false });
+      seen.push(await app.locator('[data-testid="sidebar"][data-resizing]').count());
       await app.mouse.up();
-      seen.push(await width('rules'), await saved('rules'));
-      await drag('rules', 150);
-      seen.push(await width('rules'));
-      await drag('rules', 1200);
-      seen.push(await width('rules'));
+      seen.push(await width(), await saved());
+      await drag(150);
+      seen.push(await width());
+      await drag(1200);
+      seen.push(await width());
       // Past half the narrowest: hidden, and the width from before this drag is kept for later.
-      await drag('rules', 60);
+      await drag(60);
       seen.push(
-        await width('rules'),
+        await width(),
         await app
           .locator('[data-testid="sidebar-toggle"]:visible')
           .getAttribute('aria-expanded'),
-        await saved('rules'),
+        await saved(),
       );
-      // The edge waits at the left; taken there (4 px into it), it brings the list back.
-      await drag('rules', 500);
-      seen.push(await width('rules'));
-      expect(seen, [435, 1, 360, '360', 260, 960, 0, 'false', '960', 496]);
+      // The edge waits at the left; taken there (4 px into it), it brings the sidebar back.
+      await drag(500);
+      seen.push(await width());
+      expect(seen, [272, 1, 360, '360', 260, 960, 0, 'false', '960', 496]);
 
-      // Traffic's list has its own width: what the drawer leaves (44%, at most 600 px).
-      await app.click('[data-testid="tab-traffic"]');
+      // One width for both views, remembered after a reload.
+      await show('traffic');
       await app.locator('[data-testid="request"]').first().click();
-      const traffic = [await width('traffic')];
-      await drag('traffic', 500);
-      traffic.push(await width('traffic'));
-      // Remembered after a reload, each its own.
+      const traffic = [await width()];
+      await drag(500);
+      traffic.push(await width());
       await app.reload();
-      await app.locator('[data-testid="request"]').first().click();
-      traffic.push(await width('traffic'));
-      await app.click('[data-testid="tab-rules"]');
-      traffic.push(await width('rules'));
-      expect(traffic, [717, 500, 500, 496]);
+      await app.locator('[data-testid="request"]').first().waitFor({ timeout: 5000 });
+      traffic.push(await width());
+      await show('rules');
+      traffic.push(await width());
+      expect(traffic, [496, 500, 500, 500]);
 
       // The keys, with the edge focused, and what it says it is.
-      await app.click('[data-testid="tab-traffic"]');
-      await handle('traffic').focus();
+      await handle().focus();
       const keyed = [];
       for (const key of [
         'ArrowLeft',
@@ -1600,8 +1604,8 @@ try {
         'Enter',
       ]) {
         await app.keyboard.press(key);
-        const now = await width('traffic');
-        keyed.push([key, now, await handle('traffic').getAttribute('aria-valuenow')]);
+        const now = await width();
+        keyed.push([key, now, await handle().getAttribute('aria-valuenow')]);
       }
       expect(keyed, [
         ['ArrowLeft', 484, '484'],
@@ -1613,14 +1617,8 @@ try {
       ]);
 
       // A double-click: the usual width again, and nothing kept.
-      await handle('traffic').dblclick();
-      await app.click('[data-testid="request-back"]');
-      await app.click('[data-testid="tab-rules"]');
-      await handle('rules').dblclick();
-      expect(
-        [await width('rules'), await saved('rules'), await saved('traffic')],
-        [435, null, null],
-      );
+      await handle().dblclick();
+      expect([await width(), await saved()], [272, null]);
       // A narrow panel has no edge to drag.
       await app.setViewportSize({ width: 400, height: 760 });
       expect(await app.locator('[data-testid="sidebar-handle"]:visible').count(), 0);
@@ -1634,7 +1632,7 @@ try {
       // editor's .code-text): none of it shows, so it's checked here.
       const sizes = () =>
         app.evaluate(() => {
-          const pane = document.querySelector('[data-testid="view-rules"] aside');
+          const pane = document.querySelector('[data-testid="sidebar"]');
           const textarea = document.querySelector('.code textarea');
           const round = (element) => Math.round(element.getBoundingClientRect().width);
           return {
@@ -1647,12 +1645,10 @@ try {
             ),
           };
         });
-      await app.click('[data-testid="tab-rules"]');
+      await show('rules');
       await app.locator('[data-testid="rule"]').first().click();
       const before = await sizes();
-      const box = await app
-        .locator('[data-testid="view-rules"] [data-testid="sidebar-handle"]')
-        .boundingBox();
+      const box = await app.locator('[data-testid="sidebar-handle"]').boundingBox();
       const y = Math.round(box.y + box.height / 2);
       await app.mouse.move(Math.round(box.x + box.width / 2), y);
       await app.mouse.down();
@@ -1660,9 +1656,7 @@ try {
       const during = await sizes();
       await app.mouse.up();
       const after = await sizes();
-      await app
-        .locator('[data-testid="view-rules"] [data-testid="sidebar-handle"]')
-        .dblclick();
+      await app.locator('[data-testid="sidebar-handle"]').dblclick();
       expect(
         [
           during.textarea === before.textarea,
@@ -1678,7 +1672,7 @@ try {
     },
   );
   await check('traffic reconnects after the page reloads', async () => {
-    await app.click('[data-testid="tab-traffic"]');
+    await show('traffic');
     await page.reload();
     await page.evaluate(() => window.early);
     // The old page's entries match too, so wait for the panel to swap to the new page's log.
@@ -1695,7 +1689,7 @@ try {
 
   if (SHOTS) {
     await app.setViewportSize({ width: 400, height: 760 });
-    await app.click('[data-testid="tab-rules"]');
+    await show('rules');
     await app.screenshot({ path: `${SHOTS}/narrow-editor.png` });
     await app.click('[data-testid="row-status"]');
     await app.screenshot({ path: `${SHOTS}/narrow-status.png` });
@@ -1725,10 +1719,10 @@ try {
     await body.fill(before);
     await app.click('[data-testid="rule-back"]');
     await app.screenshot({ path: `${SHOTS}/narrow-list.png` });
-    await app.click('[data-testid="tab-traffic"]');
+    await show('traffic');
     await app.screenshot({ path: `${SHOTS}/narrow-traffic.png` });
     await app.emulateMedia({ colorScheme: 'dark' });
-    await app.click('[data-testid="tab-rules"]');
+    await show('rules');
     await app.locator('[data-testid="rule"]').nth(3).click();
     await app.screenshot({ path: `${SHOTS}/narrow-dark.png` });
     // Back to the size the checks below expect, with the list and the editor side by side.
@@ -1765,7 +1759,7 @@ try {
           localStorage.getItem('ghostfetch.theme'),
         ]);
       const pick = async (theme) => {
-        await app.click('[data-testid="editor-menu"]');
+        await app.click('[data-testid="sidebar-menu"]');
         await app.click('[data-testid="theme-menu"]');
         await app.click(`[data-testid="theme-${theme}"]`);
         // The menu stays open, to try another.
@@ -1848,7 +1842,7 @@ try {
   await check(
     'page-controlled request fields cannot inject HTML into the editor',
     async () => {
-      await app.click('[data-testid="tab-traffic"]');
+      await show('traffic');
       await page.evaluate(() =>
         fetch('/api/user?case=xss', { method: '<img data-xss=1>' }).catch(() => {}),
       );
@@ -2019,7 +2013,7 @@ try {
     async () => {
       const probe = await context.newPage();
       await probe.goto(`${EVIL_ORIGIN}/`);
-      await app.click('[data-testid="tab-traffic"]');
+      await show('traffic');
       const back = app.locator('[data-testid="request-back"]');
       if (await back.isVisible()) await back.click();
       // Page titles include the host (see the test server), so the evil.test tab is easy to pick.
@@ -2104,7 +2098,7 @@ try {
   console.log('editor details');
   const storedRules = async () =>
     (await worker.evaluate(() => chrome.storage.local.get('rules'))).rules;
-  await app.click('[data-testid="tab-rules"]');
+  await show('rules');
   await check(
     "an old Merge rule opens as Server's body, with no editor; Replace brings the editor",
     async () => {
@@ -2183,6 +2177,123 @@ try {
       await rows.nth(2).dragTo(rows.nth(0), { targetPosition: { x: 40, y: 5 } });
       await sleep(300);
       expect(await ids(), before, 'dragged back');
+    },
+  );
+  await check(
+    'the sidebar: Rules and Traffic with their counts; the rules in two groups, on and off, in their order, and a drag stays within a group; + by On starts a new rule; "/" puts the cursor in the search field, but not from a field; Duplicate in a rule\'s header copies it',
+    async () => {
+      await show('rules');
+      // The rows say which view is open, and count what's in it.
+      const rows = () =>
+        app.evaluate(() =>
+          ['rules', 'traffic'].map((name) => {
+            const row = document.querySelector(`[data-testid="nav-${name}"]`);
+            return [row.getAttribute('aria-current') ?? '', row.textContent];
+          }),
+        );
+      const original = await storedRules();
+      const onRules = await rows();
+      await show('traffic');
+      const onTraffic = await rows();
+      await show('rules');
+      expect(
+        [onRules.map(([current]) => current), onTraffic.map(([current]) => current)],
+        [
+          ['page', ''],
+          ['', 'page'],
+        ],
+      );
+      expect(onRules[0][1], `Rules${original.length}`, 'the count');
+
+      // The second rule turned off elsewhere: it moves to the Off group, and each group keeps
+      // the stored order.
+      const groups = () =>
+        app.evaluate(() =>
+          [...document.querySelectorAll('[data-testid="rule-list"] section')].map(
+            (section) => [
+              section.querySelector('h2').textContent,
+              [...section.querySelectorAll('[data-testid="rule"]')].map(
+                (row) => row.title,
+              ),
+            ],
+          ),
+        );
+      const urls = (rules) => rules.map((rule) => rule.match.url);
+      const changed = structuredClone(original);
+      changed[1].enabled = false;
+      await setStorage({ rules: changed });
+      await app.waitForFunction(
+        (url) =>
+          document
+            .querySelector('[data-testid="rule-list"] section:nth-of-type(2)')
+            ?.querySelector(`[data-testid="rule"][title="${url}"]`),
+        changed[1].match.url,
+        { timeout: 3000 },
+      );
+      const on = changed.filter((rule) => rule.enabled);
+      const off = changed.filter((rule) => !rule.enabled);
+      expect(await groups(), [
+        [`On · ${on.length}`, urls(on)],
+        [`Off · ${off.length}`, urls(off)],
+      ]);
+      // Dragged onto the other group's rules, a rule stays where it is: onto the last one that's
+      // on, right above it, so both are in view (a drag starts on whatever is under the pointer
+      // once the list has scrolled the target into view).
+      const offRow = app
+        .locator('[data-testid="rule-list"] section:nth-of-type(2) [data-testid="rule"]')
+        .first();
+      const onRow = app
+        .locator('[data-testid="rule-list"] section:nth-of-type(1) [data-testid="rule"]')
+        .last();
+      await offRow.dragTo(onRow, { targetPosition: { x: 40, y: 50 } });
+      await sleep(300);
+      expect(
+        (await storedRules()).map((rule) => rule.id),
+        changed.map((rule) => rule.id),
+        'a drag onto the other group',
+      );
+      await setStorage({ rules: original });
+      await sleep(300);
+
+      // + by On: New rule, with the cursor in it.
+      await app.click('[data-testid="new-rule"]');
+      await app.waitForFunction(
+        () => document.activeElement?.dataset.testid === 'composer-input',
+        null,
+        { timeout: 3000 },
+      );
+
+      // "/" from the page puts the cursor in the search field; in a field it's a character.
+      await app.locator('[data-testid="rule"]').first().click();
+      await app.keyboard.press('/');
+      const focused = await app.evaluate(() =>
+        document.activeElement?.getAttribute('aria-label'),
+      );
+      await app.keyboard.type('x/');
+      const search = app.locator('[aria-label="Search rules"]');
+      const typed = await search.inputValue();
+      await search.fill('');
+      expect([focused, typed], ['Search rules', 'x/']);
+
+      // Duplicate in the header: a copy, named "… (copy)", right after the rule, and open.
+      await app.locator('[data-testid="rule"]').first().click();
+      await app.click('[data-testid="duplicate-rule"]');
+      await sleep(300);
+      const now = await storedRules();
+      const copy = now[1];
+      expect(
+        [
+          now.length,
+          copy.name.endsWith(' (copy)'),
+          now[0].match.url === copy.match.url,
+          await app.locator('[data-testid="rule-name"]').inputValue(),
+        ],
+        [original.length + 1, true, true, copy.name],
+      );
+      await app.click('[data-testid="rule-menu"]');
+      await app.click('[data-testid="delete-rule"]');
+      await sleep(300);
+      expect((await storedRules()).length, original.length, 'the copy deleted');
     },
   );
   await check(
@@ -2270,7 +2381,7 @@ try {
   await check(
     'Traffic: Matched and Errors filter the log, Keep on reload keeps it over a reload, Clear empties it',
     async () => {
-      await app.click('[data-testid="tab-traffic"]');
+      await show('traffic');
       await app.click('[data-testid="traffic-tab"]');
       await app
         .getByRole('option', { name: `Test app on ${new URL(ORIGIN).host}`, exact: true })
@@ -2353,7 +2464,7 @@ try {
         }
       });
       await app.reload();
-      await app.waitForSelector('[data-testid="tab-traffic"][aria-selected="true"]');
+      await app.waitForSelector('[data-testid="nav-traffic"][aria-current="page"]');
       const saved = await app.evaluate(() =>
         Object.keys(localStorage)
           .filter((key) => /^(mocktail|ghostfetch)\./.test(key))

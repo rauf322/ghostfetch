@@ -32,6 +32,7 @@ const SHAPES = {
     </>
   ),
   rule: <path d="M4 6h16M4 12h10M4 18h7" />,
+  activity: <path d="M3 12h4l3-7 4 14 3-7h4" />,
   import: <path d="M12 3v12M7 10l5 5 5-5M5 21h14" />,
   export: <path d="M12 15V3M7 8l5-5 5 5M5 21h14" />,
   tab: (

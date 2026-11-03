@@ -1,26 +1,25 @@
-// The editor's layout, shared by the Rules and Traffic tabs: a list, and what's picked in it. From
-// 760px wide the two sit side by side, and the list is a sidebar you can resize and hide
-// (sidebar.tsx); in a narrower side panel only one shows, the list until something is picked, with
-// a button to go back to it.
+// The editor's layout: the sidebar (app/sidepanel/sidebar.tsx), and beside it the open view, a
+// rule or Traffic. From 760px wide the two sit side by side, and the sidebar is one you can resize
+// and hide (sidebar.tsx); in a narrower side panel only one shows, the sidebar until something is
+// picked in it, with a button to go back to it.
 import { useEffect, useRef } from 'react';
 import type { ComponentProps, ReactNode } from 'react';
 import { cn } from './cn.ts';
 import { Icon } from './kit/icon.tsx';
 import { Input } from './kit/input.tsx';
 import { holdWidths, releaseWidths, useListColumn } from './sidebar.tsx';
-import type { SidebarView } from './sidebar.tsx';
 
-// The list and what's open beside it, in a row: a ListPane, a SidebarHandle, then a DetailPane (or
-// Traffic's drawer). A flexbox rather than a grid: when the list's width changes, Firefox lays each
-// item of a grid out again from scratch, a long body and all (60 ms a frame beside 15,000 lines),
-// and a flex item only as far as its own width changed.
+// The sidebar and what's open beside it, in a row: a ListPane, a SidebarHandle, then the open
+// view. A flexbox rather than a grid: when the sidebar's width changes, Firefox lays each item of
+// a grid out again from scratch, a long body and all (60 ms a frame beside 15,000 lines), and a
+// flex item only as far as its own width changed.
 export function Split({ className, ...props }: ComponentProps<'div'>) {
   return <div className={cn('relative flex h-full min-h-0', className)} {...props} />;
 }
 
-// While the list's width slides (Cmd/Ctrl+B, or the arrow keys on its edge), what keeps its width
-// while the edge is dragged keeps it too (holdWidths()), so a long body isn't laid out again on
-// every frame of the slide. Returns what stops it.
+// While the sidebar's width slides (Cmd/Ctrl+B, or the arrow keys on its edge), what keeps its
+// width while the edge is dragged keeps it too (holdWidths()), so a long body isn't laid out
+// again on every frame of the slide. Returns what stops it.
 function holdWhileSliding(pane: HTMLElement) {
   let held: HTMLElement[] = [];
   const isWidth = (event: TransitionEvent) =>
@@ -46,52 +45,38 @@ function holdWhileSliding(pane: HTMLElement) {
   };
 }
 
-// `view`'s list. `picked`: something in it is open, which hides the list in a narrow panel. From
-// 760px wide, while something is open beside it (`beside`: always in Rules, a request in
-// Traffic), it's a sidebar, as wide as its edge was dragged (a SidebarHandle) or else its usual
-// share of the window: a third, at least 300 px, in Rules; in Traffic, what the request's drawer
-// leaves, which is 44% at most 600 px. Otherwise it takes the whole width. `collapsed`: the
-// sidebar is hidden, its width sliding to nothing, and once it has, it's gone (invisible, so nothing
-// in it takes focus). While its edge is dragged it follows the pointer instead of sliding.
-// `divider`: a hairline along its right edge (Traffic's drawer floats as a card, so has none).
+// The sidebar's column. `screen`: in a narrow panel it's the whole screen (the Rules view, with
+// nothing open in it); otherwise it gives way to what's open there. From 760px wide it's beside
+// what's open, as wide as its edge was dragged (a SidebarHandle) or else its usual width: 272 px,
+// a little more in a wide window. `collapsed`: hidden, its width sliding to nothing, and once it
+// has, it's gone (invisible, so nothing in it takes focus). While its edge is dragged it follows
+// the pointer instead of sliding.
 export function ListPane({
-  view,
-  picked,
-  beside = true,
+  screen,
   collapsed = false,
-  divider = true,
   className,
   style,
   ...props
 }: Omit<ComponentProps<'aside'>, 'ref'> & {
-  view: SidebarView;
-  picked: boolean;
-  beside?: boolean;
+  screen: boolean;
   collapsed?: boolean;
-  divider?: boolean;
 }) {
-  const column = useListColumn(view);
+  const column = useListColumn();
   const pane = useRef<HTMLElement>(null);
   useEffect(() => holdWhileSliding(pane.current!), []);
   return (
     <aside
       ref={pane}
-      data-view={view}
-      data-beside={beside || undefined}
       data-collapsed={collapsed || undefined}
       data-resizing={column.resizing || undefined}
       style={{ ...column.style, ...style }}
       className={cn(
-        'flex min-h-0 min-w-0 flex-1 flex-col wide:overflow-hidden',
-        'data-[view=rules]:[--list-default:max(300px,34%)] data-[view=traffic]:[--list-default:max(56%,100%_-_600px)]',
-        // The collapsed width names one attribute more, so it outranks the open one.
-        'wide:data-beside:w-[var(--list-width,var(--list-default))] wide:data-beside:flex-none wide:data-beside:data-collapsed:invisible wide:data-beside:data-collapsed:w-0',
+        'flex min-h-0 min-w-0 flex-1 flex-col [--list-default:clamp(272px,21%,340px)] wide:w-[var(--list-width,var(--list-default))] wide:flex-none wide:overflow-hidden wide:border-r wide:border-border',
         // Hidden, the hairline lies over what's open rather than beside it, so that starts at the
         // window's edge.
-        divider &&
-          'wide:border-r wide:border-border wide:data-beside:data-collapsed:-mr-px',
+        'wide:data-collapsed:invisible wide:data-collapsed:w-0 wide:data-collapsed:-mr-px',
         'motion-safe:transition-[width,visibility] motion-safe:duration-200 motion-safe:ease-out data-resizing:transition-none',
-        picked && 'max-wide:hidden',
+        !screen && 'max-wide:hidden',
         className,
       )}
       {...props}
@@ -99,48 +84,17 @@ export function ListPane({
   );
 }
 
-// What's picked in the list, in the rest of the row. With nothing picked it shows an empty state.
-export function DetailPane({
-  picked,
-  className,
-  ...props
-}: ComponentProps<'section'> & { picked: boolean }) {
+// What's open beside the sidebar: a rule, or New rule.
+export function DetailPane({ className, ...props }: ComponentProps<'section'>) {
   return (
     <section
-      className={cn(
-        'flex min-h-0 min-w-0 flex-1 flex-col',
-        !picked && 'max-wide:hidden',
-        className,
-      )}
+      className={cn('flex min-h-0 min-w-0 flex-1 flex-col', className)}
       {...props}
     />
   );
 }
 
-// The row over a list: its search field and the button that adds to it.
-export function PaneToolbar({ className, ...props }: ComponentProps<'div'>) {
-  return (
-    <div
-      className={cn('flex min-h-12 flex-none items-center gap-2 px-2.5', className)}
-      {...props}
-    />
-  );
-}
-
-// A list's name and its count, as small grey labels over its rows.
-export function SectionRow({ className, ...props }: ComponentProps<'div'>) {
-  return (
-    <div
-      className={cn(
-        'flex h-7 flex-none items-center justify-between gap-3 px-4',
-        className,
-      )}
-      {...props}
-    />
-  );
-}
-
-// The bar under a list: a hairline, then a row of quiet buttons.
+// The bar under the sidebar: a hairline, then a row of quiet buttons.
 export function PaneFooter({ className, ...props }: ComponentProps<'footer'>) {
   return (
     <footer
@@ -153,20 +107,10 @@ export function PaneFooter({ className, ...props }: ComponentProps<'footer'>) {
   );
 }
 
-// Its rows are rounded and inset from the edges (Item).
-export function List({ className, ...props }: ComponentProps<'ul'>) {
-  return (
-    <ul
-      className={cn('min-h-0 flex-1 overflow-auto py-1 scroll-thin', className)}
-      {...props}
-    />
-  );
-}
-
 // What a list says when it has nothing to show.
-export function ListEmpty({ className, ...props }: ComponentProps<'li'>) {
+export function ListEmpty({ className, ...props }: ComponentProps<'div'>) {
   return (
-    <li className={cn('px-4 py-[18px] text-t50 [&_p]:mb-3', className)} {...props} />
+    <div className={cn('px-4 py-[18px] text-t50 [&_p]:mb-3', className)} {...props} />
   );
 }
 
@@ -223,9 +167,14 @@ export function PaneSection({
   );
 }
 
-// A filled, rounded search field, with the magnifier inside it. The field covers the magnifier
-// too, so a click anywhere in it goes to the field.
-export function SearchField({ className, ...props }: ComponentProps<typeof Input>) {
+// A filled, rounded search field, with the magnifier inside it, and at its right end `hint`, the
+// key that puts the cursor in it ("/"), in a small box. The field covers both, so a click anywhere
+// in it goes to the field.
+export function SearchField({
+  hint,
+  className,
+  ...props
+}: ComponentProps<typeof Input> & { hint?: ReactNode }) {
   return (
     <div className="relative flex min-w-0 flex-1 items-center">
       <span
@@ -239,10 +188,19 @@ export function SearchField({ className, ...props }: ComponentProps<typeof Input
         type="search"
         className={cn(
           'h-8 flex-1 rounded-md bg-card pl-[34px] focus:shadow-[inset_0_0_0_1px_var(--line-strong)]',
+          hint && 'pr-8',
           className,
         )}
         {...props}
       />
+      {hint && (
+        <kbd
+          aria-hidden="true"
+          className="pointer-events-none absolute right-2 flex h-[18px] min-w-[18px] items-center justify-center rounded-[5px] border border-border px-1 font-mono text-micro text-t40"
+        >
+          {hint}
+        </kbd>
+      )}
     </div>
   );
 }

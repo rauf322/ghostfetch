@@ -92,9 +92,13 @@
    pane names itself with @container-size/pane. */
 @custom-variant pane-wide (@container pane (min-width: 760px));
 
-/* The list's width (ListPane, in shared/ui/list-detail.tsx), which changes on every frame while its
-   edge is dragged. Not inherited: a custom property normally is, and then every element under the
-   one it's set on had its style worked out again on every frame (each coloured token of a long
+/* Traffic 700px wide or more (`beside:`): a request's drawer beside the list rather than in its
+   place. The view names itself with @container/traffic. */
+@custom-variant beside (@container traffic (min-width: 700px));
+
+/* The sidebar's width (ListPane, in shared/ui/list-detail.tsx), which changes on every frame while
+   its edge is dragged. Not inherited: a custom property normally is, and then every element under
+   the one it's set on had its style worked out again on every frame (each coloured token of a long
    body, while it was set around both panes). */
 @property --list-width {
   syntax: '*';

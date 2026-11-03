@@ -57,7 +57,11 @@ export function codeStatus({ response }: Rule): CodeStatus | null {
       text: `Line ${problem.line}: ${sentenceCase(problem.message)}`,
       problem,
     };
-  return { tone: 'good', text: 'Valid JSON' };
+  const lines = response.body.split('\n').length;
+  return {
+    tone: 'good',
+    text: `Valid JSON · ${lines} ${lines === 1 ? 'line' : 'lines'}`,
+  };
 }
 
 // "Missing comma after 42" as it reads after "Line 2: ", keeping words like "JSON" whole.

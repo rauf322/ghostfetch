@@ -89,21 +89,25 @@ What's different in Firefox-based browsers:
   added), record on/off, quick per-rule switches. Click a rule's name to open it in the
   editor.
 - **Side panel (Chrome), sidebar (Firefox, Zen) or tab**: the full editor. Open it from the
-  popup, or from the `⋯` menu. From 760 px wide the list sits beside what's open, as a
-  sidebar. Drag its edge to make it wider or narrower (it's at least 260 px wide and leaves
-  what's open at least 320), on past half its narrowest to hide it, and back out from the
-  window's left edge to show it again; double-click the edge for its usual width. The edge
-  also takes focus (Tab): the arrow keys move it, and **Enter** hides or shows the list. The
-  button at the top left of a rule or a request (or **⌘B / Ctrl+B**) hides it too, giving its
-  room to what's open, and brings it back. Rules and Traffic each remember their own width,
-  and the list stays hidden until you bring it back. In Traffic the list only gives way to an
-  open request. The `⋯` menu's **Theme** picks the [look](#themes).
+  popup, or from the `⋯` menu. From 760 px wide a sidebar stands beside what's open: the
+  master switch, a search field (**/** puts the cursor in it), **Rules** and **Traffic** with
+  their counts, the rules in two groups (**On** and **Off**, with **+** by On for a new rule),
+  and the `⋯` menu, **Import** and **Export** along the bottom. Drag its edge to make it wider
+  or narrower (it's at least 260 px wide and leaves what's open at least 320), on past half
+  its narrowest to hide it, and back out from the window's left edge to show it again;
+  double-click the edge for its usual width. The edge also takes focus (Tab): the arrow keys
+  move it, and **Enter** hides or shows the sidebar. The button at the top left of a rule or
+  of Traffic (or **⌘B / Ctrl+B**) hides it too, giving its room to what's open, and brings it
+  back. Its width, and whether it's hidden, are remembered. In a narrower panel a top bar has
+  the switch and the two views as tabs, and the rules, a rule or Traffic take the whole panel,
+  one at a time. The `⋯` menu's **Theme** picks the [look](#themes).
   - **Rules**: create and edit rules. Changes save as you type and apply to open tabs
     immediately, without reloading. Rules apply in the list's order and the first match wins;
-    drag them to reorder. Import and export sit at the bottom of the list. A rule's switch
-    is a green dot: it pulses while the rule is on, holds still while Ghostfetch is off, and
-    is grey while the rule is off. Click it to turn the rule on or off.
-    **New rule** asks "What should Ghostfetch answer?" (beside the list it's also what shows
+    drag one to reorder it within its group. A rule's switch is a green dot: it pulses while
+    the rule is on, holds still while Ghostfetch is off, and is grey while the rule is off.
+    Click it to turn the rule on or off. **Duplicate**, in an open rule's header, copies it.
+    **New rule** (the **+**) asks "What should Ghostfetch answer?" (beside the sidebar it's
+    also what shows
     with no rule open). Paste a path, a full URL (it keeps the path and query, so the rule
     works on any host) or a cURL command, as the browsers' Copy as cURL writes one: its
     method, Accept type and GraphQL operation are read too, all inside the extension, with
@@ -311,12 +315,12 @@ src/app/                         the extension's parts, one folder each, which W
   interceptor/                   page world: wraps fetch/XHR, applies the rules
   bridge/                        isolated world: passes rules in, collects the traffic log
   popup/                         the toolbar popup's page
-  sidepanel/                     the editor (Chrome's side panel, Firefox's sidebar, or a tab): its top bar, tabs and menus
+  sidepanel/                     the editor (Chrome's side panel, Firefox's sidebar, or a tab): its sidebar, the top bar of a narrow panel, and its menus
   kit/                           the kit page; for npm run dev and the kit test, never in the extension
   styles/                        theme.css, the look's values (colours, the two fonts); themes.css, the other themes' colours; and kit.css: those as Tailwind's theme (type sizes, corners)
 src/pages/                       what the screens show
-  rules/                         the Rules tab: the rule list, New rule (ui/new-rule/), and the rule editor (ui/rule-editor/, a component per part)
-  traffic/                       the Traffic tab: a tab's live log grouped by time, a request's drawer (ui/request-detail/), Mock this response
+  rules/                         the Rules view: the sidebar's rule list (its two groups), New rule (ui/new-rule/), and the rule editor (ui/rule-editor/, a component per part)
+  traffic/                       the Traffic view: a tab's live log grouped by time, a request's drawer (ui/request-detail/), Mock this response
   popup/                         the toolbar popup
   kit/                           the kit page: every kit component in its states
 src/shared/                      what more than one part of the extension uses
@@ -335,10 +339,10 @@ src/shared/                      what more than one part of the extension uses
   ui/                            components, a public file each
     kit/                         the UI kit: React components on Base UI, styled with Tailwind (see UI kit)
     code-editor/                 the body editor (plain DOM code, its find bar and vim keys) and its React component (index.ts)
-    list-detail.tsx              the editor's layout: a list, as wide as its edge was dragged, and what's picked in it, in a row (a flexbox: Firefox lays a grid's items out again from scratch)
-    sidebar.tsx                  the list as a sidebar: its width and whether it's hidden, the edge that resizes it (and what keeps its width meanwhile), and the button (and ⌘B) that hides it
+    list-detail.tsx              the editor's layout: the sidebar, as wide as its edge was dragged, and what's open beside it, in a row (a flexbox: Firefox lays a grid's items out again from scratch)
+    sidebar.tsx                  the sidebar's width and whether it's hidden, the edge that resizes it (and what keeps its width meanwhile), and the button (and ⌘B) that hides it
     theme.ts                     the themes, and the one in use; theme-menu.tsx, the ⋯ menus' Theme row
-    master-switch.tsx            Ghostfetch on or off, in the popup and the editor's top bar
+    master-switch.tsx            Ghostfetch on or off, in the popup and the editor's sidebar (its top bar in a narrow panel)
     rule-switch.tsx              a rule on or off (the pulsing green dot), in the list, the rule's top bar and the popup
     rules-file.tsx               rules files: export every rule or one, import one (its rules arrive switched off)
     cn.ts                        cn(), which joins the kit's class names
@@ -464,9 +468,10 @@ Mock, the rule's settings rows and its sentence, the body editor's marks for a J
 its height beside the settings and under them, text size and that it keeps the cursor's line in
 place, Format and colours on a body of 370,000 characters, its own find and its vim keys, whose
 yanks it pastes back from the clipboard), the
-traffic view (its filters, Keep on reload and Clear), the list as a sidebar beside a rule and a
-request (hidden with the button and the key, its edge dragged to its narrowest, its widest, shut
-and open again, its keys, each tab's width after a reload, none in a narrow panel, and what keeps
+traffic view (its filters, Keep on reload and Clear), the sidebar beside a rule and beside
+Traffic (hidden with the button and the key, its edge dragged to its narrowest, its widest, shut
+and open again, its keys, its one width after a reload, none in a narrow panel, its two groups of
+rules and a drag within one, "/" to its search field, Duplicate, and what keeps
 a drag beside a long body smooth: the body's text area holding its width until the edge is let
 go, a width only the list itself has, and coloured text laid out the same at any width; and what
 keeps typing in one quick: only the piece typed into redrawn, a new line only adding its number,

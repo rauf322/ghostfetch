@@ -12,7 +12,7 @@ export function NoRulesYet() {
       {/* Text that ends at a line break is a string, which oxfmt can't split at a space:
           each piece stays one run of text, so it lines up to the pixel as in 0.5.1. */}
       <p className="text-meta leading-[1.55] text-t40">
-        Click <b>New rule</b>, or open <b>Traffic</b>
+        Click <b>+</b> above, or open <b>Traffic</b>
         {', click a request and choose '}
         <b>Mock this response</b>.
       </p>

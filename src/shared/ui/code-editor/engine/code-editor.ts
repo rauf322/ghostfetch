@@ -125,7 +125,7 @@ export function createCodeEditor({
   // them, and its status line along the bottom. Each layer is a <pre> that scrolls along with the
   // textarea, its text in a .code-text of a fixed width (code-editor.css): lines never wrap, so a
   // long body is laid out once, not again whenever the editor changes width. The textarea keeps
-  // its width while the list's edge is dragged or the list slides (data-keep-width, see
+  // its width while the sidebar's edge is dragged or the sidebar slides (data-keep-width, see
   // shared/ui/sidebar.tsx) for the same reason.
   root.innerHTML = `
     <div class="code-find" role="search" hidden>

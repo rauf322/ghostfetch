@@ -1,6 +1,7 @@
-// The editor's ⋯ menu: import and export rules, move the editor between a tab of its own and the
-// side panel, and pick a theme.
+// The editor's ⋯ menu: import and export rules (`files`; the sidebar's footer has those as buttons
+// beside the menu), move the editor between a tab of its own and the side panel, and pick a theme.
 import { openInSidePanel, openInTab } from '../../shared/api/index.ts';
+import { cn } from '../../shared/ui/cn.ts';
 import { Button } from '../../shared/ui/kit/button.tsx';
 import {
   DropdownMenu,
@@ -17,10 +18,16 @@ export function EditorMenu({
   inTab,
   windowId,
   onImport,
+  files = true,
+  testId = 'editor-menu',
+  className,
 }: {
   inTab: boolean;
   windowId: number;
   onImport: () => void;
+  files?: boolean;
+  testId?: string;
+  className?: string;
 }) {
   return (
     <DropdownMenu>
@@ -30,20 +37,24 @@ export function EditorMenu({
             variant="ghost"
             size="icon"
             title="More"
-            data-testid="editor-menu"
-            className="self-center"
+            data-testid={testId}
+            className={cn('self-center', className)}
           />
         }
       >
         <Icon name="more" size={18} />
       </DropdownMenuTrigger>
       <DropdownMenuContent>
-        <DropdownMenuItem onClick={onImport}>
-          <Icon name="import" /> Import rules…
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={exportRules}>
-          <Icon name="export" /> Export all rules
-        </DropdownMenuItem>
+        {files && (
+          <>
+            <DropdownMenuItem onClick={onImport}>
+              <Icon name="import" /> Import rules…
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={exportRules}>
+              <Icon name="export" /> Export all rules
+            </DropdownMenuItem>
+          </>
+        )}
         {inTab ? (
           <DropdownMenuItem onClick={() => openInSidePanel(windowId)}>
             <Icon name="panel" /> Open in side panel

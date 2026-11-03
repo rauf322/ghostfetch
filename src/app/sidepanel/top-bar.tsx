@@ -1,5 +1,6 @@
-// The editor's top bar: Ghostfetch's name, the Rules and Traffic tabs with their counts, the
-// master switch and the ⋯ menu.
+// The editor's top bar, in a narrow side panel: Ghostfetch's name, the Rules and Traffic tabs
+// with their counts, the master switch and the ⋯ menu. From 760px wide the sidebar has all of
+// these (sidebar.tsx), and the bar is gone.
 import { ruleStore, settingsStore } from '../../shared/api/index.ts';
 import { useStore } from '../../shared/react/index.ts';
 import { TabsCount, TabsList, TabsTrigger } from '../../shared/ui/kit/tabs.tsx';
@@ -20,7 +21,7 @@ export function TopBar({
   const { enabled } = useStore(settingsStore);
   const { rules } = useStore(ruleStore);
   return (
-    <header className="flex h-12 flex-none items-stretch gap-2 border-b border-border px-2">
+    <header className="flex h-12 flex-none items-stretch gap-2 border-b border-border px-2 wide:hidden">
       <div className="flex items-center gap-2 pr-1 pl-1.5 text-title font-semibold whitespace-nowrap text-foreground">
         <img
           src="/icons/icon32.png"

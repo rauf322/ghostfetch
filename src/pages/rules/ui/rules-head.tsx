@@ -1,5 +1,5 @@
-// The bar across the top of the Rules tab's detail pane: in a narrow panel a button back to the
-// list; beside the list, the button that hides it and where you are ("Rules / Logged-in admin
+// The bar across the top of a rule or New rule: in a narrow panel a button back to the sidebar;
+// beside the sidebar, the button that hides it and where you are ("Rules / Logged-in admin
 // user", "Rules / New rule"); and whatever goes at the right end (a rule's menu and switch).
 import type { ReactNode } from 'react';
 import { Button } from '../../../shared/ui/kit/button.tsx';

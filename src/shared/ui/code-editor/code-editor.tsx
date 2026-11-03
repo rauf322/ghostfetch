@@ -84,7 +84,7 @@ export function CodeView({
       )}
     >
       {/* The text in a block as wide as its longest line: the view is as wide as the drawer,
-          which changes width as the list's edge is dragged, and a block with a width of its own
+          which changes width as the sidebar's edge is dragged, and a block with a width of its own
           keeps its layout then, where text straight in the view was laid out again every frame
           (3 ms for a response of 3,000 lines). fillView() puts the text in. */}
       <span ref={content} className="block w-max" />

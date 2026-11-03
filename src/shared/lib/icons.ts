@@ -11,6 +11,7 @@ const PATHS = {
   reload: '<path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/>',
   wand: '<path d="M15 4V2M15 10V8M11 6h2M17 6h2M4 20L14 10"/><path d="M19 13v2M18 14h2M8 3v2M7 4h2"/>',
   rule: '<path d="M4 6h16M4 12h10M4 18h7"/>',
+  activity: '<path d="M3 12h4l3-7 4 14 3-7h4"/>',
   import: '<path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>',
   export: '<path d="M12 15V3M7 8l5-5 5 5M5 21h14"/>',
   tab: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/>',

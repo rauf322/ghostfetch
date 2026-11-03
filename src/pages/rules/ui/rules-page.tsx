@@ -1,58 +1,55 @@
-// Rules tab: the rule list, and beside it the open rule or, with none open, New rule ("What should
-// Ghostfetch answer?"). In a narrow side panel only one of the two is visible at a time: the list,
-// until a rule is opened or New rule is clicked. From 760px wide they sit side by side, the list
-// as a sidebar you can resize by its edge and hide.
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { addRule, findRule, ruleStore } from '../../../shared/api/index.ts';
+// Rules: beside the sidebar, the open rule or, with none open, New rule ("What should Ghostfetch
+// answer?"). In a narrow side panel it takes the sidebar's place once a rule is opened or New rule
+// is clicked (the + in the sidebar), with a button back (app/sidepanel/editor.tsx decides which
+// of the two shows).
+import { useEffect, useRef, useState } from 'react';
+import { findRule, ruleStore } from '../../../shared/api/index.ts';
 import type { Rule, TrafficLog } from '../../../shared/api/index.ts';
 import { useStore } from '../../../shared/react/index.ts';
-import { DetailPane, Split } from '../../../shared/ui/list-detail.tsx';
-import { SidebarHandle, useSidebarHidden } from '../../../shared/ui/sidebar.tsx';
+import { DetailPane } from '../../../shared/ui/list-detail.tsx';
 import { FieldSuggestions } from './field-suggestions.tsx';
 import { NewRule } from './new-rule/new-rule.tsx';
 import { RuleEditor } from './rule-editor/rule-editor.tsx';
-import { RuleList } from './rule-list.tsx';
 
 interface RulesPageProps {
   // The editor's log of the page it watches.
   log: TrafficLog;
   selectedId: string | null;
+  // New rule was clicked, and no rule has been opened since: the composer, with the cursor in it.
+  composing: boolean;
+  // A rule New rule just made, whose body gets the cursor, once: the body says when it has it.
+  created: string | null;
   onSelect: (id: string | null) => void;
+  // New rule made a rule.
+  onCreate: (rule: Rule) => void;
+  onBodyFocused: () => void;
+  // New rule's back button, in a narrow panel.
+  onCancel: () => void;
   // Makes a rule of a captured request and opens it (the editor's, as Traffic's Mock does).
   onMock: (rule: Rule) => void;
   onOpenTraffic: () => void;
-  onImport: () => void;
-  onExport: () => void;
 }
 
 export function RulesPage({
   log,
   selectedId,
+  composing,
+  created,
   onSelect,
+  onCreate,
+  onBodyFocused,
+  onCancel,
   onMock,
   onOpenTraffic,
-  onImport,
-  onExport,
 }: RulesPageProps) {
   // Draws again when the rules change, here or in another view.
   useStore(ruleStore);
-  const [query, setQuery] = useState('');
-  // New rule was clicked: in a narrow panel it takes the list's place, with the cursor in it. Only
-  // while nothing is open: the popup, Traffic's Mock and an import open a rule without coming
-  // through here, and that closes it.
-  const [composing, setComposing] = useState(false);
-  // A rule New rule just made, whose body gets the cursor, once: the body says when it has it.
-  const [created, setCreated] = useState<string | null>(null);
-  const forgetCreated = useCallback(() => setCreated(null), []);
   // Counts the times the rules were changed in another view (the popup, another window) while the
   // editor didn't have focus. The body editor keeps its own text, so it starts over from the new
   // copy then; with focus in the editor, what you're typing stays.
   const [revision, setRevision] = useState(0);
   const editorPane = useRef<HTMLElement>(null);
-  // The list hidden in a wide window; beside it there's always a rule or New rule.
-  const collapsed = useSidebarHidden();
   const selected = findRule(selectedId);
-  const composingNow = composing && !selectedId;
 
   useEffect(
     () =>
@@ -63,69 +60,30 @@ export function RulesPage({
     [],
   );
 
-  function select(id: string | null) {
-    setCreated(null);
-    setComposing(false);
-    onSelect(id);
-  }
-
-  function compose() {
-    setQuery('');
-    select(null);
-    setComposing(true);
-  }
-
-  // A new rule goes first in the list, open with the cursor in its body.
-  function create(rule: Rule) {
-    setQuery('');
-    const added = addRule(rule, 0);
-    select(added.id);
-    setCreated(added.id);
-  }
-
-  const picked = Boolean(selected) || composingNow;
   return (
     <>
-      <Split>
-        <RuleList
-          id="rule-list"
-          selectedId={selectedId}
-          picked={picked}
-          collapsed={collapsed}
-          query={query}
-          onQueryChange={setQuery}
-          onSelect={select}
-          onCreate={compose}
-          onImport={onImport}
-          onExport={onExport}
-        />
-        <SidebarHandle view="rules" list="rule-list" />
-        <DetailPane ref={editorPane} picked={picked}>
-          {selected ? (
-            <RuleEditor
-              key={selected.id}
-              rule={selected}
-              log={log}
-              focusBody={created === selected.id}
-              onBodyFocused={forgetCreated}
-              revision={revision}
-              onSelect={select}
-            />
-          ) : (
-            <NewRule
-              log={log}
-              focus={composingNow}
-              onCreate={create}
-              onMock={(rule) => {
-                setComposing(false);
-                onMock(rule);
-              }}
-              onCancel={() => setComposing(false)}
-              onOpenTraffic={onOpenTraffic}
-            />
-          )}
-        </DetailPane>
-      </Split>
+      <DetailPane ref={editorPane}>
+        {selected ? (
+          <RuleEditor
+            key={selected.id}
+            rule={selected}
+            log={log}
+            focusBody={created === selected.id}
+            onBodyFocused={onBodyFocused}
+            revision={revision}
+            onSelect={onSelect}
+          />
+        ) : (
+          <NewRule
+            log={log}
+            focus={composing}
+            onCreate={onCreate}
+            onMock={onMock}
+            onCancel={onCancel}
+            onOpenTraffic={onOpenTraffic}
+          />
+        )}
+      </DetailPane>
       <FieldSuggestions />
     </>
   );

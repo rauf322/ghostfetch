@@ -2289,6 +2289,27 @@ try {
     },
   );
   await check(
+    'wide: in Traffic, a rule picked in the sidebar opens in the Rules view, which is then the view remembered',
+    async () => {
+      await show('traffic');
+      const rule = (await storedRules())[1];
+      await app.click(`[data-testid="rule"][title="${rule.match.url}"]`);
+      // The Rules view comes over Traffic, rather than the rule opening under it.
+      await app
+        .locator('[data-testid="view-traffic"]')
+        .waitFor({ state: 'hidden', timeout: 3000 });
+      const name = app.locator('[data-testid="rule-name"]');
+      expect(
+        [
+          await app.locator('[data-testid="nav-rules"]').getAttribute('aria-current'),
+          await name.evaluate((field) => field.value || field.placeholder),
+          await app.evaluate(() => localStorage.getItem('ghostfetch.view')),
+        ],
+        ['page', rule.name || rule.match.url, 'rules'],
+      );
+    },
+  );
+  await check(
     'Add header puts the cursor in the new row, and what you type is saved',
     async () => {
       await app

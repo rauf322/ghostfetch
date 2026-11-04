@@ -28,6 +28,7 @@ interface SidebarProps {
   query: string;
   onQueryChange: (query: string) => void;
   selectedId: string | null;
+  // A rule was picked: it opens, in the Rules view, from Traffic too.
   onSelect: (id: string) => void;
   onNewRule: () => void;
   onImport: () => void;

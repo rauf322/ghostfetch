@@ -91,17 +91,17 @@ What's different in Firefox-based browsers:
 - **Side panel (Chrome), sidebar (Firefox, Zen) or tab**: the full editor. Open it from the
   popup, or from the `⋯` menu. From 760 px wide a sidebar stands beside what's open: a search
   field (**/** puts the cursor in it), **Rules** and **Traffic** with their counts, the rules
-  in your order under how many are on (with **+** for a new rule), and the `⋯` menu,
-  **Import** and **Export** along the bottom. Drag its edge to make it wider
-  or narrower (it's at least 260 px wide and leaves what's open at least 320), on past half
-  its narrowest to hide it, and back out from the window's left edge to show it again;
-  double-click the edge for its usual width. The edge also takes focus (Tab): the arrow keys
-  move it, and **Enter** hides or shows the sidebar. The button at the top left of a rule or
-  of Traffic (or **⌘B / Ctrl+B**) hides it too, giving its room to what's open, and brings it
-  back. Its width, and whether it's hidden, are remembered. In a narrower panel a top bar has
-  the two views as tabs, and the rules, a rule or Traffic take the whole panel, one at a time.
-  The `⋯` menu's **Theme** picks the [look](#themes). While Ghostfetch is off, a bar along the
-  top says so; the switch for that is the popup's.
+  in your order under how many are on (click one to open it, from Traffic too; **+** for a
+  new rule), and the `⋯` menu, **Import** and **Export** along the bottom. Drag its edge to
+  make it wider or narrower (it's at least 260 px wide and leaves what's open at least
+  320), on past half its narrowest to hide it, and back out from the window's left edge to
+  show it again; double-click the edge for its usual width. The edge also takes focus (Tab):
+  the arrow keys move it, and **Enter** hides or shows the sidebar. The button at the top
+  left of a rule or of Traffic (or **⌘B / Ctrl+B**) hides it too, giving its room to what's
+  open, and brings it back. Its width, and whether it's hidden, are remembered. In a
+  narrower panel a top bar has the two views as tabs, and the rules, a rule or Traffic take
+  the whole panel, one at a time. The `⋯` menu's **Theme** picks the [look](#themes). While
+  Ghostfetch is off, a bar along the top says so; the switch for that is the popup's.
   - **Rules**: create and edit rules. Changes save as you type and apply to open tabs
     immediately, without reloading. Rules apply in the list's order and the first match wins;
     drag them to reorder. A rule's switch is a green dot: it pulses while the rule is on, holds

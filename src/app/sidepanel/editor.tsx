@@ -144,7 +144,9 @@ export function Editor({ inTab, windowId }: { inTab: boolean; windowId: number }
           query={query}
           onQueryChange={setQuery}
           selectedId={selectedRule}
-          onSelect={select}
+          // A rule picked in the sidebar opens in the Rules view, wherever the editor was: the
+          // sidebar stands beside Traffic too.
+          onSelect={openRule}
           onNewRule={compose}
           onImport={chooseFile}
           onExport={exportRules}

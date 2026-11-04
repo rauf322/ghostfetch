@@ -1,6 +1,6 @@
-// The full editor: the sidebar (the master switch, the Rules and Traffic views and the rules; in a
-// narrow panel a top bar has the switch and the two views as tabs instead), and beside it the open
-// view. Both views stay mounted, and the log of the tab it watches runs for as long as the editor
+// The full editor: the sidebar (the Rules and Traffic views and the rules; in a narrow panel a top
+// bar has the two views as tabs instead), and beside it the open view. Ghostfetch's own switch is
+// the popup's; here a bar says when it's off. Both views stay mounted, and the log of the tab it watches runs for as long as the editor
 // is open: Traffic lists it, a rule says how often it fired there, and New rule offers what the
 // page just asked for. Between the views it opens rules: one picked in the sidebar, one picked in
 // Traffic, one made by New rule or from a captured response, the first of an import, and one the
@@ -127,7 +127,8 @@ export function Editor({ inTab, windowId }: { inTab: boolean; windowId: number }
       />
       {!enabled && (
         <Alert variant="paused" className="flex-none">
-          Ghostfetch is off. Rules aren't applied until you turn it back on.
+          Ghostfetch is off. Rules aren't applied until you turn it on from its toolbar
+          icon.
         </Alert>
       )}
 

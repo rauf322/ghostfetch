@@ -1,10 +1,9 @@
 // The editor's top bar, in a narrow side panel: Ghostfetch's name, the Rules and Traffic tabs
-// with their counts, the master switch and the ⋯ menu. From 760px wide the sidebar has all of
-// these (sidebar.tsx), and the bar is gone.
-import { ruleStore, settingsStore } from '../../shared/api/index.ts';
+// with their counts, and the ⋯ menu. From 760px wide the sidebar has all of these (sidebar.tsx),
+// and the bar is gone.
+import { ruleStore } from '../../shared/api/index.ts';
 import { useStore } from '../../shared/react/index.ts';
 import { TabsCount, TabsList, TabsTrigger } from '../../shared/ui/kit/tabs.tsx';
-import { MasterSwitch } from '../../shared/ui/master-switch.tsx';
 import { EditorMenu } from './editor-menu.tsx';
 
 export function TopBar({
@@ -18,7 +17,6 @@ export function TopBar({
   windowId: number;
   onImport: () => void;
 }) {
-  const { enabled } = useStore(settingsStore);
   const { rules } = useStore(ruleStore);
   return (
     <header className="flex h-12 flex-none items-stretch gap-2 border-b border-border px-2 wide:hidden">
@@ -41,13 +39,6 @@ export function TopBar({
         </TabsTrigger>
       </TabsList>
       <div className="ml-auto flex items-stretch">
-        <MasterSwitch
-          title={
-            enabled
-              ? 'Ghostfetch is on. Click to turn every rule off.'
-              : 'Ghostfetch is off. Click to turn it on.'
-          }
-        />
         <EditorMenu inTab={inTab} windowId={windowId} onImport={onImport} />
       </div>
     </header>

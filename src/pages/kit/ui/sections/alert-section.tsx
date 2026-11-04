@@ -26,7 +26,8 @@ export function AlertSection() {
       <Alert>Recording is paused. Rules still apply.</Alert>
       <Alert variant="error">TypeError: Failed to fetch</Alert>
       <Alert variant="paused">
-        Ghostfetch is off. Rules aren't applied until you turn it back on.
+        Ghostfetch is off. Rules aren't applied until you turn it on from its toolbar
+        icon.
       </Alert>
       <InlineToasts />
       <Row

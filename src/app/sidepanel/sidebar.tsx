@@ -1,19 +1,19 @@
-// The editor's sidebar, after T3 Code's: Ghostfetch's name and master switch, the search field
-// ("/" puts the cursor in it), the two views, Rules and Traffic, with their counts, the rules in
-// their order (pages/rules' RuleList: how many are on, and + for a new one), and along the bottom
-// the ⋯ menu, Import and Export. From 760px wide it stands beside the open view, as wide as its edge
-// was dragged, or hidden (shared/ui/sidebar.tsx); in a narrow side panel it's the Rules view's own
-// screen, under the top bar, which then has the name, the two views and the switch.
+// The editor's sidebar, after T3 Code's: Ghostfetch's name, the search field ("/" puts the cursor
+// in it), the two views, Rules and Traffic, with their counts, the rules in their order
+// (pages/rules' RuleList: how many are on, and + for a new one), and along the bottom the ⋯ menu,
+// Import and Export. From 760px wide it stands beside the open view, as wide as its edge was
+// dragged, or hidden (shared/ui/sidebar.tsx); in a narrow side panel it's the Rules view's own
+// screen, under the top bar, which then has the name and the two views. Ghostfetch's own switch
+// isn't here: it's in the popup.
 import { useEffect, useRef } from 'react';
 import { RuleList } from '../../pages/rules/index.ts';
-import { ruleStore, settingsStore } from '../../shared/api/index.ts';
+import { ruleStore } from '../../shared/api/index.ts';
 import { useStore } from '../../shared/react/index.ts';
 import { cn } from '../../shared/ui/cn.ts';
 import { Button } from '../../shared/ui/kit/button.tsx';
 import { Icon } from '../../shared/ui/kit/icon.tsx';
 import type { IconName } from '../../shared/ui/kit/icon.tsx';
 import { ListPane, PaneFooter, SearchField } from '../../shared/ui/list-detail.tsx';
-import { MasterSwitch } from '../../shared/ui/master-switch.tsx';
 import { useSidebarHidden } from '../../shared/ui/sidebar.tsx';
 import { EditorMenu } from './editor-menu.tsx';
 
@@ -59,7 +59,6 @@ export function Sidebar({
   inTab,
   windowId,
 }: SidebarProps) {
-  const { enabled } = useStore(settingsStore);
   const { rules } = useStore(ruleStore);
   const collapsed = useSidebarHidden();
   const search = useRef<HTMLInputElement>(null);
@@ -99,14 +98,6 @@ export function Sidebar({
         <span className="truncate text-title font-semibold text-foreground">
           Ghostfetch
         </span>
-        <MasterSwitch
-          className="ml-auto"
-          title={
-            enabled
-              ? 'Ghostfetch is on. Click to turn every rule off.'
-              : 'Ghostfetch is off. Click to turn it on.'
-          }
-        />
       </div>
       <div className="flex h-12 flex-none items-center px-1.5 wide:h-10">
         <SearchField

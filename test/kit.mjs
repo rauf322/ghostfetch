@@ -203,9 +203,9 @@ async function runChecks(browser, open) {
       await kit.click('[data-testid=kit-switch-words]');
       seen.push(await state());
       expect(seen, [
-        ['true', 'Rule on'],
-        ['false', 'Rule off'],
-        ['true', 'Rule on'],
+        ['true', 'Ghostfetch on'],
+        ['false', 'Ghostfetch off'],
+        ['true', 'Ghostfetch on'],
       ]);
     },
   );

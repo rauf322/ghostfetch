@@ -2,9 +2,10 @@ import { Switch as SwitchPrimitive } from '@base-ui/react/switch';
 import type { ReactNode } from 'react';
 import { cn } from '../cn.ts';
 
-// The switch: a rounded track that turns green when on, its knob sliding across. (A rule's own
-// switch is the dot, SignalSwitch.) SwitchPill is one with its words, in a small filled pill, as
-// a rule's On/Off over its settings and Traffic's Recording: a click on either flips it.
+// The switch: a rounded track that turns green when on, its knob sliding across, as Ghostfetch's
+// own in the popup (master-switch.tsx). (A rule's own switch is the dot, SignalSwitch.) SwitchPill
+// is one with its words, in a small filled pill, as Traffic's Recording: a click on either flips
+// it.
 export function Switch({
   className,
   size = 'default',

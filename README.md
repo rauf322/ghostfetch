@@ -84,23 +84,24 @@ What's different in Firefox-based browsers:
 
 ## Using it
 
-- **Toolbar popup**: master on/off, whether Ghostfetch is active on the current site (with a
-  switch for sites that aren't built in), the sites it runs on (click × to remove one you
-  added), record on/off, quick per-rule switches. Click a rule's name to open it in the
-  editor.
+- **Toolbar popup**: Ghostfetch on or off as a whole (the only place for that), whether it's
+  active on the current site (with a switch for sites that aren't built in), the sites it runs
+  on (click × to remove one you added), record on/off, quick per-rule switches. Click a rule's
+  name to open it in the editor.
 - **Side panel (Chrome), sidebar (Firefox, Zen) or tab**: the full editor. Open it from the
-  popup, or from the `⋯` menu. From 760 px wide a sidebar stands beside what's open: the
-  master switch, a search field (**/** puts the cursor in it), **Rules** and **Traffic** with
-  their counts, the rules in your order under how many are on (with **+** for a new rule), and
-  the `⋯` menu, **Import** and **Export** along the bottom. Drag its edge to make it wider
+  popup, or from the `⋯` menu. From 760 px wide a sidebar stands beside what's open: a search
+  field (**/** puts the cursor in it), **Rules** and **Traffic** with their counts, the rules
+  in your order under how many are on (with **+** for a new rule), and the `⋯` menu,
+  **Import** and **Export** along the bottom. Drag its edge to make it wider
   or narrower (it's at least 260 px wide and leaves what's open at least 320), on past half
   its narrowest to hide it, and back out from the window's left edge to show it again;
   double-click the edge for its usual width. The edge also takes focus (Tab): the arrow keys
   move it, and **Enter** hides or shows the sidebar. The button at the top left of a rule or
   of Traffic (or **⌘B / Ctrl+B**) hides it too, giving its room to what's open, and brings it
   back. Its width, and whether it's hidden, are remembered. In a narrower panel a top bar has
-  the switch and the two views as tabs, and the rules, a rule or Traffic take the whole panel,
-  one at a time. The `⋯` menu's **Theme** picks the [look](#themes).
+  the two views as tabs, and the rules, a rule or Traffic take the whole panel, one at a time.
+  The `⋯` menu's **Theme** picks the [look](#themes). While Ghostfetch is off, a bar along the
+  top says so; the switch for that is the popup's.
   - **Rules**: create and edit rules. Changes save as you type and apply to open tabs
     immediately, without reloading. Rules apply in the list's order and the first match wins;
     drag them to reorder. A rule's switch is a green dot: it pulses while the rule is on, holds
@@ -343,8 +344,8 @@ src/shared/                      what more than one part of the extension uses
     list-detail.tsx              the editor's layout: the sidebar, as wide as its edge was dragged, and what's open beside it, in a row (a flexbox: Firefox lays a grid's items out again from scratch)
     sidebar.tsx                  the sidebar's width and whether it's hidden, the edge that resizes it (and what keeps its width meanwhile), and the button (and ⌘B) that hides it
     theme.ts                     the themes, and the one in use; theme-menu.tsx, the ⋯ menus' Theme row
-    master-switch.tsx            Ghostfetch on or off, in the popup and the editor's sidebar (its top bar in a narrow panel)
-    rule-switch.tsx              a rule on or off (the pulsing green dot), in the list, the rule's top bar and the popup
+    master-switch.tsx            Ghostfetch on or off as a whole, in the popup
+    rule-switch.tsx              a rule on or off (the pulsing green dot), in the list and the popup
     rules-file.tsx               rules files: export every rule or one, import one (its rules arrive switched off)
     cn.ts                        cn(), which joins the kit's class names
 wxt.config.ts                    the manifest (permissions, content scripts, CSP, Firefox ID) and the build settings

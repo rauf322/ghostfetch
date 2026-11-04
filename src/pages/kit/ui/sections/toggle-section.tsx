@@ -1,6 +1,6 @@
 // Toggles and switches, in their states: the bar over Traffic's log, the Vim keys toggle, a
-// switch with its words that a click on either flips, a rule's On/Off, and a rule's switch in a
-// list, the green dot.
+// switch with its words that a click on either flips (the popup's master switch), and a rule's
+// switch in a list, the green dot.
 import { useState } from 'react';
 import { Button } from '../../../../shared/ui/kit/button.tsx';
 import { Icon } from '../../../../shared/ui/kit/icon.tsx';
@@ -11,7 +11,7 @@ import { Cell, FOCUS, Row } from '../cell.tsx';
 
 export function ToggleSection() {
   const [vim, setVim] = useState(true);
-  const [ruleOn, setRuleOn] = useState(true);
+  const [on, setOn] = useState(true);
   return (
     <Cell title="Toggle and switch" note="green means on">
       <Row
@@ -28,12 +28,6 @@ export function ToggleSection() {
         <Button>
           <Icon name="trash" size={14} /> Clear
         </Button>
-      </Row>
-      <Row label="A rule's switch over its settings: on · off">
-        <SwitchPill defaultChecked aria-label="Rule on">
-          On
-        </SwitchPill>
-        <SwitchPill aria-label="Rule on">Off</SwitchPill>
       </Row>
       <Row label="Vim keys off · on (live: Space), the small size">
         <Toggle size="sm" className="border-input">
@@ -62,8 +56,8 @@ export function ToggleSection() {
           data-testid="kit-switch-label"
           className="flex cursor-pointer items-center gap-2 text-small text-t80"
         >
-          <Switch data-testid="kit-switch" checked={ruleOn} onCheckedChange={setRuleOn} />
-          <span data-testid="kit-switch-words">Rule {ruleOn ? 'on' : 'off'}</span>
+          <Switch data-testid="kit-switch" checked={on} onCheckedChange={setOn} />
+          <span data-testid="kit-switch-words">Ghostfetch {on ? 'on' : 'off'}</span>
         </label>
       </Row>
       <Row label="A rule's switch: off · on, pulsing · on, Ghostfetch off · disabled · focus">

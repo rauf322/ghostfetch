@@ -1,6 +1,6 @@
-// Ghostfetch's master switch, with an On / Off word next to it: in the popup's header and the
-// editor's sidebar (its top bar in a narrow panel). The word drops out in a side panel narrower
-// than 330px.
+// Ghostfetch's master switch, with an On / Off word next to it, in the popup's header: the one
+// place Ghostfetch is turned off as a whole, every rule paused until it's turned on again. The
+// editor has no switch of its own; it says when Ghostfetch is off.
 import { setFlag, settingsStore } from '../api/index.ts';
 import { useStore } from '../react/index.ts';
 import { cn } from './cn.ts';
@@ -24,7 +24,7 @@ export function MasterSwitch({
       )}
     >
       <Switch checked={enabled} onCheckedChange={(on) => setFlag('enabled', on)} />
-      <span className="max-[330px]:hidden">{enabled ? 'On' : 'Off'}</span>
+      <span>{enabled ? 'On' : 'Off'}</span>
     </label>
   );
 }

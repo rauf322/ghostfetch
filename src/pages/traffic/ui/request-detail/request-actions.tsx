@@ -21,10 +21,13 @@ export function RequestActions({
   async function copy(text: string, what: string) {
     try {
       await navigator.clipboard.writeText(text);
-      notify(`Copied ${what}`);
+      notify(`Copied ${what}`, { kind: 'success' });
     } catch {
       // The browser kept the clipboard: Firefox's sidebar without focus, or no permission.
-      notify(`Couldn't copy ${what}: the browser didn't allow it`, { kind: 'error' });
+      notify(`Couldn't copy ${what}`, {
+        kind: 'error',
+        description: "The browser didn't allow it.",
+      });
     }
   }
 
@@ -38,9 +41,10 @@ export function RequestActions({
         onClick={() => {
           onMock(ruleFromEntry(entry));
           if (entry.truncated)
-            notify('The response was over 1 MB, so the mock only has the first 1 MB', {
+            notify('The response was over 1 MB', {
               kind: 'error',
-              duration: 5000,
+              description: 'The mock only has the first 1 MB of it.',
+              duration: 6000,
             });
         }}
       >

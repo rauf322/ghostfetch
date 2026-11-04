@@ -498,7 +498,7 @@ async function runChecks(browser, open) {
     },
   );
 
-  await check(`${browser}: toast: one shows at a time, and its Undo runs`, async () => {
+  await check(`${browser}: toast: two show together, and an Undo runs`, async () => {
     const toasts = () =>
       kit.run(() =>
         [...document.querySelectorAll('[data-slot=toast]')]
@@ -516,7 +516,7 @@ async function runChecks(browser, open) {
       'two toasts',
     );
     const two = (await toasts()).toSorted();
-    // A real click on the Undo of the toast that shows.
+    // A real click on the Undo of the first of them.
     await kit.clickPoint(
       await kit.run(() => {
         const shown = [...document.querySelectorAll('[data-slot=toast]')].find(
@@ -531,7 +531,7 @@ async function runChecks(browser, open) {
     );
     expect(
       [two, await read(kit, 'kit-toast-undone')],
-      [['shown', 'waiting'], 'undone 1 time'],
+      [['shown', 'shown'], 'undone 1 time'],
     );
   });
 

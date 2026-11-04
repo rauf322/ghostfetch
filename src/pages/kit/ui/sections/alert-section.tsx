@@ -45,27 +45,38 @@ export function AlertSection() {
   );
 }
 
-// Two toasts shown in place and kept, to see both looks at once.
+// Three toasts shown in place and kept, to see every look at once: a notice with an icon of its
+// own and Undo, something done, and an error with a second line.
 function InlineToasts() {
   const [info] = useState(createToastManager);
+  const [done] = useState(createToastManager);
   const [error] = useState(createToastManager);
   useEffect(() => {
     const shown = [
-      info.add({ title: 'Rule deleted', actionProps: { children: 'Undo' }, timeout: 0 }),
+      info.add({
+        title: 'Deleted “Slow team page”',
+        data: { icon: 'trash' },
+        actionProps: { children: 'Undo' },
+        timeout: 0,
+      }),
+      done.add({ title: 'Copied the URL', type: 'success', timeout: 0 }),
       error.add({
-        title: "That file isn't a Ghostfetch export",
+        title: "Couldn't import",
+        description: "That file isn't a Ghostfetch export.",
         type: 'error',
         timeout: 0,
       }),
     ];
     return () => {
       info.close(shown[0]);
-      error.close(shown[1]);
+      done.close(shown[1]);
+      error.close(shown[2]);
     };
-  }, [info, error]);
+  }, [info, done, error]);
   return (
-    <div className="flex flex-wrap items-center gap-4">
+    <div className="flex flex-wrap items-start gap-4">
       <Toaster toastManager={info} inline />
+      <Toaster toastManager={done} inline />
       <Toaster toastManager={error} inline />
     </div>
   );

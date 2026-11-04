@@ -76,7 +76,10 @@ export function Editor({ inTab, windowId }: { inTab: boolean; windowId: number }
     (draft: Rule) => {
       const rule = addRule(normalizeRule(draft), 0);
       openRule(rule.id);
-      notify('Rule created. Edit the body and it applies right away.');
+      notify('Rule created', {
+        kind: 'success',
+        description: 'Edit the body: it applies right away.',
+      });
     },
     [openRule],
   );

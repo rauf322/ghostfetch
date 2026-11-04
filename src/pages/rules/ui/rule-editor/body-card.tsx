@@ -66,8 +66,9 @@ export function BodyCard({
     if (!editor) return;
     const formatted = formatJson(editor.value);
     if (formatted === null)
-      return notify("Can't format: the body isn't valid JSON", {
+      return notify("Can't format", {
         kind: 'error',
+        description: "The body isn't valid JSON.",
       });
     if (formatted !== editor.value) editor.replace(formatted);
     return undefined;

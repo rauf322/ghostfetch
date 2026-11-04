@@ -24,6 +24,7 @@ export function RuleMenu({
     const removed = removeRule(rule.id);
     onSelect(null);
     notify(`Deleted “${ruleTitle(rule)}”`, {
+      icon: 'trash',
       action: 'Undo',
       onAction: () => {
         addRule(removed!.rule, removed!.index);

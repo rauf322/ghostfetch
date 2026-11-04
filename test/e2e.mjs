@@ -1325,7 +1325,7 @@ try {
     await app.click('[data-testid="rule-menu"]');
     await app.click('[data-testid="delete-rule"]');
     expect(await app.locator('[data-testid="rule"]').count(), before - 1);
-    await app.click('[data-slot="toast"] button');
+    await app.click('[data-slot="toast"] button:has-text("Undo")');
     expect(await app.locator('[data-testid="rule"]').count(), before);
   });
   await check('traffic view shows captured requests live', async () => {

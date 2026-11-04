@@ -6,8 +6,12 @@ import type { Rule } from '../api/index.ts';
 import { download, slug } from '../lib/index.ts';
 import { notify } from './kit/toast.tsx';
 
+// A message as a sentence: capitalised, with a full stop.
+const sentence = (text: string) =>
+  `${text[0].toUpperCase()}${text.slice(1)}${/[.!?]$/.test(text) ? '' : '.'}`;
+
 export function exportRules() {
-  if (!ruleStore.state.rules.length) return notify('There are no rules to export yet');
+  if (!ruleStore.state.rules.length) return notify('No rules to export yet');
   const date = new Date().toISOString().slice(0, 10);
   download(
     `ghostfetch-rules-${date}.json`,
@@ -56,13 +60,17 @@ async function importRules(file: File, onAdded: (rules: Rule[]) => void) {
     addRules(imported);
     onAdded(imported);
     notify(
-      `Imported ${imported.length} rule${imported.length === 1 ? '' : 's'}, switched off. Review them before turning them on.${skippedNote}`,
-      { duration: 7000 },
+      `Imported ${imported.length} rule${imported.length === 1 ? '' : 's'}, switched off`,
+      {
+        kind: 'success',
+        description: `Review them before turning them on.${skippedNote}`,
+        duration: 7000,
+      },
     );
   } catch (error) {
-    notify(`Couldn't import: ${(error as Error).message}`, {
+    notify("Couldn't import", {
       kind: 'error',
-      duration: 5000,
+      description: sentence((error as Error).message),
     });
   }
 }

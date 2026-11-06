@@ -12,7 +12,7 @@
 
 :root {
   /* shadcn's names pointed at the theme's, so a component borrowed from shadcn or 21st.dev starts
-     out close (README, "Adding a UI component") */
+     out close (docs/development.md, "Adding a UI component") */
   --background: var(--bg);
   --foreground: var(--text);
   --card: var(--panel);

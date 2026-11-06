@@ -1,7 +1,7 @@
-// The linter (oxlint, `npm run lint`). The imports between the layers of src/ (README,
-// "Files") are checked by eslint-plugin-boundaries, which oxlint loads as a JS plugin,
-// and the two checks that are about WXT and the public APIs' shape by the rules in
-// scripts/oxlint-rules.mjs.
+// The linter (oxlint, `npm run lint`). The imports between the layers of src/
+// (docs/development.md, "Files") are checked by eslint-plugin-boundaries, which oxlint loads
+// as a JS plugin, and the two checks that are about WXT and the public APIs' shape by the
+// rules in scripts/oxlint-rules.mjs.
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'oxlint';
 

@@ -69,9 +69,9 @@ const BRIDGE = { js: ['bridge.js'], run_at: 'document_start' as const, all_frame
 
 export default defineConfig({
   srcDir: 'src',
-  // The code is laid out in Feature-Sliced Design's layers (README, "Files"), the app layer on top:
-  // a folder for each part of the extension (the background, the two page scripts, the popup, the
-  // side panel, the kit page), which is what WXT builds. WXT takes every app/<name>/index.* as an
+  // The code is laid out in Feature-Sliced Design's layers (docs/development.md, "Files"), the app
+  // layer on top: a folder for each part of the extension (the background, the two page scripts,
+  // the popup, the side panel, the kit page), which is what WXT builds. WXT takes every app/<name>/index.* as an
   // entrypoint, so the folder for anything else in app/ (styles/) has no index file.
   entrypointsDir: 'app',
   // React for the .tsx files: the UI kit (src/shared/ui/kit/) and the pages built from it.

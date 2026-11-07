@@ -7,7 +7,7 @@
 // click on a line asks to edit there (onEdit, with where in `after` the click was), as Enter does
 // for the line at the top, and a key that would type asks to say so (onType). Its look is
 // code-diff.css.
-import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, KeyboardEvent, MouseEvent, ReactNode, UIEvent } from 'react';
 import { diffLines, diffWords } from '../../lib/index.ts';
 import type { DiffKind, Range as Span, TextDiff } from '../../lib/index.ts';
@@ -83,8 +83,8 @@ interface CodeDiffProps {
 }
 
 export function CodeDiff({
-  before,
-  after,
+  before: givenBefore,
+  after: givenAfter,
   layout,
   beforeTitle,
   afterTitle,
@@ -97,6 +97,14 @@ export function CodeDiff({
 }: CodeDiffProps) {
   const [fontSize] = useState(fontSizePreferred);
   const rowHeight = fontSize * LINE_HEIGHT;
+  // Each text with its line ends as the body editor has them (asTextarea): a body or a response
+  // with Windows line ends compares line for line with what's typed, and a click's place in
+  // `after` is its place in the editor.
+  const before = useMemo(
+    () => (givenBefore === null ? null : asTextarea(givenBefore)),
+    [givenBefore],
+  );
+  const after = useMemo(() => asTextarea(givenAfter), [givenAfter]);
   const diff = useMemo(
     () => (before === null ? null : diffLines(before, after)),
     [before, after],
@@ -145,22 +153,30 @@ export function CodeDiff({
 
   // The rows on screen: how far down the lines are scrolled (at first, to the line the editor was
   // showing), and how tall the panes are.
-  const [start] = useState(() => {
-    let row = 0;
-    while (row < count && lineAt[row]! < fromLine) row++;
-    return row * rowHeight;
-  });
+  const [start] = useState(() => firstRowAt(lineAt, count, fromLine) * rowHeight);
   const [top, setTop] = useState(start);
   const [height, setHeight] = useState(800);
   const [panes] = useState(() => createPanes(setHeight));
-  useLayoutEffect(() => panes.scrollTo(start), [panes, start]);
+  // The body's line at the top, as the panes scroll. Each layout has rows of its own (inline one
+  // for each line removed and each added, side by side one for each pair), so when the layout
+  // changes, or the texts, the panes go to the row that line is at, as Diff opens at the editor's.
+  const topLine = useRef(fromLine);
+  useLayoutEffect(
+    () => panes.scrollTo(firstRowAt(lineAt, count, topLine.current) * rowHeight),
+    [panes, lineAt, count, rowHeight],
+  );
   useEffect(() => () => panes.disconnect(), [panes]);
   const first = Math.max(0, Math.floor((top - PADDING) / rowHeight) - OVERSCAN);
   const last = Math.min(count, Math.ceil((top + height) / rowHeight) + OVERSCAN);
+  // The row at the top: the first whole one.
+  const rowAtTop = (scrollTop: number) =>
+    Math.min(count, Math.max(0, Math.ceil((scrollTop - PADDING) / rowHeight)));
 
   function scrolled(event: UIEvent<HTMLElement>) {
+    const { scrollTop } = event.currentTarget;
     panes.follow(event.currentTarget);
-    setTop(event.currentTarget.scrollTop);
+    setTop(scrollTop);
+    topLine.current = lineAt[rowAtTop(scrollTop)]!;
   }
 
   // Where in `after` the start of a row's line is, or with `column`, that far into it.
@@ -176,7 +192,7 @@ export function CodeDiff({
     const command = event.metaKey || event.ctrlKey;
     if (event.key === 'Enter' && !command && !event.altKey && !event.shiftKey) {
       event.preventDefault();
-      onEdit(offsetOf(Math.ceil((event.currentTarget.scrollTop - PADDING) / rowHeight)));
+      onEdit(offsetOf(rowAtTop(event.currentTarget.scrollTop)));
       return;
     }
     const types =
@@ -384,6 +400,18 @@ export function CodeDiff({
       <div className="diff-body">{body}</div>
     </div>
   );
+}
+
+// A textarea's text from `text`: each \r\n, and each \r on its own, a \n.
+const asTextarea = (text: string) =>
+  text.includes('\r') ? text.replace(/\r\n?/g, '\n') : text;
+
+// The first row at or after a line of `after`: the row that is the line, or the first of the
+// lines removed just before it.
+function firstRowAt(lineAt: Int32Array, count: number, line: number) {
+  let row = 0;
+  while (row < count && lineAt[row]! < line) row++;
+  return row;
 }
 
 // The panes of lines, which React only places: how far down they're scrolled, the same for each

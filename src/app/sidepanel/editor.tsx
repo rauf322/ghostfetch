@@ -12,6 +12,7 @@ import {
   addRule,
   createResponseCapture,
   findRule,
+  fromServer,
   keepServerResponse,
   normalizeRule,
   responseFromEntry,
@@ -77,11 +78,11 @@ export function Editor({ inTab, windowId }: { inTab: boolean; windowId: number }
   );
 
   // A rule made from a request (Mock this response, New rule's Mock) keeps the server's response
-  // it was made from, for its body's Diff.
+  // it was made from, for its body's Diff: if the server gave it, not a rule.
   const mockRule = useCallback(
     (draft: Rule, entry: LogEntry) => {
       const rule = addRule(normalizeRule(draft), 0);
-      keepServerResponse(rule.id, responseFromEntry(entry));
+      if (fromServer(entry)) keepServerResponse(rule.id, responseFromEntry(entry));
       openRule(rule.id);
       notify('Rule created', {
         kind: 'success',

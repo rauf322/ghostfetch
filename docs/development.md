@@ -254,8 +254,11 @@ it pastes back from the clipboard; and Diff: Mock this response keeping the serv
 apart from the rule and out of an exported file, side by side, inline and inline in a narrow
 panel with the counts and rows the diff makes, a key that would type saying it can't, a click on
 a line, a removed line and Enter going to edit there, a rule that's off getting the server's
-response from the page, a copy keeping it, one pasted in, none with Keep server's body, and a body
-of 390,000 characters drawn only where it shows, the last lines once scrolled there), the
+response from the page, a copy keeping it, one pasted in, none with Keep server's body, a body
+of 390,000 characters drawn only where it shows, the last lines once scrolled there, a body with
+Windows line ends compared and clicked as the editor has it, a click on Edit here going to the
+character under it, the same lines on screen after a change of layout, and none kept from Mock
+this response on a request a rule answered), the
 traffic view (its filters, Keep on reload and Clear), the sidebar beside a rule and beside
 Traffic (hidden with the button and the key, its edge dragged to its narrowest, its widest, shut
 and open again, its keys, its one width after a reload, none in a narrow panel, its rules in

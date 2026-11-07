@@ -79,6 +79,14 @@ export function copyServerResponse(from: string, to: string) {
   if (response) keepServerResponse(to, { ...response });
 }
 
+// Whether a logged request got the server's own response: no rule answered it ('mocked'), changed
+// it ('modified') or failed on it ('error'), and the server sent one. Only that is kept as the
+// server's: a rule made from another rule's answer (Mock this response on a request Traffic shows
+// as Mocked) gets the server's later, from capture.
+export function fromServer(entry: Pick<LogEntry, 'action' | 'status' | 'error'>) {
+  return !entry.action && Boolean(entry.status) && !entry.error;
+}
+
 export function responseFromEntry(entry: LogEntry): ServerResponse {
   return {
     body: formatJson(entry.responseBody) ?? entry.responseBody,
@@ -146,8 +154,7 @@ export function createResponseCapture() {
         const entry = entries[index]!;
         if (seen.has(entry.id)) continue;
         seen.add(entry.id);
-        // A rule answered it (or failed to), or there was no response from the server.
-        if (entry.action || !entry.status || entry.error) continue;
+        if (!fromServer(entry)) continue;
         for (const { rule, matches } of missing) {
           if (state.responses[rule.id] || !matches(entry)) continue;
           state.responses[rule.id] = responseFromEntry(entry);

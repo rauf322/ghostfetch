@@ -1854,16 +1854,104 @@ try {
         if (await diffView.count()) await app.click('[data-testid="diff-switch"]');
       }
     });
+  const diffCounts = async () =>
+    (await app.locator('[data-testid="diff-counts"]').innerText()).replace(/\s+/g, ' ');
   // Diff's layout, its counts and how many rows are drawn, and whether the editor shows.
   const diffState = async () => ({
     layout: await diffView.getAttribute('data-layout'),
-    counts: (await app.locator('[data-testid="diff-counts"]').innerText()).replace(
-      /\s+/g,
-      ' ',
-    ),
+    counts: await diffCounts(),
     rows: await app.locator('[data-testid="diff-row"]').count(),
     editor: await body.isVisible(),
   });
+  // A rule that's off, with a body of its own; a server's response as Diff keeps it.
+  const draftRule = (
+    id,
+    name,
+    url,
+    text = '{\n  "name": "Mine"\n}',
+    contentType = 'application/json',
+  ) => ({
+    id,
+    name,
+    enabled: false,
+    match: { url, mode: 'contains', method: 'ANY', graphqlOperation: '' },
+    response: {
+      bodyMode: 'replace',
+      body: text,
+      status: '',
+      delay: 0,
+      contentType,
+      headers: [],
+    },
+    createdAt: 1,
+    updatedAt: 1,
+  });
+  const keptResponse = (text) => ({
+    body: text,
+    status: 200,
+    time: Date.now(),
+    truncated: false,
+    pasted: false,
+  });
+  // The rules as they were before a check, without the ones it made or their responses; Diff off
+  // first, while the rule it shows is still there, so the next check finds it off.
+  const restoreRules = async (rules) => {
+    if (await diffView.count()) await app.click('[data-testid="diff-switch"]');
+    await worker.evaluate(async (wanted) => {
+      const ids = new Set(wanted.map((rule) => rule.id));
+      const all = await chrome.storage.local.get(null);
+      await chrome.storage.local.remove(
+        Object.keys(all).filter(
+          (key) =>
+            key.startsWith('serverResponse:') &&
+            !ids.has(key.slice('serverResponse:'.length)),
+        ),
+      );
+      await chrome.storage.local.set({ rules: wanted });
+    }, rules);
+  };
+  // A check's own rules, each with the server's response its Diff compares with ([rule, body]
+  // pairs); what it returns puts the rules back.
+  const addRules = async (made) => {
+    const { rules } = await inStorage();
+    await worker.evaluate((values) => chrome.storage.local.set(values), {
+      rules: [...rules, ...made.map(([rule]) => rule)],
+      ...Object.fromEntries(
+        made.map(([rule, response]) => [
+          `serverResponse:${rule.id}`,
+          keptResponse(response),
+        ]),
+      ),
+    });
+    return () => restoreRules(rules);
+  };
+  // Where the body editor's cursor is (its line and column, from 0), and whether Diff shows.
+  const caret = () =>
+    body.evaluate((textarea) => {
+      const before = textarea.value.slice(0, textarea.selectionStart);
+      return {
+        diff: Boolean(document.querySelector('[data-testid="diff"]')),
+        line: before.split('\n').length - 1,
+        column: before.length - before.lastIndexOf('\n') - 1,
+      };
+    });
+  // A point on character `index` of a Diff line's text: its left quarter, so the caret goes
+  // before it.
+  const charPoint = (code, index) =>
+    code.evaluate((element, at) => {
+      const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+      let node = walker.nextNode();
+      let left = at;
+      while (node && left >= node.length) {
+        left -= node.length;
+        node = walker.nextNode();
+      }
+      const range = document.createRange();
+      range.setStart(node, left);
+      range.setEnd(node, left + 1);
+      const rect = range.getBoundingClientRect();
+      return { x: rect.left + rect.width / 4, y: rect.top + rect.height / 2 };
+    }, index);
   await diffCheck(
     "Diff: Mock this response keeps the server's response apart from the rule (and out of an export), and Diff shows what the body changes in it: side by side, inline, and inline in a narrow panel",
     async () => {
@@ -1981,30 +2069,14 @@ try {
   await diffCheck(
     "Diff: a rule with no server's response gets the next one the page shows it while it's off; a copy keeps it; one can be pasted in; Keep server's body has no Diff",
     async () => {
-      const draft = (id, name, url) => ({
-        id,
-        name,
-        enabled: false,
-        match: { url, mode: 'contains', method: 'ANY', graphqlOperation: '' },
-        response: {
-          bodyMode: 'replace',
-          body: '{\n  "name": "Mine"\n}',
-          status: '',
-          delay: 0,
-          contentType: 'application/json',
-          headers: [],
-        },
-        createdAt: 1,
-        updatedAt: 1,
-      });
       const before = (await inStorage()).rules;
       try {
         await worker.evaluate(
           (rules) => chrome.storage.local.set({ rules }),
           [
             ...before,
-            draft('capture-test', 'Captured', '/api/user?case=capture'),
-            draft('paste-test', 'Pasted', '/api/never-called'),
+            draftRule('capture-test', 'Captured', '/api/user?case=capture'),
+            draftRule('paste-test', 'Pasted', '/api/never-called'),
           ],
         );
         await call('/api/user?case=capture');
@@ -2038,10 +2110,7 @@ try {
           (await app.locator('[data-testid="diff-from"]').innerText()).startsWith(
             'pasted ',
           ),
-          (await app.locator('[data-testid="diff-counts"]').innerText()).replace(
-            /\s+/g,
-            ' ',
-          ),
+          await diffCounts(),
         ];
         await app.click('[data-testid="body-original"]');
         const kept = await app.locator('[data-testid="diff-switch"]').count();
@@ -2059,19 +2128,7 @@ try {
           [[200, true], true, true, true, [true, '+1 −1'], 0],
         );
       } finally {
-        // The rules as they were, without the ones made here and their responses.
-        await worker.evaluate(async (rules) => {
-          const ids = new Set(rules.map((rule) => rule.id));
-          const all = await chrome.storage.local.get(null);
-          await chrome.storage.local.remove(
-            Object.keys(all).filter(
-              (key) =>
-                key.startsWith('serverResponse:') &&
-                !ids.has(key.slice('serverResponse:'.length)),
-            ),
-          );
-          await chrome.storage.local.set({ rules });
-        }, before);
+        await restoreRules(before);
       }
     },
   );
@@ -2095,19 +2152,9 @@ try {
       items[2500].name = 'changed';
       items.push({ id: 5000, name: 'added', price: 0 });
       const yours = JSON.stringify({ items }, null, 2);
-      await worker.evaluate(
-        ({ id, text }) =>
-          chrome.storage.local.set({
-            [`serverResponse:${id}`]: {
-              body: text,
-              status: 200,
-              time: Date.now(),
-              truncated: false,
-              pasted: false,
-            },
-          }),
-        { id: made.id, text: theirs },
-      );
+      await worker.evaluate((values) => chrome.storage.local.set(values), {
+        [`serverResponse:${made.id}`]: keptResponse(theirs),
+      });
       // On one line, which a fill puts in at once, then formatted: filled in as 25,000 lines, it
       // would take Chrome minutes.
       await body.fill(JSON.stringify({ items }));
@@ -2122,9 +2169,7 @@ try {
       await app.click('[data-testid="diff-switch"]');
       await app.locator('[data-testid="diff-counts"]').waitFor();
       const took = Date.now() - started;
-      const counts = (
-        await app.locator('[data-testid="diff-counts"]').innerText()
-      ).replace(/\s+/g, ' ');
+      const counts = await diffCounts();
       const drawn = await app.locator('[data-testid="diff-row"]').count();
       // Inline, or side by side, whose panes scroll down together.
       await app
@@ -2144,6 +2189,229 @@ try {
         ['+6 −1', true, true],
         `${drawn} rows drawn`,
       );
+    },
+  );
+  // A text body with Windows line ends, as Mock this response keeps one and makes a rule of: the
+  // body editor has \n for each, as any textarea does.
+  const WINDOWS = Array.from(
+    { length: 40 },
+    (_, i) => `row ${i + 1}: value ${i + 1}`,
+  ).join('\r\n');
+  await diffCheck(
+    'Diff: a body with Windows line ends compares, and takes a click, as the body editor has it',
+    async () => {
+      const restore = await addRules([
+        [
+          draftRule(
+            'crlf-test',
+            'Windows line ends',
+            '/api/never-called?crlf',
+            WINDOWS,
+            'text/plain',
+          ),
+          WINDOWS,
+        ],
+      ]);
+      try {
+        await app
+          .locator('[data-testid="rule"]', { hasText: 'Windows line ends' })
+          .first()
+          .click();
+        await app.click('[data-testid="diff-switch"]');
+        await app.click('[data-testid="diff-inline"]');
+        const same = await diffCounts();
+        // Before the v of "value" on line 30.
+        const row = app
+          .locator('[data-testid="diff-row"]', { hasText: 'row 30: value 30' })
+          .first();
+        await row.scrollIntoViewIfNeeded();
+        const point = await charPoint(row.locator('[data-code]'), 8);
+        await app.mouse.click(point.x, point.y);
+        const clicked = await caret();
+        await app.keyboard.type('X');
+        await sleep(400);
+        await app.click('[data-testid="diff-switch"]');
+        expect(
+          [same, clicked, await diffCounts()],
+          ['+0 −0', { diff: false, line: 29, column: 8 }, '+1 −1'],
+        );
+      } finally {
+        await restore();
+      }
+    },
+  );
+  await diffCheck(
+    "Diff: a click where a line's Edit here shows goes to the character under it, as anywhere else on the line",
+    async () => {
+      const long = `{\n  "about": "${'a long line '.repeat(20)}"\n}`;
+      const restore = await addRules([
+        [
+          draftRule('label-test', 'A long line', '/api/never-called?label', long),
+          '{\n  "about": "short"\n}',
+        ],
+      ]);
+      try {
+        await app
+          .locator('[data-testid="rule"]', { hasText: 'A long line' })
+          .first()
+          .click();
+        await app.click('[data-testid="diff-switch"]');
+        await app.click('[data-testid="diff-split"]');
+        const row = app.locator(
+          '[data-testid="diff-pane-after"] [data-testid="diff-row"][data-kind="add"]',
+        );
+        // Over the start of the line, which shows Edit here at the right of the pane, over it.
+        await row.locator('[data-code]').hover({ position: { x: 5, y: 5 } });
+        const label = await row.locator('.diff-edit').boundingBox();
+        // The character under the middle of the label, and a point on it that's on the label.
+        const under = await row.locator('[data-code]').evaluate(
+          (element, x) => {
+            const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+            let index = 0;
+            for (let node = walker.nextNode(); node; node = walker.nextNode())
+              for (let offset = 0; offset < node.length; offset++, index++) {
+                const range = document.createRange();
+                range.setStart(node, offset);
+                range.setEnd(node, offset + 1);
+                const rect = range.getBoundingClientRect();
+                if (rect.left <= x && x < rect.right)
+                  return {
+                    index,
+                    x: rect.left + rect.width / 4,
+                    y: rect.top + rect.height / 2,
+                  };
+              }
+            return null;
+          },
+          label.x + label.width / 2,
+        );
+        if (!under) throw new Error('no character under Edit here');
+        const onLabel =
+          under.x >= label.x &&
+          under.x <= label.x + label.width &&
+          under.y >= label.y &&
+          under.y <= label.y + label.height;
+        await app.mouse.click(under.x, under.y);
+        expect(
+          [onLabel, await caret()],
+          [true, { diff: false, line: 1, column: under.index }],
+        );
+      } finally {
+        await restore();
+      }
+    },
+  );
+  await diffCheck(
+    'Diff: switching between side by side and inline keeps the same lines on screen',
+    async () => {
+      // Every fourth name changed: inline has a row for each line removed and each added, side
+      // by side one for each pair, so halfway down the same scroll would show other lines.
+      const items = Array.from({ length: 300 }, (_, id) => ({ id, name: `item ${id}` }));
+      const theirs = JSON.stringify({ items }, null, 2);
+      for (let id = 0; id < 300; id += 4) items[id].name = `changed ${id}`;
+      const restore = await addRules([
+        [
+          draftRule(
+            'layout-test',
+            'Many changes',
+            '/api/never-called?layout',
+            JSON.stringify({ items }, null, 2),
+          ),
+          theirs,
+        ],
+      ]);
+      // The body's line at the top of Diff (from 1): the top row's, or the next of the body's.
+      const topLine = () =>
+        app.evaluate(() => {
+          const pane = document.querySelector(
+            '[data-testid="diff-pane"], [data-testid="diff-pane-after"]',
+          );
+          const inline = pane.dataset.testid === 'diff-pane';
+          const rows = [...pane.querySelectorAll('[data-testid="diff-row"]')]
+            .filter((row) => parseFloat(row.style.top) >= pane.scrollTop - 0.01)
+            .toSorted((a, b) => Number(a.dataset.row) - Number(b.dataset.row));
+          for (const row of rows) {
+            const numbers = [...row.querySelectorAll('.diff-no')].map(
+              (no) => no.textContent,
+            );
+            const line = inline ? numbers[1] : numbers[0];
+            if (line) return Number(line);
+          }
+          return null;
+        });
+      try {
+        await app
+          .locator('[data-testid="rule"]', { hasText: 'Many changes' })
+          .first()
+          .click();
+        await app.click('[data-testid="diff-switch"]');
+        await app.click('[data-testid="diff-inline"]');
+        await app.locator('[data-testid="diff-pane"]').evaluate((pane) => {
+          pane.scrollTop = pane.scrollHeight / 2;
+        });
+        await sleep(200);
+        const inline = await topLine();
+        await app.click('[data-testid="diff-split"]');
+        await sleep(200);
+        const split = await topLine();
+        await app.click('[data-testid="diff-inline"]');
+        await sleep(200);
+        expect([split, await topLine()], [inline, inline], 'the line at the top');
+      } finally {
+        await restore();
+      }
+    },
+  );
+  await diffCheck(
+    "Diff: Mock this response on a request a rule answered keeps no server's response, as the server didn't send it",
+    async () => {
+      const before = (await inStorage()).rules;
+      try {
+        await worker.evaluate(
+          (rules) => chrome.storage.local.set({ rules }),
+          [
+            ...before,
+            {
+              ...draftRule(
+                'answers-test',
+                'Answers',
+                '/api/user?case=answered',
+                '{\n  "name": "Answered by a rule"\n}',
+              ),
+              enabled: true,
+            },
+          ],
+        );
+        await sleep(400);
+        await show('traffic');
+        const got = (await call('/api/user?case=answered')).body;
+        const answered = app
+          .locator('[data-testid="request"]', { hasText: 'case=answered' })
+          .first();
+        await answered.click();
+        const badge = await answered
+          .locator('[data-testid="request-action"]')
+          .textContent();
+        await app.click('[data-testid="mock"]');
+        await app.waitForSelector('[data-testid="view-rules"]:not([hidden])');
+        await sleep(400);
+        const after = await inStorage();
+        const made = after.rules.find(
+          (rule) =>
+            rule.id !== 'answers-test' && !before.some(({ id }) => id === rule.id),
+        );
+        expect(
+          [
+            got.name,
+            badge,
+            made.response.body.includes('Answered by a rule'),
+            after.serverResponses[made.id] ?? null,
+          ],
+          ['Answered by a rule', 'Mocked', true, null],
+        );
+      } finally {
+        await restoreRules(before);
+      }
     },
   );
   // The Diff and layout settings go, as each check's own settings do, for the checks after.

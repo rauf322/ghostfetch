@@ -192,11 +192,13 @@
   background: color-mix(in srgb, var(--text) 18%, transparent);
 }
 
-/* Edit here, on the line under the pointer, at the right of what shows of it */
+/* Edit here, on the line under the pointer, at the right of what shows of it. It takes no clicks:
+   over a long line, a click on it is on the character under it, as anywhere else on the line. */
 .diff-edit {
   position: sticky;
   right: 8px;
   display: none;
+  pointer-events: none;
   flex: none;
   align-self: center;
   align-items: center;

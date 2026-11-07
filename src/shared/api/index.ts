@@ -20,6 +20,7 @@ export {
   copyServerResponse,
   createResponseCapture,
   entryTester,
+  fromServer,
   initServerResponses,
   keepServerResponse,
   pastedResponse,

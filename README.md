@@ -33,6 +33,18 @@ folklore a *fetch* is the ghostly double of a living person; here it's the doubl
 click **Mock this response**: it becomes a rule with the real method, path, status and body,
 ready to edit, as in the recording above.
 
+### Compare a mock with the real response
+
+![The rule from the recording above, its "Ada" made "Ghost", in the side panel. Diff shows the server's response against the body: the firstName line removed and added, with "Ada" and "Ghost" marked. A click on "free" in the plan line goes back to the body there, "free" becomes "pro", and Diff shows both changes.](docs/media/diff-side-panel.webp)
+
+**Diff**, under a rule's body, compares it with the response the server gave: the one **Mock
+this response** made the rule from, or one Ghostfetch sees while the rule is off. The lines you
+removed are dimmed, with a −, the ones you added are green, with a +, and in a line you changed,
+the part that changed is marked. Click a line to edit the body there. It's inline in a side
+panel, and side by side when there's room:
+
+![The editor in a tab, the rule "Pro plan user" open. Diff shows its body side by side with the server's response, "plan" changed from "free" to "pro" and "seats" added, with a gap across from the added line; then inline, one column as git shows a diff, and side by side again.](docs/media/diff-side-by-side.webp)
+
 ### Try failures, empty states and slow responses
 
 ![New rule: "/api/projects" is typed, Fail with 500 picked and Enter pressed; after a reload the app can't load its projects. The rule's dot in the list turns it off, and after another reload the projects are back.](docs/media/simulate-failure.webp)
@@ -51,8 +63,6 @@ by 2 s** or **Logged out (401)**. A rule's dot turns it on or off, in the list a
   delay.
 - The body editor checks JSON as you type, formats it, searches it (**⌘F**), zooms (**⌘=**
   and **⌘−**) and has [vim keys](docs/guide.md#vim-keys).
-- **Diff** shows what your body changes in the server's response, side by side or inline as
-  git shows it.
 - Rules apply in the list's order and the first match wins: drag one to move it. Changes save
   as you type and apply to open tabs right away.
 - Export rules to a JSON file, and import them again (imported rules arrive switched off).

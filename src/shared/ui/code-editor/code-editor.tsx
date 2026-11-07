@@ -5,7 +5,11 @@ import { useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } fro
 import type { ComponentProps, Ref } from 'react';
 import { cn } from '../cn.ts';
 import { colour, countLines, createCodeEditor } from './engine/code-editor.ts';
-import type { CodeProblem, CodeEditor as Editor } from './engine/code-editor.ts';
+import type {
+  CodePlace,
+  CodeProblem,
+  CodeEditor as Editor,
+} from './engine/code-editor.ts';
 import { chunks } from './engine/highlight.ts';
 import './code-editor.css';
 
@@ -20,16 +24,24 @@ interface CodeEditorProps extends Omit<ComponentProps<'div'>, 'onChange' | 'ref'
   fit?: boolean;
   // A mistake in the current text to mark, or null.
   problem?: CodeProblem | null;
+  // What the editor keeps its place under (the selection and the scroll) once it's gone, for the
+  // next one made under it, which starts there: a rule's id, so that its body is where you left
+  // it when you come back to the rule, or the editor starts over after a change made elsewhere.
+  placeKey?: string;
   // The editor itself, for Format (replace()), the Vim switch (setVim()), going to a mistake
   // (reveal()) and focus.
   ref?: Ref<Editor | null>;
 }
+
+// Where each editor with a placeKey was left, for as long as the page is open.
+const places = new Map<string, CodePlace>();
 
 export function CodeEditor({
   value,
   onChange,
   fit = false,
   problem = null,
+  placeKey,
   ref,
   className,
   ...props
@@ -37,10 +49,18 @@ export function CodeEditor({
   const slot = useRef<HTMLDivElement>(null);
   const [editor] = useState(() => createCodeEditor({ value, fit }));
   useImperativeHandle(ref, () => editor, [editor]);
-  useEffect(() => {
+  // On the page, back where an editor under the same placeKey was left, before the browser paints.
+  // Its own place is kept as it goes: the selection is the text area's, and the scroll the one it
+  // last had on screen, should it be off the page or hidden by then (the engine's `place`).
+  useLayoutEffect(() => {
     slot.current!.append(editor.root);
-    return () => editor.root.remove();
-  }, [editor]);
+    const kept = placeKey === undefined ? undefined : places.get(placeKey);
+    if (kept) editor.setPlace(kept);
+    return () => {
+      if (placeKey !== undefined) places.set(placeKey, editor.place);
+      editor.root.remove();
+    };
+  }, [editor, placeKey]);
   // Every edit reaches the textarea as an input event, whether it's typed, made with vim's keys
   // or by Format. The editor's own listener has redrawn the highlighting by then.
   useEffect(() => {

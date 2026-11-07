@@ -82,8 +82,11 @@ What's different in Firefox-based browsers:
     around the cursor's line, which stays where it is in the view (or with the cursor out of
     view, around the middle of the view). **Vim keys** under it turns on
     [vim keys](#vim-keys). The text size and the Vim switch are remembered for every body
-    editor. Format on a body of more than 300 lines can't be undone with ⌘Z: the browser
-    would take minutes to make it undoable.
+    editor. **Format** keeps the cursor on the character it was on, and that line where it
+    was in the view. Back at a rule you left (another rule picked, the back button in a side
+    panel), its body is where you left it: the cursor or the selection, and the scroll. In a
+    side panel, so is the pane. Format on a body of more than 300 lines can't be undone with
+    ⌘Z: the browser would take minutes to make it undoable.
   - **Traffic**: live `fetch`/XHR log of a tab, newest first, grouped by when ("Just now", "A
     few minutes ago", "About 10 minutes ago"). What a rule did is in green ("Mocked by Feature
     flags"). The bar along the top picks the page to watch and has **Recording**, **Keep on

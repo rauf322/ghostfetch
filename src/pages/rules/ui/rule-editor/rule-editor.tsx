@@ -7,9 +7,11 @@
 // tall as the pane: the settings scroll on their own and the body editor takes the rest. In a
 // narrower one (a side panel) it's one column: the settings, the body, then the URL to try. The
 // pane is a size container (pane), which the layout asks the width of and the body editor the
-// height.
-import { useState } from 'react';
+// height. Back at a rule, the pane and the settings are scrolled where they were, and the body
+// editor is where you left it (its placeKey).
+import { useRef, useState } from 'react';
 import type { Rule, TrafficLog } from '../../../../shared/api/index.ts';
+import { useKeptScroll } from '../../../../shared/react/index.ts';
 import { PaneScroll, PaneSection } from '../../../../shared/ui/list-detail.tsx';
 import { codeStatus } from '../../lib/rule-checks.ts';
 import { useSettledStatus } from '../../model/use-settled-status.ts';
@@ -45,11 +47,15 @@ export function RuleEditor({
   // The URL being tried, kept here so it stays as rows open and close.
   const [testedUrl, setTestedUrl] = useState('');
   const status = useSettledStatus(codeStatus(rule), rule.response.body.length);
+  // What scrolls: the pane in one column, the settings beside the body.
+  const pane = useRef<HTMLDivElement>(null);
+  const settings = useRef<HTMLDivElement>(null);
+  useKeptScroll(rule.id, pane, settings);
 
   return (
     <>
       <RuleHeader rule={rule} onSelect={onSelect} />
-      <PaneScroll className="@container-size/pane">
+      <PaneScroll ref={pane} className="@container-size/pane">
         {/* Between the two layouts, the boxes around the body editor change only in width,
             height and margins: a box whose padding, gap, grid columns or flex change has Firefox
             lay out everything in it again from scratch, and one that changes from a flexbox to a
@@ -66,7 +72,10 @@ export function RuleEditor({
                 wraps is otherwise as tall as its tallest item's content, and the body editor
                 could size itself to the room it has (code-editor.css) only once it's on the
                 page, so it grew as tall as its text. */}
-            <div className="contents pane-wide:-mr-2 pane-wide:flex pane-wide:h-full pane-wide:min-h-0 pane-wide:w-[calc(max(290px,40%)_+_8px)] pane-wide:flex-col pane-wide:gap-5 pane-wide:overflow-auto pane-wide:pr-2 pane-wide:scroll-thin">
+            <div
+              ref={settings}
+              className="contents pane-wide:-mr-2 pane-wide:flex pane-wide:h-full pane-wide:min-h-0 pane-wide:w-[calc(max(290px,40%)_+_8px)] pane-wide:flex-col pane-wide:gap-5 pane-wide:overflow-auto pane-wide:pr-2 pane-wide:scroll-thin"
+            >
               <PaneSection label="When a request matches" className="w-full">
                 <MatchSettings rule={rule} open={open} onOpenChange={setOpen} />
               </PaneSection>

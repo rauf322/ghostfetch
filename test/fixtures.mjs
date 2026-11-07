@@ -185,6 +185,7 @@ export async function startServer() {
           <script type="module">
             import { createCodeEditor } from '/src/shared/ui/code-editor/engine/code-editor.ts';
             localStorage.setItem('ghostfetch.vim', '1');
+            window.createCodeEditor = createCodeEditor;
             window.editor = createCodeEditor({ value: ${JSON.stringify(VIM_START)} });
             document.querySelector('div').append(window.editor.root);
             window.editor.textarea.focus();

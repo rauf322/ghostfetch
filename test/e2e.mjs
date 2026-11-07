@@ -673,6 +673,161 @@ try {
       expect(seen, Array(9).fill(true));
     },
   );
+  // A body of 80 items, each on a line of its own, which Format spreads over four lines.
+  const ITEMS = `{"items": [\n${Array.from(
+    { length: 80 },
+    (_, id) => `  ${JSON.stringify({ id, name: `item ${id}` })}`,
+  ).join(',\n')}\n]}`;
+  await check(
+    'Format keeps the cursor on the character it was on and its line where it was in the view, keeps a selection, and with the cursor out of view keeps the middle of the view',
+    async () => {
+      const editor = app.locator('.code textarea');
+      const before = await editor.inputValue();
+      // The text at the cursor (a | at it) or the selection, how far down the view the cursor's
+      // line is, and the item the middle of the view shows.
+      const view = () =>
+        editor.evaluate((textarea) => {
+          const style = getComputedStyle(textarea);
+          const lineHeight = parseFloat(style.lineHeight);
+          const top = parseFloat(style.paddingTop);
+          const { value, selectionStart: start, selectionEnd: end, scrollTop } = textarea;
+          const lines = value.split('\n');
+          const middle = Math.floor(
+            (scrollTop + textarea.clientHeight / 2 - top) / lineHeight,
+          );
+          return {
+            at:
+              start === end
+                ? `${value.slice(start - 6, start)}|${value.slice(start, start + 2)}`
+                : value.slice(start, end),
+            y:
+              top + (value.slice(0, end).split('\n').length - 1) * lineHeight - scrollTop,
+            middle: /"id": ?(\d+)/.exec(lines[middle] + lines[middle + 1])?.[1],
+          };
+        });
+      // The body as it was before Format, the selection from `text` (or the cursor `at` in it),
+      // and its line a third of the way down the view, or the view `top` lines down.
+      const put = (text, at, { length = 0, top = null } = {}) =>
+        editor.evaluate(
+          (textarea, [find, offset, size, lines]) => {
+            const start = textarea.value.indexOf(find) + offset;
+            textarea.setSelectionRange(start, start + size);
+            const lineHeight = parseFloat(getComputedStyle(textarea).lineHeight);
+            const line = textarea.value.slice(0, start).split('\n').length - 1;
+            textarea.scrollTop =
+              lines === null
+                ? line * lineHeight - textarea.clientHeight / 3
+                : lines * lineHeight;
+          },
+          [text, at, length, top],
+        );
+      const format = async () => {
+        const placed = await view();
+        await app.click('[data-testid="format"]');
+        return [placed, await view()];
+      };
+      const seen = [];
+      await editor.fill(ITEMS);
+      await put('"item 40"', 7);
+      const [cursor, cursorAfter] = await format();
+      seen.push(cursorAfter.at, Math.abs(cursorAfter.y - cursor.y) <= 1);
+      await editor.fill(ITEMS);
+      await put('"item 60"', 0, { length: 9 });
+      seen.push((await format())[1].at);
+      // The cursor at the top, the view 30 lines down.
+      await editor.fill(ITEMS);
+      await put('{', 0, { top: 30 });
+      const [middle, middleAfter] = await format();
+      seen.push(middleAfter.middle === middle.middle && Boolean(middle.middle));
+      await editor.fill(before);
+      expect(seen, ['item 4|0"', true, '"item 60"', true]);
+    },
+  );
+  await check(
+    "back at a rule, its body is where it was (the selection, the scroll, a narrow panel's own scroll too), and so after a change made in another view",
+    async () => {
+      const editor = app.locator('.code textarea');
+      const before = await editor.inputValue();
+      const rule = app.locator('[data-testid="rule"]', { hasText: 'Made in the UI' });
+      const other = app
+        .locator('[data-testid="rule"]')
+        .filter({ hasNotText: 'Made in the UI' })
+        .first();
+      await editor.fill(JSON.stringify(JSON.parse(ITEMS), null, 2));
+      // The selection and its direction, the body's scroll and the pane's.
+      const where = () =>
+        app.evaluate(() => {
+          const textarea = document.querySelector('.code textarea');
+          return [
+            textarea.value.slice(textarea.selectionStart, textarea.selectionEnd),
+            textarea.selectionDirection,
+            Math.round(textarea.scrollTop),
+            Math.round(textarea.closest('[data-slot="pane-scroll"]').scrollTop),
+          ];
+        });
+      // "item 40" selected from its end, the body and the pane scrolled, and two frames for the
+      // pane's scroll event.
+      const put = (pane) =>
+        app.evaluate(
+          (paneTop) =>
+            new Promise((resolve) => {
+              const textarea = document.querySelector('.code textarea');
+              const at = textarea.value.indexOf('"item 40"');
+              textarea.setSelectionRange(at, at + 9, 'backward');
+              textarea.scrollTop = 1500;
+              textarea.closest('[data-slot="pane-scroll"]').scrollTop = paneTop;
+              requestAnimationFrame(() => requestAnimationFrame(resolve));
+            }),
+          pane,
+        );
+      const seen = [];
+      await put(0);
+      const beside = await where();
+      await other.click();
+      await rule.click();
+      seen.push(await where());
+      // In a side panel the pane scrolls, down to the body: back to the list, then the rule.
+      await app.setViewportSize({ width: 400, height: 760 });
+      await put(300);
+      const narrow = await where();
+      await app.click('[data-testid="rule-back"]');
+      await rule.click();
+      seen.push(await where());
+      await app.setViewportSize({ width: 1280, height: 820 });
+      // Rules changed in another view (the popup, say), with the focus outside the rule: the
+      // body editor starts over from them, where it was.
+      await put(0);
+      await editor.evaluate((textarea) => {
+        textarea.dataset.old = '';
+        textarea.blur();
+      });
+      // Once the body is saved: a change from elsewhere takes the place of a save still waiting
+      // (store.ts), and would bring the body back as it was.
+      await worker.evaluate(
+        async (body) => {
+          for (let tries = 0; tries < 60; tries++) {
+            const { rules } = await chrome.storage.local.get('rules');
+            if (rules.some((stored) => stored.response.body === body)) {
+              rules[0].updatedAt += 1;
+              await chrome.storage.local.set({ rules, rulesWriter: 'another-view:1' });
+              return;
+            }
+            await new Promise((resolve) => setTimeout(resolve, 50));
+          }
+          throw new Error('the body was never saved');
+        },
+        await editor.inputValue(),
+      );
+      await app.waitForFunction(
+        () => !('old' in document.querySelector('.code textarea').dataset),
+        null,
+        { timeout: 3000 },
+      );
+      seen.push(await where());
+      await editor.fill(before);
+      expect(seen, [beside, narrow, beside], JSON.stringify([beside, narrow]));
+    },
+  );
   await check(
     'a long body is coloured where it is on screen, and only there',
     async () => {
@@ -1271,6 +1426,63 @@ try {
     await app.click('[data-testid="format"]');
     expect(await body.inputValue(), '{\n  "a": 1,\n  "b": [\n    1,\n    2\n  ]\n}');
   });
+  await check(
+    "vim: Format keeps the cursor on its character and its line where it was in the view, and back at the rule, it's there still",
+    async () => {
+      const before = await body.inputValue();
+      const rule = app.locator('[data-testid="rule"]', { hasText: 'Made in the UI' });
+      const other = app
+        .locator('[data-testid="rule"]')
+        .filter({ hasNotText: 'Made in the UI' })
+        .first();
+      // The text from the cursor on, its line, and how far down the view that is.
+      const cursor = () =>
+        body.evaluate((textarea) => {
+          const style = getComputedStyle(textarea);
+          const at = textarea.selectionStart;
+          const line = textarea.value.slice(0, at).split('\n').length;
+          const y =
+            parseFloat(style.paddingTop) +
+            (line - 1) * parseFloat(style.lineHeight) -
+            textarea.scrollTop;
+          return { on: textarea.value.slice(at, at + 7), line, y: Math.round(y) };
+        });
+      await setBody(ITEMS);
+      await typeVim('/item 40<CR>');
+      await body.evaluate((textarea) => {
+        const lineHeight = parseFloat(getComputedStyle(textarea).lineHeight);
+        const line =
+          textarea.value.slice(0, textarea.selectionStart).split('\n').length - 1;
+        textarea.scrollTop = line * lineHeight - textarea.clientHeight / 3;
+      });
+      const placed = await cursor();
+      await app.click('[data-testid="format"]');
+      const formatted = await cursor();
+      const state = await vimState();
+      await other.click();
+      await rule.click();
+      const back = [await cursor(), (await vimState()).cursor];
+      await setBody(before);
+      expect(
+        [
+          formatted.on,
+          formatted.line > placed.line,
+          Math.abs(formatted.y - placed.y) <= 1,
+          state.cursor.split(':')[0],
+          state.mode,
+          back,
+        ],
+        [
+          'item 40',
+          true,
+          true,
+          String(formatted.line),
+          'Normal',
+          [formatted, state.cursor],
+        ],
+      );
+    },
+  );
   await check(
     "vim: / opens the body's find bar as the search line, and Esc cancels it",
     async () => {

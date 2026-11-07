@@ -568,6 +568,91 @@ try {
     },
   );
   await check(
+    "Format keeps vim's cursor on its character and its line where it was in the view (Firefox also scrolls to the caret itself), and a new editor goes back to the same place",
+    async () => {
+      // 80 items, each on a line of its own, which Format spreads over four lines.
+      const body = `{"items": [\n${Array.from(
+        { length: 80 },
+        (_, id) => `  ${JSON.stringify({ id, name: `item ${id}` })}`,
+      ).join(',\n')}\n]}`;
+      await editorTab.evaluate((text) => {
+        const { textarea } = window.editor;
+        textarea.value = text;
+        textarea.setSelectionRange(0, 0);
+        textarea.dispatchEvent(new Event('input'));
+      }, body);
+      // Once Firefox has scrolled (two frames): the text from the cursor on, vim's line for it,
+      // and how far down the view its block is.
+      const cursor = () =>
+        editorTab.evaluate(
+          () =>
+            new Promise((resolve) =>
+              requestAnimationFrame(() =>
+                requestAnimationFrame(() => {
+                  const { textarea } = window.editor;
+                  const block = document
+                    .querySelector('.code-cursor .cursor')
+                    .getBoundingClientRect();
+                  const at = textarea.selectionStart;
+                  resolve({
+                    on: textarea.value.slice(at, at + 7),
+                    line: /Ln (\d+)/.exec(
+                      document.querySelector('.code-vim-pos').textContent,
+                    )[1],
+                    y: Math.round(block.top - textarea.getBoundingClientRect().top),
+                  });
+                }),
+              ),
+            ),
+        );
+      await typeVim('/item 40<CR>');
+      await editorTab.evaluate(() => {
+        const { textarea } = window.editor;
+        const lineHeight = parseFloat(getComputedStyle(textarea).lineHeight);
+        const line =
+          textarea.value.slice(0, textarea.selectionStart).split('\n').length - 1;
+        textarea.scrollTop = line * lineHeight - textarea.clientHeight / 3;
+      });
+      const placed = await cursor();
+      await editorTab.evaluate(
+        (text) => window.editor.replace(JSON.stringify(JSON.parse(text), null, 2)),
+        body,
+      );
+      const formatted = await cursor();
+      // Another editor of the same text, given the first one's place.
+      const again = await editorTab.evaluate(
+        () =>
+          new Promise((resolve) => {
+            const first = window.editor;
+            const second = window.createCodeEditor({ value: first.value });
+            first.root.after(second.root);
+            second.setPlace(first.place);
+            requestAnimationFrame(() =>
+              requestAnimationFrame(() => {
+                resolve([
+                  second.textarea.selectionStart === first.textarea.selectionStart,
+                  Math.abs(second.textarea.scrollTop - first.textarea.scrollTop) <= 1,
+                  second.root.querySelector('.code-vim-pos').textContent ===
+                    first.root.querySelector('.code-vim-pos').textContent,
+                ]);
+                second.root.remove();
+              }),
+            );
+          }),
+      );
+      expect(
+        [
+          formatted.on,
+          formatted.line !== placed.line,
+          Math.abs(formatted.y - placed.y) <= 1,
+          again,
+        ],
+        ['item 40', true, true, [true, true, true]],
+        JSON.stringify([placed, formatted]),
+      );
+    },
+  );
+  await check(
     'vim: a yank goes to the clipboard as well, and a delete leaves it alone (Firefox lets a page write it only during a key press or a click)',
     async () => {
       const accel = process.platform === 'darwin' ? 'Meta' : 'Control';

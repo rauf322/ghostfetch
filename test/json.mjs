@@ -1,17 +1,19 @@
 // JSON in the body editor, without a browser. The JSON check: checkJson (src/shared/lib/json.ts),
 // which the editor marks mistakes with, agrees with JSON.parse on what's valid, for mistakes
 // picked by hand and for thousands of valid bodies broken at random, and says where each mistake
-// is and what it is. And the pieces chunks() cuts a long body into, which the editor colours one
+// is and what it is. The pieces chunks() cuts a long body into, which the editor colours one
 // by one, and cuts again only where an edit changed it (rechunk()): they make up the body and
-// colour exactly as the whole of it does.
+// colour exactly as the whole of it does. And where Format puts the cursor (keepOffset()): on the
+// character it was on.
 //
 //   node test/json.mjs      (npm test runs it first)
-import { checkJson } from '../src/shared/lib/index.ts';
+import { checkJson, formatJson } from '../src/shared/lib/index.ts';
 import {
   chunks,
   rechunk,
   tokens,
 } from '../src/shared/ui/code-editor/engine/highlight.ts';
+import { keepOffset } from '../src/shared/ui/code-editor/engine/keep-offset.ts';
 import { check, expect, finish } from './fixtures.mjs';
 
 const parses = (text) => {
@@ -341,6 +343,92 @@ await check(
     // An edit changes one place; in a body of many lines, most of the pieces have to be kept,
     // or this proves little.
     if (kept < before / 2) throw new Error(`kept only ${kept} pieces of ${before}`);
+  },
+);
+
+console.log('Format keeps the cursor on its character');
+// The body formatted, with the place where keepOffset() moves it: in and out marked with a |.
+const formatted = (marked, side) => {
+  const before = marked.replace('|', '');
+  const after = formatJson(before);
+  const at = keepOffset(before, after, marked.indexOf('|'), side);
+  return `${after.slice(0, at)}|${after.slice(at)}`;
+};
+await check(
+  'in a word, a string, an indent, after a colon, at the end of a line, at either end, and between two characters Format parts: a start with the one after it, an end with the one before',
+  async () => {
+    const cases = [
+      [
+        '{"name":"item 4|0","tags":["a"]}',
+        '{\n  "name": "item 4|0",\n  "tags": [\n    "a"\n  ]\n}',
+      ],
+      ['{"name":"Ada| Lovelace"}', '{\n  "name": "Ada| Lovelace"\n}'],
+      ['{"a":1,\n|    "b":2}', '{\n  "a": 1,\n|  "b": 2\n}'],
+      ['{"a":1,\n    |"b":2}', '{\n  "a": 1,\n  |"b": 2\n}'],
+      ['{"a":| 1}', '{\n  "a":| 1\n}'],
+      ['{"a":1,|\n"b":2}', '{\n  "a": 1,|\n  "b": 2\n}'],
+      ['|{"a":1}', '|{\n  "a": 1\n}'],
+      ['{"a":1}|', '{\n  "a": 1\n}|'],
+      ['{"a":25|}', '{\n  "a": 25\n|}', 'start'],
+      ['{"a":25|}', '{\n  "a": 25|\n}', 'end'],
+      ['{|"a":1}', '{\n  |"a": 1\n}', 'start'],
+      ['{|"a":1}', '{|\n  "a": 1\n}', 'end'],
+      ['{"a": |1}', '{\n  "a": |1\n}', 'end'],
+    ];
+    expect(
+      cases.map(([marked, , side]) => formatted(marked, side)),
+      cases.map(([, expected]) => expected),
+    );
+  },
+);
+await check(
+  'every place in 2,000 bodies written with blanks of their own keeps the text before it, and stays ahead of the character it was ahead of on its line (an end right after a character, after that one), or else right after the one it was after',
+  async () => {
+    const random = generator(20261107);
+    const blanks = () => ['', '', ' ', '  ', '\n', '\n    ', '\t', ' \n'][random.int(8)];
+    // A value written as by hand: blanks of their own around its tokens.
+    const write = (value) => {
+      if (Array.isArray(value))
+        return `[${blanks()}${value.map(write).join(`${blanks()},${blanks()}`)}${blanks()}]`;
+      if (value && typeof value === 'object') {
+        const members = Object.entries(value).map(
+          ([key, item]) => `${JSON.stringify(key)}${blanks()}:${blanks()}${write(item)}`,
+        );
+        return `{${blanks()}${members.join(`${blanks()},${blanks()}`)}${blanks()}}`;
+      }
+      return JSON.stringify(value);
+    };
+    const strip = (text) => text.replace(/[ \n\t\r]/g, '');
+    const wrong = [];
+    let places = 0;
+    for (let round = 0; round < 2000 && wrong.length < 5; round++) {
+      const values = Array.from({ length: 1 + random.int(6) }, () => random.value(1));
+      const before = `${blanks()}${write(values)}${blanks()}`;
+      const after = formatJson(before);
+      for (let offset = 0; offset <= before.length; offset++) {
+        for (const side of ['start', 'end']) {
+          places++;
+          const moved = keepOffset(before, after, offset, side);
+          const rest = before.slice(offset);
+          // The blanks ahead of the place on its line, and the character after them.
+          const gap = /^[ \t\r]*/.exec(rest)[0].length;
+          const next = rest[gap];
+          const ahead = next !== undefined && next !== '\n';
+          const skipped = /^[ \t\r]*/.exec(after.slice(moved))[0].length;
+          const previous = offset ? before[offset - 1] : undefined;
+          const placed =
+            side === 'end' && previous && /[^ \n\t\r]/.test(previous)
+              ? after[moved - 1] === previous
+              : ahead
+                ? after[moved + skipped] === next && skipped <= gap
+                : moved === 0 || /[^ \n\t\r]/.test(after[moved - 1]);
+          if (strip(before.slice(0, offset)) !== strip(after.slice(0, moved)) || !placed)
+            wrong.push(`${JSON.stringify(before)} at ${offset} (${side}): ${moved}`);
+        }
+      }
+    }
+    if (wrong.length) throw new Error(`placed wrong:\n${wrong.join('\n')}`);
+    if (places < 100_000) throw new Error(`only ${places} places`);
   },
 );
 

@@ -138,6 +138,8 @@ export function BodyCard({
             value={response.body}
             fit
             problem={problem}
+            // Back at this rule, or after a change made elsewhere, the body is where it was.
+            placeKey={rule.id}
             onChange={(text) =>
               editRule(rule.id, (current) => {
                 current.response.body = text;

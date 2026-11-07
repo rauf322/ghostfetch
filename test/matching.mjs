@@ -1,11 +1,14 @@
 // A rule's URL pattern, without a browser: which URLs the page's interceptor answers with it
 // (findRule, src/app/interceptor/matching.ts), for each way of comparing a URL, and that the
 // rule editor's URL tester (testResult, src/pages/rules/lib/rule-checks.ts) says the same for
-// every one of them, so Try a URL in the rule editor tells the truth.
+// every one of them, so Try a URL in the rule editor tells the truth. And that the requests the
+// editor keeps a rule's server's response from, for its Diff (entryTester), are the ones the page
+// would answer with the rule: the same URLs, methods and GraphQL operations.
 //
 //   node test/matching.mjs      (npm test runs it after test/json.mjs)
 import { compile, findRule } from '../src/app/interceptor/matching.ts';
 import { testResult } from '../src/pages/rules/lib/rule-checks.ts';
+import { entryTester } from '../src/shared/api/index.ts';
 import { check, expect, finish } from './fixtures.mjs';
 
 const API = 'https://api.example.test';
@@ -97,6 +100,52 @@ await check(
     expect(result.tone, 'bad');
     if (!/regular expression/i.test(result.text))
       throw new Error(`expected the regex error, got ${JSON.stringify(result.text)}`);
+  },
+);
+
+await check(
+  "the Diff keeps the server's response from the requests the page would answer with the rule, for every case, method and way of naming a GraphQL operation",
+  () => {
+    const BODIES = [
+      '',
+      JSON.stringify({ operationName: 'GetUser', query: '' }),
+      JSON.stringify({ query: 'query GetUser { me }' }),
+      JSON.stringify([{ operationName: 'GetUser' }]),
+      JSON.stringify({ operationName: 'Other', query: '' }),
+      'not json',
+    ];
+    const disagree = [];
+    let tried = 0;
+    for (const [mode, pattern, operation, url] of CASES)
+      for (const ruleMethod of ['ANY', 'GET', 'POST'])
+        for (const method of ['GET', 'POST'])
+          for (const body of BODIES)
+            for (const query of ['', 'operationName=GetUser']) {
+              const candidate = rule(mode, pattern, operation);
+              candidate.match.method = ruleMethod;
+              const target = query
+                ? `${url}${url.includes('?') ? '&' : '?'}${query}`
+                : url;
+              const state = { enabled: true, record: false, rules: compile([candidate]) };
+              const page = findRule(state, { url: target, method, body }) === candidate;
+              const kept = entryTester(candidate)({
+                method,
+                url: target,
+                requestBody: body,
+              });
+              tried++;
+              if (page !== kept)
+                disagree.push([
+                  mode,
+                  pattern,
+                  operation,
+                  ruleMethod,
+                  method,
+                  body,
+                  target,
+                ]);
+            }
+    expect([disagree.slice(0, 5), tried > 1000], [[], true]);
   },
 );
 

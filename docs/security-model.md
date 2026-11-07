@@ -39,7 +39,10 @@ see the [README](../README.md).
   server, so read a rules file from someone else before you switch its rules on.
 - **Mind what you mock.** "Mock this response" copies a real response into a rule. Rules are
   stored unencrypted in your browser profile and included in exports, so strip tokens and
-  personal data from bodies you keep or share.
+  personal data from bodies you keep or share. The response itself is kept too, for the body's
+  Diff (as is the one a rule sees the server give while it's off, or one you paste in):
+  unencrypted in the same profile, but apart from the rules, so it never goes to a page and
+  isn't in an export.
 - `host_permissions` stays `<all_urls>`: a site you add needs host access for its content
   scripts, and the browser only shows the extension a tab's address and title (the popup's
   current site, Traffic's list of tabs) with host access, since Ghostfetch has no `tabs`

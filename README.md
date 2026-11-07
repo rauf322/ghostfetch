@@ -51,6 +51,8 @@ by 2 s** or **Logged out (401)**. A rule's dot turns it on or off, in the list a
   delay.
 - The body editor checks JSON as you type, formats it, searches it (**⌘F**), zooms (**⌘=**
   and **⌘−**) and has [vim keys](docs/guide.md#vim-keys).
+- **Diff** shows what your body changes in the server's response, side by side or inline as
+  git shows it.
 - Rules apply in the list's order and the first match wins: drag one to move it. Changes save
   as you type and apply to open tabs right away.
 - Export rules to a JSON file, and import them again (imported rules arrive switched off).

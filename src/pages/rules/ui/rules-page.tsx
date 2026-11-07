@@ -4,7 +4,7 @@
 // of the two shows).
 import { useEffect, useRef, useState } from 'react';
 import { findRule, ruleStore } from '../../../shared/api/index.ts';
-import type { Rule, TrafficLog } from '../../../shared/api/index.ts';
+import type { LogEntry, Rule, TrafficLog } from '../../../shared/api/index.ts';
 import { useStore } from '../../../shared/react/index.ts';
 import { DetailPane } from '../../../shared/ui/list-detail.tsx';
 import { FieldSuggestions } from './field-suggestions.tsx';
@@ -26,7 +26,7 @@ interface RulesPageProps {
   // New rule's back button, in a narrow panel.
   onCancel: () => void;
   // Makes a rule of a captured request and opens it (the editor's, as Traffic's Mock does).
-  onMock: (rule: Rule) => void;
+  onMock: (rule: Rule, entry: LogEntry) => void;
   onOpenTraffic: () => void;
 }
 

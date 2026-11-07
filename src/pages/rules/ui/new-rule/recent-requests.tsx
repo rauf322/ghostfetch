@@ -2,7 +2,7 @@
 // answered, each with Mock, which makes a rule of it as Traffic's Mock this response does, and
 // a link to Traffic for the rest. Nothing shows until the page has asked for something.
 import { ruleFromEntry } from '../../../../shared/api/index.ts';
-import type { Rule, TrafficLog } from '../../../../shared/api/index.ts';
+import type { LogEntry, Rule, TrafficLog } from '../../../../shared/api/index.ts';
 import { formatDuration, splitUrl } from '../../../../shared/lib/index.ts';
 import { useTraffic } from '../../../../shared/react/index.ts';
 import { StatusCode } from '../../../../shared/ui/kit/badge.tsx';
@@ -18,7 +18,7 @@ export function RecentRequests({
   onOpenTraffic,
 }: {
   log: TrafficLog;
-  onMock: (rule: Rule) => void;
+  onMock: (rule: Rule, entry: LogEntry) => void;
   onOpenTraffic: () => void;
 }) {
   const traffic = useTraffic(log);
@@ -57,7 +57,7 @@ export function RecentRequests({
             </span>
             <Button
               data-testid="recent-mock"
-              onClick={() => onMock(ruleFromEntry(entry))}
+              onClick={() => onMock(ruleFromEntry(entry), entry)}
               className="flex-none"
             >
               <Icon name="wand" size={14} />

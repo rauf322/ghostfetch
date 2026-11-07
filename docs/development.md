@@ -92,7 +92,7 @@ src/pages/                       what the screens show
   kit/                           the kit page: every kit component in its states
 src/shared/                      what more than one part of the extension uses
   api/                           what's kept in chrome.storage and what the parts send each other (index.ts)
-    rules/                       a rule: its fields and their names, making one, URL matching, and the screens' copy of the rules
+    rules/                       a rule: its fields and their names, making one, URL matching, and the screens' copy of the rules; apart from them, the server's responses their bodies' Diff compares with
     sites/                       the sites Ghostfetch runs on, the screens' copy of the ones you added, turning one on or off
     settings.ts                  the on/off and recording switches
     log-entry.ts                 a request in a tab's traffic log
@@ -101,11 +101,11 @@ src/shared/                      what more than one part of the extension uses
     messages.ts                  the messages between the background, the bridge, the interceptor and the Traffic tab
     open-editor.ts               the editor in the side panel or a tab, and on a rule the popup picked
   lib/                           small libraries, a file each (index.ts): JSON, HTML, URLs, durations, status names, cURL
-                                 commands, icons, file names, a download, the side panel, the stores' base, untrusted data
+                                 commands, icons, file names, a download, the side panel, the stores' base, untrusted data, a line diff
   react/                         useStore(), which redraws a screen when a store changes, and the traffic log's hooks (index.ts)
   ui/                            components, a public file each
     kit/                         the UI kit: React components on Base UI, styled with Tailwind (see UI kit)
-    code-editor/                 the body editor (plain DOM code, its find bar and vim keys) and its React component (index.ts)
+    code-editor/                 the body editor (plain DOM code, its find bar and vim keys) and its React component, and the body's Diff (CodeDiff) (index.ts)
     list-detail.tsx              the editor's layout: the sidebar, as wide as its edge was dragged, and what's open beside it, in a row (a flexbox: Firefox lays a grid's items out again from scratch)
     sidebar.tsx                  the sidebar's width and whether it's hidden, the edge that resizes it (and what keeps its width meanwhile), and the button (and ⌘B) that hides it
     theme.ts                     the themes, and the one in use; theme-menu.tsx, the ⋯ menus' Theme row
@@ -123,7 +123,8 @@ public/theme.js                  puts the theme you picked on each page before i
 scripts/check-sources.mjs        rebuilds the sources zip in a clean folder and compares it with the build
 scripts/oxlint-rules.mjs         two lint rules of its own (npm run lint): no export *, and the folders of src/app/ are the extension's parts
 test/json.mjs                    the body editor's JSON check against JSON.parse, the pieces it colours a long body in, after edits too, Format, and where it puts the cursor
-test/matching.mjs                which URLs a rule's pattern matches, and that the rule editor's Try a URL says what the page does
+test/diff.mjs                    the body's Diff without a browser: the lines kept, removed and added (the fewest), and the parts of a changed line
+test/matching.mjs                which URLs a rule's pattern matches, that the rule editor's Try a URL says what the page does, and that Diff keeps responses from the same requests
 test/curl.mjs                    cURL commands both ways: Copy as cURL (nothing the page sent breaks out of its quotes), New rule's reading of one
 test/e2e.mjs                     end-to-end test in Chromium (Playwright)
 test/firefox.mjs                 end-to-end test in Zen or Firefox (puppeteer-core)
@@ -207,11 +208,23 @@ stays ahead of the character it was ahead of on its line (an end right after a c
 after that one), or else right after the one it was after. It needs no browser, and `npm test`
 runs it first.
 
+`test/diff.mjs` checks the line diff behind the body's Diff (`diffLines`): on 5,000 random pairs
+of bodies its lines make up both texts again, in order, and the lines it keeps are alike; on 2,000
+more it keeps as many as the two have in common (the longest common run of lines, worked out the
+slow way), so it removes and adds no more than it has to; a change's removed lines come before its
+added ones; the body the design shows comes out +6 −5; bodies too far apart to search come out
+removed and added whole, and still make up both texts; and long bodies take under 300 ms. And the
+parts it marks in a changed line (`diffWords`): the value changed, a comma added, nothing in lines
+that share only blanks, and on 5,000 random pairs of lines, what it leaves unmarked in each is the
+same text. `npm test` runs it after `test/json.mjs`.
+
 `test/matching.mjs` checks which URLs a rule's pattern matches in the page, for each way of
 comparing a URL (contains, equals with a full URL or a path, wildcard, regex, a regex that doesn't
 compile, and no pattern with or without a GraphQL operation), and that the rule editor's Try a URL
-says the same for every case: both use one function, `urlTester`. It needs no browser either, and
-`npm test` runs it next.
+says the same for every case: both use one function, `urlTester`. And that the requests the
+editor keeps a rule's server's response from, for its Diff (`entryTester`), are the ones the page
+would answer with the rule, for every case crossed with methods and the ways a request names a
+GraphQL operation. It needs no browser either, and `npm test` runs it after `test/diff.mjs`.
 
 `test/curl.mjs` checks cURL commands both ways. Traffic's Copy as cURL: the command for a request,
 and that whatever the page put in it (quotes, `$(…)`, backticks, `;`, in the URL, the body or the
@@ -237,7 +250,12 @@ as it was, and stopping at the formatted body, which is what's saved), the
 cursor marked while the body isn't focused, a rule's body where it was when you come back to it
 (beside the settings, in a side panel with its pane, and after a change made in another view),
 Format and colours on a body of 370,000 characters, its own find and its vim keys, whose yanks
-it pastes back from the clipboard), the
+it pastes back from the clipboard; and Diff: Mock this response keeping the server's response
+apart from the rule and out of an exported file, side by side, inline and inline in a narrow
+panel with the counts and rows the diff makes, a key that would type saying it can't, a click on
+a line, a removed line and Enter going to edit there, a rule that's off getting the server's
+response from the page, a copy keeping it, one pasted in, none with Keep server's body, and a body
+of 390,000 characters drawn only where it shows, the last lines once scrolled there), the
 traffic view (its filters, Keep on reload and Clear), the sidebar beside a rule and beside
 Traffic (hidden with the button and the key, its edge dragged to its narrowest, its widest, shut
 and open again, its keys, its one width after a reload, none in a narrow panel, its rules in

@@ -16,7 +16,7 @@ export function RequestActions({
   entry: LogEntry;
   // The response body pretty-printed, or null when it isn't JSON.
   pretty: string | null;
-  onMock: (draft: Rule) => void;
+  onMock: (draft: Rule, entry: LogEntry) => void;
 }) {
   async function copy(text: string, what: string) {
     try {
@@ -39,7 +39,7 @@ export function RequestActions({
         data-testid="mock"
         className="h-11 w-full rounded-lg text-body"
         onClick={() => {
-          onMock(ruleFromEntry(entry));
+          onMock(ruleFromEntry(entry), entry);
           if (entry.truncated)
             notify('The response was over 1 MB', {
               kind: 'error',

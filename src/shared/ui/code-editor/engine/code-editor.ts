@@ -69,7 +69,8 @@ const FONT_SIZES = [10, 11, 11.5, 12, 13, 14, 16, 18, 20, 24];
 const DEFAULT_FONT_SIZE = 11.5;
 const FONT_SIZE_KEY = 'ghostfetch.fontSize';
 const SIZE_KEYS: Record<string, 1 | -1 | 0> = { '=': 1, '+': 1, '-': -1, _: -1, '0': 0 };
-function fontSizePreferred() {
+// The body's Diff (../code-diff.tsx) shows its text at the same size.
+export function fontSizePreferred() {
   const size = Number(localStorage.getItem(FONT_SIZE_KEY));
   return FONT_SIZES.includes(size) ? size : DEFAULT_FONT_SIZE;
 }

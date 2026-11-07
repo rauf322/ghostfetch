@@ -10,15 +10,19 @@ import { RulesPage } from '../../pages/rules/index.ts';
 import { TrafficPage } from '../../pages/traffic/index.ts';
 import {
   addRule,
+  createResponseCapture,
   findRule,
+  keepServerResponse,
   normalizeRule,
+  responseFromEntry,
   ruleStore,
   settingsStore,
   watchRuleRequests,
 } from '../../shared/api/index.ts';
-import type { Rule } from '../../shared/api/index.ts';
+import type { LogEntry, Rule } from '../../shared/api/index.ts';
 import { useStore, useTrafficLog } from '../../shared/react/index.ts';
 import { cn } from '../../shared/ui/cn.ts';
+import { diffPreferred, rememberDiff } from '../../shared/ui/code-editor/index.ts';
 import { Alert } from '../../shared/ui/kit/alert.tsx';
 import { Tabs, TabsContent } from '../../shared/ui/kit/tabs.tsx';
 import { notify } from '../../shared/ui/kit/toast.tsx';
@@ -72,9 +76,12 @@ export function Editor({ inTab, windowId }: { inTab: boolean; windowId: number }
     [showView, select],
   );
 
+  // A rule made from a request (Mock this response, New rule's Mock) keeps the server's response
+  // it was made from, for its body's Diff.
   const mockRule = useCallback(
-    (draft: Rule) => {
+    (draft: Rule, entry: LogEntry) => {
       const rule = addRule(normalizeRule(draft), 0);
+      keepServerResponse(rule.id, responseFromEntry(entry));
       openRule(rule.id);
       notify('Rule created', {
         kind: 'success',
@@ -94,10 +101,12 @@ export function Editor({ inTab, windowId }: { inTab: boolean; windowId: number }
     showView('rules');
   }, [select, showView]);
 
-  // A new rule goes first in the list, open with the cursor in its body.
+  // A new rule goes first in the list, open with the cursor in its body: in the editor, not Diff,
+  // which a body is typed in out of.
   const create = useCallback(
     (rule: Rule) => {
       setQuery('');
+      if (diffPreferred()) rememberDiff(false);
       const added = addRule(rule, 0);
       select(added.id);
       setCreated(added.id);
@@ -110,6 +119,28 @@ export function Editor({ inTab, windowId }: { inTab: boolean; windowId: number }
 
   // "Open this rule" from the popup.
   useEffect(() => watchRuleRequests(openRule), [openRule]);
+
+  // A rule with no server's response to compare its body with gets one from the log: the newest
+  // request it matches that no rule answered. As requests arrive, and a moment after the rules
+  // change, as a rule just made may match a request from before.
+  useEffect(() => {
+    const capture = createResponseCapture();
+    const scan = () => capture.scan(log.snapshot().entries);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const scanSoon = () => {
+      clearTimeout(timer);
+      timer = setTimeout(scan, 300);
+    };
+    scan();
+    const stopLog = log.subscribe(scan);
+    const stopRules = ruleStore.subscribe(scanSoon);
+    return () => {
+      clearTimeout(timer);
+      stopLog();
+      stopRules();
+      capture.stop();
+    };
+  }, [log]);
 
   const composingNow = composing && !selectedRule;
   const picked = Boolean(findRule(selectedRule)) || composingNow;

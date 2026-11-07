@@ -21,7 +21,7 @@ export const RequestDetail = memo(function RequestDetail({
 }: {
   entry: LogEntry;
   onClose: () => void;
-  onMock: (draft: Rule) => void;
+  onMock: (draft: Rule, entry: LogEntry) => void;
   onOpenRule: (id: string) => void;
 }) {
   const pretty = useMemo(() => formatJson(entry.responseBody), [entry.responseBody]);

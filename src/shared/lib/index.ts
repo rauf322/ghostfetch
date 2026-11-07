@@ -4,6 +4,8 @@
 export { createStore } from './create-store.ts';
 export type { Store } from './create-store.ts';
 export { curlCommand, parseCurl } from './curl.ts';
+export { diffLines, diffWords } from './diff.ts';
+export type { DiffKind, DiffLine, Range, TextDiff } from './diff.ts';
 export { download } from './download.ts';
 export { formatDuration } from './duration.ts';
 export { escapeHtml } from './escape-html.ts';

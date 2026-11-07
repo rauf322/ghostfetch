@@ -17,7 +17,7 @@ import {
   normalizeSites,
   siteMatchPatterns,
 } from '../src/shared/api/index.ts';
-import { formatJson } from '../src/shared/lib/index.ts';
+import { diffLines, formatJson } from '../src/shared/lib/index.ts';
 import {
   CHROME_BUILD,
   VIM_START,
@@ -1821,6 +1821,335 @@ try {
     await body.fill('{"fromTraffic": true}');
     await sleep(500);
     expect((await call('/api/user?case=live-check')).body, { fromTraffic: true });
+  });
+  // The server's answer to /api/user (test/fixtures.mjs), as a rule made from it keeps it, and the
+  // body of that rule edited: the name changed, a tag added. +3 −2.
+  const REAL = formatJson(
+    JSON.stringify({
+      id: 1,
+      name: 'Real',
+      role: 'user',
+      profile: { city: 'Riga', age: 30 },
+      tags: ['a', 'b'],
+    }),
+  );
+  const EDITED = REAL.replace('"Real"', '"Mocked"').replace('"b"', '"b",\n    "c"');
+  // The rules, and the servers' responses Diff keeps, each under a key of its own, by rule id.
+  const inStorage = () =>
+    worker.evaluate(async () => {
+      const all = await chrome.storage.local.get(null);
+      const serverResponses = {};
+      for (const [key, value] of Object.entries(all))
+        if (key.startsWith('serverResponse:'))
+          serverResponses[key.slice('serverResponse:'.length)] = value;
+      return { rules: all.rules, serverResponses };
+    });
+  const diffView = app.locator('[data-testid="diff"]');
+  // A Diff check leaves Diff off, even one that fails half way, so the next finds the editor.
+  const diffCheck = (name, run) =>
+    check(name, async () => {
+      try {
+        await run();
+      } finally {
+        if (await diffView.count()) await app.click('[data-testid="diff-switch"]');
+      }
+    });
+  // Diff's layout, its counts and how many rows are drawn, and whether the editor shows.
+  const diffState = async () => ({
+    layout: await diffView.getAttribute('data-layout'),
+    counts: (await app.locator('[data-testid="diff-counts"]').innerText()).replace(
+      /\s+/g,
+      ' ',
+    ),
+    rows: await app.locator('[data-testid="diff-row"]').count(),
+    editor: await body.isVisible(),
+  });
+  await diffCheck(
+    "Diff: Mock this response keeps the server's response apart from the rule (and out of an export), and Diff shows what the body changes in it: side by side, inline, and inline in a narrow panel",
+    async () => {
+      await body.fill(EDITED);
+      await sleep(400);
+      const { rules, serverResponses } = await inStorage();
+      const made = rules.find((rule) => rule.match.url === '/api/user?case=live-check');
+      const kept = serverResponses[made.id];
+      const lines = diffLines(REAL, EDITED);
+      await app.click('[data-testid="diff-switch"]');
+      await diffView.waitFor();
+      const wide = await diffState();
+      await app.click('[data-testid="diff-inline"]');
+      const inline = await diffState();
+      await app.setViewportSize({ width: 400, height: 760 });
+      await app.waitForFunction(
+        () => !document.querySelector('[data-testid="diff-split"]'),
+      );
+      const narrow = await diffState();
+      await app.setViewportSize({ width: 1280, height: 820 });
+      await app.click('[data-testid="diff-split"]');
+      await app.click('[data-testid="rule-menu"]');
+      const [download] = await Promise.all([
+        app.waitForEvent('download'),
+        app.click('text=Export this rule'),
+      ]);
+      const exported = fs.readFileSync(await download.path(), 'utf8');
+      await app.click('[data-testid="diff-switch"]');
+      expect(
+        [
+          [kept.status, kept.body === REAL, kept.pasted],
+          JSON.stringify(made).includes('Real'),
+          [lines.added, lines.removed, lines.lines.length],
+          wide,
+          inline,
+          narrow,
+          [
+            JSON.parse(exported).rules[0].response.body === EDITED,
+            exported.includes('Real'),
+          ],
+          await body.isVisible(),
+        ],
+        [
+          [200, true, false],
+          false,
+          [3, 2, 16],
+          { layout: 'split', counts: '+3 −2', rows: 28, editor: false },
+          { layout: 'inline', counts: '+3 −2', rows: 16, editor: false },
+          { layout: 'inline', counts: '+3 −2', rows: 16, editor: false },
+          [true, false],
+          true,
+        ],
+      );
+    },
+  );
+  await diffCheck(
+    "Diff can't be typed in and says so, Turn Diff off goes back to the body; a click on a line puts the cursor where it was clicked, on a removed line at the start of the body's next line, and Enter at the top",
+    async () => {
+      const at = () =>
+        body.evaluate((textarea) => {
+          const { value, selectionStart: start } = textarea;
+          return {
+            at: `${value.slice(start - 3, start)}|${value.slice(start, start + 3)}`,
+            focused: document.activeElement === textarea,
+          };
+        });
+      await app.click('[data-testid="diff-switch"]');
+      await app.click('[data-testid="diff-inline"]');
+      const pane = app.locator('[data-testid="diff-pane"]');
+      await pane.focus();
+      await app.keyboard.type('q');
+      const note = await app.locator('[data-testid="diff-note"]').innerText();
+      await app.click('[data-testid="diff-off"]');
+      const off = [await body.isVisible(), (await at()).focused, await body.inputValue()];
+      // On the c of "Mocked": the left quarter of the character, so the caret goes before it.
+      await app.click('[data-testid="diff-switch"]');
+      const added = app.locator('[data-testid="diff-row"][data-kind="add"] [data-code]', {
+        hasText: '"Mocked"',
+      });
+      const box = await added.boundingBox();
+      const text = await added.innerText();
+      const width = (box.width - 24) / text.length;
+      await app.mouse.click(
+        box.x + width * (text.indexOf('Mocked') + 2.25),
+        box.y + box.height / 2,
+      );
+      const clicked = [await diffView.count(), await at()];
+      await app.click('[data-testid="diff-switch"]');
+      await app
+        .locator('[data-testid="diff-row"][data-kind="del"]', { hasText: '"Real"' })
+        .click();
+      const removed = await at();
+      await app.click('[data-testid="diff-switch"]');
+      await pane.focus();
+      await app.keyboard.press('Enter');
+      const entered = [await diffView.count(), await at()];
+      expect(
+        [
+          note.startsWith("Diff is on, so the body can't be typed in."),
+          off,
+          clicked,
+          removed,
+          entered,
+        ],
+        [
+          true,
+          [true, true, EDITED],
+          [0, { at: '"Mo|cke', focused: true }],
+          { at: '1,\n|  "', focused: true },
+          [0, { at: '|{\n ', focused: true }],
+        ],
+      );
+    },
+  );
+  await diffCheck(
+    "Diff: a rule with no server's response gets the next one the page shows it while it's off; a copy keeps it; one can be pasted in; Keep server's body has no Diff",
+    async () => {
+      const draft = (id, name, url) => ({
+        id,
+        name,
+        enabled: false,
+        match: { url, mode: 'contains', method: 'ANY', graphqlOperation: '' },
+        response: {
+          bodyMode: 'replace',
+          body: '{\n  "name": "Mine"\n}',
+          status: '',
+          delay: 0,
+          contentType: 'application/json',
+          headers: [],
+        },
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      const before = (await inStorage()).rules;
+      try {
+        await worker.evaluate(
+          (rules) => chrome.storage.local.set({ rules }),
+          [
+            ...before,
+            draft('capture-test', 'Captured', '/api/user?case=capture'),
+            draft('paste-test', 'Pasted', '/api/never-called'),
+          ],
+        );
+        await call('/api/user?case=capture');
+        // The editor keeps it as the request shows up in its log.
+        let captured;
+        for (let tries = 0; !captured && tries < 50; tries++) {
+          await sleep(100);
+          captured = (await inStorage()).serverResponses['capture-test'];
+        }
+        if (!captured)
+          throw new Error("the editor kept no response for the rule that's off");
+        await app
+          .locator('[data-testid="rule"]', { hasText: 'Captured' })
+          .first()
+          .click();
+        await app.click('[data-testid="diff-switch"]');
+        await diffView.waitFor();
+        const from = await app.locator('[data-testid="diff-from"]').innerText();
+        await app.click('[data-testid="duplicate-rule"]');
+        await sleep(400);
+        const after = await inStorage();
+        const copy = after.rules.find((rule) => rule.name === 'Captured (copy)');
+        // No response: the empty state, then one pasted in.
+        await app.locator('[data-testid="rule"]', { hasText: 'Pasted' }).first().click();
+        await diffView.waitFor();
+        const empty = await diffView.innerText();
+        await app.click('[data-testid="paste-response"]');
+        await app.fill('[data-testid="paste-response-text"]', '{"name": "Theirs"}');
+        await app.click('[data-testid="paste-response-use"]');
+        const pasted = [
+          (await app.locator('[data-testid="diff-from"]').innerText()).startsWith(
+            'pasted ',
+          ),
+          (await app.locator('[data-testid="diff-counts"]').innerText()).replace(
+            /\s+/g,
+            ' ',
+          ),
+        ];
+        await app.click('[data-testid="body-original"]');
+        const kept = await app.locator('[data-testid="diff-switch"]').count();
+        await app.click('[data-testid="body-replace"]');
+        await app.click('[data-testid="diff-switch"]');
+        expect(
+          [
+            [captured.status, captured.body === REAL],
+            from.endsWith(' · 200'),
+            after.serverResponses[copy.id]?.body === REAL,
+            empty.includes('No server response yet'),
+            pasted,
+            kept,
+          ],
+          [[200, true], true, true, true, [true, '+1 −1'], 0],
+        );
+      } finally {
+        // The rules as they were, without the ones made here and their responses.
+        await worker.evaluate(async (rules) => {
+          const ids = new Set(rules.map((rule) => rule.id));
+          const all = await chrome.storage.local.get(null);
+          await chrome.storage.local.remove(
+            Object.keys(all).filter(
+              (key) =>
+                key.startsWith('serverResponse:') &&
+                !ids.has(key.slice('serverResponse:'.length)),
+            ),
+          );
+          await chrome.storage.local.set({ rules });
+        }, before);
+      }
+    },
+  );
+  await diffCheck(
+    'Diff of a body of 390,000 characters opens in good time and draws only the lines on screen, the last ones too once scrolled there',
+    async () => {
+      // The rule Mock this response made, open again: the check before took its own rules away.
+      await app
+        .locator('[data-testid="rule"]', { hasText: 'case=live-check' })
+        .first()
+        .click();
+      await body.waitFor();
+      const { rules } = await inStorage();
+      const made = rules.find((rule) => rule.match.url === '/api/user?case=live-check');
+      const items = Array.from({ length: 5000 }, (_, id) => ({
+        id,
+        name: `item ${id}`,
+        price: id * 1.5,
+      }));
+      const theirs = JSON.stringify({ items }, null, 2);
+      items[2500].name = 'changed';
+      items.push({ id: 5000, name: 'added', price: 0 });
+      const yours = JSON.stringify({ items }, null, 2);
+      await worker.evaluate(
+        ({ id, text }) =>
+          chrome.storage.local.set({
+            [`serverResponse:${id}`]: {
+              body: text,
+              status: 200,
+              time: Date.now(),
+              truncated: false,
+              pasted: false,
+            },
+          }),
+        { id: made.id, text: theirs },
+      );
+      // On one line, which a fill puts in at once, then formatted: filled in as 25,000 lines, it
+      // would take Chrome minutes.
+      await body.fill(JSON.stringify({ items }));
+      await app.click('[data-testid="format"]');
+      await app.waitForFunction(
+        () => document.querySelector('.code textarea').value.startsWith('{\n'),
+        null,
+        { timeout: 10_000 },
+      );
+      await sleep(400);
+      const started = Date.now();
+      await app.click('[data-testid="diff-switch"]');
+      await app.locator('[data-testid="diff-counts"]').waitFor();
+      const took = Date.now() - started;
+      const counts = (
+        await app.locator('[data-testid="diff-counts"]').innerText()
+      ).replace(/\s+/g, ' ');
+      const drawn = await app.locator('[data-testid="diff-row"]').count();
+      // Inline, or side by side, whose panes scroll down together.
+      await app
+        .locator('[data-testid="diff-pane"], [data-testid="diff-pane-after"]')
+        .first()
+        .evaluate((pane) => pane.scrollTo(0, pane.scrollHeight));
+      await app
+        .locator('[data-testid="diff-row"]', { hasText: '"name": "added"' })
+        .first()
+        .waitFor({ timeout: 3000 });
+      await app.click('[data-testid="diff-switch"]');
+      await body.fill(EDITED);
+      await sleep(400);
+      if (took > 2000) throw new Error(`Diff took ${took} ms to open`);
+      expect(
+        [counts, yours.length > 390_000, drawn < 400],
+        ['+6 −1', true, true],
+        `${drawn} rows drawn`,
+      );
+    },
+  );
+  // The Diff and layout settings go, as each check's own settings do, for the checks after.
+  await app.evaluate(() => {
+    localStorage.removeItem('ghostfetch.diff');
+    localStorage.removeItem('ghostfetch.diffLayout');
   });
   await check(
     'New rule reads a cURL command, a starter sets the answer, and a recent request is one click from a rule',

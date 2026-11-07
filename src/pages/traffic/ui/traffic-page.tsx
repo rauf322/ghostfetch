@@ -11,7 +11,7 @@ import {
   rememberPreserve,
   settingsStore,
 } from '../../../shared/api/index.ts';
-import type { Rule, TrafficLog } from '../../../shared/api/index.ts';
+import type { LogEntry, Rule, TrafficLog } from '../../../shared/api/index.ts';
 import { useTraffic } from '../../../shared/react/index.ts';
 import { RequestDetail } from './request-detail/request-detail.tsx';
 import { TrafficList } from './traffic-list.tsx';
@@ -20,7 +20,7 @@ import { TrafficToolbar } from './traffic-toolbar.tsx';
 interface TrafficPageProps {
   // The editor's log of the tab it watches (useTrafficLog).
   log: TrafficLog;
-  onMock: (draft: Rule) => void;
+  onMock: (draft: Rule, entry: LogEntry) => void;
   onOpenRule: (id: string) => void;
   onCount: (count: number) => void;
 }

@@ -1,0 +1,235 @@
+/* The body's Diff (code-diff.tsx): a removed line dimmed and grey, with a −; an added one tinted
+   with the theme's green, with a +; in a changed line, the parts that changed a stronger tint of
+   the same; a gap (side by side, where the other pane has lines this one hasn't) a faint shade.
+   No red: the one colour is green. Plain CSS on theme.css's values, so every theme has it. */
+
+/* As tall as its lines (--diff-fit, which the component works out), within the room the page
+   gives the body (--code-max, at least --code-fill), as the body editor is (code-editor.css, which
+   says why the two come by name). */
+.code-diff {
+  --code-max: inherit;
+  --code-fill: inherit;
+  display: flex;
+  flex-direction: column;
+  height: clamp(
+    120px,
+    max(var(--diff-fit, 280px), var(--code-fill, 0px)),
+    var(--code-max, 100vh)
+  );
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--code-bg);
+  color: var(--text);
+  font-family: var(--font);
+  line-height: 1.75;
+  letter-spacing: 0;
+}
+.code-diff:focus-within {
+  border-color: var(--t50);
+}
+
+/* the titles across the top: inline, the server's response → your body; side by side, one over
+   each pane; and how many lines were added and removed */
+.diff-head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 14px;
+  overflow: hidden;
+  border-bottom: 1px solid var(--line);
+  color: var(--t50);
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+.diff-head-split {
+  padding: 0;
+  gap: 0;
+}
+.diff-head-split > div {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  height: 100%;
+  padding: 0 14px;
+  overflow: hidden;
+}
+.diff-head-split > div + div {
+  border-left: 1px solid var(--line);
+}
+.diff-arrow {
+  color: var(--t30);
+}
+.diff-counts {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+  font-family: var(--font);
+  font-size: 12px;
+}
+.diff-added {
+  color: var(--signal);
+}
+.diff-removed {
+  color: var(--t40);
+}
+
+/* a line across the top, above the lines: why typing does nothing, say */
+.diff-note {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--line);
+  background: var(--raised);
+  color: var(--t80);
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+}
+
+.diff-body {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.diff-pane {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: auto;
+  outline: none;
+}
+.diff-pane + .diff-pane {
+  border-left: 1px solid var(--line);
+}
+/* As wide as the widest line (--chars) beside the numbers, or the pane if that's wider: the rows
+   are placed in it, so it scrolls along the lines. */
+.diff-lines {
+  position: relative;
+  width: max(100%, calc(var(--chars) * 1ch + var(--digits) * 2ch + 8ch + 48px));
+}
+
+.diff-row {
+  --row-bg: transparent;
+  --row-hover: transparent;
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  height: var(--row);
+  line-height: var(--row);
+  white-space: pre;
+  cursor: text;
+  background:
+    linear-gradient(var(--row-hover), var(--row-hover)),
+    linear-gradient(var(--row-bg), var(--row-bg));
+}
+.diff-row:hover {
+  --row-hover: color-mix(in srgb, var(--text) 5%, transparent);
+}
+.diff-row[data-kind='add'] {
+  --row-bg: var(--signal-soft);
+}
+.diff-row[data-kind='del'] {
+  --row-bg: color-mix(in srgb, var(--text) 4%, transparent);
+}
+.diff-row[data-kind='gap'] {
+  --row-bg: color-mix(in srgb, var(--text) 2%, transparent);
+  --row-hover: transparent;
+  cursor: default;
+}
+
+/* the line numbers and the + or −, which stay put as the lines scroll along under them */
+.diff-gutter {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  display: flex;
+  flex: none;
+  padding-right: 6px;
+  color: var(--t20);
+  background:
+    linear-gradient(var(--row-hover), var(--row-hover)),
+    linear-gradient(var(--row-bg), var(--row-bg)), var(--code-bg);
+  user-select: none;
+}
+.diff-no {
+  width: calc(var(--digits) * 1ch + 14px);
+  text-align: right;
+}
+.diff-mark {
+  width: 3ch;
+  text-align: center;
+}
+.diff-row[data-kind='add'] .diff-gutter {
+  color: var(--signal);
+}
+.diff-row[data-kind='del'] .diff-gutter {
+  color: var(--t40);
+}
+
+.diff-code {
+  flex: none;
+  padding-right: 24px;
+}
+.diff-row[data-kind='del'] .diff-code {
+  opacity: 0.55;
+}
+.diff-word-add,
+.diff-word-del {
+  border-radius: 3px;
+}
+.diff-word-add {
+  background: color-mix(in srgb, var(--signal) 32%, transparent);
+}
+.diff-word-del {
+  background: color-mix(in srgb, var(--text) 18%, transparent);
+}
+
+/* Edit here, on the line under the pointer, at the right of what shows of it */
+.diff-edit {
+  position: sticky;
+  right: 8px;
+  display: none;
+  flex: none;
+  align-self: center;
+  align-items: center;
+  gap: 4px;
+  height: calc(var(--row) - 3px);
+  margin-left: auto;
+  padding: 0 7px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--raised);
+  color: var(--t65);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+}
+.diff-row:hover .diff-edit {
+  display: inline-flex;
+}
+
+/* nothing to compare with: in place of the lines inline, or of the server's pane side by side */
+.diff-empty {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 24px;
+  overflow: auto;
+  color: var(--t50);
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  text-align: center;
+}

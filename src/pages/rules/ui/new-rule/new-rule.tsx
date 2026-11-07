@@ -4,7 +4,7 @@
 // cursor in its body. Beside the list it's also what shows with no rule open; in a narrow panel it
 // takes the list's place, with a button back to it.
 import { useEffect, useRef, useState } from 'react';
-import type { Method, Rule, TrafficLog } from '../../../../shared/api/index.ts';
+import type { LogEntry, Method, Rule, TrafficLog } from '../../../../shared/api/index.ts';
 import { PaneScroll } from '../../../../shared/ui/list-detail.tsx';
 import {
   NEW_DRAFT,
@@ -31,7 +31,7 @@ export function NewRule({
   // Put the cursor in the input: New rule was clicked.
   focus: boolean;
   onCreate: (rule: Rule) => void;
-  onMock: (rule: Rule) => void;
+  onMock: (rule: Rule, entry: LogEntry) => void;
   onCancel: () => void;
   onOpenTraffic: () => void;
 }) {

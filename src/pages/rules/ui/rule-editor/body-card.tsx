@@ -1,27 +1,58 @@
 // The body a rule answers with: Replace (your body, without calling the server) or Keep server's
 // body, and for Replace the Content-Type and the body editor. Under the editor, what the check
 // found (a mistake is marked in the editor too, and clicking it here puts the cursor there), the
-// Vim switch and Format. The editor sizes its own text, with Cmd/Ctrl and =, - or 0.
+// Diff and Vim switches, and Format. The editor sizes its own text, with Cmd/Ctrl and =, - or 0.
+//
+// Diff shows, in the editor's place, what your body changes in the server's response (the one the
+// rule was made from, or the editor saw since, or one pasted in): side by side, or inline when
+// asked or when the card is narrower than SIDE_BY_SIDE. It's a view, not an editor: clicking a
+// line, Format, or going to a mistake turns it off and puts you in the body there, and a key that
+// would type says so. The editor stays on the page under it, with its undo history and vim's state.
 //
 // How tall the editor is: beside the settings (a pane 760 px wide or more, `pane-wide:`), as tall
 // as the pane has room for, whatever the body; under them, as tall as the body, but never taller
 // than the pane (100cqh: the rule editor's pane is a size container), so all of it is on screen
-// once you scroll to it. code-editor.css reads both.
-import { useEffect, useRef, useState } from 'react';
-import { BODY_MODES, editRule } from '../../../../shared/api/index.ts';
-import type { BodyMode, Rule } from '../../../../shared/api/index.ts';
+// once you scroll to it. code-editor.css reads both, and code-diff.css the same for Diff.
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import type { RefObject } from 'react';
+import { flushSync } from 'react-dom';
+import {
+  BODY_MODES,
+  editRule,
+  keepServerResponse,
+  pastedResponse,
+  responseStore,
+  serverResponse,
+} from '../../../../shared/api/index.ts';
+import type { BodyMode, Rule, ServerResponse } from '../../../../shared/api/index.ts';
 import { formatJson } from '../../../../shared/lib/index.ts';
+import { useStore } from '../../../../shared/react/index.ts';
 import { cn } from '../../../../shared/ui/cn.ts';
-import { CodeEditor, vimPreferred } from '../../../../shared/ui/code-editor/index.ts';
-import type { CodeEditorHandle } from '../../../../shared/ui/code-editor/index.ts';
+import {
+  CodeDiff,
+  CodeEditor,
+  diffLayoutPreferred,
+  diffPreferred,
+  rememberDiff,
+  rememberDiffLayout,
+  vimPreferred,
+} from '../../../../shared/ui/code-editor/index.ts';
+import type {
+  CodeEditorHandle,
+  DiffLayout,
+} from '../../../../shared/ui/code-editor/index.ts';
 import { Button } from '../../../../shared/ui/kit/button.tsx';
 import { Card } from '../../../../shared/ui/kit/card.tsx';
+import { Icon } from '../../../../shared/ui/kit/icon.tsx';
 import { Input } from '../../../../shared/ui/kit/input.tsx';
 import { Segmented, SegmentedItem } from '../../../../shared/ui/kit/segmented.tsx';
 import { notify } from '../../../../shared/ui/kit/toast.tsx';
 import { Toggle } from '../../../../shared/ui/kit/toggle.tsx';
 import type { CodeStatus } from '../../lib/rule-checks.ts';
 import { Verdict } from './verdict.tsx';
+
+// How wide the card has to be for Diff side by side, two panes of lines.
+const SIDE_BY_SIDE = 480;
 
 export function BodyCard({
   rule,
@@ -42,13 +73,41 @@ export function BodyCard({
   onFocused: () => void;
   className?: string;
 }) {
+  const card = useRef<HTMLElement>(null);
   const code = useRef<CodeEditorHandle | null>(null);
-  // The Vim switch is one setting for every body editor, which the editor remembers (setVim()).
+  // The Vim switch and Diff are each one setting for every body, which they remember.
   const [vim, setVim] = useState(vimPreferred);
+  const [diff, setDiff] = useState(diffPreferred);
+  const [layout, setLayout] = useState(diffLayoutPreferred);
+  // The line Diff opens at: the one the editor was showing.
+  const [fromLine, setFromLine] = useState(0);
+  // A key that would type was pressed in Diff, which says so.
+  const [typed, setTyped] = useState(false);
+  const [pasting, setPasting] = useState(false);
+  const wide = useWide(card, SIDE_BY_SIDE);
+  useStore(responseStore);
+  const server = serverResponse(rule.id);
   const { response } = rule;
   const problem = status?.problem ?? null;
   const bad = status?.tone === 'bad';
   const replaces = response.bodyMode === 'replace';
+  const comparing = replaces && diff;
+
+  function switchDiff(on: boolean) {
+    if (on) {
+      const textarea = code.current?.textarea;
+      const lineHeight = textarea ? parseFloat(getComputedStyle(textarea).lineHeight) : 0;
+      setFromLine(lineHeight ? Math.floor(textarea!.scrollTop / lineHeight) : 0);
+    }
+    setDiff(on);
+    rememberDiff(on);
+    setTyped(false);
+    setPasting(false);
+  }
+  // Out of Diff, back in the editor, before what comes next uses it.
+  function stopComparing() {
+    if (comparing) flushSync(() => switchDiff(false));
+  }
 
   useEffect(() => {
     const textarea = code.current?.textarea;
@@ -62,6 +121,7 @@ export function BodyCard({
   }, [focus, onFocused]);
 
   function format() {
+    stopComparing();
     const editor = code.current;
     if (!editor) return;
     const formatted = formatJson(editor.value);
@@ -81,8 +141,68 @@ export function BodyCard({
     code.current?.textarea.focus({ preventScroll: true });
   }
 
+  function editAt(offset: number) {
+    stopComparing();
+    code.current?.reveal(offset);
+  }
+
+  function pickLayout(next: DiffLayout) {
+    setLayout(next);
+    rememberDiffLayout(next);
+  }
+
+  const note = typed && (
+    <>
+      <Icon name="edit" size={13} className="flex-none text-t50" />
+      <span className="min-w-0 flex-1 truncate">
+        Diff is on, so the body can't be typed in. Click a line to edit it.
+      </span>
+      <button
+        type="button"
+        data-testid="diff-off"
+        onClick={() => {
+          stopComparing();
+          code.current?.textarea.focus({ preventScroll: true });
+        }}
+        className="flex-none font-semibold text-strong hover:underline"
+      >
+        Turn Diff off
+      </button>
+    </>
+  );
+
+  const empty = pasting ? (
+    <PastedResponse
+      onUse={(text) => {
+        keepServerResponse(rule.id, pastedResponse(text));
+        setPasting(false);
+      }}
+      onCancel={() => setPasting(false)}
+    />
+  ) : (
+    <>
+      <Icon name="server" size={20} className="text-t40" />
+      <span className="text-body font-medium text-foreground">
+        No server response yet
+      </span>
+      <span className="max-w-[300px] leading-relaxed">
+        Ghostfetch keeps the server's answer the first time it sees one: turn this rule
+        off in the sidebar and reload the page once.
+      </span>
+      <Button
+        size="sm"
+        data-testid="paste-response"
+        onClick={() => setPasting(true)}
+        className="border-input"
+      >
+        Paste a response
+      </Button>
+    </>
+  );
+
   return (
     <section
+      ref={card}
       data-testid="body-card"
       aria-label="Response body"
       className={cn(
@@ -147,8 +267,27 @@ export function BodyCard({
             }
             // The sizes above reach the editor by name (code-editor.css), not by inheritance,
             // which would carry them into everything in it on each change.
-            className="flex min-h-0 flex-1 flex-col [--code-fill:inherit] [--code-max:inherit]"
+            className={cn(
+              'flex min-h-0 flex-1 flex-col [--code-fill:inherit] [--code-max:inherit]',
+              comparing && 'hidden',
+            )}
           />
+          {comparing && (
+            <div className="flex min-h-0 flex-1 flex-col [--code-fill:inherit] [--code-max:inherit]">
+              <CodeDiff
+                before={server?.body ?? null}
+                after={response.body}
+                layout={wide ? layout : 'inline'}
+                beforeTitle={<ResponseTitle server={server} compact={!wide} />}
+                afterTitle={<span className="flex-none text-strong">Your body</span>}
+                note={note}
+                empty={empty}
+                fromLine={fromLine}
+                onEdit={editAt}
+                onType={() => setTyped(true)}
+              />
+            </div>
+          )}
           <div className="flex min-h-8 items-center gap-1.5">
             <Verdict
               tone={status?.tone}
@@ -160,7 +299,10 @@ export function BodyCard({
                 <button
                   type="button"
                   data-testid="code-problem"
-                  onClick={() => code.current?.reveal(problem.from)}
+                  onClick={() => {
+                    stopComparing();
+                    code.current?.reveal(problem.from);
+                  }}
                   className="min-w-0 truncate text-left decoration-t40 underline-offset-3 hover:underline"
                 >
                   {status?.text}
@@ -169,6 +311,43 @@ export function BodyCard({
                 <span className="min-w-0 truncate">{status?.text}</span>
               )}
             </Verdict>
+            {comparing && wide && (
+              <Segmented
+                aria-label="Diff layout"
+                value={layout}
+                onValueChange={(next) => pickLayout(next as DiffLayout)}
+                className="flex-none"
+              >
+                <SegmentedItem
+                  value="split"
+                  data-testid="diff-split"
+                  aria-label="Side by side"
+                  title="Side by side"
+                  className="flex-none px-2"
+                >
+                  <Icon name="split" size={14} />
+                </SegmentedItem>
+                <SegmentedItem
+                  value="inline"
+                  data-testid="diff-inline"
+                  aria-label="Inline"
+                  title="Inline, one under the other"
+                  className="flex-none px-2"
+                >
+                  <Icon name="stack" size={14} />
+                </SegmentedItem>
+              </Segmented>
+            )}
+            <Toggle
+              size="sm"
+              data-testid="diff-switch"
+              pressed={diff}
+              onPressedChange={switchDiff}
+              title="Compare the body with the server's response"
+              className="border-input"
+            >
+              Diff
+            </Toggle>
             <Toggle
               size="sm"
               data-testid="vim"
@@ -198,4 +377,111 @@ export function BodyCard({
       )}
     </section>
   );
+}
+
+// "Server's response", and when it came and its status: "Nov 6, 16:42 · 200", or when it was
+// pasted. In a narrow card, the time for today's or else the day ("16:42 · 200"), the rest on
+// hover.
+function ResponseTitle({
+  server,
+  compact,
+}: {
+  server: ServerResponse | null;
+  compact: boolean;
+}) {
+  const label = (format: (time: number) => string) =>
+    server &&
+    (server.pasted
+      ? `pasted ${format(server.time)}`
+      : [format(server.time), server.status, server.truncated && 'the first 1 MB']
+          .filter(Boolean)
+          .join(' · '));
+  const full = label((time) => WHEN.format(time));
+  return (
+    <>
+      <span className="flex-none text-t80">Server's response</span>
+      {server && (
+        <span
+          data-testid="diff-from"
+          title={full ?? undefined}
+          className="min-w-0 truncate text-t40"
+        >
+          {compact ? label(shortWhen) : full}
+        </span>
+      )}
+    </>
+  );
+}
+const WHEN = new Intl.DateTimeFormat('en', {
+  month: 'short',
+  day: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+});
+const TIME = new Intl.DateTimeFormat('en', {
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+});
+const DAY = new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric' });
+const shortWhen = (time: number) =>
+  new Date(time).toDateString() === new Date().toDateString()
+    ? TIME.format(time)
+    : DAY.format(time);
+
+// Paste a response: the server's answer copied from anywhere (the browser's network panel, a
+// terminal), to compare the body with.
+function PastedResponse({
+  onUse,
+  onCancel,
+}: {
+  onUse: (text: string) => void;
+  onCancel: () => void;
+}) {
+  const [text, setText] = useState('');
+  // It opens on a click, to paste in.
+  const box = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => box.current?.focus(), []);
+  return (
+    <div className="flex w-full max-w-[420px] flex-col gap-2 text-left">
+      <textarea
+        ref={box}
+        data-testid="paste-response-text"
+        aria-label="The server's response"
+        placeholder="Paste the server's response here"
+        value={text}
+        onChange={(event) => setText(event.target.value)}
+        className="h-40 w-full resize-none rounded-lg border border-input bg-code p-2.5 font-mono text-[11.5px] text-foreground outline-none focus:border-t50"
+      />
+      <div className="flex justify-end gap-1.5">
+        <Button size="sm" variant="ghost" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button
+          size="sm"
+          variant="primary"
+          data-testid="paste-response-use"
+          disabled={!text.trim()}
+          onClick={() => onUse(text)}
+        >
+          Compare
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// Whether an element is at least `width` wide, as it changes: Diff side by side needs the room.
+function useWide(ref: RefObject<HTMLElement | null>, width: number) {
+  const [wide, setWide] = useState(true);
+  useLayoutEffect(() => {
+    const element = ref.current;
+    if (!element) return undefined;
+    const observer = new ResizeObserver(() => setWide(element.clientWidth >= width));
+    observer.observe(element);
+    setWide(element.clientWidth >= width);
+    return () => observer.disconnect();
+  }, [ref, width]);
+  return wide;
 }

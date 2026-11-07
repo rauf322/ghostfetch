@@ -1,7 +1,7 @@
 // The server's response a rule's body is compared with in its Diff: the one the rule was made from
-// (Mock this response, in Traffic or New rule), the newest the editor sees the server give a
-// request the rule matches when no rule answered it (the rule was off, or Ghostfetch), or one
-// pasted in. Kept apart from the rules, in chrome.storage.local: so it never goes to a page with
+// (Mock this response, in Traffic or New rule), or else the newest the editor sees the server give
+// a request the rule matches when no rule answered it (the rule was off, or Ghostfetch). A rule has
+// Diff once it has one. Kept apart from the rules, in chrome.storage.local: so it never goes to a page with
 // the rules, isn't in an exported rules file, and an edit to a rule doesn't write it again. Each
 // under a key of its own, `serverResponse:` and the rule's id: every open editor (a side panel in
 // each window, a tab) keeps responses as it sees them, and one writing them all at once would undo
@@ -16,13 +16,12 @@ import { urlTester } from './url-match.ts';
 export interface ServerResponse {
   // As the rule's body starts out from it: pretty-printed if it's JSON, Format's way.
   body: string;
-  // The status the server gave; null for a pasted response.
+  // The status the server gave; null if what's stored has none.
   status: number | null;
-  // When the server gave it, or it was pasted.
+  // When the server gave it.
   time: number;
   // Over 1 MB, of which the log keeps the first 1 MB.
   truncated: boolean;
-  pasted: boolean;
 }
 
 const PREFIX = 'serverResponse:';
@@ -93,17 +92,6 @@ export function responseFromEntry(entry: LogEntry): ServerResponse {
     status: entry.status,
     time: entry.time,
     truncated: entry.truncated,
-    pasted: false,
-  };
-}
-
-export function pastedResponse(text: string): ServerResponse {
-  return {
-    body: formatJson(text) ?? text,
-    status: null,
-    time: Date.now(),
-    truncated: false,
-    pasted: true,
   };
 }
 
@@ -185,6 +173,5 @@ function normalizeResponse(id: string, raw: unknown): ServerResponse | null {
         : null,
     time: typeof raw.time === 'number' && Number.isFinite(raw.time) ? raw.time : 0,
     truncated: raw.truncated === true,
-    pasted: raw.pasted === true,
   };
 }

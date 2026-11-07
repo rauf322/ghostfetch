@@ -5,7 +5,7 @@
 // editor keeps a rule's server's response from, for its Diff (entryTester), are the ones the page
 // would answer with the rule: the same URLs, methods and GraphQL operations.
 //
-//   node test/matching.mjs      (npm test runs it after test/json.mjs)
+//   node test/matching.mjs      (npm test runs it after test/diff.mjs)
 import { compile, findRule } from '../src/app/interceptor/matching.ts';
 import { testResult } from '../src/pages/rules/lib/rule-checks.ts';
 import { entryTester } from '../src/shared/api/index.ts';

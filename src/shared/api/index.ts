@@ -23,7 +23,6 @@ export {
   fromServer,
   initServerResponses,
   keepServerResponse,
-  pastedResponse,
   responseFromEntry,
   responseStore,
   serverResponse,

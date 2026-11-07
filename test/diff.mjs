@@ -4,6 +4,8 @@
 // as the two have in common (the longest common run of lines, worked out the slow way). Then the
 // body the design shows, bodies too far apart to search, and long ones, in good time. diffWords:
 // what it marks in two lines is exactly what they don't share.
+//
+//   node test/diff.mjs      (npm test runs it after test/json.mjs)
 import { diffLines, diffWords } from '../src/shared/lib/index.ts';
 import { check, expect, finish } from './fixtures.mjs';
 

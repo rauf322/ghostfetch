@@ -218,20 +218,3 @@
 .diff-row:hover .diff-edit {
   display: inline-flex;
 }
-
-/* nothing to compare with: in place of the lines inline, or of the server's pane side by side */
-.diff-empty {
-  display: flex;
-  flex: 1 1 0;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  min-width: 0;
-  padding: 24px;
-  overflow: auto;
-  color: var(--t50);
-  font-family: var(--font-ui);
-  font-size: 12.5px;
-  text-align: center;
-}

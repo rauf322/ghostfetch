@@ -1845,13 +1845,21 @@ try {
       return { rules: all.rules, serverResponses };
     });
   const diffView = app.locator('[data-testid="diff"]');
+  // Diff off: by its switch if it shows (a rule with no response has none, nor one that keeps
+  // the server's body), and remembered off for the next body that opens.
+  const diffOff = async () => {
+    const toggle = app.locator('[data-testid="diff-switch"]');
+    if ((await toggle.count()) && (await toggle.getAttribute('aria-pressed')) === 'true')
+      await toggle.click();
+    await app.evaluate(() => localStorage.setItem('ghostfetch.diff', '0'));
+  };
   // A Diff check leaves Diff off, even one that fails half way, so the next finds the editor.
   const diffCheck = (name, run) =>
     check(name, async () => {
       try {
         await run();
       } finally {
-        if (await diffView.count()) await app.click('[data-testid="diff-switch"]');
+        await diffOff();
       }
     });
   const diffCounts = async () =>
@@ -1891,12 +1899,11 @@ try {
     status: 200,
     time: Date.now(),
     truncated: false,
-    pasted: false,
   });
   // The rules as they were before a check, without the ones it made or their responses; Diff off
   // first, while the rule it shows is still there, so the next check finds it off.
   const restoreRules = async (rules) => {
-    if (await diffView.count()) await app.click('[data-testid="diff-switch"]');
+    await diffOff();
     await worker.evaluate(async (wanted) => {
       const ids = new Set(wanted.map((rule) => rule.id));
       const all = await chrome.storage.local.get(null);
@@ -1982,7 +1989,7 @@ try {
       await app.click('[data-testid="diff-switch"]');
       expect(
         [
-          [kept.status, kept.body === REAL, kept.pasted],
+          [kept.status, kept.body === REAL],
           JSON.stringify(made).includes('Real'),
           [lines.added, lines.removed, lines.lines.length],
           wide,
@@ -1995,7 +2002,7 @@ try {
           await body.isVisible(),
         ],
         [
-          [200, true, false],
+          [200, true],
           false,
           [3, 2, 16],
           { layout: 'split', counts: '+3 −2', rows: 28, editor: false },
@@ -2067,7 +2074,7 @@ try {
     },
   );
   await diffCheck(
-    "Diff: a rule with no server's response gets the next one the page shows it while it's off; a copy keeps it; one can be pasted in; Keep server's body has no Diff",
+    "Diff: a rule with no server's response gets the next one the page shows it while it's off; a copy keeps it; Keep server's body has no Diff switch, nor a rule with no response yet",
     async () => {
       const before = (await inStorage()).rules;
       try {
@@ -2076,7 +2083,7 @@ try {
           [
             ...before,
             draftRule('capture-test', 'Captured', '/api/user?case=capture'),
-            draftRule('paste-test', 'Pasted', '/api/never-called'),
+            draftRule('none-test', 'No response', '/api/never-called'),
           ],
         );
         await call('/api/user?case=capture');
@@ -2095,37 +2102,34 @@ try {
         await app.click('[data-testid="diff-switch"]');
         await diffView.waitFor();
         const from = await app.locator('[data-testid="diff-from"]').innerText();
+        // Keep server's body: no body of yours to compare, so no Diff switch.
+        await app.click('[data-testid="body-original"]');
+        const kept = await app.locator('[data-testid="diff-switch"]').count();
+        await app.click('[data-testid="body-replace"]');
         await app.click('[data-testid="duplicate-rule"]');
         await sleep(400);
         const after = await inStorage();
         const copy = after.rules.find((rule) => rule.name === 'Captured (copy)');
-        // No response: the empty state, then one pasted in.
-        await app.locator('[data-testid="rule"]', { hasText: 'Pasted' }).first().click();
-        await diffView.waitFor();
-        const empty = await diffView.innerText();
-        await app.click('[data-testid="paste-response"]');
-        await app.fill('[data-testid="paste-response-text"]', '{"name": "Theirs"}');
-        await app.click('[data-testid="paste-response-use"]');
-        const pasted = [
-          (await app.locator('[data-testid="diff-from"]').innerText()).startsWith(
-            'pasted ',
-          ),
-          await diffCounts(),
+        // No response yet: no Diff switch and no Diff, though Diff is on; the body in the editor.
+        await app
+          .locator('[data-testid="rule"]', { hasText: 'No response' })
+          .first()
+          .click();
+        await body.waitFor();
+        const none = [
+          await app.locator('[data-testid="diff-switch"]').count(),
+          await diffView.count(),
+          await body.isEditable(),
         ];
-        await app.click('[data-testid="body-original"]');
-        const kept = await app.locator('[data-testid="diff-switch"]').count();
-        await app.click('[data-testid="body-replace"]');
-        await app.click('[data-testid="diff-switch"]');
         expect(
           [
             [captured.status, captured.body === REAL],
             from.endsWith(' · 200'),
-            after.serverResponses[copy.id]?.body === REAL,
-            empty.includes('No server response yet'),
-            pasted,
             kept,
+            after.serverResponses[copy.id]?.body === REAL,
+            none,
           ],
-          [[200, true], true, true, true, [true, '+1 −1'], 0],
+          [[200, true], true, 0, true, [0, 0, true]],
         );
       } finally {
         await restoreRules(before);

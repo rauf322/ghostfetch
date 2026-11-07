@@ -45,8 +45,6 @@ const PATHS = {
   split: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 4v16"/>',
   stack: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 12h18"/>',
   edit: '<path d="M4 20l1.2-4.4L16.5 4.3a2.1 2.1 0 0 1 3 3L8.2 18.6 4 20zM14.5 6.5l3 3"/>',
-  server:
-    '<rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="13" width="18" height="7" rx="2"/><path d="M7 7.5h.01M7 16.5h.01"/>',
 };
 
 export type IconName = keyof typeof PATHS;

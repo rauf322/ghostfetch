@@ -100,14 +100,17 @@ What's different in Firefox-based browsers:
     **Diff**, beside Vim keys, shows in the editor's place what your body changes in the
     server's response: the lines you removed dimmed, with a −, the ones you added tinted
     green, with a +, and in a line you changed, the part that changed. Side by side, or
-    inline, one column as git shows a diff, from the switch beside it; in a side panel, or
-    any body narrower than 480 px, it's inline. The response it compares with is the server's
-    the rule was made from (**Mock this response** on a request no rule answered), or else the
-    first Ghostfetch sees the server give a request the rule matches while no rule answers it
-    (turn the rule off and reload the page once), or one you paste in. It's kept apart from the rule: it never goes to a page,
-    and an exported rules file doesn't have it. Diff can't be typed in: click a line, or
-    press **Enter** for the one at the top, and Diff goes off with the cursor there. Like Vim
-    keys, it's remembered for every body editor.
+    inline, one column as git shows a diff, from the switch beside it; in a body narrower than
+    480 px, as in a side panel you haven't widened, it's inline. The response it compares with
+    is the server's the rule was made from (**Mock this response** on a request no rule
+    answered), or else one the server gives a request the rule matches while no rule answers
+    it: the newest Traffic has, or the next one (turn the rule off and reload the page once).
+    Until a rule has one, it has no Diff switch. The response is kept apart from the rule: it
+    never goes to a page, and an exported rules file doesn't have it. Diff can't be typed in:
+    click a line, or press **Enter** for the one at the top, and Diff goes off with the cursor
+    there. **Format** and a click on a mistake turn it off too, as they work in the editor, and
+    a rule New rule makes opens without it, for typing. With **Keep server's body** there's no
+    body of yours to compare, so no Diff. Like Vim keys, it's remembered for every body editor.
   - **Traffic**: live `fetch`/XHR log of a tab, newest first, grouped by when ("Just now", "A
     few minutes ago", "About 10 minutes ago"). What a rule did is in green ("Mocked by Feature
     flags"). The bar along the top picks the page to watch and has **Recording**, **Keep on

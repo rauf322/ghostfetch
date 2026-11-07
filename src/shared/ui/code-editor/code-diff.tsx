@@ -66,15 +66,13 @@ interface RowView {
 }
 
 interface CodeDiffProps {
-  // Null when there's nothing to compare with: `empty` shows in its place.
-  before: string | null;
+  before: string;
   after: string;
   layout: DiffLayout;
   beforeTitle: ReactNode;
   afterTitle: ReactNode;
   // A line across the top, above the lines.
   note?: ReactNode;
-  empty?: ReactNode;
   // The line of `after` to show first: the one the body editor was showing.
   fromLine?: number;
   onEdit: (offset: number) => void;
@@ -89,7 +87,6 @@ export function CodeDiff({
   beforeTitle,
   afterTitle,
   note,
-  empty,
   fromLine = 0,
   onEdit,
   onType,
@@ -100,23 +97,14 @@ export function CodeDiff({
   // Each text with its line ends as the body editor has them (asTextarea): a body or a response
   // with Windows line ends compares line for line with what's typed, and a click's place in
   // `after` is its place in the editor.
-  const before = useMemo(
-    () => (givenBefore === null ? null : asTextarea(givenBefore)),
-    [givenBefore],
-  );
+  const before = useMemo(() => asTextarea(givenBefore), [givenBefore]);
   const after = useMemo(() => asTextarea(givenAfter), [givenAfter]);
-  const diff = useMemo(
-    () => (before === null ? null : diffLines(before, after)),
-    [before, after],
-  );
-  const afterLines = useMemo(() => diff?.after ?? after.split('\n'), [diff, after]);
+  const diff = useMemo(() => diffLines(before, after), [before, after]);
+  const afterLines = diff.after;
   const marks = useMemo(() => wordMarks(diff), [diff]);
   const split = layout === 'split';
-  const pairs = useMemo(
-    () => (split ? pairUp(diff, afterLines) : []),
-    [split, diff, afterLines],
-  );
-  const count = split ? pairs.length : (diff?.lines.length ?? 0);
+  const pairs = useMemo(() => (split ? pairUp(diff) : []), [split, diff]);
+  const count = split ? pairs.length : diff.lines.length;
   // Where each line of `after` starts in it; and for each row, the line of `after` it is or comes
   // before, where a click on it puts the cursor (past the last line: the end).
   const starts = useMemo(() => {
@@ -132,7 +120,7 @@ export function CodeDiff({
     const out = new Int32Array(count + 1);
     out[count] = afterLines.length;
     for (let row = count - 1; row >= 0; row--) {
-      const line = split ? pairs[row]!.right.line : diff!.lines[row]!.after;
+      const line = split ? pairs[row]!.right.line : diff.lines[row]!.after;
       out[row] = line >= 0 ? line : out[row + 1]!;
     }
     return out;
@@ -141,13 +129,13 @@ export function CodeDiff({
   const widths = useMemo(() => {
     const widest = (lines: string[]) =>
       lines.reduce((max, line) => Math.max(max, line.length), 0);
-    const left = diff ? widest(diff.before) : 0;
+    const left = widest(diff.before);
     const right = widest(afterLines);
     return {
       left,
       right,
       inline: Math.max(left, right),
-      digits: String(Math.max(afterLines.length, diff?.before.length ?? 0)).length,
+      digits: String(Math.max(afterLines.length, diff.before.length)).length,
     };
   }, [diff, afterLines]);
 
@@ -290,27 +278,23 @@ export function CodeDiff({
 
   let body: ReactNode;
   if (!split) {
-    body = diff ? (
-      pane(
-        0,
-        'Diff of the body against the server response',
-        'diff-pane',
-        widths.inline,
-        visible.map((index) => {
-          const line = diff.lines[index]!;
-          const removed = line.kind === 'del';
-          return {
-            row: index,
-            kind: line.kind,
-            text: removed ? diff.before[line.before]! : afterLines[line.after]!,
-            marks: marks(line.kind, removed ? line.before : line.after),
-            numbers: [number(line.before), number(line.after)],
-            inBody: !removed,
-          };
-        }),
-      )
-    ) : (
-      <div className="diff-empty">{empty}</div>
+    body = pane(
+      0,
+      'Diff of the body against the server response',
+      'diff-pane',
+      widths.inline,
+      visible.map((index) => {
+        const line = diff.lines[index]!;
+        const removed = line.kind === 'del';
+        return {
+          row: index,
+          kind: line.kind,
+          text: removed ? diff.before[line.before]! : afterLines[line.after]!,
+          marks: marks(line.kind, removed ? line.before : line.after),
+          numbers: [number(line.before), number(line.after)],
+          inBody: !removed,
+        };
+      }),
     );
   } else {
     const cells = (side: 'left' | 'right', texts: string[]) =>
@@ -327,16 +311,12 @@ export function CodeDiff({
       });
     body = (
       <>
-        {diff ? (
-          pane(
-            0,
-            "Server's response",
-            'diff-pane-before',
-            widths.left,
-            cells('left', diff.before),
-          )
-        ) : (
-          <div className="diff-pane diff-empty">{empty}</div>
+        {pane(
+          0,
+          "Server's response",
+          'diff-pane-before',
+          widths.left,
+          cells('left', diff.before),
         )}
         {pane(
           1,
@@ -349,19 +329,15 @@ export function CodeDiff({
     );
   }
 
-  const counts = diff && (
+  const counts = (
     <span data-testid="diff-counts" className="diff-counts">
       <span className="diff-added">+{diff.added}</span>
       <span className="diff-removed">−{diff.removed}</span>
     </span>
   );
-  // As tall as the lines (or as an empty pane needs), within the room the page gives the body
-  // (--code-max), as the body editor is (code-diff.css).
-  const fit =
-    HEAD +
-    (note ? NOTE : 0) +
-    Math.max(count * rowHeight + 2 * PADDING, diff ? 0 : 300) +
-    2;
+  // As tall as the lines, within the room the page gives the body (--code-max), as the body
+  // editor is (code-diff.css).
+  const fit = HEAD + (note ? NOTE : 0) + count * rowHeight + 2 * PADDING + 2;
   return (
     <div
       data-testid="diff"
@@ -502,30 +478,28 @@ function Code({
 // For a changed line, the parts of it that changed: worked out against the line it was changed
 // into (or from), the first removed line of a change paired with its first added line, and so on,
 // once a row with it is drawn, then kept.
-function wordMarks(diff: TextDiff | null) {
+function wordMarks(diff: TextDiff) {
   const intoAfter = new Map<number, number>();
   const fromBefore = new Map<number, number>();
-  if (diff) {
-    let removed: number[] = [];
-    let added: number[] = [];
-    const pair = () => {
-      for (let index = 0; index < Math.min(removed.length, added.length); index++) {
-        intoAfter.set(removed[index]!, added[index]!);
-        fromBefore.set(added[index]!, removed[index]!);
-      }
-      removed = [];
-      added = [];
-    };
-    for (const line of diff.lines) {
-      if (line.kind === 'del') removed.push(line.before);
-      else if (line.kind === 'add') added.push(line.after);
-      else pair();
+  let removed: number[] = [];
+  let added: number[] = [];
+  const pair = () => {
+    for (let index = 0; index < Math.min(removed.length, added.length); index++) {
+      intoAfter.set(removed[index]!, added[index]!);
+      fromBefore.set(added[index]!, removed[index]!);
     }
-    pair();
+    removed = [];
+    added = [];
+  };
+  for (const line of diff.lines) {
+    if (line.kind === 'del') removed.push(line.before);
+    else if (line.kind === 'add') added.push(line.after);
+    else pair();
   }
+  pair();
   const found = new Map<string, ReturnType<typeof diffWords>>();
   return (kind: DiffKind, line: number): Span[] | null => {
-    if (!diff || kind === 'same') return null;
+    if (kind === 'same') return null;
     const beforeLine = kind === 'del' ? line : fromBefore.get(line);
     const afterLine = kind === 'add' ? line : intoAfter.get(line);
     if (beforeLine === undefined || afterLine === undefined) return null;
@@ -538,11 +512,8 @@ function wordMarks(diff: TextDiff | null) {
 }
 
 // Side by side: a row for each line kept, and for each change as many as its longer side, its
-// removed lines down the left and its added ones down the right, gaps under the shorter. With
-// nothing to compare with, the body down the right.
-function pairUp(diff: TextDiff | null, afterLines: string[]): Pair[] {
-  if (!diff)
-    return afterLines.map((_, line) => ({ left: GAP, right: { kind: 'same', line } }));
+// removed lines down the left and its added ones down the right, gaps under the shorter.
+function pairUp(diff: TextDiff): Pair[] {
   const out: Pair[] = [];
   let removed: number[] = [];
   let added: number[] = [];

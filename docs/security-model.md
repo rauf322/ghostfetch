@@ -40,7 +40,7 @@ see the [README](../README.md).
 - **Mind what you mock.** "Mock this response" copies a real response into a rule. Rules are
   stored unencrypted in your browser profile and included in exports, so strip tokens and
   personal data from bodies you keep or share. The response itself is kept too, for the body's
-  Diff (as is the one a rule sees the server give while it's off, or one you paste in):
+  Diff (as is the one a rule sees the server give while it's off):
   unencrypted in the same profile, but apart from the rules, so it never goes to a page and
   isn't in an export.
 - `host_permissions` stays `<all_urls>`: a site you add needs host access for its content

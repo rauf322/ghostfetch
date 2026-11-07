@@ -89,8 +89,9 @@ What's different in Firefox-based browsers:
     it was on, and that line where it was in the view; a selection, and vim's Visual mode,
     stay on what they held. ⌘Z (or vim's `u`) right after it puts the body back with the
     cursor and the scroll where they were before, and redo where they were after. Format on a
-    body of more than 300 lines can't be undone: the browser would take minutes to make it
-    undoable, so ⌘Z then leaves the body as it is. Back at a rule you left (another rule
+    body of more than 300 lines can't be undone (the browser would take minutes to make it
+    undoable): ⌘Z then undoes what you've changed since, back to the formatted body, and
+    stops there. Back at a rule you left (another rule
     picked, the back button in a side panel), its body is where you left it: the cursor or
     the selection (with vim keys, the cursor, in Normal mode), and the scroll. In a side
     panel, so is the pane. While the body editor isn't focused, the cursor stays marked,

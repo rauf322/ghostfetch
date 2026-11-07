@@ -649,7 +649,7 @@ try {
     },
   );
   await check(
-    "vim: u right after Format puts the cursor back where it was before it and Ctrl+R where it was after it, Visual mode carries on through Format, and after a Format too long to undo, u says there's nothing to undo",
+    "vim: u right after Format puts the cursor back where it was before it and Ctrl+R where it was after it, Visual mode carries on through Format, and after a Format too long to undo, u says there's nothing to undo, but undoes the changes made since, back to the formatted body (x, then P, which puts it back as it was)",
     async () => {
       const strip = (text) => text.replace(/[ \n\t\r]/g, '');
       const put = (text) =>
@@ -702,6 +702,16 @@ try {
       const long = (await state()).text;
       await typeVim('u');
       const refused = await state();
+      await typeVim('/item 40<CR>x');
+      const deleted = (await state()).text;
+      await typeVim('P');
+      const back = [(await state()).text];
+      for (let step = 0; step < 3; step++) {
+        await typeVim('u');
+        back.push((await state()).text);
+      }
+      const named = (text) =>
+        text === long ? 'formatted' : text === deleted ? 'x' : `${text.length} chars`;
       expect(
         [
           undone.text === fewer,
@@ -713,6 +723,8 @@ try {
           strip(carried.selected) === strip(visual.selected),
           refused.text === long,
           refused.message,
+          back.map(named),
+          (await state()).message,
         ],
         [
           true,
@@ -723,6 +735,8 @@ try {
           'Visual',
           true,
           true,
+          'Already at oldest change',
+          ['formatted', 'x', 'formatted', 'formatted'],
           'Already at oldest change',
         ],
       );

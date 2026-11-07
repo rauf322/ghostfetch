@@ -666,6 +666,7 @@ export function createCodeEditor({
   root.addEventListener(
     'input',
     (event) => {
+      countStep(event as InputEvent);
       if (commanding) event.stopImmediatePropagation();
     },
     { capture: true },
@@ -674,18 +675,34 @@ export function createCodeEditor({
     !(name === 'insertText' && text && longerThan(text, MAX_COMMAND_LINES));
 
   // The text the last edit put in directly left (a body of more lines than MAX_COMMAND_LINES,
-  // formatted), and whether anything has been typed since. Chrome keeps the steps from before it
-  // in its history all the same, and undoing one of those in text that's no longer theirs, then
-  // redoing it, mixes the two: a body pasted over another and formatted, then ⌘Z and ⇧⌘Z, left
-  // invalid JSON, saved. So while the text is that, the browser's undo goes no further back, and
-  // nor does its redo, until something's been typed since, whose steps are its own. (Firefox has
-  // forgotten those steps by then.) ⌘Z, ⇧⌘Z and the menu's Undo and Redo come in as a beforeinput
-  // that can be cancelled, and vim's u and Ctrl+R through command().
-  let direct: { text: string; typed: boolean } | null = null;
+  // formatted), and how many of the browser's own steps there are on top of it, at least. Chrome
+  // keeps the steps from before it in its history all the same (Firefox forgets them), and undoing
+  // one of those in text that's no longer theirs puts their text back into it: a body pasted over
+  // another and formatted, then ⌘Z, left invalid JSON, saved. So the browser's undo stops where
+  // none of its own steps are left: when it counts none (`steps`) and the text is that text again
+  // (a change and then its opposite bring it back with steps still on top, which the count, being
+  // the least there can be, may not know of). Its redo stops until something's been changed since
+  // (`typed`), as the browser then forgets what it could redo. ⌘Z, ⇧⌘Z and the menu's Undo and
+  // Redo come in as a beforeinput that can be cancelled, in this text area even when you're in
+  // another field, and vim's u and Ctrl+R through command().
+  let direct: { text: string; steps: number; typed: boolean } | null = null;
   const stale = (name: string) =>
     direct !== null &&
-    (name === 'undo' || (name === 'redo' && !direct.typed)) &&
-    textarea.value === direct.text;
+    (name === 'undo'
+      ? direct.steps === 0 && textarea.value === direct.text
+      : name === 'redo' && !direct.typed);
+  // Counts the steps from the inputs the browser fires in this text area (trusted ones: command()
+  // fires one of its own after the browser's). An edit makes a step or joins the last one (letters
+  // typed in a row), so there's at least one after it; an undo takes one off, a redo puts one back.
+  function countStep({ isTrusted, inputType }: InputEvent) {
+    if (!direct || !isTrusted) return;
+    if (inputType === 'historyUndo') direct.steps = Math.max(0, direct.steps - 1);
+    else if (inputType === 'historyRedo') direct.steps++;
+    else {
+      direct.steps = Math.max(direct.steps, 1);
+      direct.typed = true;
+    }
+  }
   root.addEventListener(
     'beforeinput',
     (event) => {
@@ -723,7 +740,7 @@ export function createCodeEditor({
           data: text ?? null,
         }),
       );
-    if (directly) direct = { text: textarea.value, typed: false };
+    if (directly) direct = { text: textarea.value, steps: 0, typed: false };
     return done;
   }
 
@@ -746,10 +763,8 @@ export function createCodeEditor({
     (event) => {
       const { inputType } = event as InputEvent;
       if (!inputType?.startsWith('history')) {
-        // Something typed (or pasted, or vim's): Format is no longer the last edit, and what
-        // was put in directly has steps of the browser's own on top of it.
+        // Something typed (or pasted, or vim's): Format is no longer the last edit.
         formatted = null;
-        if (direct) direct.typed = true;
         return;
       }
       if (!formatted) return;

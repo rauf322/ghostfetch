@@ -831,6 +831,61 @@ try {
     },
   );
   await check(
+    "after a Format too long to undo: ⌘Z in the rule's name doesn't reach into the body, ⌘Z in the body undoes what was changed since, back to the formatted body (even once a change has put it back as it was) and no further, ⇧⌘Z redoes it, and what's saved is what you see",
+    async () => {
+      const editor = app.locator('.code textarea');
+      const name = app.locator('[data-testid="rule-name"]');
+      const before = await editor.inputValue();
+      // A whole body pasted over it, a step of Chrome's history, which is the page's: under the
+      // formatted body, it's the next thing ⌘Z would undo, in the body or in another field.
+      await editor.evaluate((textarea, text) => {
+        textarea.focus();
+        textarea.select();
+        document.execCommand('insertText', false, text);
+      }, ITEMS);
+      await app.click('[data-testid="format"]');
+      const long = await editor.inputValue();
+      await name.click();
+      await app.keyboard.press('ControlOrMeta+z');
+      const fromName = [await editor.inputValue(), await name.inputValue()];
+      // x typed in "item 40", then deleted as a step of its own (the caret moved off and back).
+      await editor.evaluate((textarea) => {
+        const at = textarea.value.indexOf('"item 40"') + 5;
+        textarea.focus();
+        textarea.setSelectionRange(at, at);
+      });
+      await app.keyboard.type('x');
+      const typed = await editor.inputValue();
+      await app.keyboard.press('ArrowRight');
+      await app.keyboard.press('ArrowLeft');
+      await app.keyboard.press('Backspace');
+      const states = [await editor.inputValue()];
+      for (const keys of ['z', 'z', 'z', 'Shift+z']) {
+        await app.keyboard.press(`ControlOrMeta+${keys}`);
+        states.push(await editor.inputValue());
+      }
+      await sleep(400);
+      const { rules } = await worker.evaluate(() => chrome.storage.local.get('rules'));
+      const saved = rules.find((r) => r.match.url === 'case=ui').response.body;
+      await editor.fill(before);
+      const named = (text) =>
+        text === long ? 'formatted' : text === typed ? 'x typed' : `${text.length} chars`;
+      expect(
+        [named(fromName[0]), fromName[1], ...states.map(named), named(saved)],
+        [
+          'formatted',
+          'Made in the UI',
+          'formatted',
+          'x typed',
+          'formatted',
+          'formatted',
+          'x typed',
+          'x typed',
+        ],
+      );
+    },
+  );
+  await check(
     "while the body isn't focused, its cursor is marked where it is (back at a rule, where it was left), as vim's block is outlined, and the mark goes while it's focused",
     async () => {
       const editor = app.locator('.code textarea');
@@ -1639,6 +1694,32 @@ try {
           refused.message,
         ],
         [true, was.cursor, true, formatted.cursor, true, 'Already at oldest change'],
+      );
+    },
+  );
+  await check(
+    'vim: after a Format too long to undo, u undoes the changes since, back to the formatted body (x, then P, which puts it back as it was) and no further',
+    async () => {
+      const before = await body.inputValue();
+      await setBody(ITEMS);
+      await app.click('[data-testid="format"]');
+      const long = await body.inputValue();
+      await body.focus();
+      await typeVim('/item 40<CR>x');
+      const deleted = await body.inputValue();
+      await typeVim('P');
+      const states = [await body.inputValue()];
+      for (let step = 0; step < 3; step++) {
+        await typeVim('u');
+        states.push(await body.inputValue());
+      }
+      const { message } = await vimState();
+      await setBody(before);
+      const named = (text) =>
+        text === long ? 'formatted' : text === deleted ? 'x' : `${text.length} chars`;
+      expect(
+        [...states.map(named), message],
+        ['formatted', 'x', 'formatted', 'formatted', 'Already at oldest change'],
       );
     },
   );

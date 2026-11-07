@@ -231,7 +231,9 @@ place, Format on a body written as PHP writes JSON (its escaped slashes and `.0`
 the cursor on its character and its line in place, a selection kept, with the cursor out of
 view the middle of the view kept; with vim keys, the cursor and a Visual selection too), undo
 and redo right after Format (back to the cursor and scroll before it and after it, with ⌘Z
-and with vim's `u` and Ctrl+R) and after a Format too long to undo (the body left alone), the
+and with vim's `u` and Ctrl+R) and after a Format too long to undo (⌘Z and vim's `u`, in the
+body and from the rule's name, undoing the changes made since, even ones that put the body back
+as it was, and stopping at the formatted body, which is what's saved), the
 cursor marked while the body isn't focused, a rule's body where it was when you come back to it
 (beside the settings, in a side panel with its pane, and after a change made in another view),
 Format and colours on a body of 370,000 characters, its own find and its vim keys, whose yanks
@@ -277,7 +279,8 @@ same keys. There it also sizes the text with Ctrl+= and Ctrl+−, and checks tha
 stays where it is in the view, as Firefox scrolls a text area its own way, as it does through
 Format, that a new editor goes back to another's place, that `u` and Ctrl+R right after Format
 go back to the cursor before it and after it, that Visual mode carries on through Format, that
-`u` after a Format too long to undo leaves the body alone, and that a yank reaches the
+`u` after a Format too long to undo undoes the changes made since (`x`, then `P`, which puts
+the body back as it was) and stops at the formatted body, and that a yank reaches the
 clipboard, which Firefox only lets a page write during a key press or a click.
 Both tests paste from the clipboard of the headless browser, which is its own, so running them
 leaves yours alone (with `HEADED=1` they use the real one).

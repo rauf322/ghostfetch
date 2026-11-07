@@ -55,7 +55,8 @@
   /* a switch that's off: its track and its knob */
   --track: #3a3a3f;
   --knob: #a1a1a6;
-  /* selected text */
+  /* selected text; always see-through, as the body editor's selection lies over the coloured
+     text (code-editor.css): an opaque one would hide what's selected */
   --selection: rgba(255, 255, 255, 0.2);
   --shadow: 0 16px 48px rgba(0, 0, 0, 0.55);
   --font-ui: 'Geist', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;

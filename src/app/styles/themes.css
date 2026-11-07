@@ -171,7 +171,9 @@
   --signal-soft: rgba(127, 165, 99, 0.14);
   --track: #333738;
   --knob: #878787;
-  --selection: #333738;
+  /* its selection colour, #333738, see-through: over the page and the body editor (#141415) it's
+     the same colour, and the editor's text stays readable under it (theme.css) */
+  --selection: rgba(175, 195, 196, 0.2);
   --shadow: 0 16px 48px rgba(0, 0, 0, 0.55);
   --tk-key: #c3c3d5;
   --tk-str: #e8b589;

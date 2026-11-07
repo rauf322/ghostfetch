@@ -1805,6 +1805,47 @@ try {
       ]);
     },
   );
+  await check(
+    "every theme's selection colour is see-through: the body editor's selection lies over its coloured text",
+    async () => {
+      // Each theme the stylesheets have, and how opaque its selection colour is, read through a
+      // probe's background (a custom property's own value isn't resolved).
+      const alphas = await app.evaluate(() => {
+        const rules = (list) =>
+          [...list].flatMap((rule) => [
+            rule,
+            ...(rule.cssRules ? rules(rule.cssRules) : []),
+          ]);
+        const themes = new Set(
+          [...document.styleSheets]
+            .flatMap((sheet) => rules(sheet.cssRules))
+            .flatMap((rule) => [
+              ...(rule.selectorText ?? '').matchAll(/\[data-theme=['"]?([\w-]+)['"]?\]/g),
+            ])
+            .map((match) => match[1]),
+        );
+        const probe = document.createElement('div');
+        probe.style.backgroundColor = 'var(--selection)';
+        document.body.append(probe);
+        const alpha = {};
+        for (const theme of themes) {
+          probe.dataset.theme = theme;
+          const channels = getComputedStyle(probe).backgroundColor.match(/[\d.]+/g);
+          alpha[theme] = Number(channels[3] ?? 1);
+        }
+        probe.remove();
+        return alpha;
+      });
+      expect(
+        [
+          Object.keys(alphas).includes('vague'),
+          Object.keys(alphas).filter((theme) => alphas[theme] >= 1),
+        ],
+        [true, []],
+        JSON.stringify(alphas),
+      );
+    },
+  );
   if (SHOTS) await popup.screenshot({ path: `${SHOTS}/popup.png` });
 
   console.log('security');

@@ -82,11 +82,19 @@ What's different in Firefox-based browsers:
     around the cursor's line, which stays where it is in the view (or with the cursor out of
     view, around the middle of the view). **Vim keys** under it turns on
     [vim keys](#vim-keys). The text size and the Vim switch are remembered for every body
-    editor. **Format** keeps the cursor on the character it was on, and that line where it
-    was in the view. Back at a rule you left (another rule picked, the back button in a side
-    panel), its body is where you left it: the cursor or the selection, and the scroll. In a
-    side panel, so is the pane. Format on a body of more than 300 lines can't be undone with
-    ⌘Z: the browser would take minutes to make it undoable.
+    editor. **Format** lays the body out two spaces an indent and changes nothing but the
+    spaces and line breaks: every value stays as you wrote it (`\/` and `\u00e9`, `1.0`, an
+    ID too long for JavaScript's numbers, a key given twice, the order of keys), as it does
+    for a response in Traffic and a rule made from one. It keeps the cursor on the character
+    it was on, and that line where it was in the view; a selection, and vim's Visual mode,
+    stay on what they held. ⌘Z (or vim's `u`) right after it puts the body back with the
+    cursor and the scroll where they were before, and redo where they were after. Format on a
+    body of more than 300 lines can't be undone: the browser would take minutes to make it
+    undoable, so ⌘Z then leaves the body as it is. Back at a rule you left (another rule
+    picked, the back button in a side panel), its body is where you left it: the cursor or
+    the selection (with vim keys, the cursor, in Normal mode), and the scroll. In a side
+    panel, so is the pane. While the body editor isn't focused, the cursor stays marked,
+    outlined in grey, as vim's block is, so you can see where you'll carry on.
   - **Traffic**: live `fetch`/XHR log of a tab, newest first, grouped by when ("Just now", "A
     few minutes ago", "About 10 minutes ago"). What a rule did is in green ("Mocked by Feature
     flags"). The bar along the top picks the page to watch and has **Recording**, **Keep on

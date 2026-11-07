@@ -1347,14 +1347,25 @@ export function createVim({
     finish();
   }
 
+  // An edit coming that keeps every character and moves only the blanks between them (Format):
+  // instead of starting again in Normal mode, vim carries on in its mode, the cursor and a Visual
+  // selection's other end moved with the text by `move`.
+  let carrying: ((offset: number) => number) | null = null;
+  function carry(move: (offset: number) => number) {
+    carrying = move;
+  }
+
   // The text changed without vim: a paste, cut, drop or ⌘Z carries on in Normal mode at the
-  // start of the change. In Insert mode it only updates the status line.
+  // start of the change, an edit vim was told to carry() through in the mode it was in. In Insert
+  // mode it only updates the status line.
   function changed(event: Event) {
     if (walking) {
       // Mid-walk through the history: the editor redraws once, after the last step.
       event.stopImmediatePropagation();
       return;
     }
+    const move = carrying;
+    carrying = null;
     if (ongoing) ongoing.inputs += 1;
     if (!active || editing) return;
     if (mode === 'insert') {
@@ -1364,8 +1375,13 @@ export function createVim({
     }
     forgetSteps();
     keys = [];
-    setMode('normal');
-    head = textarea.selectionStart;
+    if (move) {
+      head = move(head);
+      anchor = move(anchor);
+    } else {
+      setMode('normal');
+      head = textarea.selectionStart;
+    }
     want = column(text(), clamp(text(), head));
     finish();
   }
@@ -1461,8 +1477,13 @@ export function createVim({
     get mode() {
       return mode;
     },
+    // The cursor: where the block is, on a character.
+    get head() {
+      return head;
+    },
     setActive,
     keydown,
     searched,
+    carry,
   };
 }

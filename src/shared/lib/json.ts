@@ -1,12 +1,73 @@
 // JSON text: pretty-printed, or the first mistake in it, where it is and what's wrong.
 
-// Pretty-prints JSON text; returns null if it isn't valid JSON.
+// JSON's blanks, which are all that may stand between its tokens.
+const isBlank = (char: string | undefined) =>
+  char === ' ' || char === '\n' || char === '\t' || char === '\r';
+
+// Whether the character at `at` is escaped: an odd number of backslashes before it.
+function escaped(text: string, at: number) {
+  let backslashes = 0;
+  while (text[at - 1 - backslashes] === '\\') backslashes++;
+  return backslashes % 2 === 1;
+}
+
+// Pretty-prints JSON text, two spaces an indent, laid out as JSON.stringify(value, null, 2) lays
+// it out, but by changing only the blanks between the tokens: each token stays as it's written,
+// where JSON.parse and JSON.stringify would write it their own way ("\/" and "\u00e9" as / and é,
+// 1.0 as 1, a number too long for a double rounded, a key given twice only once, keys like "10"
+// and "2" moved to the front). So Format, a mock made from a response and a response shown in
+// Traffic never change what a body says, and a place in a body can be found again after it's
+// formatted (the body editor's keepOffset()). Returns null if it isn't valid JSON.
 export function formatJson(text: string) {
   try {
-    return JSON.stringify(JSON.parse(text), null, 2);
+    JSON.parse(text);
   } catch {
     return null;
   }
+  const parts: string[] = [];
+  // A line break and the indent for each depth, made once.
+  const breaks: string[] = [];
+  const indent = (depth: number) => (breaks[depth] ??= `\n${'  '.repeat(depth)}`);
+  let depth = 0;
+  for (let at = 0; at < text.length;) {
+    const char = text[at]!;
+    if (isBlank(char)) {
+      at++;
+    } else if (char === '"') {
+      let end = text.indexOf('"', at + 1);
+      while (escaped(text, end)) end = text.indexOf('"', end + 1);
+      parts.push(text.slice(at, end + 1));
+      at = end + 1;
+    } else if (char === '{' || char === '[') {
+      let next = at + 1;
+      while (isBlank(text[next])) next++;
+      // An empty one stays on its line, as {} or [].
+      if (text[next] === '}' || text[next] === ']') {
+        parts.push(char, text[next]!);
+        at = next + 1;
+      } else {
+        parts.push(char, indent(++depth));
+        at++;
+      }
+    } else if (char === '}' || char === ']') {
+      parts.push(indent(--depth), char);
+      at++;
+    } else if (char === ',') {
+      parts.push(',', indent(depth));
+      at++;
+    } else if (char === ':') {
+      parts.push(': ');
+      at++;
+    } else {
+      // A number, true, false or null: up to the blank or the punctuation after it.
+      let end = at + 1;
+      while (end < text.length && !isBlank(text[end]) && !',:]}'.includes(text[end]!))
+        end++;
+      parts.push(text.slice(at, end));
+      at = end;
+    }
+  }
+  return parts.join('');
 }
 
 // The first mistake in some JSON text: the characters to mark (from, up to but not including

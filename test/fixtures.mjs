@@ -184,8 +184,10 @@ export async function startServer() {
         res.end(`<!doctype html><title>editor</title><link rel="stylesheet" href="/src/app/styles/theme.css"><link rel="stylesheet" href="/src/shared/ui/code-editor/code-editor.css"><div style="width:640px"></div>
           <script type="module">
             import { createCodeEditor } from '/src/shared/ui/code-editor/engine/code-editor.ts';
+            import { formatJson } from '/src/shared/lib/json.ts';
             localStorage.setItem('ghostfetch.vim', '1');
             window.createCodeEditor = createCodeEditor;
+            window.formatJson = formatJson;
             window.editor = createCodeEditor({ value: ${JSON.stringify(VIM_START)} });
             document.querySelector('div').append(window.editor.root);
             window.editor.textarea.focus();
@@ -419,6 +421,17 @@ export const VIM_STEPS = [
 
 // Splits a step such as 'ci"x<Esc>' into keys: single characters, or <Esc>, <CR>, <C-r>...
 export const vimKeys = (keys) => keys.match(/<(?:Esc|CR|BS|Del|C-[a-z])>|[\s\S]/g);
+
+// A body of `count` items, each on a line of its own and compact inside, which Format spreads
+// over six lines each, written as PHP writes JSON: slashes escaped, and prices with a .0, which
+// Format keeps as they are. Format puts 80 items in directly (more than 300 lines once formatted,
+// which the browser can't undo), and 40 as an edit the browser can.
+export const itemsBody = (count) =>
+  `{"items": [\n${Array.from(
+    { length: count },
+    (_, id) =>
+      `  {"id": ${id}, "name": "item ${id}", "url": "https:\\/\\/api.example.com\\/items\\/${id}", "price": ${id}.0}`,
+  ).join(',\n')}\n]}`;
 
 // ------------------------------------------------------------ harness
 

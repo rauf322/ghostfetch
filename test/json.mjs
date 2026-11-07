@@ -3,7 +3,8 @@
 // picked by hand and for thousands of valid bodies broken at random, and says where each mistake
 // is and what it is. The pieces chunks() cuts a long body into, which the editor colours one
 // by one, and cuts again only where an edit changed it (rechunk()): they make up the body and
-// colour exactly as the whole of it does. And where Format puts the cursor (keepOffset()): on the
+// colour exactly as the whole of it does. Format (formatJson()): laid out as JSON.stringify lays
+// a body out, changing only its blanks. And where Format puts the cursor (keepOffset()): on the
 // character it was on.
 //
 //   node test/json.mjs      (npm test runs it first)
@@ -223,6 +224,60 @@ function generator(seed) {
   return { int, value, mutate };
 }
 
+// Bodies written by hand: blanks of their own around the tokens, and tokens spelled as
+// JSON.stringify wouldn't spell them (escapes, 1.0, a number too long for a double, a key given
+// twice, keys like "10" that JSON.parse puts first), which Format has to keep as they are.
+function handWriter(random) {
+  const pick = (list) => list[random.int(list.length)];
+  const blanks = () => pick(['', '', ' ', '  ', '\n', '\n    ', '\t', ' \n', '\r\n']);
+  const NUMBERS = ['0', '-0', '42', '1.0', '1.50', '2.5E-7', '1e5', '1E+2', '-0.000'];
+  const LONG = ['12345678901234567890', '0.1000000000000000055511151231257827'];
+  const STRINGS = [
+    '""',
+    '"Ada"',
+    '"y z"',
+    '"https:\\/\\/a.example\\/b"',
+    '"\\u00e9t\\u00e9"',
+    '"\\ud83d\\ude00"',
+    '"say \\"hi\\""',
+    '"back\\\\slash"',
+    '"\\b\\f\\n\\r\\t"',
+    '"é"',
+    '"{\\"not\\": \\"nested\\"}"',
+  ];
+  const KEYS = ['"id"', '"10"', '"2"', '"a b"', '""', '"\\u0069d"', '"é"'];
+  const list = (open, close, items) =>
+    `${open}${blanks()}${items.join(`${blanks()},${blanks()}`)}${blanks()}${close}`;
+  const value = (depth) => {
+    const kind = depth > 3 ? random.int(3) : random.int(5);
+    if (kind === 0) return pick(random.int(4) ? NUMBERS : LONG);
+    if (kind === 1) return pick(STRINGS);
+    if (kind === 2) return pick(['true', 'false', 'null']);
+    const length = random.int(4);
+    if (kind === 3)
+      return list(
+        '[',
+        ']',
+        Array.from({ length }, () => value(depth + 1)),
+      );
+    // Picked at random, a key is often given twice.
+    const members = Array.from(
+      { length },
+      () => `${pick(KEYS)}${blanks()}:${blanks()}${value(depth + 1)}`,
+    );
+    return list('{', '}', members);
+  };
+  // A body: a list of up to six values, with blanks around it.
+  const body = () =>
+    `${blanks()}${list(
+      '[',
+      ']',
+      Array.from({ length: 1 + random.int(6) }, () => value(1)),
+    )}${blanks()}`;
+  return { body };
+}
+const strip = (text) => text.replace(/[ \n\t\r]/g, '');
+
 console.log('valid bodies broken at random');
 await check(
   'checkJson and JSON.parse agree on 30,000 bodies, and every mistake has a place',
@@ -346,6 +401,69 @@ await check(
   },
 );
 
+console.log('Format changes only the blanks');
+await check(
+  'lays out 30,000 random bodies, written with any indent, as JSON.stringify(value, null, 2) does',
+  async () => {
+    const random = generator(20261108);
+    const wrong = [];
+    for (let round = 0; round < 30_000 && wrong.length < 5; round++) {
+      const value = random.value(0);
+      const text = JSON.stringify(value, null, [0, 2, 4, '\t', ' '][random.int(5)]);
+      if (formatJson(text) !== JSON.stringify(value, null, 2)) wrong.push(text);
+    }
+    if (wrong.length) throw new Error(`laid out differently:\n${wrong.join('\n')}`);
+  },
+);
+await check(
+  'keeps each token as written: escapes, 1.0, a number too long for a double, a key given twice, the order of keys like "10"',
+  async () => {
+    const cases = [
+      [
+        '{"url":"https:\\/\\/x.example\\/a"}',
+        '{\n  "url": "https:\\/\\/x.example\\/a"\n}',
+      ],
+      ['{"name":"\\u00e9t\\u00e9"}', '{\n  "name": "\\u00e9t\\u00e9"\n}'],
+      ['[1.0, 1.50, 1e5, -0]', '[\n  1.0,\n  1.50,\n  1e5,\n  -0\n]'],
+      ['{"id":12345678901234567890}', '{\n  "id": 12345678901234567890\n}'],
+      ['{"a":1,"a":2}', '{\n  "a": 1,\n  "a": 2\n}'],
+      ['{"b":1,"10":2,"2":3}', '{\n  "b": 1,\n  "10": 2,\n  "2": 3\n}'],
+      ['{"q":"say \\"hi\\" \\\\"}', '{\n  "q": "say \\"hi\\" \\\\"\n}'],
+      ['[ { } , [\n] , { "a" : [ ] } ]', '[\n  {},\n  [],\n  {\n    "a": []\n  }\n]'],
+      ['\r\n  "just a string"\t', '"just a string"'],
+    ];
+    expect(
+      cases.map(([text]) => formatJson(text)),
+      cases.map(([, expected]) => expected),
+    );
+    expect(['', '{"a":}', '[1,]', "{'a': 1}", '{"a": 1} {"b": 2}'].map(formatJson), [
+      null,
+      null,
+      null,
+      null,
+      null,
+    ]);
+  },
+);
+await check(
+  'on 5,000 bodies written by hand, changes nothing but the blanks, stays valid, and formats again to itself',
+  async () => {
+    const hand = handWriter(generator(20261109));
+    const wrong = [];
+    for (let round = 0; round < 5000 && wrong.length < 5; round++) {
+      const text = hand.body();
+      const formatted = formatJson(text);
+      const same =
+        formatted !== null &&
+        strip(formatted) === strip(text) &&
+        formatJson(formatted) === formatted &&
+        JSON.stringify(JSON.parse(formatted)) === JSON.stringify(JSON.parse(text));
+      if (!same) wrong.push(`${JSON.stringify(text)} → ${JSON.stringify(formatted)}`);
+    }
+    if (wrong.length) throw new Error(`changed:\n${wrong.join('\n')}`);
+  },
+);
+
 console.log('Format keeps the cursor on its character');
 // The body formatted, with the place where keepOffset() moves it: in and out marked with a |.
 const formatted = (marked, side) => {
@@ -355,12 +473,16 @@ const formatted = (marked, side) => {
   return `${after.slice(0, at)}|${after.slice(at)}`;
 };
 await check(
-  'in a word, a string, an indent, after a colon, at the end of a line, at either end, and between two characters Format parts: a start with the one after it, an end with the one before',
+  'in a word, a string, an indent, after a colon, at the end of a line, at either end, past escapes and a 1.0, and between two characters Format parts: a start with the one after it, an end with the one before',
   async () => {
     const cases = [
       [
         '{"name":"item 4|0","tags":["a"]}',
         '{\n  "name": "item 4|0",\n  "tags": [\n    "a"\n  ]\n}',
+      ],
+      [
+        '{"url":"https:\\/\\/a.example","price":1.0,"name":"it|em"}',
+        '{\n  "url": "https:\\/\\/a.example",\n  "price": 1.0,\n  "name": "it|em"\n}',
       ],
       ['{"name":"Ada| Lovelace"}', '{\n  "name": "Ada| Lovelace"\n}'],
       ['{"a":1,\n|    "b":2}', '{\n  "a": 1,\n|  "b": 2\n}'],
@@ -382,28 +504,13 @@ await check(
   },
 );
 await check(
-  'every place in 2,000 bodies written with blanks of their own keeps the text before it, and stays ahead of the character it was ahead of on its line (an end right after a character, after that one), or else right after the one it was after',
+  'every place in 2,000 bodies written by hand keeps the text before it, and stays ahead of the character it was ahead of on its line (an end right after a character, after that one), or else right after the one it was after',
   async () => {
-    const random = generator(20261107);
-    const blanks = () => ['', '', ' ', '  ', '\n', '\n    ', '\t', ' \n'][random.int(8)];
-    // A value written as by hand: blanks of their own around its tokens.
-    const write = (value) => {
-      if (Array.isArray(value))
-        return `[${blanks()}${value.map(write).join(`${blanks()},${blanks()}`)}${blanks()}]`;
-      if (value && typeof value === 'object') {
-        const members = Object.entries(value).map(
-          ([key, item]) => `${JSON.stringify(key)}${blanks()}:${blanks()}${write(item)}`,
-        );
-        return `{${blanks()}${members.join(`${blanks()},${blanks()}`)}${blanks()}}`;
-      }
-      return JSON.stringify(value);
-    };
-    const strip = (text) => text.replace(/[ \n\t\r]/g, '');
+    const hand = handWriter(generator(20261107));
     const wrong = [];
     let places = 0;
     for (let round = 0; round < 2000 && wrong.length < 5; round++) {
-      const values = Array.from({ length: 1 + random.int(6) }, () => random.value(1));
-      const before = `${blanks()}${write(values)}${blanks()}`;
+      const before = hand.body();
       const after = formatJson(before);
       for (let offset = 0; offset <= before.length; offset++) {
         for (const side of ['start', 'end']) {

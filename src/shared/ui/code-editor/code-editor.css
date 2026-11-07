@@ -280,6 +280,15 @@
   color: transparent;
   box-shadow: inset 0 0 0 1px var(--t50);
 }
+/* the cursor while the editor isn't focused, without vim keys or in Insert mode (markCaret()): a
+   caret, outlined in the same grey as vim's block then */
+.code-cursor .code-caret {
+  margin-left: -1px;
+  border-left: 1px solid var(--t50);
+}
+.code:focus-within .code-cursor .code-caret {
+  display: none;
+}
 .code[data-vim]:not([data-vim='insert']) .code-main textarea {
   caret-color: transparent;
 }

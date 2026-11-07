@@ -26,11 +26,17 @@ export interface CodeProblem {
   note: string;
 }
 
-// Where you are in the text (the editor's `place`): each end of the selection as a line and a
-// column, from 0, the cursor being `head`, and how far the text is scrolled down and along.
+// A place in the text as a line and a column, from 0.
+export interface LineColumn {
+  line: number;
+  column: number;
+}
+
+// Where you are in the text (the editor's `place`): each end of the selection, the cursor being
+// `head`, and how far the text is scrolled down and along.
 export interface CodePlace {
-  anchor: { line: number; column: number };
-  head: { line: number; column: number };
+  anchor: LineColumn;
+  head: LineColumn;
   top: number;
   left: number;
 }
@@ -83,6 +89,30 @@ function startOfLine(text: string, line: number) {
     start = next + 1;
   }
   return start;
+}
+
+// The line (from 0) that `offset` is on.
+function lineOf(text: string, offset: number) {
+  let line = 0;
+  for (
+    let at = text.indexOf('\n');
+    at !== -1 && at < offset;
+    at = text.indexOf('\n', at + 1)
+  )
+    line++;
+  return line;
+}
+
+// An offset in `text` as a line and a column, and back: a line past the last one is the last
+// one, and a column past the end of its line the end.
+function positionAt(text: string, offset: number): LineColumn {
+  const start = offset ? text.lastIndexOf('\n', offset - 1) + 1 : 0;
+  return { line: lineOf(text, start), column: offset - start };
+}
+function offsetAt(text: string, { line, column }: LineColumn) {
+  const start = startOfLine(text, line);
+  const end = text.indexOf('\n', start);
+  return Math.min(start + column, end === -1 ? text.length : end);
 }
 
 const span = (className: string, text: string) => {
@@ -448,35 +478,82 @@ export function createCodeEditor({
     measured = null;
   }
 
-  // The cursor (the end of the selection that moves, where vim keeps its cursor too): its line and
-  // its column, from 0.
-  function cursorAt() {
-    const { selectionStart, selectionEnd, selectionDirection } = textarea;
-    const before = textarea.value.slice(
-      0,
-      selectionDirection === 'backward' ? selectionStart : selectionEnd,
-    );
-    const start = before.lastIndexOf('\n') + 1;
-    return { line: before.split('\n').length - 1, column: before.length - start };
+  // The two ends of the selection: where it started (anchor) and the end that moves (head), and
+  // a selection made of them.
+  function selectionEnds() {
+    const { selectionStart: start, selectionEnd: end, selectionDirection } = textarea;
+    return selectionDirection === 'backward'
+      ? { anchor: end, head: start }
+      : { anchor: start, head: end };
   }
+  function select({ anchor, head }: { anchor: number; head: number }) {
+    textarea.setSelectionRange(
+      Math.min(anchor, head),
+      Math.max(anchor, head),
+      head < anchor ? 'backward' : 'forward',
+    );
+  }
+  // Whether vim's block is the cursor (Normal and Visual mode), rather than the textarea's caret.
+  const vimBlock = () => vim.active && vim.mode !== 'insert';
+  // The cursor: the character vim's block is on, or the end of the selection that moves.
+  const cursorOffset = () => (vimBlock() ? vim.head : selectionEnds().head);
+  const cursorAt = () => positionAt(textarea.value, cursorOffset());
 
-  // Sizes the text around what you're looking at, instead of around the top line (where the
-  // browser would keep it, so the lines under it slid down and out of view): the middle of the
-  // cursor's line stays where it is in the view, so the text grows evenly up and down from it, or
-  // with the cursor out of view, the middle of the view does. Along the lines, the column at the
-  // left edge stays there, unless the cursor would go out of view.
-  // What it keeps in place (`held`): a point down the lines (in lines from the top of the text,
-  // with a fraction) and how far down the view it is, the column at the left edge (null at the
-  // start of the lines), and the cursor while it's to stay in view. Steps in a row keep the same
-  // place while nothing else has moved, rather than drifting a pixel each as the browser rounds
-  // where it scrolls to.
-  let held: {
-    at: string;
+  // What stays where it is in the view through a change that moves the lines on screen (a text
+  // size, Format): the middle of the cursor's line while it's in view, so the text grows or
+  // shrinks evenly up and down from it, or else the middle of the view. As a point down the lines
+  // (`line`, in lines from the top of the text, with a fraction: `onCursor` if it's the cursor's)
+  // and how far down the view it is (`y`); along the lines, the column at the left edge (`edge`,
+  // null at the start of the lines), and the cursor while it's in view, to keep it there.
+  // `withCursor`: whether the cursor counts.
+  interface Held {
     line: number;
+    onCursor: boolean;
     y: number;
     edge: number | null;
-    cursor: { line: number; column: number } | null;
-  } | null = null;
+    cursor: LineColumn | null;
+  }
+  function holdView(withCursor: boolean): Held {
+    const was = metrics();
+    const width = charWidth(was);
+    const { scrollTop, scrollLeft, clientHeight, clientWidth } = textarea;
+    const cursor = cursorAt();
+    const cursorY = was.top + cursor.line * was.lineHeight - scrollTop;
+    const cursorX = was.left + cursor.column * width - scrollLeft;
+    const onCursor =
+      withCursor && cursorY >= 0 && cursorY + was.lineHeight <= clientHeight;
+    const columnShown = cursorX >= 0 && cursorX + width <= clientWidth;
+    const line = onCursor
+      ? cursor.line + 0.5
+      : Math.max(0, (scrollTop + clientHeight / 2 - was.top) / was.lineHeight);
+    return {
+      line,
+      onCursor,
+      y: was.top + line * was.lineHeight - scrollTop,
+      edge: scrollLeft ? (scrollLeft - was.left) / width : null,
+      cursor: onCursor && columnShown ? cursor : null,
+    };
+  }
+  // Scrolls so what holdView() held is where it was in the view: its point, on line `line` now,
+  // and along the lines the same column at the left edge, unless that would hide the cursor, at
+  // `cursor` now.
+  function putView(held: Held, line = held.line, cursor = held.cursor) {
+    const now = metrics();
+    const width = charWidth(now);
+    textarea.scrollTop = now.top + line * now.lineHeight - held.y;
+    let left = held.edge === null ? 0 : now.left + held.edge * width;
+    if (cursor) {
+      const x = now.left + cursor.column * width;
+      left = Math.min(Math.max(left, x + width - textarea.clientWidth), x - now.left);
+    }
+    textarea.scrollLeft = Math.max(0, left);
+  }
+
+  // Sizes the text around what you're looking at (holdView(): the cursor counts while the text
+  // area has the focus), instead of around the top line, where the browser would keep it, so the
+  // lines under it slid down and out of view. Steps in a row keep the same place while nothing
+  // else has moved, rather than drifting a pixel each as the browser rounds where it scrolls to.
+  let sizing: (Held & { at: string }) | null = null;
   const where = () =>
     [
       textarea.scrollTop,
@@ -488,43 +565,13 @@ export function createCodeEditor({
     ].join();
 
   function resizeInPlace(size: number) {
-    const was = metrics();
-    const wasWidth = charWidth(was);
-    if (held?.at !== where()) {
-      const { scrollTop, scrollLeft, clientHeight, clientWidth } = textarea;
-      const cursor = cursorAt();
-      const cursorY = was.top + cursor.line * was.lineHeight - scrollTop;
-      const cursorX = was.left + cursor.column * wasWidth - scrollLeft;
-      const focused = document.activeElement === textarea;
-      const lineShown =
-        focused && cursorY >= 0 && cursorY + was.lineHeight <= clientHeight;
-      const columnShown = cursorX >= 0 && cursorX + wasWidth <= clientWidth;
-      const line = lineShown
-        ? cursor.line + 0.5
-        : (scrollTop + clientHeight / 2 - was.top) / was.lineHeight;
-      held = {
-        at: '',
-        line,
-        y: was.top + line * was.lineHeight - scrollTop,
-        edge: scrollLeft ? (scrollLeft - was.left) / wasWidth : null,
-        cursor: lineShown && columnShown ? cursor : null,
-      };
-    }
-
+    if (sizing?.at !== where())
+      sizing = { ...holdView(document.activeElement === textarea), at: '' };
     fontSize = size;
     applyFontSize();
     fitHeight();
-
-    const now = metrics();
-    const width = charWidth(now);
-    textarea.scrollTop = now.top + held.line * now.lineHeight - held.y;
-    let left = held.edge === null ? 0 : now.left + held.edge * width;
-    if (held.cursor) {
-      const x = now.left + held.cursor.column * width;
-      left = Math.min(Math.max(left, x + width - textarea.clientWidth), x - now.left);
-    }
-    textarea.scrollLeft = Math.max(0, left);
-    held.at = where();
+    putView(sizing);
+    sizing.at = where();
   }
 
   // The text size, in px: one of FONT_SIZES, remembered for every body editor (and forgotten again
@@ -623,11 +670,42 @@ export function createCodeEditor({
     },
     { capture: true },
   );
+  const undoable = (name: string, text?: string) =>
+    !(name === 'insertText' && text && longerThan(text, MAX_COMMAND_LINES));
+
+  // The text the last edit put in directly left (a body of more lines than MAX_COMMAND_LINES,
+  // formatted), and whether anything has been typed since. Chrome keeps the steps from before it
+  // in its history all the same, and undoing one of those in text that's no longer theirs, then
+  // redoing it, mixes the two: a body pasted over another and formatted, then ⌘Z and ⇧⌘Z, left
+  // invalid JSON, saved. So while the text is that, the browser's undo goes no further back, and
+  // nor does its redo, until something's been typed since, whose steps are its own. (Firefox has
+  // forgotten those steps by then.) ⌘Z, ⇧⌘Z and the menu's Undo and Redo come in as a beforeinput
+  // that can be cancelled, and vim's u and Ctrl+R through command().
+  let direct: { text: string; typed: boolean } | null = null;
+  const stale = (name: string) =>
+    direct !== null &&
+    (name === 'undo' || (name === 'redo' && !direct.typed)) &&
+    textarea.value === direct.text;
+  root.addEventListener(
+    'beforeinput',
+    (event) => {
+      const { inputType } = event;
+      if (
+        (inputType === 'historyUndo' && stale('undo')) ||
+        (inputType === 'historyRedo' && stale('redo'))
+      )
+        event.preventDefault();
+    },
+    { capture: true },
+  );
+
   function command(name: string, text?: string, then?: () => void) {
+    if (stale(name)) return false;
     const before = textarea.value;
+    const directly = !undoable(name, text);
     let done = true;
-    if (name === 'insertText' && text && longerThan(text, MAX_COMMAND_LINES)) {
-      textarea.setRangeText(text, textarea.selectionStart, textarea.selectionEnd, 'end');
+    if (directly) {
+      textarea.setRangeText(text!, textarea.selectionStart, textarea.selectionEnd, 'end');
     } else {
       commanding = true;
       try {
@@ -645,8 +723,50 @@ export function createCodeEditor({
           data: text ?? null,
         }),
       );
+    if (directly) direct = { text: textarea.value, typed: false };
     return done;
   }
+
+  // The last Format, while it's still the last edit (replace()): the text before and after it,
+  // and where you were in each, the selection (with vim's block, its cursor) and the scroll. The
+  // browser undoes it with the whole of the text it puts back selected, which would leave the
+  // cursor at the end, or with vim keys at the top. So when ⌘Z, vim's u or the menu's Undo
+  // brings that text back, you're put back where you were before Format instead, and redo puts you
+  // where you were after it, before vim takes its cursor from the selection (this listens on the
+  // root, as the event comes down to the textarea, whose listeners vim's are).
+  interface Spot {
+    anchor: number;
+    head: number;
+    top: number;
+    left: number;
+  }
+  let formatted: { before: string; after: string; was: Spot; now: Spot } | null = null;
+  root.addEventListener(
+    'input',
+    (event) => {
+      const { inputType } = event as InputEvent;
+      if (!inputType?.startsWith('history')) {
+        // Something typed (or pasted, or vim's): Format is no longer the last edit, and what
+        // was put in directly has steps of the browser's own on top of it.
+        formatted = null;
+        if (direct) direct.typed = true;
+        return;
+      }
+      if (!formatted) return;
+      const current = textarea.value;
+      const spot =
+        inputType === 'historyUndo' && current === formatted.before
+          ? formatted.was
+          : inputType === 'historyRedo' && current === formatted.after
+            ? formatted.now
+            : null;
+      if (!spot) return;
+      select(spot);
+      textarea.scrollTop = spot.top;
+      textarea.scrollLeft = spot.left;
+    },
+    { capture: true },
+  );
 
   // The find bar is vim's search line, and vim moves to what it finds, so each needs the other:
   // the find bar gets vim through a function it only calls once both exist.
@@ -680,6 +800,31 @@ export function createCodeEditor({
     tip.hidden = true;
     scrolled = { top: textarea.scrollTop, left: textarea.scrollLeft };
     sync();
+  });
+
+  // Where the cursor is, while the editor isn't focused: the textarea shows its caret only while
+  // it is, and vim's block turns into an outline then (code-editor.css). Without vim keys, or in
+  // Insert mode, the cursor gets the same outline as a caret on the cursor layer, its line set
+  // down as vim sets its block's: drawn as you leave the editor and when it's put back somewhere
+  // (setPlace), and hidden by the stylesheet while it's focused. A new editor you haven't been in
+  // has none.
+  const caretBefore = document.createTextNode('');
+  const caret = span('code-caret', '');
+  const caretAfter = document.createTextNode('');
+  function markCaret() {
+    if (!vim.active || vim.mode === 'insert') {
+      const text = textarea.value;
+      const { head } = selectionEnds();
+      const start = head ? text.lastIndexOf('\n', head - 1) + 1 : 0;
+      const end = text.indexOf('\n', head);
+      caretBefore.data = text.slice(start, head);
+      caretAfter.data = text.slice(head, end === -1 ? text.length : end);
+      cursorLayer.style.paddingTop = `${lineOf(text, start)}lh`;
+      cursorLayer.replaceChildren(caretBefore, caret, caretAfter);
+    }
+  }
+  root.addEventListener('focusout', (event) => {
+    if (!root.contains(event.relatedTarget as Node | null)) markCaret();
   });
   textarea.addEventListener('mousemove', hover);
   textarea.addEventListener('mouseleave', () => {
@@ -721,26 +866,6 @@ export function createCodeEditor({
     );
   }
 
-  // What Format keeps where it is in the view: the cursor while its line is in view, or else the
-  // start of the line in the middle of the view. As an offset in the text, how far down the view
-  // its line is, and whether it's the cursor.
-  function viewAnchor() {
-    const { lineHeight, top } = metrics();
-    const { scrollTop, clientHeight, selectionStart, selectionEnd, selectionDirection } =
-      textarea;
-    const y = top + cursorAt().line * lineHeight - scrollTop;
-    if (y >= 0 && y + lineHeight <= clientHeight) {
-      const offset = selectionDirection === 'backward' ? selectionStart : selectionEnd;
-      return { offset, y, cursor: true };
-    }
-    const line = Math.min(
-      lineCount - 1,
-      Math.max(0, Math.floor((scrollTop + clientHeight / 2 - top) / lineHeight)),
-    );
-    const offset = startOfLine(textarea.value, line);
-    return { offset, y: top + line * lineHeight - scrollTop, cursor: false };
-  }
-
   render();
   return {
     root,
@@ -748,91 +873,103 @@ export function createCodeEditor({
     get value() {
       return textarea.value;
     },
-    // Replaces the content as one undoable edit and notifies onChange: Format. The selection moves
-    // with the text around it (keepOffset), so the cursor stays on the character it was on, and
-    // that line where it was in the view (with the cursor out of view, the line in the middle of
-    // the view stays there). Along the lines the scroll stays, unless it would hide the cursor.
+    // Puts in the same text laid out again (Format: formatJson() changes only its blanks), as one
+    // undoable edit, and notifies onChange. The selection moves with the text around it
+    // (keepOffset()), so the cursor stays on the character it was on, and its line where it was in
+    // the view (holdView(): with the cursor out of view, the middle of the view stays); with vim
+    // keys, vim carries on in its mode, a Visual selection and all. ⌘Z or vim's u right after it
+    // puts you back where you were before it, and redo where you were after it (`formatted`).
     replace(text: string) {
       const before = textarea.value;
-      const { selectionStart, selectionEnd, selectionDirection, scrollLeft } = textarea;
-      const anchor = viewAnchor();
-      // The cursor you type at stays after what it follows, vim's block (in Normal mode) on what
-      // it's on, and a selection keeps what it holds, no blanks more.
-      const caret = selectionStart === selectionEnd;
-      const typing = !vim.active || vim.mode === 'insert';
-      let start = 0;
-      let end = 0;
+      if (text === before) return;
+      const held = holdView(true);
+      const ends = selectionEnds();
+      const block = vimBlock();
+      const cursorWas = cursorOffset();
+      const was = {
+        ...(block ? { anchor: cursorWas, head: cursorWas } : ends),
+        top: textarea.scrollTop,
+        left: textarea.scrollLeft,
+      };
+      let cursor = 0;
       textarea.focus();
       textarea.select();
       command('insertText', text, () => {
         const after = textarea.value;
-        start = keepOffset(
+        // The caret you type at stays after what it's after, vim's block on what it's on, and a
+        // selection keeps what it holds, no blanks more.
+        const start = Math.min(ends.anchor, ends.head);
+        const end = Math.max(ends.anchor, ends.head);
+        const from = keepOffset(
           before,
           after,
-          selectionStart,
-          caret && typing ? 'end' : 'start',
+          start,
+          start < end || block ? 'start' : 'end',
         );
-        end = keepOffset(before, after, selectionEnd, caret && !typing ? 'start' : 'end');
-        textarea.setSelectionRange(start, end, selectionDirection);
+        const to = start < end ? keepOffset(before, after, end, 'end') : from;
+        select(
+          ends.head < ends.anchor
+            ? { anchor: to, head: from }
+            : { anchor: from, head: to },
+        );
+        if (block) vim.carry((offset) => keepOffset(before, after, offset));
+        cursor = block ? keepOffset(before, after, cursorWas) : selectionEnds().head;
       });
       const after = textarea.value;
-      const cursor = selectionDirection === 'backward' ? start : end;
-      const kept = anchor.cursor ? cursor : keepOffset(before, after, anchor.offset);
-      const now = metrics();
-      const line = countLines(after.slice(0, kept)) - 1;
-      textarea.scrollTop = now.top + line * now.lineHeight - anchor.y;
-      let left = scrollLeft;
-      if (anchor.cursor) {
-        const width = charWidth(now);
-        const x = now.left + cursorAt().column * width;
-        left = Math.min(Math.max(left, x + width - textarea.clientWidth), x - now.left);
-      }
-      textarea.scrollLeft = Math.max(0, left);
+      // The line the held point is on now: the cursor's, or the one the middle of the view was.
+      const whole = Math.floor(held.line);
+      const point = held.onCursor
+        ? cursor
+        : keepOffset(before, after, startOfLine(before, whole));
+      putView(
+        held,
+        lineOf(after, point) + held.line - whole,
+        held.cursor && positionAt(after, cursor),
+      );
       sync();
+      formatted = undoable('insertText', text)
+        ? {
+            before,
+            after,
+            was,
+            now: {
+              ...(block ? { anchor: cursor, head: cursor } : selectionEnds()),
+              top: textarea.scrollTop,
+              left: textarea.scrollLeft,
+            },
+          }
+        : null;
     },
-    // Where you are in the text: the selection and the scroll. setPlace() goes back there, in this
-    // editor or in one made later (CodeEditor keeps a rule's, for when you come back to it).
+    // Where you are in the text: the selection (its head the cursor: with vim keys, vim's) and
+    // the scroll. setPlace() goes back there, in this editor or in one made later (CodeEditor
+    // keeps a rule's, for when you come back to it).
     get place(): CodePlace {
-      const { selectionStart, selectionEnd, selectionDirection } = textarea;
       const text = textarea.value;
-      const backward = selectionDirection === 'backward';
-      const at = (offset: number) => {
-        const start = offset ? text.lastIndexOf('\n', offset - 1) + 1 : 0;
-        return { line: countLines(text.slice(0, start)) - 1, column: offset - start };
-      };
       const shown = textarea.getClientRects().length > 0;
       return {
-        anchor: at(backward ? selectionEnd : selectionStart),
-        head: at(backward ? selectionStart : selectionEnd),
+        anchor: positionAt(text, selectionEnds().anchor),
+        head: positionAt(text, cursorOffset()),
         top: shown ? textarea.scrollTop : scrolled.top,
         left: shown ? textarea.scrollLeft : scrolled.left,
       };
     },
-    // Goes back to a place: the selection (with vim keys, its cursor, in Normal mode) and the
-    // scroll. A line or a column that isn't there any more is cut to the text's last line, or to
+    // Goes back to a place: the selection (with vim keys, its cursor, in Normal mode, as vim comes
+    // back to a file you return to) and the scroll, and marks the cursor while the editor isn't
+    // focused. A line or a column that isn't there any more is cut to the text's last line, or to
     // the line's end.
     setPlace({ anchor, head, top, left }: CodePlace) {
       const text = textarea.value;
-      const offset = ({ line, column }: CodePlace['head']) => {
-        const start = startOfLine(text, line);
-        const end = text.indexOf('\n', start);
-        return Math.min(start + column, end === -1 ? text.length : end);
-      };
       // Its height on the page first: the scroll can go no further than that allows.
       measured = null;
       fitHeight();
-      const to = offset(head);
-      const from = vim.active ? to : offset(anchor);
-      textarea.setSelectionRange(
-        Math.min(from, to),
-        Math.max(from, to),
-        to < from ? 'backward' : 'forward',
-      );
+      const to = offsetAt(text, head);
+      select({ anchor: vim.active ? to : offsetAt(text, anchor), head: to });
       if (vim.active) vim.setActive(true);
       textarea.scrollTop = top;
       textarea.scrollLeft = left;
       scrolled = { top: textarea.scrollTop, left: textarea.scrollLeft };
       sync();
+      if (!root.contains(document.activeElement)) markCaret();
     },
     get vim() {
       return vim.active;
@@ -842,6 +979,7 @@ export function createCodeEditor({
       rememberVim(on);
       vim.setActive(on);
       fitHeight();
+      if (!root.contains(document.activeElement)) markCaret();
     },
     // The mistake to mark in the current text, or null. Any edit clears it.
     setProblem(next: CodeProblem | null) {
@@ -857,8 +995,7 @@ export function createCodeEditor({
       textarea.setSelectionRange(offset, offset);
       textarea.focus({ preventScroll: true });
       const { lineHeight, top } = metrics();
-      const y =
-        top + (textarea.value.slice(0, offset).split('\n').length - 1) * lineHeight;
+      const y = top + lineOf(textarea.value, offset) * lineHeight;
       if (
         y < textarea.scrollTop ||
         y + lineHeight > textarea.scrollTop + textarea.clientHeight

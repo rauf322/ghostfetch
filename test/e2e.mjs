@@ -17,6 +17,7 @@ import {
   normalizeSites,
   siteMatchPatterns,
 } from '../src/shared/api/index.ts';
+import { formatJson } from '../src/shared/lib/index.ts';
 import {
   CHROME_BUILD,
   VIM_START,
@@ -24,6 +25,7 @@ import {
   check,
   expect,
   finish,
+  itemsBody,
   requireBuild,
   sleep,
   startServer,
@@ -673,13 +675,18 @@ try {
       expect(seen, Array(9).fill(true));
     },
   );
-  // A body of 80 items, each on a line of its own, which Format spreads over four lines.
-  const ITEMS = `{"items": [\n${Array.from(
-    { length: 80 },
-    (_, id) => `  ${JSON.stringify({ id, name: `item ${id}` })}`,
-  ).join(',\n')}\n]}`;
+  // Bodies of 80 items, which Format puts in directly, and of 40, which it puts in as an edit the
+  // browser can undo (itemsBody()); the rule made in the UI, and another to go to and come back.
+  const ITEMS = itemsBody(80);
+  const FEWER_ITEMS = itemsBody(40);
+  const madeInUi = app.locator('[data-testid="rule"]', { hasText: 'Made in the UI' });
+  const anotherRule = app
+    .locator('[data-testid="rule"]')
+    .filter({ hasNotText: 'Made in the UI' })
+    .first();
+  const strip = (text) => text.replace(/[ \n\t\r]/g, '');
   await check(
-    'Format keeps the cursor on the character it was on and its line where it was in the view, keeps a selection, and with the cursor out of view keeps the middle of the view',
+    'Format keeps the cursor on the character it was on and its line where it was in the view, keeps a selection, with the cursor out of view keeps the middle of the view, and keeps every value as written (escaped slashes, a 40.0)',
     async () => {
       const editor = app.locator('.code textarea');
       const before = await editor.inputValue();
@@ -731,6 +738,11 @@ try {
       await put('"item 40"', 7);
       const [cursor, cursorAfter] = await format();
       seen.push(cursorAfter.at, Math.abs(cursorAfter.y - cursor.y) <= 1);
+      seen.push(
+        (await editor.inputValue()).includes(
+          '"url": "https:\\/\\/api.example.com\\/items\\/40",\n      "price": 40.0\n',
+        ),
+      );
       await editor.fill(ITEMS);
       await put('"item 60"', 0, { length: 9 });
       seen.push((await format())[1].at);
@@ -740,7 +752,109 @@ try {
       const [middle, middleAfter] = await format();
       seen.push(middleAfter.middle === middle.middle && Boolean(middle.middle));
       await editor.fill(before);
-      expect(seen, ['item 4|0"', true, '"item 60"', true]);
+      expect(seen, ['item 4|0"', true, true, '"item 60"', true]);
+    },
+  );
+  await check(
+    'undo right after Format goes back to where the cursor and the scroll were before it, and redo to where they were after it; after a Format too long for the browser to undo, ⌘Z and ⇧⌘Z leave the body alone',
+    async () => {
+      const editor = app.locator('.code textarea');
+      const before = await editor.inputValue();
+      // The text, the cursor (a | at it) and the scroll.
+      const where = () =>
+        editor.evaluate((textarea) => {
+          const { value, selectionStart: start, selectionEnd: end } = textarea;
+          return {
+            text: value,
+            at:
+              start === end
+                ? `${value.slice(start - 6, start)}|${value.slice(start, start + 2)}`
+                : '',
+            top: Math.round(textarea.scrollTop),
+          };
+        });
+      await editor.fill(FEWER_ITEMS);
+      // The cursor in "item 30", its line a third of the way down the view.
+      await editor.evaluate((textarea) => {
+        const at = textarea.value.indexOf('"item 30"') + 7;
+        textarea.setSelectionRange(at, at);
+        const lineHeight = parseFloat(getComputedStyle(textarea).lineHeight);
+        const line = textarea.value.slice(0, at).split('\n').length - 1;
+        textarea.scrollTop = line * lineHeight - textarea.clientHeight / 3;
+      });
+      const placed = await where();
+      await app.click('[data-testid="format"]');
+      const formatted = await where();
+      await editor.focus();
+      await app.keyboard.press('ControlOrMeta+z');
+      const undone = await where();
+      await app.keyboard.press('ControlOrMeta+Shift+z');
+      const redone = await where();
+      // A whole body pasted over it, and formatted: too long to undo. Chrome keeps the paste in
+      // its history, and undoing and redoing that in the formatted text mixed the two.
+      await editor.evaluate((textarea, text) => {
+        textarea.focus();
+        textarea.select();
+        document.execCommand('insertText', false, text);
+      }, ITEMS);
+      await app.click('[data-testid="format"]');
+      const long = await editor.inputValue();
+      await editor.focus();
+      await app.keyboard.press('ControlOrMeta+z');
+      await app.keyboard.press('ControlOrMeta+Shift+z');
+      const left = await editor.inputValue();
+      await editor.fill(before);
+      expect(
+        [
+          placed.at,
+          formatted.at,
+          formatted.text === formatJson(FEWER_ITEMS),
+          undone.text === FEWER_ITEMS,
+          [undone.at, undone.top],
+          redone.text === formatted.text,
+          [redone.at, redone.top],
+          long === formatJson(ITEMS),
+          left === long,
+        ],
+        [
+          'item 3|0"',
+          'item 3|0"',
+          true,
+          true,
+          [placed.at, placed.top],
+          true,
+          [formatted.at, formatted.top],
+          true,
+          true,
+        ],
+      );
+    },
+  );
+  await check(
+    "while the body isn't focused, its cursor is marked where it is (back at a rule, where it was left), as vim's block is outlined, and the mark goes while it's focused",
+    async () => {
+      const editor = app.locator('.code textarea');
+      const before = await editor.inputValue();
+      await editor.fill(ITEMS);
+      await editor.evaluate((textarea) => {
+        const at = textarea.value.indexOf('"item 40"') + 7;
+        textarea.setSelectionRange(at, at);
+      });
+      await anotherRule.click();
+      await madeInUi.click();
+      // What's before the mark on its line, while it shows.
+      const mark = () =>
+        app.evaluate(() => {
+          const caret = document.querySelector('.code-cursor .code-caret');
+          return caret && getComputedStyle(caret).display !== 'none'
+            ? caret.previousSibling.data
+            : null;
+        });
+      const shown = await mark();
+      await editor.focus();
+      const focused = await mark();
+      await editor.fill(before);
+      expect([shown, focused], ['  {"id": 40, "name": "item 4', null]);
     },
   );
   await check(
@@ -748,12 +862,7 @@ try {
     async () => {
       const editor = app.locator('.code textarea');
       const before = await editor.inputValue();
-      const rule = app.locator('[data-testid="rule"]', { hasText: 'Made in the UI' });
-      const other = app
-        .locator('[data-testid="rule"]')
-        .filter({ hasNotText: 'Made in the UI' })
-        .first();
-      await editor.fill(JSON.stringify(JSON.parse(ITEMS), null, 2));
+      await editor.fill(formatJson(ITEMS));
       // The selection and its direction, the body's scroll and the pane's.
       const where = () =>
         app.evaluate(() => {
@@ -783,15 +892,15 @@ try {
       const seen = [];
       await put(0);
       const beside = await where();
-      await other.click();
-      await rule.click();
+      await anotherRule.click();
+      await madeInUi.click();
       seen.push(await where());
       // In a side panel the pane scrolls, down to the body: back to the list, then the rule.
       await app.setViewportSize({ width: 400, height: 760 });
       await put(300);
       const narrow = await where();
       await app.click('[data-testid="rule-back"]');
-      await rule.click();
+      await madeInUi.click();
       seen.push(await where());
       await app.setViewportSize({ width: 1280, height: 820 });
       // Rules changed in another view (the popup, say), with the focus outside the rule: the
@@ -1430,11 +1539,6 @@ try {
     "vim: Format keeps the cursor on its character and its line where it was in the view, and back at the rule, it's there still",
     async () => {
       const before = await body.inputValue();
-      const rule = app.locator('[data-testid="rule"]', { hasText: 'Made in the UI' });
-      const other = app
-        .locator('[data-testid="rule"]')
-        .filter({ hasNotText: 'Made in the UI' })
-        .first();
       // The text from the cursor on, its line, and how far down the view that is.
       const cursor = () =>
         body.evaluate((textarea) => {
@@ -1459,8 +1563,8 @@ try {
       await app.click('[data-testid="format"]');
       const formatted = await cursor();
       const state = await vimState();
-      await other.click();
-      await rule.click();
+      await anotherRule.click();
+      await madeInUi.click();
       const back = [await cursor(), (await vimState()).cursor];
       await setBody(before);
       expect(
@@ -1480,6 +1584,61 @@ try {
           'Normal',
           [formatted, state.cursor],
         ],
+      );
+    },
+  );
+  await check(
+    'vim: Visual mode carries on through Format, the same text selected',
+    async () => {
+      const before = await body.inputValue();
+      const selected = () =>
+        body.evaluate((textarea) =>
+          textarea.value.slice(textarea.selectionStart, textarea.selectionEnd),
+        );
+      await setBody(ITEMS);
+      await typeVim('/item 40<CR>vjj');
+      const was = [await selected(), (await vimState()).mode];
+      await app.click('[data-testid="format"]');
+      const now = [await selected(), (await vimState()).mode];
+      await typeVim('<Esc>');
+      await setBody(before);
+      expect(
+        [was[1], now[1], strip(now[0]) === strip(was[0]), now[0] !== was[0]],
+        ['Visual', 'Visual', true, true],
+      );
+    },
+  );
+  await check(
+    "vim: u right after Format puts the cursor back where it was before it, Ctrl+R where it was after it, and after a Format too long to undo, u says there's nothing to undo",
+    async () => {
+      const before = await body.inputValue();
+      await setBody(FEWER_ITEMS);
+      await typeVim('/item 30<CR>');
+      const was = await vimState();
+      await app.click('[data-testid="format"]');
+      const formatted = await vimState();
+      await body.focus();
+      await typeVim('u');
+      const undone = await vimState();
+      await typeVim('<C-r>');
+      const redone = await vimState();
+      await setBody(ITEMS);
+      await app.click('[data-testid="format"]');
+      const long = await body.inputValue();
+      await body.focus();
+      await typeVim('u');
+      const refused = await vimState();
+      await setBody(before);
+      expect(
+        [
+          undone.body === FEWER_ITEMS,
+          undone.cursor,
+          redone.body === formatted.body,
+          redone.cursor,
+          refused.body === long,
+          refused.message,
+        ],
+        [true, was.cursor, true, formatted.cursor, true, 'Already at oldest change'],
       );
     },
   );

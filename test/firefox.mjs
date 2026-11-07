@@ -25,6 +25,7 @@ import {
   check,
   expect,
   finish,
+  itemsBody,
   requireBuild,
   sleep,
   startServer,
@@ -570,11 +571,7 @@ try {
   await check(
     "Format keeps vim's cursor on its character and its line where it was in the view (Firefox also scrolls to the caret itself), and a new editor goes back to the same place",
     async () => {
-      // 80 items, each on a line of its own, which Format spreads over four lines.
-      const body = `{"items": [\n${Array.from(
-        { length: 80 },
-        (_, id) => `  ${JSON.stringify({ id, name: `item ${id}` })}`,
-      ).join(',\n')}\n]}`;
+      const body = itemsBody(80);
       await editorTab.evaluate((text) => {
         const { textarea } = window.editor;
         textarea.value = text;
@@ -614,9 +611,8 @@ try {
         textarea.scrollTop = line * lineHeight - textarea.clientHeight / 3;
       });
       const placed = await cursor();
-      await editorTab.evaluate(
-        (text) => window.editor.replace(JSON.stringify(JSON.parse(text), null, 2)),
-        body,
+      await editorTab.evaluate(() =>
+        window.editor.replace(window.formatJson(window.editor.value)),
       );
       const formatted = await cursor();
       // Another editor of the same text, given the first one's place.
@@ -649,6 +645,86 @@ try {
         ],
         ['item 40', true, true, [true, true, true]],
         JSON.stringify([placed, formatted]),
+      );
+    },
+  );
+  await check(
+    "vim: u right after Format puts the cursor back where it was before it and Ctrl+R where it was after it, Visual mode carries on through Format, and after a Format too long to undo, u says there's nothing to undo",
+    async () => {
+      const strip = (text) => text.replace(/[ \n\t\r]/g, '');
+      const put = (text) =>
+        editorTab.evaluate((value) => {
+          const { textarea } = window.editor;
+          textarea.value = value;
+          textarea.setSelectionRange(0, 0);
+          textarea.dispatchEvent(new Event('input'));
+        }, text);
+      const format = () =>
+        editorTab.evaluate(() =>
+          window.editor.replace(window.formatJson(window.editor.value)),
+        );
+      const state = () =>
+        editorTab.evaluate(() => {
+          const { textarea } = window.editor;
+          return {
+            text: textarea.value,
+            at: /Ln \d+, Col \d+/.exec(
+              document.querySelector('.code-vim-pos').textContent,
+            )[0],
+            mode: document.querySelector('.code-vim-mode').textContent,
+            message: document.querySelector('.code-vim-keys').textContent,
+            selected: textarea.value.slice(
+              textarea.selectionStart,
+              textarea.selectionEnd,
+            ),
+          };
+        });
+      // 40 items: Format is an edit the browser can undo.
+      const fewer = itemsBody(40);
+      await put(fewer);
+      await typeVim('/item 30<CR>');
+      const was = await state();
+      await format();
+      const formatted = await state();
+      await typeVim('u');
+      const undone = await state();
+      await typeVim('<C-r>');
+      const redone = await state();
+      await put(fewer);
+      await typeVim('/item 30<CR>vjj');
+      const visual = await state();
+      await format();
+      const carried = await state();
+      await typeVim('<Esc>');
+      // 80: Format puts them in directly.
+      await put(itemsBody(80));
+      await format();
+      const long = (await state()).text;
+      await typeVim('u');
+      const refused = await state();
+      expect(
+        [
+          undone.text === fewer,
+          undone.at,
+          redone.text === formatted.text,
+          redone.at,
+          visual.mode,
+          carried.mode,
+          strip(carried.selected) === strip(visual.selected),
+          refused.text === long,
+          refused.message,
+        ],
+        [
+          true,
+          was.at,
+          true,
+          formatted.at,
+          'Visual',
+          'Visual',
+          true,
+          true,
+          'Already at oldest change',
+        ],
       );
     },
   );

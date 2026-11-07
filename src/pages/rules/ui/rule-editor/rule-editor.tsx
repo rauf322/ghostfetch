@@ -11,9 +11,9 @@
 // editor is where you left it (its placeKey).
 import { useRef, useState } from 'react';
 import type { Rule, TrafficLog } from '../../../../shared/api/index.ts';
-import { useKeptScroll } from '../../../../shared/react/index.ts';
 import { PaneScroll, PaneSection } from '../../../../shared/ui/list-detail.tsx';
 import { codeStatus } from '../../lib/rule-checks.ts';
+import { useKeptScroll } from '../../model/use-kept-scroll.ts';
 import { useSettledStatus } from '../../model/use-settled-status.ts';
 import { BodyCard } from './body-card.tsx';
 import { MatchSettings } from './match-settings.tsx';
@@ -50,7 +50,8 @@ export function RuleEditor({
   // What scrolls: the pane in one column, the settings beside the body.
   const pane = useRef<HTMLDivElement>(null);
   const settings = useRef<HTMLDivElement>(null);
-  useKeptScroll(rule.id, pane, settings);
+  useKeptScroll(`${rule.id} pane`, pane);
+  useKeptScroll(`${rule.id} settings`, settings);
 
   return (
     <>

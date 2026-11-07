@@ -1,7 +1,7 @@
 // Where a place in a body is once its blanks have changed (keepOffset), so that Format keeps the
-// cursor on what it was on: Format (formatJson) changes only the spaces and line breaks between
-// the tokens, and every other character stays, in the same order. No DOM, so test/json.mjs
-// checks it against formatJson.
+// cursor on what it was on. That holds because Format (formatJson) is written to change only the
+// spaces and line breaks between the tokens: every other character stays, in the same order. No
+// DOM, so test/json.mjs checks the two together.
 
 // JSON's blanks.
 const blank = (char: string | undefined) =>

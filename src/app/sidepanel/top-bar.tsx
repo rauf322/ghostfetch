@@ -2,17 +2,19 @@
 // with their counts, and the ⋯ menu. From 760px wide the sidebar has all of these (sidebar.tsx),
 // and the bar is gone.
 import { ruleStore } from '../../shared/api/index.ts';
-import { useStore } from '../../shared/react/index.ts';
+import type { TrafficLog } from '../../shared/api/index.ts';
+import { useStore, useTrafficValue } from '../../shared/react/index.ts';
 import { TabsCount, TabsList, TabsTrigger } from '../../shared/ui/kit/tabs.tsx';
 import { EditorMenu } from './editor-menu.tsx';
 
 export function TopBar({
-  trafficCount,
+  log,
   inTab,
   windowId,
   onImport,
 }: {
-  trafficCount: number;
+  // The editor's log of the page it watches, for the Traffic tab's count.
+  log: TrafficLog;
   inTab: boolean;
   windowId: number;
   onImport: () => void;
@@ -35,7 +37,7 @@ export function TopBar({
           Rules <TabsCount>{rules.length || ''}</TabsCount>
         </TabsTrigger>
         <TabsTrigger value="traffic" data-testid="tab-traffic">
-          Traffic <TabsCount>{trafficCount || ''}</TabsCount>
+          Traffic <TrafficCount log={log} />
         </TabsTrigger>
       </TabsList>
       <div className="ml-auto flex items-stretch">
@@ -43,4 +45,10 @@ export function TopBar({
       </div>
     </header>
   );
+}
+
+// The Traffic tab's count, how many requests the log has: it alone draws again as they arrive.
+function TrafficCount({ log }: { log: TrafficLog }) {
+  const count = useTrafficValue(log, (traffic) => traffic.entries.length);
+  return <TabsCount>{count || ''}</TabsCount>;
 }

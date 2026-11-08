@@ -8,7 +8,8 @@
 import { useEffect, useRef } from 'react';
 import { RuleList } from '../../pages/rules/index.ts';
 import { ruleStore } from '../../shared/api/index.ts';
-import { useStore } from '../../shared/react/index.ts';
+import type { TrafficLog } from '../../shared/api/index.ts';
+import { useStore, useTrafficValue } from '../../shared/react/index.ts';
 import { cn } from '../../shared/ui/cn.ts';
 import { Button } from '../../shared/ui/kit/button.tsx';
 import { Icon } from '../../shared/ui/kit/icon.tsx';
@@ -22,7 +23,8 @@ export type View = 'rules' | 'traffic';
 interface SidebarProps {
   view: View;
   onView: (view: View) => void;
-  trafficCount: number;
+  // The editor's log of the page it watches, for the Traffic row's count.
+  log: TrafficLog;
   // In a narrow panel, whether it's the screen: the Rules view, with nothing open in it.
   screen: boolean;
   query: string;
@@ -48,7 +50,7 @@ function isEditable(target: EventTarget | null) {
 export function Sidebar({
   view,
   onView,
-  trafficCount,
+  log,
   screen,
   query,
   onQueryChange,
@@ -122,12 +124,9 @@ export function Sidebar({
           testId="nav-rules"
           onClick={() => onView('rules')}
         />
-        <ViewRow
-          icon="activity"
-          label="Traffic"
-          count={trafficCount}
+        <TrafficRow
+          log={log}
           active={view === 'traffic'}
-          testId="nav-traffic"
           onClick={() => onView('traffic')}
         />
       </nav>
@@ -193,5 +192,29 @@ function ViewRow({
         {count || ''}
       </span>
     </button>
+  );
+}
+
+// The Traffic row, whose count is how many requests the log has: it alone draws again as they
+// arrive, not the sidebar and its rules.
+function TrafficRow({
+  log,
+  active,
+  onClick,
+}: {
+  log: TrafficLog;
+  active: boolean;
+  onClick: () => void;
+}) {
+  const count = useTrafficValue(log, (traffic) => traffic.entries.length);
+  return (
+    <ViewRow
+      icon="activity"
+      label="Traffic"
+      count={count}
+      active={active}
+      testId="nav-traffic"
+      onClick={onClick}
+    />
   );
 }

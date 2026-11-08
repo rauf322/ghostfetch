@@ -1,5 +1,6 @@
 // One rule in the list: its switch (the green dot), its name, and what it matches and does. Its
 // place in the list is its priority. Click it to open it; drag it to reorder.
+import { memo } from 'react';
 import { ruleTitle } from '../../../shared/api/index.ts';
 import type { Rule } from '../../../shared/api/index.ts';
 import { cn } from '../../../shared/ui/cn.ts';
@@ -19,17 +20,38 @@ const DROP_MARK = cn(
   "data-[drop=after]:after:absolute data-[drop=after]:after:inset-x-0 data-[drop=after]:after:-bottom-px data-[drop=after]:after:h-0.5 data-[drop=after]:after:bg-foreground data-[drop=after]:after:content-['']",
 );
 
-export function RuleListItem({
+interface RuleListItemProps {
+  rule: Rule;
+  // The rule's revision (ruleRevision()): the rule is changed in place, so this is what moves.
+  revision: number;
+  selected: boolean;
+  drag: RowDrag;
+  onSelect: (id: string) => void;
+}
+
+// Whether a row would draw the same: its rule unchanged (the same copy at the same revision), as
+// selected as it was, and where it stands in a drag too. Its switch draws again by itself when
+// Ghostfetch is turned on or off (RuleSwitch).
+function drawsTheSame(before: RuleListItemProps, after: RuleListItemProps) {
+  return (
+    before.rule === after.rule &&
+    before.revision === after.revision &&
+    before.selected === after.selected &&
+    before.drag.drop === after.drag.drop &&
+    before.drag.dragging === after.drag.dragging &&
+    before.drag.handlers === after.drag.handlers &&
+    before.onSelect === after.onSelect
+  );
+}
+
+// Memoized: the list draws again on every change to any rule (a keystroke in one's body), and a
+// row only when its own rule changed.
+export const RuleListItem = memo(function RuleListItem({
   rule,
   selected,
   drag,
   onSelect,
-}: {
-  rule: Rule;
-  selected: boolean;
-  drag: RowDrag;
-  onSelect: (id: string) => void;
-}) {
+}: RuleListItemProps) {
   // An unnamed rule already shows its URL as the title.
   const pattern = rule.name.trim()
     ? [rule.match.url, rule.match.graphqlOperation].filter(Boolean).join(' ')
@@ -75,4 +97,4 @@ export function RuleListItem({
       </ItemContent>
     </Item>
   );
-}
+}, drawsTheSame);

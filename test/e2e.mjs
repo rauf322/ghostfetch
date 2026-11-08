@@ -1772,6 +1772,84 @@ try {
     },
   );
 
+  // How many times each of the editor's functions ran while `action` did, by name: V8's exact call
+  // counts (precise coverage). The build isn't minified, so a component is counted by its name each
+  // time it draws.
+  const editorSession = await context.newCDPSession(app);
+  const draws = async (action) => {
+    await editorSession.send('Profiler.enable');
+    await editorSession.send('Profiler.startPreciseCoverage', {
+      callCount: true,
+      detailed: false,
+    });
+    await editorSession.send('Profiler.takePreciseCoverage');
+    await action();
+    const { result } = await editorSession.send('Profiler.takePreciseCoverage');
+    await editorSession.send('Profiler.stopPreciseCoverage');
+    const counts = {};
+    for (const script of result) {
+      if (!script.url.includes('/chunks/')) continue;
+      for (const fn of script.functions)
+        if (fn.functionName)
+          counts[fn.functionName] =
+            (counts[fn.functionName] ?? 0) + (fn.ranges[0]?.count ?? 0);
+    }
+    return counts;
+  };
+  await check(
+    'a request in the watched tab draws its count again, not the editor and its rules',
+    async () => {
+      // Up to 0.20.0 the count was the editor's own state: each request drew it whole, every
+      // rule's row in the sidebar included.
+      const traffic = app.locator('[data-testid="nav-traffic"]');
+      const before = await traffic.textContent();
+      const counts = await draws(async () => {
+        for (const n of [1, 2, 3]) await call(`/api/draws?n=${n}`);
+        await app.waitForFunction(
+          (was) =>
+            document.querySelector('[data-testid="nav-traffic"]').textContent !== was,
+          before,
+          { timeout: 3000 },
+        );
+        await sleep(300);
+      });
+      expect(
+        [
+          (counts.TrafficRow ?? 0) > 0,
+          counts.Editor ?? 0,
+          counts.Sidebar ?? 0,
+          counts.RuleListItem ?? 0,
+        ],
+        [true, 0, 0, 0],
+        `drawn: TrafficRow ${counts.TrafficRow}, Editor ${counts.Editor}, Sidebar ${counts.Sidebar}, RuleListItem ${counts.RuleListItem}`,
+      );
+    },
+  );
+  await check(
+    "typing in a rule's name draws its row in the list again, and none of the others",
+    async () => {
+      // Up to 0.20.0 every rule's row drew again on each keystroke in any rule.
+      const row = app.locator('[data-testid="rule"]').first();
+      await row.click();
+      const name = app.locator('[data-testid="rule-name"]');
+      const was = await name.inputValue();
+      const counts = await draws(async () => {
+        await name.click();
+        await app.keyboard.press('End');
+        await app.keyboard.type('xyz', { delay: 40 });
+        await sleep(100);
+      });
+      const title = await row.locator('[data-slot="item-title"]').textContent();
+      await name.fill(was);
+      const rows = await app.locator('[data-testid="rule"]').count();
+      expect(
+        [title, (counts.RuleListItem ?? 0) >= 1 && counts.RuleListItem <= 3],
+        [`${was}xyz`.trim(), true],
+        `${counts.RuleListItem} rows drawn, of ${rows}`,
+      );
+    },
+  );
+
   await check('delete with undo', async () => {
     const before = await app.locator('[data-testid="rule"]').count();
     await app.click('[data-testid="rule-menu"]');

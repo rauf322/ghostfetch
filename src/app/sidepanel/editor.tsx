@@ -52,7 +52,6 @@ export function Editor({ inTab, windowId }: { inTab: boolean; windowId: number }
   // A rule New rule just made, whose body gets the cursor, once: the body says when it has it.
   const [created, setCreated] = useState<string | null>(null);
   const [query, setQuery] = useState('');
-  const [trafficCount, setTrafficCount] = useState(0);
   // The side panel follows the active tab; the editor in a tab keeps the tab it picked.
   const log = useTrafficLog(!inTab);
   const importInput = useRef<HTMLInputElement>(null);
@@ -154,12 +153,7 @@ export function Editor({ inTab, windowId }: { inTab: boolean; windowId: number }
       onValueChange={(next) => showView(next as View)}
       className="h-screen flex-col overflow-hidden"
     >
-      <TopBar
-        trafficCount={trafficCount}
-        inTab={inTab}
-        windowId={windowId}
-        onImport={chooseFile}
-      />
+      <TopBar log={log} inTab={inTab} windowId={windowId} onImport={chooseFile} />
       {!enabled && (
         <Alert variant="paused" className="flex-none">
           Ghostfetch is off. Rules aren't applied until you turn it on from its toolbar
@@ -171,7 +165,7 @@ export function Editor({ inTab, windowId }: { inTab: boolean; windowId: number }
         <Sidebar
           view={view}
           onView={showView}
-          trafficCount={trafficCount}
+          log={log}
           screen={sidebarScreen}
           query={query}
           onQueryChange={setQuery}
@@ -218,12 +212,7 @@ export function Editor({ inTab, windowId }: { inTab: boolean; windowId: number }
             data-testid="view-traffic"
             className="flex min-h-0 flex-1 flex-col"
           >
-            <TrafficPage
-              log={log}
-              onMock={mockRule}
-              onOpenRule={openRule}
-              onCount={setTrafficCount}
-            />
+            <TrafficPage log={log} onMock={mockRule} onOpenRule={openRule} />
           </TabsContent>
         </main>
       </Split>

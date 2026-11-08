@@ -5,7 +5,7 @@
 // wide, `beside:`; the view is a size container, traffic), the drawer floats as a card beside the
 // list; in a narrower one (a side panel, or beside a wide sidebar) it takes the view, bar and
 // all, with a button to close it.
-import { memo, useCallback, useEffect, useState, useSyncExternalStore } from 'react';
+import { memo, useCallback, useState, useSyncExternalStore } from 'react';
 import {
   isPreserved,
   rememberPreserve,
@@ -22,16 +22,15 @@ interface TrafficPageProps {
   log: TrafficLog;
   onMock: (draft: Rule, entry: LogEntry) => void;
   onOpenRule: (id: string) => void;
-  onCount: (count: number) => void;
 }
 
 // Memoized: it only draws again when its own log changes (and the one setting it shows,
-// Recording), not on every rule edit.
+// Recording), not on every rule edit. The count beside the view's name reads the log itself
+// (app/sidepanel), so a request draws neither the editor nor its rules again.
 export const TrafficPage = memo(function TrafficPage({
   log,
   onMock,
   onOpenRule,
-  onCount,
 }: TrafficPageProps) {
   const traffic = useTraffic(log);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -45,8 +44,6 @@ export const TrafficPage = memo(function TrafficPage({
   const close = useCallback(() => setSelectedId(null), []);
   // With a request open, the bar and the list give way to it where there's no room for both.
   const yielding = selected ? 'hidden beside:flex' : undefined;
-
-  useEffect(() => onCount(entries.length), [entries.length, onCount]);
 
   return (
     <div className="@container/traffic flex h-full min-h-0 flex-col">

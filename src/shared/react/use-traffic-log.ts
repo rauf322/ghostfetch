@@ -1,7 +1,8 @@
 // The editor's live log of a tab's requests (shared/api's createTrafficLog), running for as long
 // as the component that starts it is mounted, and two ways to read it: the whole snapshot, for
 // the Traffic tab, or one value worked out from it, for a view that only needs that much (a
-// rule's count of hits) and so only draws again when that value changes.
+// rule's count of hits, the count beside Traffic's name) and so only draws again when that value
+// changes.
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { createTrafficLog, isPreserved } from '../api/index.ts';
 import type { TrafficLog, TrafficSnapshot } from '../api/index.ts';

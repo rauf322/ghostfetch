@@ -1,7 +1,8 @@
 // The editor's and the popup's copy of the rules in storage. Rule edits are saved with a short
 // debounce; changes made in another view (popup, other window) are picked up through
 // chrome.storage.onChanged. The screens read ruleStore.state while they render and redraw through
-// useStore(ruleStore).
+// useStore(ruleStore); a component that draws one rule can skip a redraw its rule's revision
+// (ruleRevision()) says it doesn't need.
 import { createStore } from '../../lib/index.ts';
 import { normalizeRules } from './rule.ts';
 import type { Rule } from './types.ts';
@@ -94,10 +95,20 @@ export function moveRule(id: string, toIndex: number) {
   ruleStore.emit('edit');
 }
 
+// How many times each rule has been changed in place here (touchRule()). A rule is changed in
+// place, so a component that drew it can't tell from the rule itself whether it has changed since;
+// its revision moves on each change. Its updatedAt can't serve, as two edits in the same
+// millisecond have the same one. A rule changed in another view is a new copy, at 0.
+const revisions = new WeakMap<Rule, number>();
+export function ruleRevision(rule: Rule) {
+  return revisions.get(rule) ?? 0;
+}
+
 // After changing a rule in place: saves it (after a short pause, or `immediate`ly, as the popup
 // does because it can close at any moment) and redraws.
 export function touchRule(rule: Rule, { immediate = false } = {}) {
   rule.updatedAt = Date.now();
+  revisions.set(rule, ruleRevision(rule) + 1);
   saveRules({ immediate });
   ruleStore.emit('edit');
 }

@@ -2,7 +2,7 @@
 // the + that makes a new rule. A rule's place in the list is its priority: rules are tried top to
 // bottom, and the first match wins; drag one to move it. A rule that's off stays where it is, its
 // dot grey. Search narrows the list.
-import { ruleStore } from '../../../shared/api/index.ts';
+import { ruleRevision, ruleStore } from '../../../shared/api/index.ts';
 import { useStore } from '../../../shared/react/index.ts';
 import { Button } from '../../../shared/ui/kit/button.tsx';
 import { Icon } from '../../../shared/ui/kit/icon.tsx';
@@ -60,6 +60,7 @@ export function RuleList({ selectedId, query, onSelect, onCreate }: RuleListProp
               <RuleListItem
                 key={rule.id}
                 rule={rule}
+                revision={ruleRevision(rule)}
                 selected={rule.id === selectedId}
                 drag={drag(rule)}
                 onSelect={onSelect}

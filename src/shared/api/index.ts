@@ -36,6 +36,7 @@ export {
   initRules,
   moveRule,
   removeRule,
+  ruleRevision,
   ruleStore,
   touchRule,
 } from './rules/store.ts';

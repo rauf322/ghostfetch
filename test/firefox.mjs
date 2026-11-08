@@ -56,13 +56,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return { sidebarOpen: typeof chrome.sidebarAction?.open, sidePanel: typeof chrome.sidePanel };
     }
     if (request.command === 'traffic') {
-      // Connects to the tab's log exactly like the editor's Traffic view does.
+      // Connects to the tab's log exactly like the editor's Traffic view does, and takes its first
+      // part (all of a log under 8 million characters). Each entry: kind, method, path, action,
+      // whether its body was cut, and how long the body kept is.
       const tab = (await chrome.tabs.query({})).find((candidate) => candidate.url === request.url);
       const port = chrome.tabs.connect(tab.id, { name: 'ghostfetch-log', frameId: 0 });
       return new Promise((resolve) => port.onMessage.addListener((reply) => {
         if (reply.type !== 'snapshot') return;
         port.disconnect();
-        resolve(reply.entries.map((entry) => [entry.kind, entry.method, new URL(entry.url).pathname + new URL(entry.url).search, entry.action]));
+        resolve(reply.entries.map((entry) => [entry.kind, entry.method, new URL(entry.url).pathname + new URL(entry.url).search, entry.action, entry.truncated, entry.responseBody.length]));
       }));
     }
     return null;
@@ -279,6 +281,29 @@ try {
       ) {
         throw new Error(`missing entries; got ${JSON.stringify(entries.slice(-6))}`);
       }
+    },
+  );
+  await check(
+    "a stream that doesn't end is logged with its first 1 MB, and the page still gets the rest",
+    async () => {
+      // Up to 0.20.0 the copy Ghostfetch reads was read to its end, which this never reaches: no
+      // entry, and the whole stream so far held in the tab.
+      const stream = await open(`${ORIGIN}/stream`, 'stream');
+      let entry;
+      for (let attempt = 0; attempt < 25 && !entry; attempt++) {
+        await sleep(200);
+        entry = (await send({ command: 'traffic', url: `${ORIGIN}/stream` })).find(
+          ([, , entryPath]) => entryPath === '/api/stream',
+        );
+      }
+      const before = await stream.evaluate(() => window.received);
+      await sleep(400);
+      const after = await stream.evaluate(() => window.received);
+      await stream.close();
+      expect(
+        [entry?.slice(4), before > 1_000_000, after > before],
+        [[true, 1_000_000], true, true],
+      );
     },
   );
   await check('the sidebar API the "Open side panel" buttons use exists', async () => {

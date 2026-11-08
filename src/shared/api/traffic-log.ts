@@ -99,6 +99,9 @@ export function createTrafficLog({ followActiveTab, preserve }: TrafficLogOption
         connected = true;
         if (!preserve()) entries = new Map();
         for (const entry of message.entries) entries.set(entry.id, entry);
+      } else if (message.type === 'more') {
+        // The rest of a long log so far, in order (messages.ts).
+        for (const entry of message.entries) entries.set(entry.id, entry);
       } else if (message.type === 'entry') {
         entries.set(message.entry.id, message.entry);
         if (entries.size > MAX_ENTRIES) entries.delete(entries.keys().next().value!);

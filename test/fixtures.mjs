@@ -52,6 +52,13 @@ export const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // ------------------------------------------------------------ fake backend
 
+// Just over 1 MB of JSON, of which the traffic log keeps the first 1 MB: /heavy's responses.
+const HEAVY = `[${Array(16_000)
+  .fill('{"id":1,"name":"Item","email":"user@example.com","status":"active"}')
+  .join(',')}]`;
+// About 70 KB of NDJSON, which /api/stream sends 50 times a second.
+const TICKS = `${JSON.stringify({ event: 'tick', data: 'x'.repeat(200) })}\n`.repeat(300);
+
 // Listens on 127.0.0.1. EVIL_ORIGIN and LOCAL_ORIGIN are the same server under a non-localhost
 // name and under a local.* name; each test maps both to 127.0.0.1 in its own browser.
 export async function startServer() {
@@ -173,6 +180,29 @@ export async function startServer() {
             return loaded.then((response) => ({ response, stolen }));
           }
         </script><title>steal-caller</title>`);
+      } else if (url.pathname === '/heavy') {
+        // 70 responses of just over 1 MB: a log longer than Chrome passes in one message (64 MiB).
+        res.writeHead(200, { 'content-type': 'text/html' });
+        res.end(`<!doctype html><title>Heavy app on ${req.headers.host}</title><script>
+          window.done = (async () => {
+            for (let i = 0; i < 70; i += 7)
+              await Promise.all(Array.from({ length: 7 }, (_, k) => fetch('/api/heavy/' + (i + k)).then((r) => r.text())));
+          })();
+        </script>`);
+      } else if (url.pathname === '/stream') {
+        // Reads a stream that doesn't end, as an app watching a log or a feed does, and counts it.
+        res.writeHead(200, { 'content-type': 'text/html' });
+        res.end(`<!doctype html><title>Stream on ${req.headers.host}</title><script>
+          window.received = 0;
+          fetch('/api/stream').then(async (response) => {
+            const reader = response.body.getReader();
+            for (;;) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              window.received += value.length;
+            }
+          });
+        </script>`);
       } else if (url.pathname === '/__control') {
         // A blank page the Firefox test drives its storage hook from.
         res.writeHead(200, { 'content-type': 'text/html' });
@@ -207,7 +237,15 @@ export async function startServer() {
         json(200, { method: req.method, headers: req.headers, body });
       else if (url.pathname === '/api/new-home') json(200, { redirected: true });
       else if (url.pathname === '/graphql') json(200, { data: { real: true } });
-      else json(404, { error: 'not found' });
+      else if (url.pathname.startsWith('/api/heavy/')) {
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.end(HEAVY);
+      } else if (url.pathname === '/api/stream') {
+        // No Content-Length, and no end: about 3.5 MB a second for as long as the page is open.
+        res.writeHead(200, { 'content-type': 'application/x-ndjson' });
+        const timer = setInterval(() => res.write(TICKS), 20);
+        res.on('close', () => clearInterval(timer));
+      } else json(404, { error: 'not found' });
     });
   });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));

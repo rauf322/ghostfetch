@@ -206,8 +206,9 @@ request body or the `operationName` query param.
   nothing and isn't listed; it goes from storage the next time the rules are saved, and
   importing a file skips it.
 - The Traffic log keeps the last 300 requests per tab and captures response bodies up to
-  1 MB. Iframes from other sites (auth widgets, wallets) aren't captured unless Ghostfetch runs
-  on their site too.
+  1 MB. A streamed response (one without a Content-Length) shows up when it ends or once it has
+  sent 1 MB, whichever comes first. Iframes from other sites (auth widgets, wallets) aren't
+  captured unless Ghostfetch runs on their site too.
 
 ## Upgrading from old builds
 

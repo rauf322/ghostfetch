@@ -23,6 +23,11 @@ export default defineUnlistedScript(() => {
   (globalThis as { ghostfetchBridge?: boolean }).ghostfetchBridge = true;
 
   const MAX_LOG = 300;
+  // Chrome passes a message of at most 64 MiB, as JSON, and each request in the log can hold a
+  // 1 MB body: the log so far goes to a Traffic view in parts of at most this many characters of
+  // URLs and bodies, which as JSON stay under that even if every character took six bytes
+  // (\u0001), with room for the rest of each entry.
+  const PART = 8_000_000;
   const KINDS = new Set<unknown>(['fetch', 'xhr']);
   const ACTIONS = new Set<unknown>(['', 'mocked', 'modified', 'error']);
   const isTop = window === window.top;
@@ -116,6 +121,23 @@ export default defineUnlistedScript(() => {
     for (const viewer of viewers) send(viewer, { type: 'entry', entry });
   }
 
+  // The log so far in parts of up to PART characters, oldest first, each with one entry at least.
+  function inParts(entries: LogEntry[]) {
+    const parts: LogEntry[][] = [[]];
+    let size = 0;
+    for (const entry of entries) {
+      const length =
+        entry.url.length + entry.requestBody.length + entry.responseBody.length;
+      if (size + length > PART && parts.at(-1)!.length) {
+        parts.push([]);
+        size = 0;
+      }
+      parts.at(-1)!.push(entry);
+      size += length;
+    }
+    return parts;
+  }
+
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area === 'local' && (changes.rules || changes.enabled || changes.record))
       sendState();
@@ -136,6 +158,8 @@ export default defineUnlistedScript(() => {
     viewer.onMessage.addListener((message: LogViewerMessage | undefined) => {
       if (message?.type === 'clear') log.length = 0;
     });
-    send(viewer, { type: 'snapshot', entries: log, url: location.href });
+    const [first, ...rest] = inParts(log);
+    send(viewer, { type: 'snapshot', entries: first!, url: location.href });
+    for (const entries of rest) send(viewer, { type: 'more', entries });
   });
 });

@@ -1,6 +1,7 @@
 // The requests the page makes, as entries for the tab's traffic log (sent with report()). Bodies
 // are kept as text only, none from event streams: a response's up to 1 MB, not read at all past
-// 5 MB by its Content-Length, and a request's up to 100 KB.
+// 5 MB by its Content-Length, and a request's up to 100 KB. Only that 1 MB of a response is ever
+// held here (readBody()).
 import type { EntryKind, LogEntry, Rule } from '../../shared/api/index.ts';
 import { report } from './page-channel.ts';
 import type { PageRequest, RuleResult } from './types.ts';
@@ -84,10 +85,32 @@ export function logResponse(
     report(makeEntry(kind, request, started, base));
     return;
   }
-  copy.text().then(
+  readBody(copy, size > 0).then(
     (text) => report(makeEntry(kind, request, started, { ...base, ...clipBody(text) })),
     () => report(makeEntry(kind, request, started, base)),
   );
+}
+
+// The copy's text, kept only as far as the log keeps it (MAX_BODY characters). A response with a
+// Content-Length (5 MB at most, logResponse()) is still read to its end, so the entry's duration is
+// the whole response's, its text past that point dropped as it arrives. One without, which is what
+// a stream is, has its copy cancelled there and is logged at once: a stream that doesn't end shows
+// up, and holds no more than that here. Cancelling the copy leaves the page's own body as it was.
+async function readBody(copy: Response, toTheEnd: boolean) {
+  const reader = copy.body?.getReader();
+  if (!reader) return '';
+  const decoder = new TextDecoder();
+  let text = '';
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) return text + decoder.decode();
+    if (text.length > MAX_BODY) continue;
+    text += decoder.decode(value, { stream: true });
+    if (text.length > MAX_BODY && !toTheEnd) {
+      reader.cancel().catch(() => {});
+      return text;
+    }
+  }
 }
 
 export function canCapture(contentType: string) {

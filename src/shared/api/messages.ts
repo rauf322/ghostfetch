@@ -30,9 +30,12 @@ export type RuntimeMessage =
 // log so far, then each request as it happens, and can ask the tab to clear its log.
 export const LOG_PORT = 'ghostfetch-log';
 
-// The tab's bridge to the Traffic view.
+// The tab's bridge to the Traffic view: the log so far (a long one in parts: the snapshot, then
+// the rest of it in order as "more", since Chrome passes a message of at most 64 MiB), then each
+// request as it happens.
 export type LogPortMessage =
   | { type: 'snapshot'; entries: LogEntry[]; url: string }
+  | { type: 'more'; entries: LogEntry[] }
   | { type: 'entry'; entry: LogEntry };
 // The Traffic view to the tab's bridge.
 export interface LogViewerMessage {

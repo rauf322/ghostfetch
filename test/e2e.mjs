@@ -3591,6 +3591,52 @@ try {
     },
   );
 
+  // Traffic watching a tab of its own: the tab picker's option for it.
+  const watch = async (title) => {
+    await show('traffic');
+    await app.click('[data-testid="traffic-tab"]');
+    await app
+      .getByRole('option', { name: `${title} on ${new URL(ORIGIN).host}`, exact: true })
+      .click();
+  };
+  await check(
+    "a stream that doesn't end shows in Traffic with its first 1 MB, and the page still gets the rest",
+    async () => {
+      // Up to 0.20.0 the copy Ghostfetch reads was read to its end, which this never reaches: no
+      // entry, and the whole stream so far held in the tab.
+      const stream = await context.newPage();
+      await stream.goto(`${ORIGIN}/stream`);
+      await watch('Stream');
+      const row = app.locator('[data-testid="request"]', { hasText: '/api/stream' });
+      await row.waitFor({ timeout: 5000 });
+      await row.click();
+      const kept = await app
+        .locator('[data-testid="request-detail"]')
+        .getByText('the first 1 MB')
+        .count();
+      const before = await stream.evaluate(() => window.received);
+      await sleep(400);
+      const after = await stream.evaluate(() => window.received);
+      await stream.close();
+      expect([kept, before > 1_000_000, after > before], [1, true, true]);
+    },
+  );
+  await check(
+    'Traffic shows a log longer than Chrome passes in one message (64 MiB): 70 responses of 1 MB',
+    async () => {
+      // Up to 0.20.0 the log so far went over as one message, which Chrome refused: no requests.
+      const heavy = await context.newPage();
+      await heavy.goto(`${ORIGIN}/heavy`);
+      await heavy.evaluate(() => window.done);
+      await watch('Heavy app');
+      const rows = app.locator('[data-testid="request"]', { hasText: '/api/heavy/' });
+      await rows.nth(69).waitFor({ timeout: 8000 });
+      const count = await rows.count();
+      await heavy.close();
+      expect(count, 70);
+    },
+  );
+
   await check('no uncaught errors in pages or the extension', async () => {
     if (errors.length) throw new Error(errors.join('\n'));
   });

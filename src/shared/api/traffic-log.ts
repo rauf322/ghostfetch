@@ -51,6 +51,9 @@ export function createTrafficLog({ followActiveTab, preserve }: TrafficLogOption
   let targetUrl = '';
   let port: chrome.runtime.Port | null = null;
   let connected = false;
+  // Clear was clicked since the page's log so far began to arrive. The page sent all its parts at
+  // once, before it heard of the Clear: those still on their way ('more') were cleared too.
+  let cleared = false;
   let windowId: number | undefined;
   let retryTimer: ReturnType<typeof setTimeout> | undefined;
   let tabsTimer: ReturnType<typeof setTimeout> | undefined;
@@ -97,10 +100,12 @@ export function createTrafficLog({ followActiveTab, preserve }: TrafficLogOption
       if (opened !== port) return;
       if (message.type === 'snapshot') {
         connected = true;
+        cleared = false;
         if (!preserve()) entries = new Map();
         for (const entry of message.entries) entries.set(entry.id, entry);
       } else if (message.type === 'more') {
-        // The rest of a long log so far, in order (messages.ts).
+        // The rest of a long log so far, in order (messages.ts), unless Clear came first.
+        if (cleared) return;
         for (const entry of message.entries) entries.set(entry.id, entry);
       } else if (message.type === 'entry') {
         entries.set(message.entry.id, message.entry);
@@ -225,10 +230,12 @@ export function createTrafficLog({ followActiveTab, preserve }: TrafficLogOption
 
     // The page picker.
     setTarget,
-    // Clears the log here and in the page, so a reload doesn't bring the requests back.
+    // Clears the log here and in the page, so a reload doesn't bring the requests back, nor the
+    // rest of the log so far if it's still arriving.
     clear() {
       port?.postMessage({ type: 'clear' } satisfies LogViewerMessage);
       entries = new Map();
+      cleared = true;
       changed();
     },
   };

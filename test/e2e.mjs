@@ -3714,6 +3714,40 @@ try {
       expect(count, 70);
     },
   );
+  await check(
+    "Clear, while a long log is still arriving, empties Traffic as it does the page's log",
+    async () => {
+      // Up to 0.20.1 the parts of the log so far still on their way after Clear put their
+      // requests back: Traffic listed them, though the page's own log no longer had them.
+      const heavy = await context.newPage();
+      await heavy.goto(`${ORIGIN}/heavy`);
+      await heavy.evaluate(() => window.done);
+      // Clear is clicked the moment the first of its requests is drawn, the rest still on their way.
+      await app.evaluate(() => {
+        const observer = new MutationObserver(() => {
+          const drawn = [
+            ...document.querySelectorAll('[data-testid="request-path"]'),
+          ].some((shown) => shown.textContent.startsWith('/api/heavy/'));
+          if (!drawn) return;
+          observer.disconnect();
+          window.clearedWith = document.querySelectorAll(
+            '[data-testid="request"]',
+          ).length;
+          document.querySelector('button[title="Clear the log"]').click();
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+      });
+      await watch('Heavy app');
+      await app.waitForFunction(() => window.clearedWith !== undefined, null, {
+        timeout: 8000,
+      });
+      await sleep(3000);
+      const listed = await app.locator('[data-testid="request"]').count();
+      const clearedWith = await app.evaluate(() => window.clearedWith);
+      await heavy.close();
+      expect(listed, 0, `Clear clicked with ${clearedWith} of 70 drawn`);
+    },
+  );
 
   await check('no uncaught errors in pages or the extension', async () => {
     if (errors.length) throw new Error(errors.join('\n'));

@@ -3748,6 +3748,29 @@ try {
       expect(listed, 0, `Clear clicked with ${clearedWith} of 70 drawn`);
     },
   );
+  await check(
+    'when the page Traffic watches is closed, it watches the page used last and lists its requests',
+    async () => {
+      // Up to 0.20.1 the page picker took its list's own reset (its page gone from the list) for a
+      // choice of no page at all: "Open a web page in this window", with the test app still open.
+      await page.bringToFront();
+      const control = await context.newPage();
+      await control.goto(`${ORIGIN}/__control`);
+      await show('traffic');
+      await app.click('[data-testid="traffic-tab"]');
+      await app.getByRole('option', { name: 'control', exact: true }).click();
+      await control.close();
+      await sleep(500);
+      await page.evaluate(() => fetch('/api/user?case=after-close'));
+      const row = app.locator('[data-testid="request"]', { hasText: 'case=after-close' });
+      await row.waitFor({ timeout: 3000 }).catch(() => {});
+      expect(
+        [await row.count(), await app.locator('[data-testid="traffic-notice"]').count()],
+        [1, 0],
+        `watching: ${(await app.locator('[data-testid="traffic-tab"]').textContent()).trim()}`,
+      );
+    },
+  );
 
   await check('no uncaught errors in pages or the extension', async () => {
     if (errors.length) throw new Error(errors.join('\n'));

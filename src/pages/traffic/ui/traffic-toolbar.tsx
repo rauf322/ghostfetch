@@ -28,7 +28,7 @@ export function TrafficToolbar({
   traffic: TrafficSnapshot;
   record: boolean;
   preserve: boolean;
-  onPick: (id: number | null) => void;
+  onPick: (id: number) => void;
   onPreserveChange: (on: boolean) => void;
   onClear: () => void;
   className?: string;

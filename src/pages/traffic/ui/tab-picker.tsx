@@ -17,13 +17,18 @@ export function TabPicker({
 }: {
   tabs: TrafficTab[];
   target: TrafficTab | null;
-  onPick: (id: number | null) => void;
+  onPick: (id: number) => void;
 }) {
   return (
     <Select
       items={tabs.map((tab) => ({ value: String(tab.id), label: tab.title }))}
       value={target ? String(target.id) : null}
-      onValueChange={(value) => onPick(value ? Number(value) : null)}
+      onValueChange={(value) => {
+        // A page you picked. The Select also changes its value by itself when the page it shows
+        // leaves the list (its tab was closed): to none, which isn't a choice of yours, and would
+        // leave Traffic watching no page. The log moves on to the next page by itself.
+        if (value) onPick(Number(value));
+      }}
     >
       <SelectTrigger
         variant="bare"

@@ -6,7 +6,7 @@
 // and opening the editor. No React and no npm package: the background and the page
 // scripts import from here too, and keep only what they use.
 export type { BodyMode, HeaderRow, MatchMode, Method, Rule } from './rules/types.ts';
-export { BODY_MODES, MATCH_MODES, METHODS } from './rules/catalog.ts';
+export { BODY_MODES, MATCH_MODES, MAX_DELAY, METHODS } from './rules/catalog.ts';
 export {
   createRule,
   isResponseRule,

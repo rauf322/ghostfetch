@@ -1,6 +1,6 @@
 // Making rules: a new one, one rebuilt from data that can't be trusted, and the name a rule goes by.
 import type { Untrusted } from '../../lib/index.ts';
-import { BODY_MODES, MATCH_MODES, METHODS } from './catalog.ts';
+import { BODY_MODES, MATCH_MODES, MAX_DELAY, METHODS } from './catalog.ts';
 import type { BodyMode, HeaderRow, Method, Rule } from './types.ts';
 
 export function createRule(): Rule {
@@ -80,7 +80,7 @@ export function normalizeRule(input: unknown, { newId = false } = {}): Rule {
       bodyMode: bodyMode(response.bodyMode),
       body: text(response.body, base.response.body),
       status: /^\d{0,3}$/.test(status) ? status : '',
-      delay: Math.min(Math.max(Math.round(Number(response.delay) || 0), 0), 600_000),
+      delay: Math.min(Math.max(Math.round(Number(response.delay) || 0), 0), MAX_DELAY),
       contentType: text(response.contentType, base.response.contentType),
       headers: headerRows(response.headers),
     },

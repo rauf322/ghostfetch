@@ -1,6 +1,6 @@
-// The Delay row's editor: how long a rule holds the response back, in whole milliseconds, typed or
-// picked from a few common ones.
-import { editRule } from '../../../../shared/api/index.ts';
+// The Delay row's editor: how long a rule holds the response back, in whole milliseconds up to 10
+// minutes, typed or picked from a few common ones.
+import { MAX_DELAY, editRule } from '../../../../shared/api/index.ts';
 import type { Rule } from '../../../../shared/api/index.ts';
 import { formatDuration } from '../../../../shared/lib/index.ts';
 import { CardHint } from '../../../../shared/ui/kit/card.tsx';
@@ -12,10 +12,10 @@ const PRESETS = [0, 250, 500, 1000, 2000, 5000];
 
 export function DelayPanel({ rule }: { rule: Rule }) {
   const { delay } = rule.response;
-  // Whole milliseconds, never below 0: the field shows what's kept.
+  // Whole milliseconds, from 0 to MAX_DELAY, as a rule is kept: the field shows what's kept.
   const setDelay = (ms: number) =>
     editRule(rule.id, (current) => {
-      current.response.delay = Math.max(0, Math.round(ms || 0));
+      current.response.delay = Math.min(MAX_DELAY, Math.max(0, Math.round(ms || 0)));
     });
   return (
     <>
@@ -25,6 +25,7 @@ export function DelayPanel({ rule }: { rule: Rule }) {
           <Input
             type="number"
             min={0}
+            max={MAX_DELAY}
             step={250}
             data-testid="delay"
             value={delay || ''}
@@ -50,7 +51,7 @@ export function DelayPanel({ rule }: { rule: Rule }) {
       </ToggleGroup>
       <CardHint>
         The page waits this long for the response, so you can see its loading states and
-        timeouts.
+        timeouts. Up to 10 minutes.
       </CardHint>
     </>
   );

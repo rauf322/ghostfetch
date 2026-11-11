@@ -794,6 +794,15 @@ try {
       expect(await value('delay'), 'None');
       await app.fill('[data-testid="delay"]', '600');
       expect(await value('delay'), '600 ms');
+      // At most 10 minutes, as a rule is kept. Up to 0.20.1 a longer delay showed as typed, and
+      // came back as 10 minutes once the editor opened again.
+      await app.fill('[data-testid="delay"]', '700000');
+      expect(
+        [await value('delay'), await app.inputValue('[data-testid="delay"]')],
+        ['600 s', '600000'],
+        'a delay over 10 minutes',
+      );
+      await app.fill('[data-testid="delay"]', '600');
       await row('headers');
       await app.getByRole('button', { name: 'Add header' }).click();
       await app.keyboard.type('X-Tabbed');

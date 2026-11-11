@@ -62,7 +62,15 @@ export function wrapXhr() {
   };
 
   xhrProto.abort = function abort(this: Tracked) {
-    this[META]?.abortSimulation?.();
+    const meta = this[META];
+    if (meta?.waiting) {
+      // Aborted while it waited for the rules: it's never sent, and ends as the browser ends a
+      // request aborted right after send().
+      meta.waiting = false;
+      for (const type of ['loadstart', 'abort', 'loadend'])
+        this.dispatchEvent(new ProgressEvent(type));
+    }
+    meta?.abortSimulation?.();
     return nativeXhr.abort.call(this);
   };
 
@@ -70,11 +78,17 @@ export function wrapXhr() {
     const meta = this[META];
     if (!meta || !meta.async) return nativeXhr.send.call(this, body);
     if (!isReady()) {
+      // It goes out once the rules are here, if it's still the request the page means: not one
+      // it has aborted since (abort()), nor one of before the XMLHttpRequest was opened again,
+      // which has notes of its own.
+      meta.waiting = true;
       whenReady.then(() => {
+        if (this[META] !== meta || !meta.waiting) return;
+        meta.waiting = false;
         try {
           this.send(body);
         } catch {
-          // Aborted or reopened while waiting for the rules.
+          // The page has done something else with it that leaves nothing to send.
         }
       });
       return undefined;

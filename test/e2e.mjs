@@ -567,6 +567,37 @@ try {
       );
     },
   );
+  await check(
+    'an XMLHttpRequest aborted, or opened again, before the rules have arrived ends as it does without Ghostfetch',
+    async () => {
+      // A page's first script runs before Ghostfetch has its rules, and send() waits for them.
+      // Up to 0.20.1 the request then went out whatever had happened since: one the page had
+      // aborted loaded all the same, and one opened again went out with the first one's body.
+      const seen = async (origin) => {
+        const early = await context.newPage();
+        await early.goto(`${origin}/early-xhr`);
+        await early
+          .waitForFunction(() => window.seen.reopened !== null, null, { timeout: 4000 })
+          .catch(() => {});
+        await sleep(300);
+        const got = await early.evaluate(() => window.seen);
+        await early.close();
+        return got;
+      };
+      // evil.test is the same server under a name Ghostfetch doesn't run on.
+      const without = await seen(EVIL_ORIGIN);
+      expect(
+        without,
+        {
+          aborted: ['loadstart', 'abort', 'loadend'],
+          mocked: ['loadstart', 'abort', 'loadend'],
+          reopened: 'second',
+        },
+        'without Ghostfetch',
+      );
+      expect(await seen(ORIGIN), without);
+    },
+  );
   await check('unmatched XHR goes to the network untouched', async () => {
     const r = await xhr('/api/user?case=none', { responseType: 'json' });
     expect(

@@ -48,6 +48,9 @@ export interface XhrMeta {
   url: string;
   async: boolean;
   headers: [string, string][];
+  // send() was called before the rules had arrived: the request goes out once they have, unless
+  // the page aborts it first.
+  waiting?: boolean;
   simulated?: boolean;
   aborted?: boolean;
   finished?: boolean;

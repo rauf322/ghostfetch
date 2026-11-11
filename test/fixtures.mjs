@@ -208,6 +208,28 @@ export async function startServer() {
             }
           });
         </script>`);
+      } else if (url.pathname === '/early-xhr') {
+        // XMLHttpRequests in the page's first script, before Ghostfetch has its rules: one
+        // aborted at once (to the server, and to a URL a rule answers), and one opened and sent
+        // again. `seen` is what the page got of each.
+        res.writeHead(200, { 'content-type': 'text/html' });
+        res.end(`<!doctype html><title>Early XHR on ${req.headers.host}</title><script>
+          window.seen = { aborted: [], mocked: [], reopened: null };
+          for (const [name, target] of [['aborted', '/api/echo?early=aborted'], ['mocked', '/api/early?early=aborted']]) {
+            const request = new XMLHttpRequest();
+            for (const type of ['loadstart', 'load', 'abort', 'loadend'])
+              request.addEventListener(type, () => seen[name].push(type));
+            request.open('POST', target);
+            request.send('never');
+            request.abort();
+          }
+          const reopened = new XMLHttpRequest();
+          reopened.addEventListener('load', () => { seen.reopened = JSON.parse(reopened.responseText).body; });
+          reopened.open('POST', '/api/echo?early=first');
+          reopened.send('first');
+          reopened.open('POST', '/api/echo?early=second');
+          reopened.send('second');
+        </script>`);
       } else if (url.pathname === '/burst') {
         // 150 requests as the page starts. An image holds its load open for 400 ms, so a Traffic
         // view that connects again after a reload (200 ms later) finds them all in the log so far.

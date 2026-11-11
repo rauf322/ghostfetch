@@ -18,7 +18,7 @@ export interface ServerResponse {
   body: string;
   // The status the server gave; null if what's stored has none.
   status: number | null;
-  // When the server gave it.
+  // When the request the server gave it to was sent (the log's time for it).
   time: number;
   // Over 1 MB, of which the log keeps the first 1 MB.
   truncated: boolean;

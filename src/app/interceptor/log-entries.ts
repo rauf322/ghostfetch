@@ -13,15 +13,19 @@ const TEXT_TYPE = /json|text|xml|javascript|graphql|x-www-form-urlencoded/i;
 
 let sequence = 0;
 
+// A request the page made, logged once it has ended: `started` is when it was sent, as
+// performance.now() had it.
 export function makeEntry(
   kind: EntryKind,
   request: PageRequest,
   started: number,
   extra: Partial<LogEntry> = {},
 ): LogEntry {
+  const took = performance.now() - started;
   return {
     id: `${Date.now().toString(36)}-${(sequence++).toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
-    time: Date.now(),
+    // When it was sent, which Traffic shows as Sent and groups the log by, not when it ended.
+    time: Math.round(Date.now() - took),
     kind,
     method: request.method,
     url: request.url,
@@ -30,7 +34,7 @@ export function makeEntry(
       request.body.length > MAX_REQUEST_BODY
         ? request.body.slice(0, MAX_REQUEST_BODY)
         : request.body,
-    duration: Math.round(performance.now() - started),
+    duration: Math.round(took),
     status: null,
     contentType: '',
     responseBody: '',

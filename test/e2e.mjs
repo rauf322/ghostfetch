@@ -2222,6 +2222,32 @@ try {
       .click();
     await app.screenshot({ path: `${SHOTS}/wide-traffic.png` });
   }
+  await check(
+    "a request's Sent time is when the page sent it, not when its response ended",
+    async () => {
+      // Up to 0.20.1 a request was logged with the time its response had all arrived: one that
+      // took 2.5 s showed as sent 2.5 s after it was.
+      const sentAt = await page.evaluate(async () => {
+        const at = Date.now();
+        await (await fetch('/api/slow?ms=2500&sent=1')).text();
+        return at;
+      });
+      const row = app.locator('[data-testid="request"]', { hasText: 'sent=1' });
+      await row.waitFor({ timeout: 3000 });
+      await row.click();
+      const shown = await app
+        .locator('[data-testid="request-detail"] dt:text-is("Sent") + dd')
+        .textContent();
+      await app.locator('[data-testid="request-back"]').click();
+      // To the second, as the drawer shows it: the request went out within a second of sentAt.
+      const at = (ms) => app.evaluate((time) => new Date(time).toLocaleTimeString(), ms);
+      const sent = [await at(sentAt), await at(sentAt + 1000)];
+      if (!sent.includes(shown))
+        throw new Error(
+          `sent at ${sent[0]}, shown as ${shown}, which is when its response ended (${await at(sentAt + 2500)})`,
+        );
+    },
+  );
   await check('"Mock this response" turns a request into a rule', async () => {
     await app
       .locator('[data-testid="request"]', { hasText: 'case=live-check' })

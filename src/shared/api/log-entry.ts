@@ -12,6 +12,7 @@ export type EntryAction = '' | 'mocked' | 'modified' | 'error';
 // (see clean() in app/bridge).
 export interface LogEntry {
   id: string;
+  // When the page sent it (ms since 1970).
   time: number;
   kind: EntryKind;
   method: string;

@@ -286,10 +286,11 @@ export async function startServer() {
         res.writeHead(200, { 'content-type': 'text/plain; charset=windows-1251' });
         res.end(CP1251);
       } else if (url.pathname === '/api/slow') {
-        // Its first line at once and its last 600 ms later: a response that arrives over time.
+        // Its first line at once and its last 600 ms later (or ?ms= later): a response that
+        // arrives over time.
         res.writeHead(200, { 'content-type': 'text/plain' });
         res.write('first\n');
-        setTimeout(() => res.end('last\n'), 600);
+        setTimeout(() => res.end('last\n'), Number(url.searchParams.get('ms')) || 600);
       } else if (url.pathname === '/api/stream') {
         // No Content-Length, and no end: about 3.5 MB a second for as long as the page is open.
         res.writeHead(200, { 'content-type': 'application/x-ndjson' });

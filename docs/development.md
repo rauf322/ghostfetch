@@ -263,7 +263,8 @@ of 390,000 characters drawn only where it shows, the last lines once scrolled th
 Windows line ends compared and clicked as the editor has it, a click on Edit here going to the
 character under it, the same lines on screen after a change of layout, and none kept from Mock
 this response on a request a rule answered), the
-traffic view (its filters, Keep on reload and Clear, and the page it watches: the one used last
+traffic view (its filters, Keep on reload, which stops at 500 requests however a page that asks
+for a lot as it starts reloads, and Clear, and the page it watches: the one used last
 once its own closes or leaves the web, and, opened as the side panel has it, its tab's page from
 the moment that opens one, with a page picked by hand kept), the sidebar beside a rule and beside
 Traffic (hidden with the button and the key, its edge dragged to its narrowest, its widest, shut

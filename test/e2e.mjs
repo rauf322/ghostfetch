@@ -3929,6 +3929,30 @@ try {
     },
   );
   await check(
+    'Keep on reload keeps the last 500 requests, however often a page that asks for a lot as it starts reloads',
+    async () => {
+      // Up to 0.20.1 what a page had asked for before Traffic connected to it again after a
+      // reload was added to the requests kept with no limit: 150 more with each reload here,
+      // and so on for as long as the editor stayed open.
+      const burst = await context.newPage();
+      await burst.goto(`${ORIGIN}/burst`);
+      await burst.evaluate(() => window.done);
+      await watch('Burst');
+      const keep = app.getByRole('button', { name: 'Keep on reload' });
+      const was = await keep.getAttribute('aria-pressed');
+      if (was !== 'true') await keep.click();
+      for (let reload = 0; reload < 5; reload++) {
+        await burst.reload();
+        await burst.evaluate(() => window.done);
+        await sleep(500);
+      }
+      const listed = await app.locator('[data-testid="request"]').count();
+      if (was !== 'true') await keep.click();
+      await burst.close();
+      expect(listed, 500, 'requests listed, of the 900 the page made');
+    },
+  );
+  await check(
     'when the page Traffic watches is closed, it watches the page used last and lists its requests',
     async () => {
       // Up to 0.20.1 the page picker took its list's own reset (its page gone from the list) for a

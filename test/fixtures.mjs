@@ -208,6 +208,18 @@ export async function startServer() {
             }
           });
         </script>`);
+      } else if (url.pathname === '/burst') {
+        // 150 requests as the page starts. An image holds its load open for 400 ms, so a Traffic
+        // view that connects again after a reload (200 ms later) finds them all in the log so far.
+        res.writeHead(200, { 'content-type': 'text/html' });
+        res.end(`<!doctype html><title>Burst on ${req.headers.host}</title><script>
+          window.done = Promise.all(Array.from({ length: 150 }, (_, n) => fetch('/api/user?burst=' + n).then((r) => r.text())));
+        </script><img src="/api/held">`);
+      } else if (url.pathname === '/api/held') {
+        setTimeout(() => {
+          res.writeHead(200, { 'content-type': 'image/gif' });
+          res.end();
+        }, 400);
       } else if (url.pathname === '/__control') {
         // A blank page the Firefox test drives its storage hook from.
         res.writeHead(200, { 'content-type': 'text/html' });

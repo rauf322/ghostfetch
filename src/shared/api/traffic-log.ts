@@ -115,8 +115,10 @@ export function createTrafficLog({ followActiveTab, preserve }: TrafficLogOption
         for (const entry of message.entries) entries.set(entry.id, entry);
       } else if (message.type === 'entry') {
         entries.set(message.entry.id, message.entry);
-        if (entries.size > MAX_ENTRIES) entries.delete(entries.keys().next().value!);
       }
+      // The newest MAX_ENTRIES, whichever way they came. A page's log so far can take what's kept
+      // past that too: with Keep on reload it comes on top of the requests from before the reload.
+      while (entries.size > MAX_ENTRIES) entries.delete(entries.keys().next().value!);
       changed();
     });
     opened.onDisconnect.addListener(() => {

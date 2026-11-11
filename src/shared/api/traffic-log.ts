@@ -49,6 +49,12 @@ export function createTrafficLog({ followActiveTab, preserve }: TrafficLogOption
   let tabs: TrafficTab[] = [];
   let targetId: number | null = null;
   let targetUrl = '';
+  // The page watched is one you picked in the page picker, which the side panel keeps until you
+  // switch tabs, rather than the one it would follow its tab to.
+  let picked = false;
+  // How many times the page to watch has been looked for: of two searches under way, the later
+  // one decides (pickTarget()).
+  let picks = 0;
   let port: chrome.runtime.Port | null = null;
   let connected = false;
   // Clear was clicked since the page's log so far began to arrive. The page sent all its parts at
@@ -139,24 +145,30 @@ export function createTrafficLog({ followActiveTab, preserve }: TrafficLogOption
     return found;
   }
 
-  async function pickTarget() {
-    const found = await refreshTabs();
+  // Looks for the page to watch, and watches it unless it's the one watched already: the side
+  // panel's own tab if that shows a web page; otherwise the page watched so far, if it's still
+  // open and a web page (`gone`: a tab just closed, which isn't), or else the one used last.
+  async function pickTarget({ gone }: { gone?: number } = {}) {
+    const pick = ++picks;
+    const found = (await refreshTabs()).filter((candidate) => candidate.id !== gone);
     let tab: chrome.tabs.Tab | undefined;
     if (followActiveTab)
       [tab] = await chrome.tabs.query({
         active: true,
         windowId,
       } as chrome.tabs.QueryInfo);
-    if (!running) return;
+    if (!running || pick !== picks) return;
     if (!isWebUrl(tab?.url)) {
       tab =
         found.find((candidate) => candidate.id === targetId) ||
         found.toSorted((a, b) => (b.lastAccessed || 0) - (a.lastAccessed || 0))[0];
     }
-    setTarget(tab?.id ?? null);
+    picked = false;
+    const id = tab?.id ?? null;
+    if (id !== targetId) watch(id);
   }
 
-  function setTarget(id: number | null) {
+  function watch(id: number | null) {
     if (id === targetId && (port || connected)) return;
     targetId = id;
     targetUrl = tabs.find((tab) => tab.id === id)?.url || '';
@@ -166,29 +178,48 @@ export function createTrafficLog({ followActiveTab, preserve }: TrafficLogOption
 
   // ------------------------------------------------------------ tabs
 
+  // The list of pages again, a moment after the tabs change, and the page to watch if the one
+  // watched isn't in the list any more (its tab went on to a page that isn't a web page) or
+  // there was none to watch.
   const refreshTabsSoon = () => {
     clearTimeout(tabsTimer);
-    tabsTimer = setTimeout(refreshTabs, 300);
+    tabsTimer = setTimeout(async () => {
+      const found = await refreshTabs();
+      if (running && !found.some((tab) => tab.id === targetId)) pickTarget();
+    }, 300);
   };
   const onActivated = (info: chrome.tabs.OnActivatedInfo) => {
     if (followActiveTab && info.windowId === windowId) pickTarget();
   };
-  const onUpdated = (tabId: number, info: chrome.tabs.OnUpdatedInfo) => {
-    if (info.title || info.url) refreshTabsSoon();
+  const onUpdated = (
+    tabId: number,
+    info: chrome.tabs.OnUpdatedInfo,
+    tab: chrome.tabs.Tab,
+  ) => {
+    // The status too: of a page an extension can't see (about:blank, chrome://…) Chrome gives
+    // neither the URL nor the title, so its status is all that says the tab moved on.
+    if (info.title || info.url || info.status) refreshTabsSoon();
     if (tabId === targetId && info.url) {
       targetUrl = info.url;
       changed();
     }
+    // The side panel's own tab opened a web page (a new tab, then an address typed in it): that's
+    // the page to watch now, unless you picked another.
+    if (
+      followActiveTab &&
+      !picked &&
+      info.url &&
+      tabId !== targetId &&
+      tab.active &&
+      tab.windowId === windowId
+    )
+      pickTarget();
     if (tabId === targetId && info.status === 'complete' && !port && !connected)
       connect();
   };
   const onRemoved = (tabId: number) => {
-    if (tabId === targetId) {
-      targetId = null;
-      pickTarget();
-    } else {
-      refreshTabsSoon();
-    }
+    if (tabId === targetId) pickTarget({ gone: tabId });
+    else refreshTabsSoon();
   };
 
   return {
@@ -228,8 +259,11 @@ export function createTrafficLog({ followActiveTab, preserve }: TrafficLogOption
       connected = false;
     },
 
-    // The page picker.
-    setTarget,
+    // The page picker: a page you picked.
+    setTarget(id: number) {
+      picked = true;
+      watch(id);
+    },
     // Clears the log here and in the page, so a reload doesn't bring the requests back, nor the
     // rest of the log so far if it's still arriving.
     clear() {

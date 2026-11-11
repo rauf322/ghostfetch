@@ -116,7 +116,10 @@ What's different in Firefox-based browsers:
     flags"). The bar along the top picks the page to watch and has **Recording**, **Keep on
     reload** (keep the log when the page reloads) and **Clear**; under it, **All**, **Matched**
     and **Errors** (a status of 400 or more, a failed request or a rule's error), each with its
-    count, and a search by URL, status or rule.
+    count, and a search by URL, status or rule. In the side panel Traffic watches the tab
+    you're on, from the moment it opens a web page; a page you pick instead stays until you
+    switch tabs. In a tab of its own it keeps the page you picked. Either way, when that page
+    closes or goes somewhere that isn't a web page, it moves to the page you used last.
     Click a request to open it in a drawer beside the log: its status, time and Content-Type,
     the rule that acted on it, its bodies, **Copy URL**, **Copy as cURL** and **Copy body**,
     and **Mock this response**, which turns it into a rule pre-filled with the method, path,

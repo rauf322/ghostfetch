@@ -3952,6 +3952,103 @@ try {
     },
   );
 
+  await check(
+    'when the page Traffic watches leaves the web, it watches the page used last, not one that is gone',
+    async () => {
+      // Up to 0.20.1 Traffic went on naming the page it had watched, and said Ghostfetch wasn't
+      // running in that tab yet ("Reload the page"): Chrome tells an extension neither the URL
+      // nor the title of a page it can't see, and those were all that made Traffic look again.
+      await page.bringToFront();
+      const leaving = await context.newPage();
+      await leaving.goto(`${ORIGIN}/__control`);
+      await show('traffic');
+      await app.click('[data-testid="traffic-tab"]');
+      await app.getByRole('option', { name: 'control', exact: true }).click();
+      await sleep(300);
+      await leaving.goto('about:blank');
+      await sleep(1200);
+      await page.evaluate(() => fetch('/api/user?case=after-leaving'));
+      const row = app.locator('[data-testid="request"]', {
+        hasText: 'case=after-leaving',
+      });
+      await row.waitFor({ timeout: 3000 }).catch(() => {});
+      const watching = (
+        await app.locator('[data-testid="traffic-tab"]').textContent()
+      ).trim();
+      const seen = [
+        await row.count(),
+        await app.locator('[data-testid="traffic-notice"]').count(),
+      ];
+      await leaving.close();
+      expect(seen, [1, 0], `watching: ${watching}`);
+    },
+  );
+  await check(
+    'the side panel follows its tab when that opens a web page, and lists its requests; a page picked by hand stays',
+    async () => {
+      // The editor as the side panel has it: chrome.tabs.getCurrent() answers undefined there,
+      // and Traffic follows the window's active tab. Up to 0.20.1 it followed a tab you switched
+      // to, but not the tab you were on when that opened a page: a new tab, then your app's
+      // address in it, left Traffic on the page before, or on "No web pages open".
+      const panel = await context.newPage();
+      panel.on('pageerror', (error) => errors.push(`panel: ${error.message}`));
+      await panel.addInitScript(() => {
+        chrome.tabs.getCurrent = async () => undefined;
+      });
+      await panel.goto(`chrome-extension://${extensionId}/sidepanel.html`);
+      await panel
+        .locator(
+          '[data-testid="nav-traffic"]:visible, [data-testid="tab-traffic"]:visible',
+        )
+        .first()
+        .click();
+      // A new tab, the active one, on no web page yet.
+      const fresh = await context.newPage();
+      await fresh.bringToFront();
+      await sleep(600);
+      await fresh.goto(`${ORIGIN}/__control`);
+      await panel
+        .waitForFunction(
+          () =>
+            document
+              .querySelector('[data-testid="traffic-tab"]')
+              .textContent.includes('control'),
+          null,
+          { timeout: 3000 },
+        )
+        .catch(() => {});
+      const watching = (
+        await panel.locator('[data-testid="traffic-tab"]').textContent()
+      ).trim();
+      await fresh.evaluate(() => fetch('/api/user?case=followed').then((r) => r.text()));
+      const row = panel.locator('[data-testid="request"]', { hasText: 'case=followed' });
+      await row.waitFor({ timeout: 3000 }).catch(() => {});
+      const listed = await row.count();
+
+      // A page you pick by hand is another matter: it stays the one watched while the panel's
+      // own tab moves on (an app's router changing the address, another page loaded), until you
+      // switch tabs.
+      const title = `Test app on ${new URL(ORIGIN).host}`;
+      await panel.click('[data-testid="traffic-tab"]');
+      await panel.getByRole('option', { name: title, exact: true }).first().click();
+      await fresh.bringToFront();
+      await fresh.evaluate(() => history.pushState({}, '', '/__control?moved=1'));
+      await sleep(700);
+      await fresh.goto(`${ORIGIN}/__control?loaded=1`);
+      await sleep(900);
+      const kept = (
+        await panel.locator('[data-testid="traffic-tab"]').textContent()
+      ).trim();
+      await fresh.close();
+      await panel.close();
+      expect(
+        [watching.includes('control'), listed, kept.includes(title)],
+        [true, 1, true],
+        `followed to: ${watching}; picked by hand, then: ${kept}`,
+      );
+    },
+  );
+
   await check('no uncaught errors in pages or the extension', async () => {
     if (errors.length) throw new Error(errors.join('\n'));
   });

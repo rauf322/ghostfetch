@@ -1,12 +1,14 @@
 // Set or remove headers, one row each: the operation, the name and (to set) the value, side by
-// side, or the value on a line of its own where there's less than 380 px. `pick` is the rule's
-// list these rows are (the Headers row's: the headers of the response).
+// side, or the value on a line of its own where there's less than 380 px; under a row the page
+// won't get, why it's skipped. `pick` is the rule's list these rows are (the Headers row's: the
+// headers of the response).
 import { useRef } from 'react';
 import { flushSync } from 'react-dom';
-import { editRule } from '../../../../shared/api/index.ts';
+import { editRule, headerProblem } from '../../../../shared/api/index.ts';
 import type { HeaderRow, Rule } from '../../../../shared/api/index.ts';
 import { cn } from '../../../../shared/ui/cn.ts';
 import { Button } from '../../../../shared/ui/kit/button.tsx';
+import { CardHint } from '../../../../shared/ui/kit/card.tsx';
 import { Icon } from '../../../../shared/ui/kit/icon.tsx';
 import { Input } from '../../../../shared/ui/kit/input.tsx';
 import {
@@ -115,6 +117,12 @@ export function HeaderRows({
           >
             <Icon name="close" size={14} />
           </Button>
+          {headerProblem(row) && (
+            // On a line of its own under the row, as wide as it.
+            <CardHint tone="bad" className="col-span-full px-0.5">
+              {headerProblem(row)}
+            </CardHint>
+          )}
         </div>
       ))}
       <Button variant="ghost" size="sm" onClick={add}>

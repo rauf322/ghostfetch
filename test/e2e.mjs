@@ -13,6 +13,7 @@ import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
 import {
+  headerProblem,
   isSiteEnabled,
   normalizeSites,
   siteMatchPatterns,
@@ -3940,6 +3941,109 @@ try {
         ['X-Mock', 'X-Added'],
       );
       await app.getByTitle('Remove header').last().click();
+    },
+  );
+  await check(
+    "header rows the browser won't let through are marked as skipped, and the page gets the rest",
+    async () => {
+      // Up to 0.20.1 the row said "Sets 4" and nothing more, and a mocked XMLHttpRequest showed
+      // the page a Set-Cookie, which no real one ever does.
+      const got = await page.evaluate(async () => {
+        const response = await fetch('/api/user?case=bad-headers');
+        const fromFetch = ['x-ok', 'x-greeting', 'set-cookie'].map((name) =>
+          response.headers.get(name),
+        );
+        const fromXhr = await new Promise((resolve) => {
+          const request = new XMLHttpRequest();
+          request.open('GET', '/api/user?case=bad-headers');
+          request.addEventListener('loadend', () =>
+            resolve([
+              request.getResponseHeader('x-ok'),
+              request.getResponseHeader('set-cookie'),
+              /set-cookie/i.test(request.getAllResponseHeaders()),
+            ]),
+          );
+          request.send();
+        });
+        return { fromFetch, fromXhr };
+      });
+      await show('rules');
+      await app
+        .locator('[data-testid="rule"]', { hasText: 'case=bad-headers' })
+        .first()
+        .click();
+      await app.click('[data-testid="row-headers"]');
+      const said = {
+        row: await app.locator('[data-testid="row-headers-value"]').textContent(),
+        hints: await app
+          .locator('[data-slot="card-hint"][data-tone="bad"]')
+          .allTextContents(),
+      };
+      expect(got, { fromFetch: ['yes', null, null], fromXhr: ['yes', null, false] });
+      expect(said, {
+        row: '✗ 3 of 4 skipped',
+        hints: [
+          "Skipped: “П” can't be in a header, which takes Latin-1 text only",
+          "Skipped: a header name can't have “:” in it",
+          "Skipped: a page never sees Set-Cookie, so a mock can't set a cookie",
+        ],
+      });
+    },
+  );
+  await check(
+    'a header row is skipped exactly when the browser would refuse it, for 182 names and values',
+    async () => {
+      // The editor and the page both go by headerProblem(); this is what Chrome does with the
+      // same header in a Response, the name trimmed as the page's script trims it.
+      const names = [
+        'X-Ok',
+        'x-ok',
+        'Content-Type',
+        'Content-Type:',
+        'Bad Name',
+        'X_Under',
+        "X'Quote",
+        'X.Dot',
+        'X(Paren)',
+        'Ünicode',
+        'X\tTab',
+        'Set-Cookie',
+        'set-cookie2',
+        'X~`|^',
+      ];
+      const values = [
+        'yes',
+        'café',
+        'Привет',
+        '😀',
+        'a\nb',
+        'a\rb',
+        'a\0b',
+        'a\tb',
+        ' padded ',
+        '',
+        'ÿ',
+        'Ā',
+        '\u0085',
+      ];
+      const pairs = names.flatMap((name) => values.map((value) => [name, value]));
+      const kept = await page.evaluate(
+        (list) =>
+          list.map(([name, value]) => {
+            try {
+              const response = new Response('', { headers: [[name.trim(), value]] });
+              return response.headers.get(name.trim()) !== null;
+            } catch {
+              return false;
+            }
+          }),
+        pairs,
+      );
+      const disagree = pairs.filter(
+        ([name, value], index) =>
+          (headerProblem({ op: 'set', name, value }) === '') !== kept[index],
+      );
+      expect([pairs.length, disagree], [182, []]);
     },
   );
   await check('a rule picked in the popup opens in the editor', async () => {

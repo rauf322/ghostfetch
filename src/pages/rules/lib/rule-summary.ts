@@ -1,6 +1,6 @@
 // What a rule says it does: the line under its name in the list (ruleSummary), the sentence under
 // its name in the editor (describeRule), and the value each setting shows on its row.
-import { BODY_MODES, MATCH_MODES } from '../../../shared/api/index.ts';
+import { BODY_MODES, MATCH_MODES, headerProblem } from '../../../shared/api/index.ts';
 import type { Rule } from '../../../shared/api/index.ts';
 import { formatDuration, statusLabel } from '../../../shared/lib/index.ts';
 import { regexError } from './rule-checks.ts';
@@ -20,8 +20,11 @@ export function statusValue({ response }: Rule) {
   return response.bodyMode === 'replace' ? '200 OK' : "Server's";
 }
 
-// "Sets 2, removes 1", or "No changes".
+// "Sets 2, removes 1", or "No changes"; or how many the page won't get, "✗ 3 of 4 skipped", which
+// the rows themselves say why (headerProblem()).
 export function headersValue({ response }: Rule) {
+  const skipped = response.headers.filter((row) => headerProblem(row)).length;
+  if (skipped) return `✗ ${skipped} of ${response.headers.length} skipped`;
   const set = response.headers.filter((row) => row.op === 'set').length;
   const removed = response.headers.length - set;
   const parts = [set && `sets ${set}`, removed && `removes ${removed}`].filter(Boolean);
@@ -44,7 +47,8 @@ export function describeRule(rule: Rule) {
   }`;
   const status = response.status.trim();
   const delay = response.delay ? formatDuration(response.delay) : '';
-  const headers = response.headers.length;
+  // The headers the page gets: not the ones skipped.
+  const headers = response.headers.filter((row) => !headerProblem(row)).length;
   const headerCount = headers ? `${headers} ${headers === 1 ? 'header' : 'headers'}` : '';
 
   if (response.bodyMode === 'replace') {

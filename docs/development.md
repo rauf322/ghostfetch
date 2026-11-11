@@ -246,8 +246,9 @@ third argument that isn't true stays synchronous, and so left alone; that an XML
 aborted, or opened again, before the rules have arrived ends as it does without Ghostfetch; and
 that a rule answers HEAD with no body), the editor
 (including New rule from a typed path and from a cURL command with a starter, its recent requests'
-Mock, the rule's settings rows (a delay no longer than a rule keeps) and its sentence, the body
-editor's marks for a JSON mistake,
+Mock, the rule's settings rows (a delay no longer than a rule keeps, and the header rows the page
+won't get marked as skipped, which are the ones Chrome refuses, on 182 names and values) and its
+sentence, the body editor's marks for a JSON mistake,
 its height beside the settings and under them, text size and that it keeps the cursor's line in
 place, Format on a body written as PHP writes JSON (its escaped slashes and `.0` prices kept,
 the cursor on its character and its line in place, a selection kept, with the cursor out of

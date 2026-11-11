@@ -6,6 +6,7 @@
 // status and headers apply last. Any other body mode counts as Server's body: rules reach the
 // page as they're stored, and one saved with Merge or Script (both taken out in 0.8.0) called the
 // server too.
+import { headerProblem } from '../../shared/api/index.ts';
 import type { Rule } from '../../shared/api/index.ts';
 import type { PageRequest, RuleResult } from './types.ts';
 
@@ -71,13 +72,15 @@ export async function applyRule(
   }
   for (const row of options.headers || []) {
     const name = row?.name?.trim();
-    if (!name) continue;
+    // A row the browser wouldn't let through, which the editor marks as skipped (headerProblem()):
+    // Set-Cookie too, which a Response drops and an XMLHttpRequest never shows a page.
+    if (!name || headerProblem(row)) continue;
     try {
       if (row.op === 'remove') headers.delete(name);
       else headers.set(name, row.value ?? '');
       changed = true;
     } catch {
-      // Invalid header name or value; skip it.
+      // Whatever headerProblem() didn't foresee: skipped all the same.
     }
   }
   // A response to HEAD has no body, as a server sends none: the rule's own body goes too.

@@ -15,6 +15,7 @@ export {
   ruleTitle,
 } from './rules/rule.ts';
 export { graphqlOperation, ruleFromEntry } from './rules/rule-from-entry.ts';
+export { headerProblem } from './rules/header-check.ts';
 export { urlTester } from './rules/url-match.ts';
 export {
   copyServerResponse,

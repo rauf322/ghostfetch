@@ -399,6 +399,22 @@ export function testRules(origin) {
         },
       },
     ),
+    // Sets four headers, of which the browser lets one through: a value that isn't Latin-1, a
+    // name with a colon in it (pasted as "Name: value"), and Set-Cookie, which no page sees.
+    rule(
+      { url: 'case=bad-headers' },
+      {
+        response: {
+          body: '{"ok":true}',
+          headers: [
+            { op: 'set', name: 'X-Ok', value: 'yes' },
+            { op: 'set', name: 'X-Greeting', value: 'Привет' },
+            { op: 'set', name: 'Content-Type:', value: 'text/plain' },
+            { op: 'set', name: 'Set-Cookie', value: 'session=abc' },
+          ],
+        },
+      },
+    ),
     {
       ...rule({ url: 'case=disabled' }, { response: { body: '{"disabled":"mocked"}' } }),
       enabled: false,

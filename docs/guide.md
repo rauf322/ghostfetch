@@ -62,8 +62,9 @@ What's different in Firefox-based browsers:
     settings, a row each with its value: **When a request matches** (the URL and how it's
     compared, the method, a GraphQL operation) and **Respond with** (the status, with its
     name and the common ones by class; the delay, up to 10 minutes; headers to set or remove).
-    Click a row to edit it in place. **Try a URL** says whether the rule would answer a URL
-    you paste. Then the body: **Replace body** sends yours without calling the server; **Keep
+    Click a row to edit it in place. A header the page wouldn't get (Set-Cookie, which no page
+    sees, a name with a space or a colon, a value that isn't Latin-1 text) says it's skipped,
+    and why. **Try a URL** says whether the rule would answer a URL you paste. Then the body: **Replace body** sends yours without calling the server; **Keep
     server's body** makes the real request and keeps its body, so only the status, headers and
     delay change.
 

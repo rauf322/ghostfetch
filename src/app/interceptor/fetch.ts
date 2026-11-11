@@ -48,10 +48,12 @@ export function wrapFetch() {
         });
       return response;
     } catch (problem) {
+      // A request the page gave up on (it aborted it, or its own time limit ran out) isn't the
+      // rule's error: it's logged as any aborted request is, under the rule that matched it.
       report(
         makeEntry('fetch', request, started, {
           ...ruleFields(rule),
-          action: 'error',
+          action: signal?.aborted ? '' : 'error',
           error: errorText(problem),
         }),
       );

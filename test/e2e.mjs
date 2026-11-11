@@ -388,6 +388,40 @@ try {
   await check('disabled rule is ignored', async () => {
     expect((await call('/api/user?case=disabled')).body.name, 'Real');
   });
+  await check(
+    'a fetch the page aborts before it is answered is rejected, by a rule as by the server',
+    async () => {
+      // Up to 0.20.1 a Replace rule with no delay answered a request whose signal was aborted
+      // already. React's StrictMode does that to every effect in development: it runs the effect,
+      // its cleanup (which aborts) and the effect again, so each mocked request was answered twice.
+      const attempt = (start) =>
+        page.evaluate(async (target) => {
+          const outcomes = [];
+          for (const when of ['before', 'right after']) {
+            const controller = new AbortController();
+            if (when === 'before') controller.abort();
+            const pending = fetch(`${target}aborted=${when[0]}`, {
+              signal: controller.signal,
+            }).then(
+              (response) => `answered ${response.status}`,
+              (error) => error.name,
+            );
+            controller.abort();
+            outcomes.push(await pending);
+          }
+          return outcomes;
+        }, start);
+      // The server's own, then a rule's: /api/early is answered by the first rule.
+      expect(
+        [await attempt('/api/user?case=none&'), await attempt('/api/early?')],
+        [
+          ['AbortError', 'AbortError'],
+          ['AbortError', 'AbortError'],
+        ],
+      );
+      expect((await call('/api/early?aborted=no')).body, { early: 'mocked' }, 'the rule');
+    },
+  );
   await check('mocked Response reports the request URL', async () => {
     expect((await call('/api/user?case=replace')).url, `${ORIGIN}/api/user?case=replace`);
   });
@@ -2054,6 +2088,53 @@ try {
         throw new Error(`no "${label}" entry; saw ${[...new Set(badges)].join(', ')}`);
     }
   });
+  await check(
+    "a request the page gave up on before a rule answered is listed as aborted, under the rule's name, and isn't the rule's error",
+    async () => {
+      // As a rule's error it would count in the rule's "failed 2×", which with React's StrictMode
+      // is every mocked request in development: one aborted, then one answered. The rule's own
+      // count, "fired 3×", goes up by the one it answered.
+      const fired = async () => {
+        const state = await app.locator('[data-testid="rule-state"]').textContent();
+        const [, count] = /^Mocking · fired (\d+)× on /.exec(state) ?? [];
+        if (!count) throw new Error(`the rule says "${state}"`);
+        return Number(count);
+      };
+      await app.locator('[data-testid="rule"][title="/api/early"]').click();
+      const before = await fired();
+      await page.evaluate(async () => {
+        const controller = new AbortController();
+        const pending = fetch('/api/early?gave-up=1', { signal: controller.signal });
+        controller.abort();
+        await pending.catch(() => {});
+        await (await fetch('/api/early?gave-up=0')).text();
+      });
+      await show('traffic');
+      const gaveUp = app.locator('[data-testid="request"]', { hasText: 'gave-up=1' });
+      await gaveUp.waitFor({ timeout: 3000 });
+      await app
+        .locator('[data-testid="request"]', { hasText: 'gave-up=0' })
+        .waitFor({ timeout: 3000 });
+      const row = [
+        await gaveUp.locator('[data-slot="status"]').textContent(),
+        await gaveUp.locator('[data-testid="request-action"]').count(),
+      ];
+      await gaveUp.click();
+      const detail = app.locator('[data-testid="request-detail"]');
+      const said = [
+        await detail.locator('[role="alert"]').textContent(),
+        (await detail.locator('dt:text-is("Rule") + dd').textContent()).replace(
+          /\s+/g,
+          ' ',
+        ),
+      ];
+      // The rule itself: it answered once more, and failed at nothing.
+      await detail.locator('[data-testid="open-rule"]').click();
+      const answered = (await fired()) - before;
+      await show('traffic');
+      expect([row, said, answered], [['ERR', 0], ['Aborted', '/api/earlyOpen'], 1]);
+    },
+  );
   if (SHOTS) {
     await app
       .locator('[data-testid="request"]', { hasText: 'case=merge' })

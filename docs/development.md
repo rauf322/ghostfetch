@@ -238,8 +238,10 @@ Content-Type, and the rule it makes. `npm test` runs it after `test/matching.mjs
 `test/e2e.mjs` loads the built extension into Chromium, runs a local API and checks the rules
 against fetch and XHR (that rules saved by older versions do what they should, and that a rule
 keeping the server's body passes it on as it is: bytes that aren't text, a response as it
-arrives, a no-cors request's opaque response, and over XHR the charset the response names; and
-that an answer a rule holds back past the page's `xhr.timeout` times out), the editor
+arrives, a no-cors request's opaque response, and over XHR the charset the response names; that
+an answer a rule holds back past the page's `xhr.timeout` times out; and that a fetch the page
+aborts before a rule answers it is rejected, and listed as aborted under the rule's name rather
+than as the rule's error or one of the times it fired), the editor
 (including New rule from a typed path and from a cURL command with a starter, its recent requests'
 Mock, the rule's settings rows and its sentence, the body editor's marks for a JSON mistake,
 its height beside the settings and under them, text size and that it keeps the cursor's line in

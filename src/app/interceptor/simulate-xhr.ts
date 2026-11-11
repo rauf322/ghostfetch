@@ -132,6 +132,7 @@ export function simulateXhr(
   // browser only keeps it for a request it sends itself, so it's kept here. Once it has passed,
   // the request ends as a real one does, with timeout and loadend and no response, whether it was
   // the rule's delay or the server that took too long: a delay is there to show such a timeout.
+  // It's logged under the rule, and not as the rule's error: the page gave up on it.
   const limit = xhr.timeout;
   const timer =
     limit > 0
@@ -147,7 +148,6 @@ export function simulateXhr(
           report(
             makeEntry('xhr', request, started, {
               ...ruleFields(rule),
-              action: 'error',
               error: `Timed out after ${limit} ms, the page's own limit (xhr.timeout)`,
             }),
           );

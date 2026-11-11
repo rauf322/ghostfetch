@@ -47,6 +47,10 @@ export async function applyRule(
   const replaces = (options.bodyMode || 'replace') === 'replace';
   const delay = Math.max(0, Number(options.delay) || 0);
 
+  // A request the page has aborted already gets no answer, from a rule as from the server: it
+  // fails with the signal's reason. (React's StrictMode aborts every effect's request this way
+  // in development, before it runs the effect again.)
+  if (signal?.aborted) throw abortReason(signal);
   if (delay) await wait(delay, signal);
 
   // The server's headers stay as it sent them, Content-Length and Content-Encoding too: the
@@ -86,16 +90,19 @@ export async function applyRule(
   };
 }
 
+// What an aborted request fails with: the reason its signal was aborted with, an AbortError
+// unless the page gave another.
+const abortReason = (signal: AbortSignal) =>
+  signal.reason ?? new DOMException('Aborted', 'AbortError');
+
 function wait(ms: number, signal?: AbortSignal | null) {
   return new Promise<void>((resolve, reject) => {
-    if (signal?.aborted)
-      return reject(signal.reason ?? new DOMException('Aborted', 'AbortError'));
     const timer = setTimeout(resolve, ms);
     signal?.addEventListener(
       'abort',
       () => {
         clearTimeout(timer);
-        reject(signal!.reason ?? new DOMException('Aborted', 'AbortError'));
+        reject(abortReason(signal));
       },
       { once: true },
     );

@@ -34,10 +34,15 @@ export function RuleIntro({ rule, log }: { rule: Rule; log: TrafficLog }) {
 }
 
 // How often the rule answered on the page the editor watches (`failed`: how often it went wrong
-// there instead).
+// there instead). A request the page gave up on before the rule answered (aborted, or timed out)
+// is neither.
 const times = (traffic: TrafficSnapshot, id: string, failed: boolean) =>
   traffic.entries.filter(
-    (entry) => entry.ruleId === id && (entry.action === 'error') === failed,
+    (entry) =>
+      entry.ruleId === id &&
+      (failed
+        ? entry.action === 'error'
+        : entry.action === 'mocked' || entry.action === 'modified'),
   ).length;
 
 // The chip over the name. Green while the rule answers requests, with how often it has on the page

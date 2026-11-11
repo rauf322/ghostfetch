@@ -58,6 +58,11 @@ const HEAVY = `[${Array(16_000)
   .join(',')}]`;
 // About 70 KB of NDJSON, which /api/stream sends 50 times a second.
 const TICKS = `${JSON.stringify({ event: 'tick', data: 'x'.repeat(200) })}\n`.repeat(300);
+// Every byte value, eight times over: /api/bytes. Not UTF-8, so it only comes out the same if
+// it's passed on as bytes.
+const BYTES = Buffer.from(Array.from({ length: 2048 }, (_, index) => index % 256));
+// "Привет" in windows-1251: /api/cp1251, which names that charset.
+const CP1251 = Buffer.from([0xcf, 0xf0, 0xe8, 0xe2, 0xe5, 0xf2]);
 
 // Listens on 127.0.0.1. EVIL_ORIGIN and LOCAL_ORIGIN are the same server under a non-localhost
 // name and under a local.* name; each test maps both to 127.0.0.1 in its own browser.
@@ -240,6 +245,17 @@ export async function startServer() {
       else if (url.pathname.startsWith('/api/heavy/')) {
         res.writeHead(200, { 'content-type': 'application/json' });
         res.end(HEAVY);
+      } else if (url.pathname === '/api/bytes') {
+        res.writeHead(200, { 'content-type': 'application/octet-stream' });
+        res.end(BYTES);
+      } else if (url.pathname === '/api/cp1251') {
+        res.writeHead(200, { 'content-type': 'text/plain; charset=windows-1251' });
+        res.end(CP1251);
+      } else if (url.pathname === '/api/slow') {
+        // Its first line at once and its last 600 ms later: a response that arrives over time.
+        res.writeHead(200, { 'content-type': 'text/plain' });
+        res.write('first\n');
+        setTimeout(() => res.end('last\n'), 600);
       } else if (url.pathname === '/api/stream') {
         // No Content-Length, and no end: about 3.5 MB a second for as long as the page is open.
         res.writeHead(200, { 'content-type': 'application/x-ndjson' });
@@ -335,6 +351,18 @@ export function testRules(origin) {
     rule(
       { url: 'case=regex\\d+$', mode: 'regex' },
       { response: { body: '{"regex":true}' } },
+    ),
+    // Keeps the server's body and sets nothing: the page gets the server's own response.
+    rule({ url: 'case=keep' }, { response: { bodyMode: 'original' } }),
+    // Keeps the server's body under a header of its own: a new response around that body.
+    rule(
+      { url: 'case=kept-header' },
+      {
+        response: {
+          bodyMode: 'original',
+          headers: [{ op: 'set', name: 'X-Kept', value: 'yes' }],
+        },
+      },
     ),
     {
       ...rule({ url: 'case=disabled' }, { response: { body: '{"disabled":"mocked"}' } }),

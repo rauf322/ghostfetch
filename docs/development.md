@@ -236,7 +236,10 @@ from a URL (a bare origin keeps its host) or from "POST /path", which Accept val
 Content-Type, and the rule it makes. `npm test` runs it after `test/matching.mjs`.
 
 `test/e2e.mjs` loads the built extension into Chromium, runs a local API and checks the rules
-against fetch and XHR (and that rules saved by older versions do what they should), the editor
+against fetch and XHR (that rules saved by older versions do what they should, and that a rule
+keeping the server's body passes it on as it is: bytes that aren't text, a response as it
+arrives, a no-cors request's opaque response, and over XHR the charset the response names), the
+editor
 (including New rule from a typed path and from a cURL command with a starter, its recent requests'
 Mock, the rule's settings rows and its sentence, the body editor's marks for a JSON mistake,
 its height beside the settings and under them, text size and that it keeps the cursor's line in
@@ -288,7 +291,8 @@ npm test             # builds, then tests; add SHOTS=/tmp/shots to save UI scree
 To use a different build (e.g. Chrome for Testing) set `CHROME=/path/to/binary`.
 
 `test/firefox.mjs` runs the same backend and rules in Zen: fetch/XHR rules, rules saved by
-older versions, the traffic log, the channel and `.caller` attacks,
+older versions, a kept server's body passed on as it is, the traffic log, the channel and
+`.caller` attacks,
 `local.*` hosts, a site that isn't turned on, and adding and removing a site. Firefox's
 automation can't open extension pages, so the editor and popup
 are covered by the Chromium run (same code), and this test loads a temporary copy of the

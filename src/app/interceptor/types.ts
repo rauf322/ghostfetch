@@ -15,7 +15,15 @@ export interface RuleResult {
   status: number;
   statusText: string;
   headers: Headers;
+  // Replace: the rule's own body, or null with a status that has none. Server's body: null, as
+  // the body is the server's (`server`).
   body: string | null;
+  // Server's body: the server's response, its body not read yet, so each caller takes it its
+  // own way: fetch as it arrives, an XMLHttpRequest whole. null for Replace.
+  server: Response | null;
+  // Whether the rule set a status or a header. One that sets neither over the server's response
+  // (a rule that only delays) leaves that response as it is.
+  changed: boolean;
   action: Extract<EntryAction, 'mocked' | 'modified'>;
 }
 

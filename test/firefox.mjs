@@ -210,6 +210,47 @@ try {
     const scripted = await call('/api/user?case=script');
     expect([scripted.body.name, 'sawUrl' in scripted.body], ['Real', false]);
   });
+  await check(
+    "server's body reaches the page as the server sent it: bytes that aren't text, a response as it arrives, a charset over XHR",
+    async () => {
+      // Up to 0.20.1 the body went through UTF-8 text on its way, and all of it before the page
+      // got any. With a rule that sets nothing else, and with one that sets a header too.
+      for (const query of ['case=keep', 'case=kept-header']) {
+        const got = await page.evaluate(async (q) => {
+          const bytes = new Uint8Array(
+            await (await fetch(`/api/bytes?${q}`)).arrayBuffer(),
+          );
+          const started = performance.now();
+          const reader = (await fetch(`/api/slow?${q}`)).body.getReader();
+          await reader.read();
+          const first = performance.now() - started;
+          while (!(await reader.read()).done);
+          const whole = performance.now() - started;
+          const over = (target, type) =>
+            new Promise((resolve) => {
+              const request = new XMLHttpRequest();
+              request.open('GET', target);
+              request.responseType = type;
+              request.addEventListener('loadend', () => resolve(request.response));
+              request.send();
+            });
+          return {
+            bytes: [bytes.length, bytes[255]],
+            arrivesFirst: first < 400 && whole > 550,
+            overXhr: (await over(`/api/bytes?${q}`, 'arraybuffer')).byteLength,
+            text: await over(`/api/cp1251?${q}`, ''),
+            timing: `${Math.round(first)} of ${Math.round(whole)} ms`,
+          };
+        }, query);
+        const { timing, ...seen } = got;
+        expect(
+          seen,
+          { bytes: [2048, 255], arrivesFirst: true, overXhr: 2048, text: 'Привет' },
+          `${query} (first bytes after ${timing})`,
+        );
+      }
+    },
+  );
   await check('GraphQL operation, method, wildcard and regex matching', async () => {
     const graphql = (operationName) =>
       call('/graphql', {

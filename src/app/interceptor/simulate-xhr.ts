@@ -1,13 +1,19 @@
 // Answers an XMLHttpRequest that a response rule matched, instead of the network: the real
 // request (if the rule needs it) goes through fetch, and the XMLHttpRequest's state, response
-// getters and events are played back from the result, in the order a real one fires them.
+// getters and events are played back from the result, in the order a real one fires them. The
+// server's body, where the rule keeps it, is held as the bytes it came as, and read the way the
+// XMLHttpRequest's responseType asks for it.
 import type { Rule } from '../../shared/api/index.ts';
-import { applyRule } from './apply-rule.ts';
+import { applyRule, hasBody } from './apply-rule.ts';
 import { nativeFetch } from './fetch.ts';
-import { makeEntry, ruleEntry, ruleFields } from './log-entries.ts';
-import { report } from './page-channel.ts';
+import { canCapture, makeEntry, ruleEntry, ruleFields } from './log-entries.ts';
+import { pageRules, report } from './page-channel.ts';
 import { errorText } from './request.ts';
 import type { PageRequest, RuleResult, XhrBody, XhrMeta } from './types.ts';
+
+// How much of the server's body is read as text for the log: more than the log keeps of a body,
+// 1 MB of text, whatever its characters take.
+const LOGGED_BYTES = 4_000_000;
 
 // What simulateXhr() defines on the XMLHttpRequest, over its own getters and methods.
 const OVERRIDES = [
@@ -33,8 +39,43 @@ export function simulateXhr(
   const controller = new AbortController();
   let readyState = 1;
   let result: RuleResult | null = null;
+  // The server's body, for a rule that keeps it: all of its bytes, as an XMLHttpRequest that has
+  // loaded has them. null for a rule's own body, which is text (result.body).
+  let bytes: ArrayBuffer | null = null;
+  // The body as text, worked out when it's first asked for, and as xhr.response.
+  let text: string | undefined;
   let converted: unknown;
   meta.simulated = true;
+
+  const contentType = () => result!.headers.get('content-type') || '';
+  const bodyText = () =>
+    (text ??= bytes ? decode(bytes, contentType()) : (result!.body ?? ''));
+  // The body the way a responseType asks for it.
+  const convert = (responseType: XMLHttpRequestResponseType) => {
+    const own = result!.body ?? '';
+    switch (responseType) {
+      case 'json':
+        try {
+          // JSON is read as UTF-8, whatever charset the response names.
+          return JSON.parse(bytes ? new TextDecoder().decode(bytes) : own);
+        } catch {
+          return null;
+        }
+      case 'arraybuffer':
+        return bytes ?? new TextEncoder().encode(own).buffer;
+      case 'blob':
+        return new Blob([bytes ?? own], { type: contentType() });
+      case 'document': {
+        const type =
+          /html/.test(contentType()) || !/xml/.test(contentType())
+            ? 'text/html'
+            : 'application/xml';
+        return new DOMParser().parseFromString(bodyText(), type);
+      }
+      default:
+        return bodyText();
+    }
+  };
 
   const define = (name: string, get: () => unknown) =>
     Object.defineProperty(xhr, name, { configurable: true, get });
@@ -42,7 +83,8 @@ export function simulateXhr(
   define('readyState', () => readyState);
   define('status', () => (readyState >= 2 && result ? result.status : 0));
   define('statusText', () => (readyState >= 2 && result ? result.statusText : ''));
-  define('responseURL', () => (result ? request.url : ''));
+  // Where the server's response came from in the end, after any redirect, as fetch has it.
+  define('responseURL', () => (result ? result.server?.url || request.url : ''));
   define('responseText', () => {
     if (xhr.responseType !== '' && xhr.responseType !== 'text') {
       throw new DOMException(
@@ -50,26 +92,18 @@ export function simulateXhr(
         'InvalidStateError',
       );
     }
-    return done() ? (result!.body ?? '') : '';
+    return done() ? bodyText() : '';
   });
   define('response', () => {
     if (!done())
       return xhr.responseType === '' || xhr.responseType === 'text' ? '' : null;
-    if (converted === undefined)
-      converted = convertBody(
-        result!.body ?? '',
-        result!.headers.get('content-type') || '',
-        xhr.responseType,
-      );
+    if (converted === undefined) converted = convert(xhr.responseType);
     return converted;
   });
   define('responseXML', () => {
     if (!done() || (xhr.responseType !== '' && xhr.responseType !== 'document'))
       return null;
-    const type = result!.headers.get('content-type') || '';
-    return /xml|html/.test(type)
-      ? convertBody(result!.body ?? '', type, 'document')
-      : null;
+    return /xml|html/.test(contentType()) ? convert('document') : null;
   });
   Object.defineProperty(xhr, 'getResponseHeader', {
     configurable: true,
@@ -107,12 +141,12 @@ export function simulateXhr(
   };
 
   const sendReal = () => {
-    const hasBody =
+    const sendsBody =
       request.method !== 'GET' && request.method !== 'HEAD' && rawBody != null;
     return nativeFetch.call(window, request.url, {
       method: request.method,
       headers: meta.headers,
-      body: hasBody
+      body: sendsBody
         ? rawBody instanceof Document
           ? new XMLSerializer().serializeToString(rawBody)
           : rawBody
@@ -122,13 +156,39 @@ export function simulateXhr(
     });
   };
 
+  // The rule's result and, where it keeps the server's body, all of that body's bytes: an
+  // XMLHttpRequest has every one of them when it loads. A status that has no body leaves the
+  // server's unread.
+  const answer = async () => {
+    const outcome = await applyRule(rule, sendReal, controller.signal);
+    const { server } = outcome;
+    if (server && hasBody(outcome.status))
+      return [outcome, await server.arrayBuffer()] as const;
+    server?.body?.cancel().catch(() => {});
+    return [outcome, null] as const;
+  };
+
   progress('loadstart');
-  applyRule(rule, sendReal, controller.signal).then(
-    (outcome) => {
+  answer().then(
+    ([outcome, kept]) => {
       if (meta.aborted) return;
       meta.finished = true;
       result = outcome;
-      const size = outcome.body?.length ?? 0;
+      bytes = kept;
+      // What the log keeps is text: the rule's own body, or the server's if it's text. That's
+      // read here, before the page has the bytes: a page that takes them as an array buffer may
+      // hand it on (to a worker), which leaves it empty. A body up to LOGGED_BYTES is read whole,
+      // and is then what the page gets if it asks for text; of a longer one, only its start.
+      let logged = outcome.body ?? '';
+      if (kept) {
+        logged = '';
+        if (pageRules().record && canCapture(contentType())) {
+          if (kept.byteLength > LOGGED_BYTES)
+            logged = decode(kept.slice(0, LOGGED_BYTES), contentType());
+          else logged = bodyText();
+        }
+      }
+      const size = kept ? kept.byteLength : (outcome.body?.length ?? 0);
       readyState = 2;
       fire('readystatechange');
       readyState = 3;
@@ -138,7 +198,7 @@ export function simulateXhr(
       fire('readystatechange');
       progress('load', size);
       progress('loadend', size);
-      report(ruleEntry('xhr', request, started, rule, outcome));
+      report(ruleEntry('xhr', request, started, rule, outcome, logged));
     },
     (problem) => {
       if (meta.aborted) return;
@@ -163,30 +223,16 @@ export function forgetSimulation(xhr: XMLHttpRequest) {
   for (const name of OVERRIDES) delete (xhr as unknown as Record<string, unknown>)[name];
 }
 
-function convertBody(
-  body: string,
-  contentType: string,
-  responseType: XMLHttpRequestResponseType,
-) {
-  switch (responseType) {
-    case 'json':
-      try {
-        return JSON.parse(body);
-      } catch {
-        return null;
-      }
-    case 'arraybuffer':
-      return new TextEncoder().encode(body).buffer;
-    case 'blob':
-      return new Blob([body], { type: contentType });
-    case 'document': {
-      const type =
-        /html/.test(contentType) || !/xml/.test(contentType)
-          ? 'text/html'
-          : 'application/xml';
-      return new DOMParser().parseFromString(body, type);
-    }
-    default:
-      return body;
+// Bytes as text, the way an XMLHttpRequest reads a response: in the charset its Content-Type
+// names, and as UTF-8 when it names none, or one the browser doesn't know. (fetch reads UTF-8
+// whatever the response names.)
+function decode(bytes: ArrayBuffer, contentType: string) {
+  const charset = /charset\s*=\s*"?([^\s;"]+)/i.exec(contentType)?.[1];
+  let decoder: TextDecoder;
+  try {
+    decoder = new TextDecoder(charset || 'utf-8');
+  } catch {
+    decoder = new TextDecoder();
   }
+  return decoder.decode(bytes);
 }

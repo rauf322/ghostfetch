@@ -264,6 +264,96 @@ try {
     expect([r.status, r.body.name], [503, 'Real']);
     if (r.ms < 580) throw new Error(`only took ${Math.round(r.ms)} ms`);
   });
+  // A rule that keeps the server's body and sets nothing else, and one that sets a header too.
+  const KEEPS = ['case=keep', 'case=kept-header'];
+  await check(
+    "server's body: bytes that aren't text reach the page as the server sent them",
+    async () => {
+      // Up to 0.20.1 the body went through text on its way, which bytes like these don't survive:
+      // an image or a download came out twice as long, U+FFFD in place of every byte over 127.
+      const read = (query) =>
+        page.evaluate(async (q) => {
+          const response = await fetch(`/api/bytes?${q}`);
+          const bytes = new Uint8Array(await response.arrayBuffer());
+          return [bytes.length, bytes[128], bytes[255], bytes[2047]];
+        }, query);
+      const sent = [2048, 128, 255, 255];
+      expect(
+        [await read('case=none'), await read(KEEPS[0]), await read(KEEPS[1])],
+        [sent, sent, sent],
+      );
+    },
+  );
+  await check(
+    "server's body: a response that arrives over time is read as it arrives",
+    async () => {
+      // Up to 0.20.1 the page got nothing until the server had sent everything (/api/slow takes
+      // 600 ms over it), and so never anything of a stream that doesn't end.
+      for (const query of KEEPS) {
+        const r = await page.evaluate(async (q) => {
+          const started = performance.now();
+          const response = await fetch(`/api/slow?${q}`);
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let text = decoder.decode((await reader.read()).value, { stream: true });
+          const first = performance.now() - started;
+          for (;;) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            text += decoder.decode(value, { stream: true });
+          }
+          return {
+            first,
+            whole: performance.now() - started,
+            text,
+            kept: response.headers.get('x-kept'),
+          };
+        }, query);
+        if (r.first > 400 || r.whole < 550)
+          throw new Error(
+            `${query}: first bytes after ${Math.round(r.first)} ms of ${Math.round(r.whole)}`,
+          );
+        expect(
+          [r.text, r.kept],
+          ['first\nlast\n', query === KEEPS[1] ? 'yes' : null],
+          query,
+        );
+      }
+    },
+  );
+  await check(
+    "server's body: a no-cors request to another origin still gets its opaque response",
+    async () => {
+      // Up to 0.20.1 the page's fetch() was rejected: an opaque response's status is 0, which a
+      // new response can't be made with.
+      const other = ORIGIN.replace('127.0.0.1', 'localhost');
+      const shapes = await page.evaluate(
+        ([origin, queries]) =>
+          Promise.all(
+            queries.map((query) =>
+              fetch(`${origin}/api/user?${query}`, { mode: 'no-cors' }).then(
+                (response) => `${response.type} ${response.status}`,
+                (error) => String(error),
+              ),
+            ),
+          ),
+        [other, ['case=none', ...KEEPS]],
+      );
+      expect(shapes, ['opaque 0', 'opaque 0', 'opaque 0']);
+    },
+  );
+  await check(
+    "server's body: the response's type and final URL are the server's, with a header set too",
+    async () => {
+      const seen = (query) =>
+        page.evaluate(async (q) => {
+          const response = await fetch(`/api/user?${q}`);
+          return [response.type, response.redirected, new URL(response.url).pathname];
+        }, query);
+      const real = await seen('case=none');
+      expect([await seen(KEEPS[0]), await seen(KEEPS[1])], [real, real]);
+    },
+  );
   await check('GraphQL operation matching', async () => {
     const post = (operationName) =>
       call('/graphql', {
@@ -326,6 +416,59 @@ try {
       const r = await xhr('/api/echo?case=script', { method: 'POST', body: 'hello' });
       const echoed = r.response && JSON.parse(r.response);
       expect([echoed?.method, echoed?.body], ['POST', 'hello']);
+    },
+  );
+  await check(
+    "server's body over XHR: bytes as they were sent, and text in the charset the response names",
+    async () => {
+      // Up to 0.20.1 both came out of UTF-8 text: the bytes twice as long, the text as "������".
+      const read = (query) =>
+        page.evaluate(
+          (q) =>
+            new Promise((resolve) => {
+              const results = {};
+              const get = (name, target, type) => {
+                const request = new XMLHttpRequest();
+                request.open('GET', target);
+                request.responseType = type;
+                request.addEventListener('loadend', () => {
+                  const { response } = request;
+                  results[name] =
+                    type === 'arraybuffer'
+                      ? [response.byteLength, new Uint8Array(response)[255]]
+                      : type === 'blob'
+                        ? [response.size, response.type]
+                        : response;
+                  // Handed on, as a page that decodes in a worker hands it on: the buffer is
+                  // empty from here.
+                  if (type === 'arraybuffer')
+                    new MessageChannel().port1.postMessage(response, [response]);
+                  // In this order, whichever of them loads first.
+                  const { bytes, blob, text, json } = results;
+                  if (bytes && blob && text !== undefined && json)
+                    resolve({ bytes, blob, text, json });
+                });
+                request.send();
+              };
+              get('bytes', `/api/bytes?${q}`, 'arraybuffer');
+              get('blob', `/api/bytes?${q}`, 'blob');
+              get('text', `/api/cp1251?${q}`, '');
+              // Text taken as bytes: what Traffic lists of it is read before the page hands
+              // the buffer on, not from what's left of it after.
+              get('json', `/api/user?handed=1&${q}`, 'arraybuffer');
+            }),
+          query,
+        );
+      const before = errors.length;
+      const real = await read('case=none');
+      expect(
+        [real.bytes, real.blob, real.text, real.json[0] > 0],
+        [[2048, 255], [2048, 'application/octet-stream'], 'Привет', true],
+        'no rule',
+      );
+      for (const query of KEEPS) expect(await read(query), real, query);
+      await sleep(200);
+      expect(errors.slice(before), [], 'errors in the page');
     },
   );
   await check('unmatched XHR goes to the network untouched', async () => {

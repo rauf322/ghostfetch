@@ -1,12 +1,12 @@
-// window.fetch, wrapped. A request that a response rule matches gets the rule's response; any
-// other goes to the network as it would have, logged while recording. Either way it waits for the
-// rules first (page-channel.ts).
-import { applyRule } from './apply-rule.ts';
+// window.fetch, wrapped. A request that a response rule matches gets the rule's response
+// (pageResponse()); any other goes to the network as it would have, logged while recording. Either
+// way it waits for the rules first (page-channel.ts).
+import { applyRule, hasBody } from './apply-rule.ts';
 import { logResponse, makeEntry, ruleEntry, ruleFields } from './log-entries.ts';
 import { findRule } from './matching.ts';
 import { isReady, pageRules, report, whenReady } from './page-channel.ts';
 import { absoluteUrl, describeBody, errorText } from './request.ts';
-import type { PageRequest } from './types.ts';
+import type { PageRequest, RuleResult } from './types.ts';
 
 // The browser's own fetch, taken as this script starts, before any page script. The
 // XMLHttpRequests a rule answers make their real requests with it too (simulate-xhr.ts).
@@ -38,13 +38,14 @@ export function wrapFetch() {
         () => nativeFetch.call(window, input, init),
         signal,
       );
-      const response = new Response(result.body, {
-        status: result.status,
-        statusText: result.statusText,
-        headers: result.headers,
-      });
-      Object.defineProperty(response, 'url', { value: request.url });
-      report(ruleEntry('fetch', request, started, rule, result));
+      const response = pageResponse(result, request.url);
+      // The server's body is logged as any response's is: its text, from a copy, as it arrives.
+      if (!result.server) report(ruleEntry('fetch', request, started, rule, result));
+      else if (pageRules().record)
+        logResponse('fetch', request, response, started, {
+          ...ruleFields(rule),
+          action: result.action,
+        });
       return response;
     } catch (problem) {
       report(
@@ -57,6 +58,40 @@ export function wrapFetch() {
       throw problem;
     }
   };
+}
+
+// The response a rule's result is for the page. Replace: a new one with the rule's body. Server's
+// body: the server's own response where the rule sets no status and no header (one that only
+// delays), or can't: an opaque response (a no-cors request's) shows the page neither, and a new
+// response can't be made with its status, 0, nor with any other outside 200 to 599. Otherwise a new
+// one around the server's body, which nothing here reads: the page reads the server's bytes, as
+// they arrive.
+function pageResponse(result: RuleResult, url: string) {
+  const { server, status } = result;
+  if (
+    server &&
+    (!result.changed || server.type.startsWith('opaque') || status < 200 || status > 599)
+  )
+    return server;
+  let body: BodyInit | null = result.body;
+  if (server) {
+    body = hasBody(status) ? server.body : null;
+    // A status that has no body, set over a response that has one: the server's goes unread.
+    if (!body) server.body?.cancel().catch(() => {});
+  }
+  const response = new Response(body, {
+    status,
+    statusText: result.statusText,
+    headers: result.headers,
+  });
+  // A response made here has no URL of its own, and no type: it gets the server's, or for
+  // Replace the URL the page asked for.
+  Object.defineProperty(response, 'url', { value: server?.url || url });
+  if (server) {
+    Object.defineProperty(response, 'type', { value: server.type });
+    Object.defineProperty(response, 'redirected', { value: server.redirected });
+  }
+  return response;
 }
 
 async function describeFetch(

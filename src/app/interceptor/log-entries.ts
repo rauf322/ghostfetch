@@ -54,33 +54,39 @@ export function ruleFields(rule: Rule) {
   };
 }
 
+// A request a rule answered, with the body as text: the rule's own, or `body`, what an
+// XMLHttpRequest kept of the server's.
 export function ruleEntry(
   kind: EntryKind,
   request: PageRequest,
   started: number,
   rule: Rule,
   result: RuleResult,
+  body = result.body ?? '',
 ) {
   return makeEntry(kind, request, started, {
     ...ruleFields(rule),
     status: result.status,
     contentType: result.headers.get('content-type') || '',
-    ...clipBody(result.body ?? ''),
+    ...clipBody(body),
     action: result.action,
   });
 }
 
+// A response fetch() got from the server, logged once its body has been read from a copy:
+// one no rule matched, or (with `extra`, the rule and what it did) one a rule let through.
 export function logResponse(
   kind: 'fetch',
   request: PageRequest,
   response: Response,
   started: number,
+  extra: Partial<LogEntry> = {},
 ) {
   const contentType = response.headers.get('content-type') || '';
   const size = Number(response.headers.get('content-length')) || 0;
   // Clone before handing the response back, so the page can still read its body.
   const copy = canCapture(contentType) && size <= MAX_CAPTURE ? response.clone() : null;
-  const base = { status: response.status, contentType };
+  const base = { ...extra, status: response.status, contentType };
   if (!copy) {
     report(makeEntry(kind, request, started, base));
     return;

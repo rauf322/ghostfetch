@@ -78,7 +78,7 @@ await check(
   },
 );
 await check(
-  'added sites are reduced to plain hostnames, without duplicates or built-in hosts',
+  'added sites are reduced to hostnames and IP addresses, without duplicates or built-in hosts',
   async () => {
     expect(
       normalizeSites([
@@ -88,12 +88,32 @@ await check(
         'localhost:3000',
         '127.0.0.1',
         'local.myapp.com',
+        'http://My_App.test:3000/x',
         '<img src=x>',
+        'http://[::1]:5173/',
         '[::1]',
         'javascript:alert(1)',
         '',
       ]),
-      ['staging.example.com', 'example.com'],
+      ['staging.example.com', 'example.com', 'my_app.test', '[::1]'],
+    );
+  },
+);
+await check(
+  'a host with an underscore and an IPv6 address are sites like any other: patterns Chrome takes, the address only itself',
+  async () => {
+    // Up to 0.20.1 neither could be added, though Chrome runs content scripts on both.
+    const sites = ['my_app.test', '[::1]'];
+    expect(siteMatchPatterns(sites), ['*://*.my_app.test/*', '*://[::1]/*']);
+    expect(
+      [
+        'http://my_app.test:3000/',
+        'http://api.my_app.test/',
+        'http://[::1]:5173/x',
+        'http://[::2]/',
+        'http://my_app.test.evil.com/',
+      ].map((url) => isSiteEnabled(sites, url)),
+      [true, true, true, false, false],
     );
   },
 );
@@ -131,8 +151,9 @@ const context = await chromium.launchPersistentContext(userDataDir, {
   args: [
     `--disable-extensions-except=${EXTENSION}`,
     `--load-extension=${EXTENSION}`,
-    // A non-localhost and a local.* hostname that still reach the test server.
-    '--host-resolver-rules=MAP evil.test 127.0.0.1,MAP local.ghostfetch.test 127.0.0.1',
+    // A non-localhost, a local.* hostname and one with an underscore that still reach the test
+    // server.
+    '--host-resolver-rules=MAP evil.test 127.0.0.1,MAP local.ghostfetch.test 127.0.0.1,MAP my_app.test 127.0.0.1',
   ],
   viewport: { width: 1280, height: 820 },
 });
@@ -3656,6 +3677,33 @@ try {
         [added, await settle([])],
         [['ghostfetch-bridge', 'ghostfetch-interceptor'], []],
       );
+    },
+  );
+  await check(
+    'Traffic turns Ghostfetch on for a host with an underscore in its name',
+    async () => {
+      // Up to 0.20.1 such a name (my_app.test, as a dev setup may call one) couldn't be a site,
+      // though Chrome runs content scripts there: Turn on for my_app.test, and the popup's
+      // switch, reloaded the tab and changed nothing.
+      const origin = ORIGIN.replace('127.0.0.1', 'my_app.test');
+      const probe = await context.newPage();
+      await probe.goto(`${origin}/`);
+      await show('traffic');
+      const back = app.locator('[data-testid="request-back"]');
+      if (await back.isVisible()) await back.click();
+      await app.click('[data-testid="traffic-tab"]');
+      await app
+        .getByRole('option', { name: `Test app on ${new URL(origin).host}`, exact: true })
+        .click();
+      await app.waitForSelector('[data-testid="enable-site"]', { timeout: 5000 });
+      const reloaded = probe.waitForEvent('load', { timeout: 5000 }).catch(() => {});
+      await app.click('[data-testid="enable-site"]');
+      await reloaded;
+      const early = await probe.evaluate(() => window.early);
+      const { sites } = await worker.evaluate(() => chrome.storage.local.get('sites'));
+      await probe.close();
+      await setStorage({ sites: [] });
+      expect([early, sites], [{ early: 'mocked' }, ['my_app.test']]);
     },
   );
 

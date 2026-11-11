@@ -13,6 +13,8 @@ export function siteOf(url: string | undefined): string {
 }
 
 const IPV4 = /^\d{1,3}(\.\d{1,3}){3}$/;
+// An IP address, v4 or v6 (as a URL writes one, in brackets: [::1]), which covers only itself.
+const isAddress = (site: string) => IPV4.test(site) || site.startsWith('[');
 
 // Always on: localhost (any port or *.localhost subdomain), 127.0.0.1 and local.* hosts, which
 // the manifest's content_scripts declare (wxt.config.ts). On top of them Ghostfetch runs on the
@@ -28,7 +30,9 @@ export function isBuiltInHost(host: string) {
 }
 
 // Turns "https://staging.example.com:8080/app", "*.example.com" or "Example.com" into a bare
-// hostname. Returns '' for anything that isn't a plain hostname or IPv4 address.
+// hostname, and "http://[::1]:5173/" into [::1]. Returns '' for anything that isn't a hostname
+// (letters, digits, - and _, which dev setups give names like my_app.test) or an IP address: what
+// a content script can be registered for.
 export function normalizeSite(input: unknown): string {
   const raw = String(input ?? '')
     .trim()
@@ -41,10 +45,12 @@ export function normalizeSite(input: unknown): string {
   } catch {
     return '';
   }
-  return /^[a-z0-9-]+(\.[a-z0-9-]+)*$/.test(host) ? host : '';
+  return /^[a-z0-9_-]+(\.[a-z0-9_-]+)*$/.test(host) || /^\[[0-9a-f:.]+\]$/.test(host)
+    ? host
+    : '';
 }
 
-// The sites you added, cleaned up: plain hostnames, no duplicates, no built-in hosts
+// The sites you added, cleaned up: bare hostnames and addresses, no duplicates, no built-in hosts
 // (they're always on anyway).
 export function normalizeSites(list: unknown): string[] {
   return [...new Set((Array.isArray(list) ? list : []).map(normalizeSite))].filter(
@@ -54,7 +60,7 @@ export function normalizeSites(list: unknown): string[] {
 
 // A site you added covers the host itself and its subdomains (IP addresses only themselves).
 export function siteCovers(site: string, host: string) {
-  return host === site || (!IPV4.test(site) && host.endsWith(`.${site}`));
+  return host === site || (!isAddress(site) && host.endsWith(`.${site}`));
 }
 
 // Whether Ghostfetch runs on this URL: a built-in host, or one covered by a site you added.
@@ -67,5 +73,5 @@ export function isSiteEnabled(sites: string[], url: string | undefined) {
 
 // Content-script match patterns for the sites you added.
 export function siteMatchPatterns(sites: string[]) {
-  return sites.map((site) => (IPV4.test(site) ? `*://${site}/*` : `*://*.${site}/*`));
+  return sites.map((site) => (isAddress(site) ? `*://${site}/*` : `*://*.${site}/*`));
 }

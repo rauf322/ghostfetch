@@ -10,7 +10,8 @@ Ghostfetch always runs on **`localhost`** (any port, plus `*.localhost`), **`127
 host starting with **`local.`**, such as `local.myapp.com`. You can turn it on for other sites
 too: switch on **Active on …** in the popup on that tab, or click **Turn on for …** in the
 Traffic view. A site you add covers its subdomains, so `example.com` includes
-`api.example.com`. Everywhere else Ghostfetch doesn't run at all.
+`api.example.com`, and an IP address (such as `10.0.0.5` or `[::1]`) only itself. Everywhere
+else Ghostfetch doesn't run at all.
 
 What's different in Firefox-based browsers:
 

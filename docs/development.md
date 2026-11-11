@@ -289,7 +289,8 @@ editor's selection lies over its text), and popup, plus the properties of the
 [security model](security-model.md) (channel theft, forged offers, patched built-ins, built-ins
 that try to reach the interceptor through `.caller`, HTML injection, hostile rule files, sites
 that aren't turned on getting nothing, `local.*` hosts and a lookalike URL, turning a site on
-from the Traffic view). Branded Google Chrome ignores `--load-extension`, so the test uses
+from the Traffic view, one with an underscore in its name too, and the sites an IPv6 address or
+such a name can be). Branded Google Chrome ignores `--load-extension`, so the test uses
 Playwright's own Chromium:
 
 ```sh
@@ -303,7 +304,8 @@ To use a different build (e.g. Chrome for Testing) set `CHROME=/path/to/binary`.
 `test/firefox.mjs` runs the same backend and rules in Zen: fetch/XHR rules, rules saved by
 older versions, a kept server's body passed on as it is, the traffic log, the channel and
 `.caller` attacks,
-`local.*` hosts, a site that isn't turned on, and adding and removing a site. Firefox's
+`local.*` hosts, a site that isn't turned on, and adding and removing a site (one with an
+underscore in its name beside an IPv6 address too, both of which Firefox registers). Firefox's
 automation can't open extension pages, so the editor and popup
 are covered by the Chromium run (same code), and this test loads a temporary copy of the
 build with two test-only hooks for setting rules; the build itself isn't changed. The

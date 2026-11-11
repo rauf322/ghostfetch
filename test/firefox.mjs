@@ -96,8 +96,9 @@ const browser = await launch({
   executablePath: FIREFOX,
   headless: !process.env.HEADED,
   extraPrefsFirefox: {
-    // A non-localhost and a local.* hostname that still reach the test server.
-    'network.dns.localDomains': 'evil.test,local.ghostfetch.test',
+    // A non-localhost, a local.* hostname and one with an underscore that still reach the test
+    // server.
+    'network.dns.localDomains': 'evil.test,local.ghostfetch.test,my_app.test',
     // Keep the plain-http test pages plain.
     'dom.security.https_first': false,
     'dom.security.https_first_schemeless': false,
@@ -441,6 +442,27 @@ try {
           { early: { early: 'real' }, wrapped: false },
         ],
       );
+    },
+  );
+  await check(
+    'a site with an underscore in its name gets Ghostfetch, with an IPv6 address added beside it',
+    async () => {
+      // Up to 0.20.1 neither could be a site. Firefox has to take both content-script patterns:
+      // were it to refuse one, it would register neither, and my_app.test would get nothing.
+      await setStorage({ sites: ['my_app.test', '[::1]'] });
+      await sleep(800);
+      const probe = await open(
+        `${ORIGIN.replace('127.0.0.1', 'my_app.test')}/`,
+        'my_app.test added',
+      );
+      const r = await probe.evaluate(async () => ({
+        early: await window.early,
+        wrapped: !String(window.fetch).includes('[native code]'),
+      }));
+      await probe.close();
+      await setStorage({ sites: [] });
+      await sleep(500);
+      expect(r, { early: { early: 'mocked' }, wrapped: true });
     },
   );
 

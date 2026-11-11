@@ -143,6 +143,17 @@ await check("Chrome's $'…' escapes: \\u for ! and control characters, \\x, oct
 });
 
 await check(
+  "an escape for a character there isn't (past U+10FFFF) is read as the replacement character",
+  () => {
+    // Up to 0.20.1 it threw, and New rule reads what's typed with every key: such a command
+    // pasted there didn't land at all.
+    const parsed = parseCurl(`curl '${URL}' --data-raw $'a\\U00110000b\\U0001F600c'`);
+    expect([parsed.url, parsed.body], [URL, 'a�b😀c']);
+    expect(parseCurl("$'\\UFFFFFFFF'"), null, 'not a curl command, and not an error');
+  },
+);
+
+await check(
   'options that take a value before the URL, known to the parser or not',
   () => {
     expect(

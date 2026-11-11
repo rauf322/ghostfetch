@@ -230,8 +230,8 @@ GraphQL operation. It needs no browser either, and `npm test` runs it after `tes
 and that whatever the page put in it (quotes, `$(…)`, backticks, `;`, in the URL, the body or the
 method, a URL that starts with a dash) stays inside its quotes when a shell reads the command. New
 rule: what it reads from a command (Chrome's Copy as cURL over several lines, `$'…'` bodies and
-their `\u`, `\x` and octal escapes, `-X`, `-G`, `-I`, `--url`, options that take a value, known to
-it or not), that every command Copy as cURL writes reads back as the same request, what it reads
+their `\u`, `\x` and octal escapes, one past U+10FFFF as U+FFFD, `-X`, `-G`, `-I`, `--url`,
+options that take a value, known to it or not), that every command Copy as cURL writes reads back as the same request, what it reads
 from a URL (a bare origin keeps its host) or from "POST /path", which Accept values become the
 Content-Type, and the rule it makes. `npm test` runs it after `test/matching.mjs`.
 

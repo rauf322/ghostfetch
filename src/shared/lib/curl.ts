@@ -327,13 +327,16 @@ const ANSI_ESCAPES: Record<string, string> = {
 
 // The escape at `at`, just after a \ in $'…': what it stands for and how many characters it took.
 // \xHH, \uHHHH and \UHHHHHHHH are hex, \NNN is octal; a character with no meaning stands for
-// itself.
+// itself. One past U+10FFFF, where there are no characters, is the replacement character, U+FFFD.
 function ansiEscape(text: string, at: number): [piece: string, length: number] {
   const char = text[at]!;
   const hex = { x: 2, u: 4, U: 8 }[char];
   if (hex) {
     const digits = /^[0-9a-f]{1,8}/i.exec(text.slice(at + 1, at + 1 + hex))?.[0];
-    if (digits) return [String.fromCodePoint(parseInt(digits, 16)), 1 + digits.length];
+    if (digits) {
+      const code = parseInt(digits, 16);
+      return [code > 0x10ffff ? '�' : String.fromCodePoint(code), 1 + digits.length];
+    }
   }
   const octal = /^[0-7]{1,3}/.exec(text.slice(at, at + 3))?.[0];
   if (octal) return [String.fromCharCode(parseInt(octal, 8)), octal.length];

@@ -26,8 +26,8 @@ export function wrapXhr() {
     this: Tracked,
     method: string,
     url: string | URL,
-    async: boolean = true,
-    ...credentials: [username?: string | null, password?: string | null]
+    // Whether it's asynchronous, then a user name and a password: whichever the page gave.
+    ...rest: [async?: boolean, username?: string | null, password?: string | null]
   ) {
     const previous = this[META];
     if (previous?.simulated) {
@@ -37,10 +37,19 @@ export function wrapXhr() {
     this[META] = {
       method: String(method).toUpperCase(),
       url: absoluteUrl(url),
-      async: async !== false,
+      // As the browser reads it: asynchronous with no third argument, and with one, only if it's
+      // true or counts as true. undefined, 0, null and '' ask for a synchronous request, as false
+      // does.
+      async: rest.length === 0 || Boolean(rest[0]),
       headers: [],
     };
-    return nativeXhr.open.call(this, method, url, async, ...credentials);
+    // With the arguments the page gave, no more and no fewer: the browser tells two from three.
+    return (nativeXhr.open as (...given: unknown[]) => void).call(
+      this,
+      method,
+      url,
+      ...rest,
+    );
   } as typeof xhrProto.open;
 
   xhrProto.setRequestHeader = function setRequestHeader(

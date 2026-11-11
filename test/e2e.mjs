@@ -542,6 +542,31 @@ try {
         throw new Error(`timed out after ${Math.round(r.ms)} ms, not 200`);
     },
   );
+  await check(
+    "open() with a third argument that isn't true is synchronous, as the browser reads it, and left alone",
+    async () => {
+      // The browser reads open(method, url, undefined) as synchronous, like 0, null and false.
+      // Up to 0.20.1 undefined made the request asynchronous here, and one opened with 0 or null
+      // that a rule matched was answered later, where a synchronous request is always left alone.
+      const sync = (target) =>
+        page.evaluate(
+          (address) =>
+            [undefined, 0, null, false].map((flag) => {
+              const request = new XMLHttpRequest();
+              request.open('GET', address, flag);
+              request.send();
+              // What the page has as send() returns.
+              return `${flag}: ${request.readyState} ${request.readyState === 4 ? JSON.parse(request.responseText).name : ''}`;
+            }),
+          target,
+        );
+      const done = ['undefined: 4 Real', '0: 4 Real', 'null: 4 Real', 'false: 4 Real'];
+      expect(
+        [await sync('/api/user?case=none'), await sync('/api/user?case=replace')],
+        [done, done],
+      );
+    },
+  );
   await check('unmatched XHR goes to the network untouched', async () => {
     const r = await xhr('/api/user?case=none', { responseType: 'json' });
     expect(

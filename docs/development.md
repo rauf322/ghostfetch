@@ -286,7 +286,8 @@ the editor's sizes its own, the boxes around it changing only in size between it
 and vim's cursor on a layer of one line), a theme picked
 in the `⋯` menu (the editor and the open popup
 recoloured, and set before a page draws), every theme's selection colour see-through (the body
-editor's selection lies over its text), and popup, plus the properties of the
+editor's selection lies over its text), the toolbar badge (green with the count, grey with
+"off"), and popup, plus the properties of the
 [security model](security-model.md) (channel theft, forged offers, patched built-ins, built-ins
 that try to reach the interceptor through `.caller`, HTML injection, hostile rule files, sites
 that aren't turned on getting nothing, `local.*` hosts and a lookalike URL, turning a site on

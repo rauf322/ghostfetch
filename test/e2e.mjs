@@ -678,6 +678,33 @@ try {
     await sleep(400);
     expect((await call('/api/user?case=replace')).body, { name: 'Mocked' });
   });
+  await check(
+    "the toolbar badge counts the rules that are on in Ghostfetch's green, and says off in grey",
+    async () => {
+      // Up to 0.20.1 the count was on purple, the one colour left from before the green look.
+      const badge = () =>
+        worker.evaluate(async () => [
+          await chrome.action.getBadgeText({}),
+          await chrome.action.getBadgeBackgroundColor({}),
+          await chrome.action.getBadgeTextColor({}),
+        ]);
+      const on = await badge();
+      await setStorage({ enabled: false });
+      await sleep(400);
+      const off = await badge();
+      await setStorage({ enabled: true });
+      await sleep(400);
+      // The rules as the editor lists them (none of 0.8's types), and of those the ones on.
+      const count = String(RULES.filter((rule) => !rule.type && rule.enabled).length);
+      expect(
+        [on, off],
+        [
+          [count, [52, 211, 153, 255], [11, 11, 12, 255]],
+          ['off', [107, 114, 128, 255], [255, 255, 255, 255]],
+        ],
+      );
+    },
+  );
   await check('rule edits apply to an open page without reloading', async () => {
     const rules = (await worker.evaluate(() => chrome.storage.local.get('rules'))).rules;
     rules.find((r) => r.match.url === 'case=disabled').enabled = true;

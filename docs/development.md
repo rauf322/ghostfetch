@@ -242,8 +242,9 @@ arrives, a no-cors request's opaque response, and over XHR the charset the respo
 an answer a rule holds back past the page's `xhr.timeout` times out; and that a fetch the page
 aborts before a rule answers it is rejected, and listed as aborted under the rule's name rather
 than as the rule's error or one of the times it fired; that `open()` with a third argument
-that isn't true stays synchronous, and so left alone; and that an XMLHttpRequest aborted, or
-opened again, before the rules have arrived ends as it does without Ghostfetch), the editor
+that isn't true stays synchronous, and so left alone; that an XMLHttpRequest aborted, or
+opened again, before the rules have arrived ends as it does without Ghostfetch; and that a rule
+answers HEAD with no body), the editor
 (including New rule from a typed path and from a cURL command with a starter, its recent requests'
 Mock, the rule's settings rows and its sentence, the body editor's marks for a JSON mistake,
 its height beside the settings and under them, text size and that it keeps the cursor's line in

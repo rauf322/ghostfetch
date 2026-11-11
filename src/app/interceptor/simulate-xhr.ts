@@ -187,7 +187,7 @@ export function simulateXhr(
   // XMLHttpRequest has every one of them when it loads. A status that has no body leaves the
   // server's unread.
   const answer = async () => {
-    const outcome = await applyRule(rule, sendReal, controller.signal);
+    const outcome = await applyRule(rule, request, sendReal, controller.signal);
     const { server } = outcome;
     if (server && hasBody(outcome.status))
       return [outcome, await server.arrayBuffer()] as const;

@@ -422,6 +422,30 @@ try {
       expect((await call('/api/early?aborted=no')).body, { early: 'mocked' }, 'the rule');
     },
   );
+  await check('a rule answers HEAD with no body, as a server does', async () => {
+    // Up to 0.20.1 a Replace rule sent its body in answer to a HEAD request too.
+    const head = (target) =>
+      page.evaluate(async (address) => {
+        const response = await fetch(address, { method: 'HEAD' });
+        const overXhr = await new Promise((resolve) => {
+          const request = new XMLHttpRequest();
+          request.open('HEAD', address);
+          request.addEventListener('loadend', () =>
+            resolve([request.status, request.responseText]),
+          );
+          request.send();
+        });
+        return [
+          response.status,
+          response.headers.get('content-type'),
+          await response.text(),
+          overXhr,
+        ];
+      }, target);
+    const bare = [200, 'application/json', '', [200, '']];
+    // The server's own, then a rule's: /api/early is answered by the first rule.
+    expect([await head('/api/user?case=none'), await head('/api/early')], [bare, bare]);
+  });
   await check('mocked Response reports the request URL', async () => {
     expect((await call('/api/user?case=replace')).url, `${ORIGIN}/api/user?case=replace`);
   });

@@ -35,6 +35,7 @@ export function wrapFetch() {
     try {
       const result = await applyRule(
         rule,
+        request,
         () => nativeFetch.call(window, input, init),
         signal,
       );

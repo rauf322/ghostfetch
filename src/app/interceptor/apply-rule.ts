@@ -7,7 +7,7 @@
 // page as they're stored, and one saved with Merge or Script (both taken out in 0.8.0) called the
 // server too.
 import type { Rule } from '../../shared/api/index.ts';
-import type { RuleResult } from './types.ts';
+import type { PageRequest, RuleResult } from './types.ts';
 
 const NULL_BODY_STATUS = new Set([101, 103, 204, 205, 304]);
 // Whether a response with this status has a body: a Response can't be made with one otherwise.
@@ -36,10 +36,11 @@ const STATUS_TEXT: Record<number, string> = {
   504: 'Gateway Timeout',
 };
 
-// Resolves to what a matched rule gives the page (RuleResult, types.ts). `sendReal` performs the
-// real request and resolves to a fetch Response; if it fails, so does this.
+// Resolves to what a matched rule gives the page (RuleResult, types.ts) for `request`. `sendReal`
+// performs the real request and resolves to a fetch Response; if it fails, so does this.
 export async function applyRule(
   rule: Rule,
+  request: PageRequest,
   sendReal: () => Promise<Response>,
   signal?: AbortSignal | null,
 ): Promise<RuleResult> {
@@ -79,11 +80,13 @@ export async function applyRule(
       // Invalid header name or value; skip it.
     }
   }
+  // A response to HEAD has no body, as a server sends none: the rule's own body goes too.
+  const bodiless = !hasBody(status) || request.method === 'HEAD';
   return {
     status,
     statusText,
     headers,
-    body: server || !hasBody(status) ? null : (options.body ?? ''),
+    body: server || bodiless ? null : (options.body ?? ''),
     server,
     changed,
     action: replaces ? 'mocked' : 'modified',

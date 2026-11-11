@@ -1,7 +1,8 @@
 // One request in the list: its method (green when a rule answered it), its path, then what the rule
-// did and which rule ("Mocked by Feature flags"), or else where the request went and what made it;
-// on the right its status over how long it took. Entries come from the page, so everything in them
-// is shown as text, never as HTML.
+// did and which rule ("Mocked by Feature flags"), or why it failed and the rule it was under
+// ("Aborted · Feature flags"), or else where the request went and what made it; on the right its
+// status over how long it took. Entries come from the page, so everything in them is shown as
+// text, never as HTML.
 import { memo } from 'react';
 import type { LogEntry } from '../../../shared/api/index.ts';
 import { formatDuration, splitUrl } from '../../../shared/lib/index.ts';
@@ -50,7 +51,10 @@ export const RequestRow = memo(function RequestRow({
             </>
           ) : (
             <span className="truncate">
-              {[host, KIND_LABELS[entry.kind], entry.frame && 'in an iframe']
+              {(entry.error
+                ? [entry.error, entry.ruleName || host]
+                : [host, KIND_LABELS[entry.kind], entry.frame && 'in an iframe']
+              )
                 .filter(Boolean)
                 .join(' · ')}
             </span>

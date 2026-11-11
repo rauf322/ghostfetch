@@ -148,7 +148,7 @@ export function simulateXhr(
           report(
             makeEntry('xhr', request, started, {
               ...ruleFields(rule),
-              error: `Timed out after ${limit} ms, the page's own limit (xhr.timeout)`,
+              error: `Timed out after ${limit} ms (xhr.timeout)`,
             }),
           );
         }, limit)

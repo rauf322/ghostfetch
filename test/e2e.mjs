@@ -2207,6 +2207,12 @@ try {
       const row = [
         await gaveUp.locator('[data-slot="status"]').textContent(),
         await gaveUp.locator('[data-testid="request-action"]').count(),
+        // Under its path, why it failed and the rule it was under. Up to 0.20.1 a failed request
+        // said only where it went ("127.0.0.1:… · fetch()"), its reason left to the drawer.
+        await gaveUp
+          .locator('[data-testid="request-path"]')
+          .locator('xpath=following-sibling::span[1]')
+          .textContent(),
       ];
       await gaveUp.click();
       const detail = app.locator('[data-testid="request-detail"]');
@@ -2221,7 +2227,10 @@ try {
       await detail.locator('[data-testid="open-rule"]').click();
       const answered = (await fired()) - before;
       await show('traffic');
-      expect([row, said, answered], [['ERR', 0], ['Aborted', '/api/earlyOpen'], 1]);
+      expect(
+        [row, said, answered],
+        [['ERR', 0, 'Aborted · /api/early'], ['Aborted', '/api/earlyOpen'], 1],
+      );
     },
   );
   if (SHOTS) {

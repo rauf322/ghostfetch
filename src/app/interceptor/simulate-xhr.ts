@@ -128,9 +128,36 @@ export function simulateXhr(
       }),
     );
 
+  // The page's own limit on the request: xhr.timeout, as it stands when the request is sent. The
+  // browser only keeps it for a request it sends itself, so it's kept here. Once it has passed,
+  // the request ends as a real one does, with timeout and loadend and no response, whether it was
+  // the rule's delay or the server that took too long: a delay is there to show such a timeout.
+  const limit = xhr.timeout;
+  const timer =
+    limit > 0
+      ? setTimeout(() => {
+          if (meta.aborted || meta.finished) return;
+          meta.finished = true;
+          controller.abort();
+          result = null;
+          readyState = 4;
+          fire('readystatechange');
+          progress('timeout');
+          progress('loadend');
+          report(
+            makeEntry('xhr', request, started, {
+              ...ruleFields(rule),
+              action: 'error',
+              error: `Timed out after ${limit} ms, the page's own limit (xhr.timeout)`,
+            }),
+          );
+        }, limit)
+      : undefined;
+
   meta.abortSimulation = () => {
     if (meta.aborted || meta.finished) return;
     meta.aborted = true;
+    clearTimeout(timer);
     controller.abort();
     result = null;
     readyState = 4;
@@ -171,7 +198,9 @@ export function simulateXhr(
   progress('loadstart');
   answer().then(
     ([outcome, kept]) => {
-      if (meta.aborted) return;
+      // Aborted, or timed out, while the answer was on its way.
+      if (meta.aborted || meta.finished) return;
+      clearTimeout(timer);
       meta.finished = true;
       result = outcome;
       bytes = kept;
@@ -201,7 +230,8 @@ export function simulateXhr(
       report(ruleEntry('xhr', request, started, rule, outcome, logged));
     },
     (problem) => {
-      if (meta.aborted) return;
+      if (meta.aborted || meta.finished) return;
+      clearTimeout(timer);
       meta.finished = true;
       readyState = 4;
       fire('readystatechange');

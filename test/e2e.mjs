@@ -471,6 +471,43 @@ try {
       expect(errors.slice(before), [], 'errors in the page');
     },
   );
+  await check(
+    "a rule's answer held back past the page's xhr.timeout times out, as a slow server's would",
+    async () => {
+      // Up to 0.20.1 a request a rule answered ignored xhr.timeout: the page waited the whole
+      // delay (600 ms here) and got load, so a delay couldn't show a client's timeout (axios's).
+      const r = await page.evaluate(
+        () =>
+          new Promise((resolve) => {
+            const request = new XMLHttpRequest();
+            const events = [];
+            const started = performance.now();
+            for (const type of ['load', 'timeout', 'error', 'abort', 'loadend'])
+              request.addEventListener(type, () => {
+                events.push(type);
+                if (type === 'loadend')
+                  resolve({
+                    events,
+                    status: request.status,
+                    readyState: request.readyState,
+                    text: request.responseText,
+                    ms: performance.now() - started,
+                  });
+              });
+            request.open('GET', '/api/user?case=delay');
+            request.timeout = 200;
+            request.send();
+          }),
+      );
+      expect(
+        [r.events, r.status, r.readyState, r.text],
+        [['timeout', 'loadend'], 0, 4, ''],
+        `after ${Math.round(r.ms)} ms`,
+      );
+      if (r.ms < 180 || r.ms > 500)
+        throw new Error(`timed out after ${Math.round(r.ms)} ms, not 200`);
+    },
+  );
   await check('unmatched XHR goes to the network untouched', async () => {
     const r = await xhr('/api/user?case=none', { responseType: 'json' });
     expect(

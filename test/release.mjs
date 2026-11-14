@@ -138,13 +138,14 @@ for (const browser of ['chrome', 'firefox']) {
         default_popup: 'popup.html',
       });
       expect([manifest.options_page, manifest.icons], ['sidepanel.html', ICONS]);
+      // Desktop Firefox only: no gecko_android, which would have addons.mozilla.org list it for
+      // Firefox for Android too, where there's no sidebar for the editor (wxt.config.ts).
       expect(manifest.browser_specific_settings, {
         gecko: {
           id: '@ghostfetch',
           strict_min_version: '140.0',
           data_collection_permissions: { required: ['none'] },
         },
-        gecko_android: { strict_min_version: '142.0' },
       });
     },
   );

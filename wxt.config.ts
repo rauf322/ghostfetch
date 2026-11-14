@@ -97,13 +97,15 @@ export default defineConfig({
     description:
       'Mock and modify API responses. Runs locally, makes no network calls of its own.',
     minimum_chrome_version: '121',
+    // Desktop Firefox and its forks (Zen) only. No gecko_android: addons.mozilla.org lists an
+    // add-on for Firefox for Android when its manifest names it, and Android has no sidebar for
+    // the editor (the popup's Side panel button would fail there).
     browser_specific_settings: {
       gecko: {
         id: '@ghostfetch',
         strict_min_version: '140.0',
         data_collection_permissions: { required: ['none'] },
       },
-      gecko_android: { strict_min_version: '142.0' },
     },
     // Up to 0.8, declarativeNetRequest too, for redirect, header and block rules. The browser
     // keeps the dynamic rules 0.8 added, asleep while the permission is gone, in Chrome and in

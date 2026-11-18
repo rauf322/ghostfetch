@@ -8,8 +8,9 @@ rule matches, and the limits. For what Ghostfetch is and how to install it, see 
 
 Ghostfetch always runs on **`localhost`** (any port, plus `*.localhost`), **`127.0.0.1`** and any
 host starting with **`local.`**, such as `local.myapp.com`. You can turn it on for other sites
-too: switch on **Active on …** in the popup on that tab, or click **Turn on for …** in the
-Traffic view. A site you add covers its subdomains, so `example.com` includes
+too: click **Turn on for …** in the popup on that tab (under **This page**) or in the Traffic
+view, and off again with the popup's **Turn off here**, or **Remove** under its **Sites**. A
+site you add covers its subdomains, so `example.com` includes
 `api.example.com`, and an IP address (such as `10.0.0.5` or `[::1]`) only itself. Everywhere
 else Ghostfetch doesn't run at all.
 
@@ -21,10 +22,24 @@ What's different in Firefox-based browsers:
 
 ## The popup and the editor
 
-- **Toolbar popup**: Ghostfetch on or off as a whole (the only place for that), whether it's
-  active on the current site (with a switch for sites that aren't built in), the sites it runs
-  on (click × to remove one you added), record on/off, quick per-rule switches. Click a rule's
-  name to open it in the editor.
+- **Toolbar popup**: what's on, in words rather than switches. The header has **Recording**
+  (click it to stop recording, and **Not recording** to start again) and **Pause**, which turns
+  Ghostfetch off as a whole (the only place for that) until you click **Resume**. Under it, the
+  tab's site and whether Ghostfetch is on there, with **Turn off here** for a site you added
+  (the built-in hosts are **Always on**). At the bottom, **Open editor** opens the side panel
+  (the sidebar in Firefox), and the button beside it opens the editor in a tab. In between are
+  three tabs; in the first two, point at a rule (or reach it with Tab) for its **Turn off** or
+  **Turn on**, which saves at once, and click its name to open it in the editor:
+  - **This page**: what each rule did on the tab's page, such as **2 mocked** or **1 modified ·
+    1 failed**, counted while recording since the page loaded (Traffic's **Clear** starts the
+    count over; a page opened before Ghostfetch was installed or updated needs a reload
+    first). The rules that answered come first, under **Answering here**, and the rest fold
+    into **Not answering here**, which opens. On a site Ghostfetch isn't on, **Turn on for …**
+    instead, which reloads the page.
+  - **All rules**: every rule in your order, with what it did on the page, or else **On**,
+    **Off** or **Paused** (while Ghostfetch is).
+  - **Sites**: where Ghostfetch runs: the built-in hosts, then the sites you added, each with
+    **Remove**.
 - **Side panel (Chrome), sidebar (Firefox, Zen) or tab**: the full editor. Open it from the
   popup, or from the `⋯` menu. From 760 px wide a sidebar stands beside what's open: a search
   field (**/** puts the cursor in it), **Rules** and **Traffic** with their counts, the rules
@@ -38,7 +53,8 @@ What's different in Firefox-based browsers:
   open, and brings it back. Its width, and whether it's hidden, are remembered. In a
   narrower panel a top bar has the two views as tabs, and the rules, a rule or Traffic take
   the whole panel, one at a time. The `⋯` menu's **Theme** picks the [look](#themes). While
-  Ghostfetch is off, a bar along the top says so; the switch for that is the popup's.
+  Ghostfetch is off (the popup's **Pause**), a bar along the top says so; the popup's
+  **Resume** turns it back on.
   - **Rules**: create and edit rules. Changes save as you type and apply to open tabs
     immediately, without reloading. Rules apply in the list's order and the first match wins;
     drag them to reorder. A rule's switch is a green dot: it pulses while the rule is on, holds

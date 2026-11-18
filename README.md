@@ -51,7 +51,8 @@ panel, and side by side when there's room:
 
 **New rule** (the **+**) takes a path, a full URL, or a command from the browser's **Copy as
 cURL**. One click sets a common answer: **Empty list**, **Fail with 500**, **Not found**, **Slow
-by 2 s** or **Logged out (401)**. A rule's dot turns it on or off, in the list and in the popup.
+by 2 s** or **Logged out (401)**. A rule's dot in the list turns it on or off, as does its
+**Turn off** or **Turn on** in the popup.
 
 ### Shape every part of the answer
 
@@ -75,15 +76,18 @@ Every request with its status, timing and body, and what a rule did to it ("Mock
 user"). Filter to the ones a rule **Matched** or the **Errors**, search by URL, status or rule,
 and copy a request's URL, its body or a cURL command for it.
 
-### Switch it from the toolbar
+### See what your rules did, from the toolbar
 
 <p align="center">
-  <img src="docs/media/popup.png" width="330" alt="The popup: Ghostfetch on, active on localhost, recording traffic, and six rules with their dots, four of them on.">
+  <img src="docs/media/popup.png" width="330" alt="The popup on localhost:5173, recording: under This page, the three rules that answered there, Pro plan user (1 mocked), Slow search (2 modified) and Feature flags (1 mocked), and a folded row for the three that didn't, one on and two off.">
 </p>
 
-The popup turns Ghostfetch on or off, says whether it runs on the current site (and turns it on
-for one that isn't built in), turns recording on or off, has every rule's dot, and opens the
-editor.
+The popup says what's on in words. **This page** has the rules that answered on the tab's page
+and what each did there (**1 mocked**, **2 modified**), and folds the rest away; **All rules**
+has every rule, and **Sites** where Ghostfetch runs. Point at a rule for its **Turn off** or
+**Turn on**, or click its name to edit it. The header turns recording on or off and pauses
+Ghostfetch, and a site that isn't built in is turned on (**Turn on for …**) or off (**Turn off
+here**) right there.
 
 ### Pick a theme
 
@@ -116,9 +120,9 @@ sidebar.
 ## Where it runs
 
 Always on `localhost` (any port, and `*.localhost`), `127.0.0.1` and any host that starts with
-`local.`, such as `local.myapp.com`. Turn it on for another site from the popup (**Active on …**)
-or from Traffic (**Turn on for …**); a site covers its subdomains. Everywhere else it doesn't
-run at all.
+`local.`, such as `local.myapp.com`. Turn it on for another site from the popup or from Traffic
+(**Turn on for …** in both); a site covers its subdomains. Everywhere else it doesn't run at
+all.
 
 ## Privacy
 

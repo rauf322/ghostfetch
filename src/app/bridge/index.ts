@@ -1,7 +1,8 @@
 // Isolated-world half of the content script. Reads rules from extension storage and hands
 // the ones that are on to the interceptor (the page-world half) over a private MessageChannel,
 // whose port is offered exactly once, before any page script runs. The top frame also keeps
-// the tab's traffic log, so the editor can show requests made before it was opened.
+// the tab's traffic log, so the editor can show requests made before it was opened, and counts
+// it for the popup.
 // Built as bridge.js: WXT's wrapper runs this function at once and adds no globals of its own.
 import { defineUnlistedScript } from 'wxt/utils/define-unlisted-script';
 import { isResponseRule } from '../../shared/api/index.ts';
@@ -9,7 +10,9 @@ import type {
   LogEntry,
   LogPortMessage,
   LogViewerMessage,
+  PageCounts,
   PageState,
+  RuleCount,
   RuntimeMessage,
 } from '../../shared/api/index.ts';
 import type { Untrusted } from '../../shared/lib/index.ts';
@@ -145,10 +148,30 @@ export default defineUnlistedScript(() => {
 
   if (!isTop) return;
 
-  // A request an iframe logged, which the background passes on.
-  chrome.runtime.onMessage.addListener((message: RuntimeMessage | undefined) => {
-    if (message?.type === 'ghostfetch:frameEntry') record(message.entry);
-  });
+  // A request an iframe logged, which the background passes on; and the popup, asking how often
+  // each rule has answered here. Only the extension's own parts can send these.
+  chrome.runtime.onMessage.addListener(
+    (
+      message: RuntimeMessage | undefined,
+      _sender: chrome.runtime.MessageSender,
+      respond: (counts: PageCounts) => void,
+    ) => {
+      if (message?.type === 'ghostfetch:frameEntry') record(message.entry);
+      if (message?.type === 'ghostfetch:counts') respond(counts());
+    },
+  );
+
+  // The log, counted by rule and by what the rule did. A request the page gave up on before its
+  // rule answered (action '') is none of them, as in the rule editor's count.
+  function counts(): PageCounts {
+    const rules: Record<string, RuleCount> = {};
+    for (const { ruleId, action } of log) {
+      if (!ruleId || !action) continue;
+      const count = (rules[ruleId] ??= { mocked: 0, modified: 0, failed: 0 });
+      count[action === 'error' ? 'failed' : action] += 1;
+    }
+    return { record: recording, rules };
+  }
 
   // The editor's Traffic view connects here to get the log so far plus live updates.
   chrome.runtime.onConnect.addListener((viewer) => {

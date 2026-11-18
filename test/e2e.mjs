@@ -286,6 +286,44 @@ try {
     expect([r.status, r.body.name], [503, 'Real']);
     if (r.ms < 580) throw new Error(`only took ${Math.round(r.ms)} ms`);
   });
+  await check(
+    'a page counts for the popup what each rule did on it, by rule and by what it did, and nothing of the requests',
+    async () => {
+      const tab = (await worker.evaluate(() => chrome.tabs.query({}))).find((candidate) =>
+        candidate.url?.startsWith(ORIGIN),
+      );
+      const ask = () =>
+        worker.evaluate(
+          (id) =>
+            chrome.tabs.sendMessage(id, { type: 'ghostfetch:counts' }, { frameId: 0 }),
+          tab.id,
+        );
+      const ruleId = (url) => RULES.find((rule) => rule.match.url === url).id;
+      const [replace, merge, unreachable] = [
+        '/api/user?case=replace',
+        'case=merge',
+        '127.0.0.1:1/',
+      ].map(ruleId);
+      const before = await ask();
+      await call('/api/user?case=replace');
+      await call('/api/user?case=replace');
+      await call('/api/user?case=merge');
+      await call('http://127.0.0.1:1/api/user');
+      await sleep(500);
+      const after = await ask();
+      const more = (id, key) =>
+        (after.rules[id]?.[key] ?? 0) - (before.rules[id]?.[key] ?? 0);
+      expect(
+        [
+          after.record,
+          Object.keys(after).toSorted(),
+          Object.keys(after.rules[replace]).toSorted(),
+          [more(replace, 'mocked'), more(merge, 'modified'), more(unreachable, 'failed')],
+        ],
+        [true, ['record', 'rules'], ['failed', 'mocked', 'modified'], [2, 1, 1]],
+      );
+    },
+  );
   // A rule that keeps the server's body and sets nothing else, and one that sets a header too.
   const KEEPS = ['case=keep', 'case=kept-header'];
   await check(
@@ -3311,15 +3349,40 @@ try {
   );
   await popup.setViewportSize({ width: 330, height: 560 });
   await popup.goto(`chrome-extension://${extensionId}/popup.html`);
-  await check('popup lists rules and toggles them', async () => {
-    await popup.waitForSelector('[data-testid="popup-rule"]');
-    const first = popup.locator('[data-testid="popup-rule"]').first();
-    await first.locator('[role="switch"]').click();
-    await sleep(200);
-    const rules = (await worker.evaluate(() => chrome.storage.local.get('rules'))).rules;
-    expect(rules[0].enabled, false);
-    await first.locator('[role="switch"]').click();
-  });
+  await check(
+    "the popup lists every rule with its state in words, and a rule's Turn off and Turn on, shown under the pointer, save at once",
+    async () => {
+      // The popup in a tab of its own is on no website, so it opens on All rules.
+      await popup.waitForSelector('[data-testid="popup-rule"]');
+      const first = popup.locator('[data-testid="popup-rule"]').first();
+      const toggle = first.getByTestId('rule-toggle');
+      const stored = async () =>
+        (await worker.evaluate(() => chrome.storage.local.get('rules'))).rules[0].enabled;
+      const state = async () => [
+        await stored(),
+        await first.getByTestId('rule-state').textContent(),
+        await toggle.textContent(),
+      ];
+      // Until the pointer is on the rule, its words show and its button doesn't.
+      const hidden = await toggle.evaluate((button) => getComputedStyle(button).opacity);
+      const on = await state();
+      await first.hover();
+      await toggle.click();
+      await sleep(200);
+      const off = await state();
+      await toggle.click();
+      await sleep(200);
+      expect(
+        [hidden, on, off, await state()],
+        [
+          '0',
+          [true, 'On', 'Turn off'],
+          [false, 'Off', 'Turn on'],
+          [true, 'On', 'Turn off'],
+        ],
+      );
+    },
+  );
   await check(
     "the ⋯ menu's Theme recolours the editor and the open popup at once, a page draws in it from the start, and Ghostfetch's own comes back",
     async () => {
@@ -3648,28 +3711,32 @@ try {
       await probe.close();
     },
   );
-  await check('the popup lists the sites you added and removes one with ×', async () => {
-    // A new popup, which lists the site added in the check before.
-    const sitesPopup = await context.newPage();
-    sitesPopup.on('pageerror', (error) => errors.push(`popup: ${error.message}`));
-    sitesPopup.on(
-      'console',
-      (message) =>
-        message.type() === 'error' && errors.push(`popup console: ${message.text()}`),
-    );
-    await sitesPopup.goto(`chrome-extension://${extensionId}/popup.html`);
-    await sitesPopup.waitForSelector('[data-testid="site-chip"]');
-    expect(await sitesPopup.locator('[data-testid="site-chip"]').allTextContents(), [
-      'evil.test×',
-    ]);
-    await sitesPopup.click('[data-testid="site-chip"]:has-text("evil.test") button');
-    await sitesPopup.waitForFunction(
-      () => !document.querySelector('[data-testid="site-chip"]'),
-    );
-    const { sites } = await worker.evaluate(() => chrome.storage.local.get('sites'));
-    await sitesPopup.close();
-    expect(sites, []);
-  });
+  await check(
+    "the popup's Sites list the sites you added, and Remove turns one off",
+    async () => {
+      // A new popup, which lists the site added in the check before.
+      const sitesPopup = await context.newPage();
+      sitesPopup.on('pageerror', (error) => errors.push(`popup: ${error.message}`));
+      sitesPopup.on(
+        'console',
+        (message) =>
+          message.type() === 'error' && errors.push(`popup console: ${message.text()}`),
+      );
+      await sitesPopup.goto(`chrome-extension://${extensionId}/popup.html`);
+      await sitesPopup.click('[data-testid="view-sites"]');
+      await sitesPopup.waitForSelector('[data-testid="added-site"]');
+      expect(await sitesPopup.locator('[data-testid="added-site"]').allTextContents(), [
+        'evil.testRemove',
+      ]);
+      await sitesPopup.click('[data-testid="added-site"]:has-text("evil.test") button');
+      await sitesPopup.waitForFunction(
+        () => !document.querySelector('[data-testid="added-site"]'),
+      );
+      const { sites } = await worker.evaluate(() => chrome.storage.local.get('sites'));
+      await sitesPopup.close();
+      expect(sites, []);
+    },
+  );
   await check(
     'a script registered under its name up to 0.6.0 goes at the next sync',
     async () => {

@@ -126,6 +126,8 @@ const SHAPES = {
     </>
   ),
   edit: <path d="M4 20l1.2-4.4L16.5 4.3a2.1 2.1 0 0 1 3 3L8.2 18.6 4 20zM14.5 6.5l3 3" />,
+  pause: <path d="M9 5v14M15 5v14" />,
+  play: <path d="M8 5.5v13l10.5-6.5z" />,
 };
 
 export type IconName = keyof typeof SHAPES;

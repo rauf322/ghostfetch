@@ -99,7 +99,7 @@ export default defineConfig({
     minimum_chrome_version: '121',
     // Desktop Firefox and its forks (Zen) only. No gecko_android: addons.mozilla.org lists an
     // add-on for Firefox for Android when its manifest names it, and Android has no sidebar for
-    // the editor (the popup's Side panel button would fail there).
+    // the editor (the popup's Open editor button would fail there).
     browser_specific_settings: {
       gecko: {
         id: '@ghostfetch',

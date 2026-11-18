@@ -80,7 +80,7 @@ one per part of the screen, so each file is about one thing.
 src/app/                         the extension's parts, one folder each, which WXT builds (wxt.config.ts)
   background/                    service worker (Chrome) or event page (Firefox): content scripts for added sites, badge
   interceptor/                   page world: wraps fetch/XHR, applies the rules
-  bridge/                        isolated world: passes rules in, collects the traffic log
+  bridge/                        isolated world: passes rules in, collects the traffic log and counts it for the popup
   popup/                         the toolbar popup's page
   sidepanel/                     the editor (Chrome's side panel, Firefox's sidebar, or a tab): its sidebar, the top bar of a narrow panel, and its menus
   kit/                           the kit page; for npm run dev and the kit test, never in the extension
@@ -88,7 +88,7 @@ src/app/                         the extension's parts, one folder each, which W
 src/pages/                       what the screens show
   rules/                         the Rules view: the sidebar's rule list, New rule (ui/new-rule/), and the rule editor (ui/rule-editor/, a component per part)
   traffic/                       the Traffic view: a tab's live log grouped by time, a request's drawer (ui/request-detail/), Mock this response
-  popup/                         the toolbar popup
+  popup/                         the toolbar popup: its header, the tab's site, and its tabs (This page, All rules, Sites)
   kit/                           the kit page: every kit component in its states
 src/shared/                      what more than one part of the extension uses
   api/                           what's kept in chrome.storage and what the parts send each other (index.ts)
@@ -98,8 +98,9 @@ src/shared/                      what more than one part of the extension uses
     log-entry.ts                 a request in a tab's traffic log
     traffic-log.ts               the editor's live log of the tab it watches (Traffic, how often a rule fired, New rule's recent requests)
     preserve.ts                  Keep on reload: whether that log keeps what it has when the page reloads
-    messages.ts                  the messages between the background, the bridge, the interceptor and the Traffic tab
+    messages.ts                  the messages between the background, the bridge, the interceptor, the Traffic tab and the popup
     open-editor.ts               the editor in the side panel or a tab, and on a rule the popup picked
+    page-counts.ts               what each rule did on a tab's page, as the page's bridge counts it, for the popup's This page
   lib/                           small libraries, a file each (index.ts): JSON, HTML, URLs, durations, status names, cURL
                                  commands, icons, file names, a download, the side panel, the stores' base, untrusted data, a line diff
   react/                         useStore(), which redraws a screen when a store changes, and the traffic log's hooks (index.ts)
@@ -109,8 +110,7 @@ src/shared/                      what more than one part of the extension uses
     list-detail.tsx              the editor's layout: the sidebar, as wide as its edge was dragged, and what's open beside it, in a row (a flexbox: Firefox lays a grid's items out again from scratch)
     sidebar.tsx                  the sidebar's width and whether it's hidden, the edge that resizes it (and what keeps its width meanwhile), and the button (and ⌘B) that hides it
     theme.ts                     the themes, and the one in use; theme-menu.tsx, the ⋯ menus' Theme row
-    master-switch.tsx            Ghostfetch on or off as a whole, in the popup
-    rule-switch.tsx              a rule on or off (the pulsing green dot), in the list and the popup
+    rule-switch.tsx              a rule on or off (the pulsing green dot), in the editor's rule list
     rules-file.tsx               rules files: export every rule or one, import one (its rules arrive switched off)
     cn.ts                        cn(), which joins the kit's class names
 wxt.config.ts                    the manifest (permissions, content scripts, CSP, Firefox ID) and the build settings
@@ -287,7 +287,10 @@ and vim's cursor on a layer of one line), a theme picked
 in the `⋯` menu (the editor and the open popup
 recoloured, and set before a page draws), every theme's selection colour see-through (the body
 editor's selection lies over its text), the toolbar badge (green with the count, grey with
-"off"), and popup, plus the properties of the
+"off"), and the popup (each rule's state in words, its Turn off and Turn on under the pointer,
+saved at once, a rule picked in it opening in the editor, the sites you added with Remove, and
+what each rule did on a page, which the page counts by rule and by what the rule did, telling
+the popup nothing of the requests themselves), plus the properties of the
 [security model](security-model.md) (channel theft, forged offers, patched built-ins, built-ins
 that try to reach the interceptor through `.caller`, HTML injection, hostile rule files, sites
 that aren't turned on getting nothing, `local.*` hosts and a lookalike URL, turning a site on

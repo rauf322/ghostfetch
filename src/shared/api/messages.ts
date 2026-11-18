@@ -24,7 +24,22 @@ export type RuntimeMessage =
   // The popup or editor to the background: re-register the content scripts now.
   | { type: 'ghostfetch:sync' }
   // An iframe's bridge to the background, which passes it on to the tab's top frame.
-  | { type: 'ghostfetch:frameEntry'; entry: LogEntry };
+  | { type: 'ghostfetch:frameEntry'; entry: LogEntry }
+  // The popup to a tab's top-frame bridge, which answers with PageCounts.
+  | { type: 'ghostfetch:counts' };
+
+// A tab's bridge to the popup: how often each rule has answered on the page, by what it did, as
+// the tab's traffic log has it (so while recording, since the page loaded or Traffic's Clear).
+// Counts only: none of the log's URLs or bodies.
+export interface PageCounts {
+  record: boolean;
+  rules: Record<string, RuleCount>;
+}
+export interface RuleCount {
+  mocked: number;
+  modified: number;
+  failed: number;
+}
 
 // The "ghostfetch-log" port: the Traffic view connects to a tab's top-frame bridge over it, gets the
 // log so far, then each request as it happens, and can ask the tab to clear its log.

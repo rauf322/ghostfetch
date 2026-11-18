@@ -47,7 +47,7 @@ panel, and side by side when there's room:
 
 ### Try failures, empty states and slow responses
 
-![New rule: "/api/projects" is typed, Fail with 500 picked and Enter pressed; after a reload the app can't load its projects. The rule's dot in the list turns it off, and after another reload the projects are back.](docs/media/simulate-failure.webp)
+![New rule: "/api/projects" is typed, Fail with 500 picked and Enter pressed; after a reload the app can't load its projects. In the toolbar popup, All rules, the rule's Turn off turns it off, and after another reload the projects are back.](docs/media/simulate-failure.webp)
 
 **New rule** (the **+**) takes a path, a full URL, or a command from the browser's **Copy as
 cURL**. One click sets a common answer: **Empty list**, **Fail with 500**, **Not found**, **Slow

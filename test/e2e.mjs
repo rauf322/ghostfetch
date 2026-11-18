@@ -4152,44 +4152,48 @@ try {
     );
   });
   await check(
-    "a rule's switch in the list turns it off and on, doesn't open it, and pulses while it's on",
+    "the editor has nothing to switch: a rule that's off says Off in the list, and open, to turn it on in the toolbar popup",
     async () => {
-      const row = app.locator('[data-testid="rule"]', { hasText: 'case=merge' }).first();
-      const dot = row.getByRole('switch');
-      // Whether it's stored on, the rule the editor shows, and whether the dot pulses.
+      // The rule the check before opened: unnamed, so the list and the editor show its URL.
+      const row = app.locator('[data-testid="rule"]', { hasText: 'case=delay' }).first();
+      // Turned off and on as the popup does, in storage: nothing in the editor does it.
+      const turn = async (enabled) => {
+        const rules = await storedRules();
+        rules.find((rule) => rule.match.url === 'case=delay').enabled = enabled;
+        await setStorage({ rules });
+        await sleep(400);
+      };
+      // Whether the row is marked off, what it says at the right, and the chip over the rule.
       const state = async () => [
-        (await storedRules()).find((r) => r.match.url === 'case=merge').enabled,
-        await app.getAttribute('[data-testid="rule-name"]', 'placeholder'),
-        await dot.evaluate((element) =>
-          element.firstElementChild
-            .getAnimations()
-            .some((animation) => animation.animationName === 'signal-pulse'),
-        ),
+        await row.getAttribute('data-off'),
+        (await row.locator('[data-testid="rule-signal"]').allTextContents()).join(''),
+        await app.textContent('[data-testid="rule-state"]'),
       ];
-      await dot.click();
-      await sleep(400);
+      // No switch in the list, nor any other control in a rule's row.
+      const controls = await app
+        .locator('[data-testid="rule-list"] li')
+        .evaluateAll(
+          (rows) =>
+            rows.flatMap((each) => [
+              ...each.querySelectorAll(
+                'button, input, [role="switch"], [role="checkbox"]',
+              ),
+            ]).length,
+        );
+      await turn(false);
       const off = await state();
-      await dot.click();
-      await sleep(400);
-      const on = await state();
-      // While Ghostfetch is off, a rule that's on holds still, and its title says why.
-      await setStorage({ enabled: false });
-      await sleep(400);
-      const paused = [...(await state()), await dot.getAttribute('title')];
-      await setStorage({ enabled: true });
-      await sleep(400);
-      // The editor still shows the rule opened in the check before.
+      await turn(true);
+      const [onMark, onSays, onChip] = await state();
       expect(
-        [off, on, paused],
         [
-          [false, 'case=delay', false],
-          [true, 'case=delay', true],
-          [
-            true,
-            'case=delay',
-            false,
-            'On, but Ghostfetch is off. Click to turn this rule off',
-          ],
+          controls,
+          off,
+          [onMark, onSays.includes('Off'), onChip.includes('toolbar popup')],
+        ],
+        [
+          0,
+          ['true', 'Off', 'Off · turn it on in the toolbar popup'],
+          [null, false, false],
         ],
       );
     },
@@ -4267,6 +4271,37 @@ try {
             'Traffic ',
         null,
         { timeout: 3000 },
+      );
+    },
+  );
+  await check(
+    "Traffic says whether it's recording, with nothing there to switch it: the toolbar popup does",
+    async () => {
+      const status = app.locator('[data-testid="record"]');
+      const said = async () => [
+        await status.evaluate((element) => element.tagName),
+        await status.textContent(),
+      ];
+      const recording = await said();
+      // Stopped as the popup's Recording does, in storage.
+      await setStorage({ record: false });
+      await sleep(400);
+      const stopped = [
+        ...(await said()),
+        await app.textContent('[data-testid="traffic-notice"]'),
+      ];
+      await setStorage({ record: true });
+      await sleep(400);
+      expect(
+        [recording, stopped],
+        [
+          ['SPAN', 'Recording'],
+          [
+            'SPAN',
+            'Not recording',
+            'Recording is off, so new requests aren’t captured. Rules still apply. Start recording in the toolbar popup.',
+          ],
+        ],
       );
     },
   );

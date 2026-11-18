@@ -3,8 +3,8 @@
 // (pages/rules' RuleList: how many are on, and + for a new one), and along the bottom the ⋯ menu,
 // Import and Export. From 760px wide it stands beside the open view, as wide as its edge was
 // dragged, or hidden (shared/ui/sidebar.tsx); in a narrow side panel it's the Rules view's own
-// screen, under the top bar, which then has the name and the two views. Ghostfetch's own switch
-// isn't here: it's in the popup.
+// screen, under the top bar, which then has the name and the two views. Nothing here turns
+// Ghostfetch, a rule or recording on or off: the toolbar popup does.
 import { useEffect, useRef } from 'react';
 import { RuleList } from '../../pages/rules/index.ts';
 import { ruleStore } from '../../shared/api/index.ts';
@@ -23,7 +23,7 @@ export type View = 'rules' | 'traffic';
 interface SidebarProps {
   view: View;
   onView: (view: View) => void;
-  // The editor's log of the page it watches, for the Traffic row's count.
+  // The editor's log of the page it watches, for the Traffic row's count and what each rule did.
   log: TrafficLog;
   // In a narrow panel, whether it's the screen: the Rules view, with nothing open in it.
   screen: boolean;
@@ -135,6 +135,7 @@ export function Sidebar({
         query={query}
         onSelect={onSelect}
         onCreate={onNewRule}
+        log={log}
       />
       <PaneFooter>
         <EditorMenu

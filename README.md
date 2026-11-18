@@ -51,12 +51,12 @@ panel, and side by side when there's room:
 
 **New rule** (the **+**) takes a path, a full URL, or a command from the browser's **Copy as
 cURL**. One click sets a common answer: **Empty list**, **Fail with 500**, **Not found**, **Slow
-by 2 s** or **Logged out (401)**. A rule's dot in the list turns it on or off, as does its
-**Turn off** or **Turn on** in the popup.
+by 2 s** or **Logged out (401)**. Turn a rule off or on again from the toolbar popup: its
+**Turn off** or **Turn on**.
 
 ### Shape every part of the answer
 
-![The editor: the rules in the sidebar, and the rule "Pro plan user" open, with what it matches, what it responds with, and its JSON body.](docs/media/editor.png)
+![The editor: the rules in the sidebar, each saying what it did on the page (1 mocked, 2 modified) or Off, and the rule "Pro plan user" open, with what it matches, what it responds with, and its JSON body.](docs/media/editor.png)
 
 - Match a request by its URL (contains, equals, wildcard or regex), its method and its GraphQL
   operation name. **Try a URL** says whether a rule would answer one.
@@ -66,11 +66,11 @@ by 2 s** or **Logged out (401)**. A rule's dot in the list turns it on or off, a
   and **⌘−**) and has [vim keys](docs/guide.md#vim-keys).
 - Rules apply in the list's order and the first match wins: drag one to move it. Changes save
   as you type and apply to open tabs right away.
-- Export rules to a JSON file, and import them again (imported rules arrive switched off).
+- Export rules to a JSON file, and import them again (imported rules arrive turned off).
 
 ### See what each request got
 
-![Traffic: the page's requests with their statuses, three mocked and one modified by rules, and the request for the user open beside the list, with its details and its body.](docs/media/traffic.png)
+![Traffic: the page's requests with their statuses, two mocked and two modified by rules, and the request for the user open beside the list, with its details and its body.](docs/media/traffic.png)
 
 Every request with its status, timing and body, and what a rule did to it ("Mocked by Pro plan
 user"). Filter to the ones a rule **Matched** or the **Errors**, search by URL, status or rule,
@@ -87,7 +87,8 @@ and what each did there (**1 mocked**, **2 modified**), and folds the rest away;
 has every rule, and **Sites** where Ghostfetch runs. Point at a rule for its **Turn off** or
 **Turn on**, or click its name to edit it. The header turns recording on or off and pauses
 Ghostfetch, and a site that isn't built in is turned on (**Turn on for …**) or off (**Turn off
-here**) right there.
+here**) right there. It's the one place that turns things on or off: the editor has no switches,
+and shows a rule that's off as **Off**.
 
 ### Pick a theme
 

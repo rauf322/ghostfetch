@@ -22,9 +22,10 @@ What's different in Firefox-based browsers:
 
 ## The popup and the editor
 
-- **Toolbar popup**: what's on, in words rather than switches. The header has **Recording**
-  (click it to stop recording, and **Not recording** to start again) and **Pause**, which turns
-  Ghostfetch off as a whole (the only place for that) until you click **Resume**. Under it, the
+- **Toolbar popup**: what's on, in words rather than switches, and the one place that turns a
+  rule, recording or Ghostfetch itself on or off (the editor only shows it). The header has
+  **Recording** (click it to stop recording, and **Not recording** to start again) and
+  **Pause**, which turns Ghostfetch off as a whole until you click **Resume**. Under it, the
   tab's site and whether Ghostfetch is on there, with **Turn off here** for a site you added
   (the built-in hosts are **Always on**). At the bottom, **Open editor** opens the side panel
   (the sidebar in Firefox), and the button beside it opens the editor in a tab. In between are
@@ -57,10 +58,12 @@ What's different in Firefox-based browsers:
   **Resume** turns it back on.
   - **Rules**: create and edit rules. Changes save as you type and apply to open tabs
     immediately, without reloading. Rules apply in the list's order and the first match wins;
-    drag them to reorder. A rule's switch is a green dot: it pulses while the rule is on, holds
-    still while Ghostfetch is off, and is grey while the rule is off. Click it to turn the rule
-    on or off; a rule that's off keeps its place in the list. **Duplicate**, in an open rule's
-    header, copies it.
+    drag them to reorder. The editor has nothing to turn a rule on or off: the toolbar popup
+    does that. A rule that's off says **Off** at the right of its name, dimmed, and keeps its
+    place in the list, and its chip, open, says to turn it on in the toolbar popup. One that
+    answered on the page the editor watches says what it did there ("2 mocked") by a green
+    dot, which pulses while Ghostfetch is on. **Duplicate**, in an open rule's header, copies
+    it.
 
     **New rule** (the **+**) asks "What should Ghostfetch answer?" (beside the sidebar it's
     also what shows with no rule open). Paste a path, a full URL (it keeps the path and query,
@@ -122,7 +125,8 @@ What's different in Firefox-based browsers:
     480 px, as in a side panel you haven't widened, it's inline. The response it compares with
     is the server's the rule was made from (**Mock this response** on a request no rule
     answered), or else one the server gives a request the rule matches while no rule answers
-    it: the newest Traffic has, or the next one (turn the rule off and reload the page once).
+    it: the newest Traffic has, or the next one (turn the rule off in the popup and reload the
+    page once).
     Until a rule has one, it has no Diff switch. The response is kept apart from the rule: it
     never goes to a page, and an exported rules file doesn't have it. Diff can't be typed in:
     click a line, or press **Enter** for the one at the top, and Diff goes off with the cursor
@@ -132,8 +136,9 @@ What's different in Firefox-based browsers:
   - **Traffic**: live `fetch`/XHR log of a tab, newest first, grouped by when ("Just now", "A
     few minutes ago", "About 10 minutes ago"). What a rule did is in green ("Mocked by Feature
     flags"), and a request that failed says why ("Aborted · Feature flags", "Timed out after
-    800 ms (xhr.timeout)"). The bar along the top picks the page to watch and has
-    **Recording**, **Keep on reload** (keep the log when the page reloads) and **Clear**;
+    800 ms (xhr.timeout)"). The bar along the top picks the page to watch, says whether
+    requests are **Recording** (the popup starts and stops that), and has **Keep on reload**
+    (keep the log when the page reloads) and **Clear**;
     under it, **All**, **Matched** and **Errors** (a status of 400 or more, a failed request or
     a rule's error), each with its count, and a search by URL, status or rule. In the side
     panel Traffic watches the tab you're on, from the moment it opens a web page; a page you
@@ -151,8 +156,8 @@ What's different in Firefox-based browsers:
 The look is calm, after [T3 Code](https://github.com/pingdotgg/t3code), Revolut and ChatGPT: a
 near-black canvas with cards a step lighter, soft corners, Geist for words and Commit Mono for
 what is code (URLs, methods, status codes, headers, bodies), in sentence case. There is one
-colour, green, which means "on" or "a rule fired"; a rule's switch is a green dot that pulses
-while the rule is on. Errors and failed requests are inverted white instead of red.
+colour, green, which means "on" or "a rule fired"; a rule that answered on the page has a green
+dot that pulses. Errors and failed requests are inverted white instead of red.
 
 The editor's `⋯` menu has **Theme**: Ghostfetch's own (above, the default), **Rosé Pine**,
 **Rosé Pine Moon**, **Rosé Pine Dawn** (light), **Catppuccin Macchiato** and **Vague**. Each
@@ -239,12 +244,13 @@ request body or the `operationName` query param.
 unpacked extension's rules with the folder it was loaded from, and the build lives in a new one,
 so `.output/chrome-mv3` starts empty. Before switching, open the old Ghostfetch's editor and
 choose **Export all rules** in its `⋯` menu; then load `.output/chrome-mv3`, **Import** the file
-and switch the rules back on (imported rules arrive switched off), and remove the old card.
+and turn the rules back on in the popup (imported rules arrive turned off), and remove the old
+card.
 In Zen and Firefox nothing changes: the add-on ID stays `@ghostfetch`, and so do your rules.
 
 **Coming from Mocktail (0.4 and earlier)?** Ghostfetch has a new add-on ID, so Firefox-based
 browsers install it next to Mocktail instead of replacing it, with empty storage. Before you
 remove Mocktail, open its editor and choose **Export all rules** in its `⋯` menu. Then
-install Ghostfetch, **Import** the file and switch the rules back on (imported
-rules arrive switched off), and remove Mocktail. In Chrome the same export and import moves
+install Ghostfetch, **Import** the file and turn the rules back on in the popup (imported
+rules arrive turned off), and remove Mocktail. In Chrome the same export and import moves
 your rules to the new build folder (see the note above).

@@ -1,7 +1,33 @@
-// How often each rule has answered on a tab's page, which the popup shows ("2 mocked"). The tab's
-// top-frame bridge (src/app/bridge/) counts its traffic log and answers with the counts alone,
-// none of the log's URLs or bodies, so the popup opens as quickly however long the log is.
-import type { PageCounts, RuntimeMessage } from './messages.ts';
+// How often each rule has answered on a tab's page, which the popup shows ("2 mocked"), as does
+// the editor's rule list for the page it watches. The tab's top-frame bridge (src/app/bridge/)
+// counts its traffic log and answers the popup with the counts alone, none of the log's URLs or
+// bodies, so the popup opens as quickly however long the log is.
+import type { LogEntry } from './log-entry.ts';
+import type { PageCounts, RuleCount, RuntimeMessage } from './messages.ts';
+
+// What a rule did, in words: "2 mocked", "1 modified · 1 failed"; '' when it hasn't answered.
+export function countWords(count: RuleCount | undefined) {
+  if (!count) return '';
+  return [
+    count.mocked > 0 && `${count.mocked} mocked`,
+    count.modified > 0 && `${count.modified} modified`,
+    count.failed > 0 && `${count.failed} failed`,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+}
+
+// How often one rule answered among a page's requests, by what it did, as the bridge counts them
+// for the popup: a request the page gave up on before the rule answered (action '') is none of
+// them.
+export function countRule(entries: readonly LogEntry[], ruleId: string): RuleCount {
+  const count = { mocked: 0, modified: 0, failed: 0 };
+  for (const { ruleId: id, action } of entries) {
+    if (id !== ruleId || !action) continue;
+    count[action === 'error' ? 'failed' : action] += 1;
+  }
+  return count;
+}
 
 // null when Ghostfetch isn't running on the page: not a site it runs on, or a page that loaded
 // before Ghostfetch was installed or turned on there, until it reloads.

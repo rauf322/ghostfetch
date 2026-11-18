@@ -5,11 +5,16 @@
 // rules that answered on the page come first, under "Answering here", and the rest fold into one
 // row that opens.
 import { useState } from 'react';
-import { editRule, openRuleInEditor, ruleTitle } from '../../../shared/api/index.ts';
+import {
+  countWords,
+  editRule,
+  openRuleInEditor,
+  ruleTitle,
+} from '../../../shared/api/index.ts';
 import type { Rule, RuleCount } from '../../../shared/api/index.ts';
 import { cn } from '../../../shared/ui/cn.ts';
 import { Icon } from '../../../shared/ui/kit/icon.tsx';
-import { didWords, matchLine } from '../lib/rule-words.ts';
+import { matchLine } from '../lib/rule-words.ts';
 
 export function RuleList({
   rules,
@@ -29,7 +34,7 @@ export function RuleList({
   title: string;
 }) {
   const [open, setOpen] = useState(false);
-  const answers = (rule: Rule) => rule.enabled && didWords(counts?.[rule.id]) !== '';
+  const answers = (rule: Rule) => rule.enabled && countWords(counts?.[rule.id]) !== '';
   const here = split ? rules.filter(answers) : rules;
   const rest = split ? rules.filter((rule) => !answers(rule)) : [];
   const on = rest.filter((rule) => rule.enabled).length;
@@ -92,7 +97,7 @@ function RuleRow({
   windowId: number;
 }) {
   const title = ruleTitle(rule);
-  const did = didWords(count);
+  const did = countWords(count);
   const live = rule.enabled && enabled;
   const words = !rule.enabled ? 'Off' : !enabled ? 'Paused' : did || 'On';
   const action = rule.enabled ? 'Turn off' : 'Turn on';

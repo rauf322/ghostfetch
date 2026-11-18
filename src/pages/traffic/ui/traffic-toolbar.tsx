@@ -1,14 +1,13 @@
 // The bar along the top of Traffic: the button that hides the sidebar and where you are
-// ("Traffic /", beside the sidebar), the page it watches, then Recording (capture requests), Keep
-// on reload (keep them when the page reloads) and Clear. Where the view is narrower than 560 px
-// (a side panel), Keep on reload and Clear drop their words for their icons, and Recording for its
-// switch.
-import { setFlag } from '../../../shared/api/index.ts';
+// ("Traffic /", beside the sidebar), the page it watches, then whether requests are recorded
+// (Recording, which the toolbar popup starts and stops), Keep on reload (keep them when the page
+// reloads) and Clear. Where the view is narrower than 560 px (a side panel), Keep on reload and
+// Clear drop their words for their icons.
 import type { TrafficSnapshot } from '../../../shared/api/index.ts';
 import { cn } from '../../../shared/ui/cn.ts';
 import { Button } from '../../../shared/ui/kit/button.tsx';
 import { Icon } from '../../../shared/ui/kit/icon.tsx';
-import { SwitchPill } from '../../../shared/ui/kit/switch.tsx';
+import { SignalDot } from '../../../shared/ui/kit/signal-dot.tsx';
 import { Toggle } from '../../../shared/ui/kit/toggle.tsx';
 import { SidebarToggle } from '../../../shared/ui/sidebar.tsx';
 import { TabPicker } from './tab-picker.tsx';
@@ -41,15 +40,21 @@ export function TrafficToolbar({
       </span>
       <TabPicker tabs={traffic.tabs} target={traffic.target} onPick={onPick} />
       <span className="ml-auto" />
-      <SwitchPill
-        checked={record}
-        onCheckedChange={(on) => setFlag('record', on)}
-        aria-label="Recording"
-        title="Capture requests. Rules apply either way."
-        className="@max-[560px]/traffic:pl-1.5"
+      <span
+        data-testid="record"
+        title={
+          record
+            ? 'Requests are recorded. Stop recording in the toolbar popup; rules apply either way.'
+            : 'Requests aren’t recorded. Start recording in the toolbar popup; rules apply either way.'
+        }
+        className={cn(
+          'flex flex-none items-center gap-1.5 px-1.5 text-control font-medium whitespace-nowrap',
+          record ? 'text-signal' : 'text-t50',
+        )}
       >
-        <span className={WIDE_ONLY}>Recording</span>
-      </SwitchPill>
+        <SignalDot on={record} />
+        {record ? 'Recording' : 'Not recording'}
+      </span>
       <Toggle
         pressed={preserve}
         onPressedChange={onPreserveChange}

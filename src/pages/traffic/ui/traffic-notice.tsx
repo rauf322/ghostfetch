@@ -1,6 +1,7 @@
 // What the list says about the page it watches, when there's something to say: that there's no
 // web page open, that Ghostfetch is off on the page's site (with a button that turns it on), that
-// it isn't running in the tab yet (with one that reloads the page), or that recording is off.
+// it isn't running in the tab yet (with one that reloads the page), or that recording is off (the
+// toolbar popup starts it again).
 import type { ReactNode } from 'react';
 import {
   isSiteEnabled,
@@ -57,7 +58,8 @@ export function TrafficNotice({
       </>
     );
   } else if (!record) {
-    notice = 'Recording is off, so new requests aren’t captured. Rules still apply.';
+    notice =
+      'Recording is off, so new requests aren’t captured. Rules still apply. Start recording in the toolbar popup.';
   }
 
   if (!notice) return null;

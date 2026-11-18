@@ -1,5 +1,6 @@
-// Items: rows of rules and of requests, as the two lists show them, one of each selected. The
-// requests sit in a card (ItemList), as Traffic's groups do.
+// Items: rows of rules and of requests, as the two lists show them, one of each selected. A rule
+// says at the right of its name what it did on the page, or Off, and nothing while it's on but
+// hasn't answered. The requests sit in a card (ItemList), as Traffic's groups do.
 import { formatDuration } from '../../../../shared/lib/index.ts';
 import { Badge, StatusCode } from '../../../../shared/ui/kit/badge.tsx';
 import {
@@ -9,7 +10,7 @@ import {
   ItemList,
   ItemTitle,
 } from '../../../../shared/ui/kit/item.tsx';
-import { SignalSwitch } from '../../../../shared/ui/kit/signal-switch.tsx';
+import { SignalDot } from '../../../../shared/ui/kit/signal-dot.tsx';
 import { Method } from '../../../../shared/ui/list-detail.tsx';
 import { Cell } from '../cell.tsx';
 
@@ -19,6 +20,8 @@ const RULES: {
   url: string;
   summary: string;
   on: boolean;
+  // What it did on the page.
+  did?: string;
 }[] = [
   {
     name: 'Logged-in admin user',
@@ -26,6 +29,7 @@ const RULES: {
     url: '/api/user',
     summary: 'Replace · 200',
     on: true,
+    did: '2 mocked',
   },
   {
     name: 'Slow team page',
@@ -99,13 +103,23 @@ export function ItemSection() {
         <ul className="m-0 list-none py-1">
           {RULES.map((rule, position) => (
             <Item key={rule.name} variant="rule" selected={position === 1} off={!rule.on}>
-              <SignalSwitch
-                defaultChecked={rule.on}
-                aria-label={`Turn “${rule.name}” on or off`}
-                className="-my-0.5 -ml-[9px] self-start"
-              />
               <ItemContent>
-                <ItemTitle>{rule.name}</ItemTitle>
+                <div className="flex min-w-0 items-center gap-2">
+                  <ItemTitle className="min-w-0">{rule.name}</ItemTitle>
+                  {!rule.on ? (
+                    <span className="ml-auto flex flex-none items-center gap-1.5 text-label text-t40">
+                      <SignalDot on={false} />
+                      Off
+                    </span>
+                  ) : (
+                    rule.did && (
+                      <span className="ml-auto flex flex-none items-center gap-1.5 text-label text-signal">
+                        <SignalDot on />
+                        {rule.did}
+                      </span>
+                    )
+                  )}
+                </div>
                 <ItemDescription>
                   {rule.method !== 'ANY' && (
                     <span className="flex-none font-mono font-medium text-t80">

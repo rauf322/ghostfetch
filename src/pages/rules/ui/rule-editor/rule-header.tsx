@@ -1,6 +1,6 @@
 // The bar across the top of a rule: back to the sidebar (in a narrow panel), where you are (beside
-// the sidebar), Duplicate (where there's room for the word) and its ⋯ menu. The rule's switch is
-// its dot in the list and in the popup, and Ghostfetch's own switch is the popup's.
+// the sidebar), Duplicate (where there's room for the word) and its ⋯ menu. Nothing here turns
+// the rule on or off: the toolbar popup does, as it does Ghostfetch as a whole.
 import { ruleTitle } from '../../../../shared/api/index.ts';
 import type { Rule } from '../../../../shared/api/index.ts';
 import { Button } from '../../../../shared/ui/kit/button.tsx';

@@ -94,13 +94,13 @@ src/shared/                      what more than one part of the extension uses
   api/                           what's kept in chrome.storage and what the parts send each other (index.ts)
     rules/                       a rule: its fields and their names, making one, URL matching, and the screens' copy of the rules; apart from them, the server's responses their bodies' Diff compares with
     sites/                       the sites Ghostfetch runs on, the screens' copy of the ones you added, turning one on or off
-    settings.ts                  the on/off and recording switches
+    settings.ts                  Ghostfetch on or off, and recording, which only the popup changes
     log-entry.ts                 a request in a tab's traffic log
     traffic-log.ts               the editor's live log of the tab it watches (Traffic, how often a rule fired, New rule's recent requests)
     preserve.ts                  Keep on reload: whether that log keeps what it has when the page reloads
     messages.ts                  the messages between the background, the bridge, the interceptor, the Traffic tab and the popup
     open-editor.ts               the editor in the side panel or a tab, and on a rule the popup picked
-    page-counts.ts               what each rule did on a tab's page, as the page's bridge counts it, for the popup's This page
+    page-counts.ts               what each rule did on a tab's page, as the page's bridge counts it, for the popup's This page; and in words, as the popup and the editor's rule list say it
   lib/                           small libraries, a file each (index.ts): JSON, HTML, URLs, durations, status names, cURL
                                  commands, icons, file names, a download, the side panel, the stores' base, untrusted data, a line diff
   react/                         useStore(), which redraws a screen when a store changes, and the traffic log's hooks (index.ts)
@@ -110,8 +110,7 @@ src/shared/                      what more than one part of the extension uses
     list-detail.tsx              the editor's layout: the sidebar, as wide as its edge was dragged, and what's open beside it, in a row (a flexbox: Firefox lays a grid's items out again from scratch)
     sidebar.tsx                  the sidebar's width and whether it's hidden, the edge that resizes it (and what keeps its width meanwhile), and the button (and ⌘B) that hides it
     theme.ts                     the themes, and the one in use; theme-menu.tsx, the ⋯ menus' Theme row
-    rule-switch.tsx              a rule on or off (the pulsing green dot), in the editor's rule list
-    rules-file.tsx               rules files: export every rule or one, import one (its rules arrive switched off)
+    rules-file.tsx               rules files: export every rule or one, import one (its rules arrive turned off)
     cn.ts                        cn(), which joins the kit's class names
 wxt.config.ts                    the manifest (permissions, content scripts, CSP, Firefox ID) and the build settings
 components.json                  settings for shadcn's CLI, for adding a kit component
@@ -283,7 +282,8 @@ a drag beside a long body smooth: the body's text area holding its width until t
 go, a width only the list itself has, and coloured text laid out the same at any width; and what
 keeps typing in one quick: only the piece typed into redrawn, a new line only adding its number,
 the editor's sizes its own, the boxes around it changing only in size between its two layouts,
-and vim's cursor on a layer of one line), a theme picked
+and vim's cursor on a layer of one line), nothing in the editor to switch (a rule that's off says
+Off, and open, to turn it on in the popup; Traffic only says whether it's recording), a theme picked
 in the `⋯` menu (the editor and the open popup
 recoloured, and set before a page draws), every theme's selection colour see-through (the body
 editor's selection lies over its text), the toolbar badge (green with the count, grey with

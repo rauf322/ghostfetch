@@ -75,7 +75,7 @@ export type {
   RuleCount,
   RuntimeMessage,
 } from './messages.ts';
-export { askPageCounts } from './page-counts.ts';
+export { askPageCounts, countRule, countWords } from './page-counts.ts';
 export {
   openInSidePanel,
   openInTab,

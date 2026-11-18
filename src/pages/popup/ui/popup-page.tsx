@@ -3,6 +3,7 @@
 // rule did on this page, every rule, and the sites Ghostfetch runs on.
 import { useState } from 'react';
 import {
+  countWords,
   isSiteEnabled,
   ruleStore,
   settingsStore,
@@ -11,7 +12,6 @@ import {
 } from '../../../shared/api/index.ts';
 import { useStore } from '../../../shared/react/index.ts';
 import { Segmented, SegmentedItem } from '../../../shared/ui/kit/segmented.tsx';
-import { didWords } from '../lib/rule-words.ts';
 import { usePageCounts } from '../model/use-page-counts.ts';
 import { PopupFooter } from './popup-footer.tsx';
 import { PopupHeader } from './popup-header.tsx';
@@ -39,7 +39,7 @@ export function PopupPage({
   const [view, setView] = useState<View>(host ? 'page' : 'rules');
   // How many rules answered on the page, while that's known (recording, and Ghostfetch on there).
   const answering = counts?.record
-    ? rules.filter((rule) => rule.enabled && didWords(counts.rules[rule.id])).length
+    ? rules.filter((rule) => rule.enabled && countWords(counts.rules[rule.id])).length
     : null;
 
   return (

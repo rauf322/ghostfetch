@@ -123,12 +123,10 @@ export default defineConfig({
       version: '19.0.0',
     },
     // The kit's form controls, as the elements they render, so the accessibility rules can see
-    // that a <label> around one labels it. A Switch is a <span role="switch"> next to a hidden
-    // checkbox, which is what a label around it clicks.
+    // that a <label> around one labels it.
     'jsx-a11y': {
       components: {
         Input: 'input',
-        Switch: 'input',
       },
     },
     // Every import in src/ names its file with its extension, so Node's resolver finds them.

@@ -35,8 +35,8 @@ see the [README](../README.md).
   Every site Ghostfetch runs on gets the same rules. Any host starting with `local.` counts, so
   only open `local.*` sites you control while Ghostfetch is on, only add sites you trust, and
   don't keep real secrets in rule bodies.
-- **Imported rules arrive switched off.** A rule changes what your app gets back from its
-  server, so read a rules file from someone else before you switch its rules on.
+- **Imported rules arrive turned off.** A rule changes what your app gets back from its
+  server, so read a rules file from someone else before you turn its rules on.
 - **Mind what you mock.** "Mock this response" copies a real response into a rule. Rules are
   stored unencrypted in your browser profile and included in exports, so strip tokens and
   personal data from bodies you keep or share. The response itself is kept too, for the body's

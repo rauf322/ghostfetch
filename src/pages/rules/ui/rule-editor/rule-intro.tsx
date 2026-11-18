@@ -47,15 +47,16 @@ const times = (traffic: TrafficSnapshot, id: string, failed: boolean) =>
 
 // The chip over the name. Green while the rule answers requests, with how often it has on the page
 // the editor watches (while recording, which is how Ghostfetch knows); grey while it's off, or on
-// while Ghostfetch is off. Only what the log has seen: it starts over with Clear and, unless Keep
-// on reload is on, with a page load, so a count of none goes unsaid.
+// while Ghostfetch is off. A rule that's off says where to turn it on: the toolbar popup, the one
+// place that does. Only what the log has seen: it starts over with Clear and, unless Keep on
+// reload is on, with a page load, so a count of none goes unsaid.
 function RuleState({ rule, log }: { rule: Rule; log: TrafficLog }) {
   const { enabled, record } = useStore(settingsStore);
   const hits = useTrafficValue(log, (traffic) => times(traffic, rule.id, false));
   const failures = useTrafficValue(log, (traffic) => times(traffic, rule.id, true));
   const page = useTrafficValue(log, (traffic) => traffic.target?.title ?? '');
   const live = rule.enabled && enabled;
-  let words = 'Off';
+  let words = 'Off · turn it on in the toolbar popup';
   if (rule.enabled && !enabled) words = 'Paused while Ghostfetch is off';
   else if (live) {
     words = rule.response.bodyMode === 'replace' ? 'Mocking' : 'Modifying';

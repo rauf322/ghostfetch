@@ -60,10 +60,10 @@ async function importRules(file: File, onAdded: (rules: Rule[]) => void) {
     addRules(imported);
     onAdded(imported);
     notify(
-      `Imported ${imported.length} rule${imported.length === 1 ? '' : 's'}, switched off`,
+      `Imported ${imported.length} rule${imported.length === 1 ? '' : 's'}, turned off`,
       {
         kind: 'success',
-        description: `Review them before turning them on.${skippedNote}`,
+        description: `Review them, then turn them on in the toolbar popup.${skippedNote}`,
         duration: 7000,
       },
     );

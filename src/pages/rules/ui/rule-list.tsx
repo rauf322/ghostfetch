@@ -1,8 +1,9 @@
 // The rules in the sidebar, in their order, under how many of them are on ("12 of 14 on") and
 // the + that makes a new rule. A rule's place in the list is its priority: rules are tried top to
-// bottom, and the first match wins; drag one to move it. A rule that's off stays where it is, its
-// dot grey. Search narrows the list.
+// bottom, and the first match wins; drag one to move it. A rule that's off stays where it is, and
+// says Off. Search narrows the list.
 import { ruleRevision, ruleStore } from '../../../shared/api/index.ts';
+import type { TrafficLog } from '../../../shared/api/index.ts';
 import { useStore } from '../../../shared/react/index.ts';
 import { Button } from '../../../shared/ui/kit/button.tsx';
 import { Icon } from '../../../shared/ui/kit/icon.tsx';
@@ -18,9 +19,11 @@ interface RuleListProps {
   onSelect: (id: string) => void;
   // New rule: the +.
   onCreate: () => void;
+  // The editor's log of the page it watches: what each rule did there.
+  log: TrafficLog;
 }
 
-export function RuleList({ selectedId, query, onSelect, onCreate }: RuleListProps) {
+export function RuleList({ selectedId, query, onSelect, onCreate, log }: RuleListProps) {
   const { rules } = useStore(ruleStore);
   const drag = useRuleDrag(rules);
   const visible = filterRules(rules, query);
@@ -38,8 +41,8 @@ export function RuleList({ selectedId, query, onSelect, onCreate }: RuleListProp
         </ListEmpty>
       ) : (
         <section>
-          {/* The label starts over the rules' dots. */}
-          <div className="flex h-9 items-center justify-between pt-2 pr-2 pl-[22px]">
+          {/* The label starts over the rules' names. */}
+          <div className="flex h-9 items-center justify-between pt-2 pr-2 pl-[18px]">
             <h2 className="text-label font-medium text-t40 tabular-nums">
               {visible.length ? `${on} of ${visible.length} on` : 'Rules'}
             </h2>
@@ -63,6 +66,7 @@ export function RuleList({ selectedId, query, onSelect, onCreate }: RuleListProp
                 revision={ruleRevision(rule)}
                 selected={rule.id === selectedId}
                 drag={drag(rule)}
+                log={log}
                 onSelect={onSelect}
               />
             ))}

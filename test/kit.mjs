@@ -189,37 +189,15 @@ async function runChecks(browser, open) {
   );
 
   await check(
-    `${browser}: switch: Space flips it, and so does a click on the words next to it`,
-    async () => {
-      const state = () =>
-        kit.run(() => [
-          document.querySelector('[data-testid=kit-switch]').getAttribute('aria-checked'),
-          document.querySelector('[data-testid=kit-switch-words]').textContent,
-        ]);
-      const seen = [await state()];
-      await kit.focus('[data-testid=kit-switch]');
-      await kit.press('Space');
-      seen.push(await state());
-      await kit.click('[data-testid=kit-switch-words]');
-      seen.push(await state());
-      expect(seen, [
-        ['true', 'Ghostfetch on'],
-        ['false', 'Ghostfetch off'],
-        ['true', 'Ghostfetch on'],
-      ]);
-    },
-  );
-
-  await check(
-    `${browser}: a rule's switch pulses while on, in step with the others, fades in, and is still while paused or off`,
+    `${browser}: a signal dot pulses while on, in step with the others, fades in, and is still while paused or off`,
     async () => {
       // Each dot: whether it's on, and its animations, with when each counts from.
       const state = () =>
         ['off', 'on', 'paused'].map((name) => {
           const dot = document.querySelector(`[data-testid=kit-signal-${name}]`);
           return [
-            dot.getAttribute('aria-checked'),
-            dot.firstElementChild
+            dot.hasAttribute('data-on'),
+            dot
               .getAnimations()
               .map((animation) => [animation.animationName, animation.startTime]),
           ];
@@ -229,9 +207,9 @@ async function runChecks(browser, open) {
         kit,
         state,
         [
-          ['false', []],
-          ['true', pulse],
-          ['true', []],
+          [false, []],
+          [true, pulse],
+          [true, []],
         ],
         'at first',
       );
@@ -248,17 +226,17 @@ async function runChecks(browser, open) {
             );
         }),
       );
-      // Switched on a while after the others, it still pulses in step with them.
-      await kit.click('[data-testid=kit-signal-off]');
+      // Lit a while after the others, it still pulses in step with them.
+      await kit.click('[data-testid=kit-signal-light]');
       await settles(
         kit,
         state,
         [
-          ['true', pulse],
-          ['true', pulse],
-          ['true', []],
+          [true, pulse],
+          [true, pulse],
+          [true, []],
         ],
-        'switched on',
+        'lit',
       );
       expect(await kit.run(() => window.kitFadeRunning), true, 'fading in as it pulses');
       const everyPulse = await kit.run(() =>
@@ -269,16 +247,16 @@ async function runChecks(browser, open) {
       );
       if (everyPulse.length < 3 || everyPulse.some((start) => start !== 0))
         throw new Error(`pulses out of step: ${JSON.stringify(everyPulse)}`);
-      await kit.click('[data-testid=kit-signal-off]');
+      await kit.click('[data-testid=kit-signal-light]');
       await settles(
         kit,
         state,
         [
-          ['false', []],
-          ['true', pulse],
-          ['true', []],
+          [false, []],
+          [true, pulse],
+          [true, []],
         ],
-        'switched off again',
+        'put out again',
       );
     },
   );
@@ -657,7 +635,7 @@ async function inChromium() {
     ignoreDefaultArgs: ['--disable-extensions'],
     args: [`--disable-extensions-except=${dir}`, `--load-extension=${dir}`],
     viewport: VIEWPORT,
-    // As with macOS's Reduce motion on, which Zen picks up from the system: a rule's switch
+    // As with macOS's Reduce motion on, which Zen picks up from the system: the signal dot
     // still pulses then (T3 Code's dot, which it follows, doesn't).
     reducedMotion: 'reduce',
   });

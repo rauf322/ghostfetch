@@ -1,7 +1,9 @@
 // The body a rule answers with: Replace (your body, without calling the server) or Keep server's
 // body, and for Replace the Content-Type and the body editor. Under the editor, what the check
 // found (a mistake is marked in the editor too, and clicking it here puts the cursor there), the
-// Diff and Vim switches, and Format. The editor sizes its own text, with Cmd/Ctrl and =, - or 0.
+// Diff, Wrap and Vim switches, and Format. The editor sizes its own text, with Cmd/Ctrl and =, -
+// or 0. Wrap shows a long line on as many rows as it takes, as Neovim does, rather than one that
+// scrolls along: the body itself stays as it is.
 //
 // Diff shows, in the editor's place, what your body changes in the server's response (the one the
 // rule was made from, or the editor saw since): side by side, or inline when asked or when the card
@@ -36,6 +38,7 @@ import {
   rememberDiff,
   rememberDiffLayout,
   vimPreferred,
+  wrapPreferred,
 } from '../../../../shared/ui/code-editor/index.ts';
 import type {
   CodeEditorHandle,
@@ -77,8 +80,9 @@ export function BodyCard({
 }) {
   const card = useRef<HTMLElement>(null);
   const code = useRef<CodeEditorHandle | null>(null);
-  // The Vim switch and Diff are each one setting for every body, which they remember.
+  // The Vim and Wrap switches and Diff are each one setting for every body, which they remember.
   const [vim, setVim] = useState(vimPreferred);
+  const [wrap, setWrap] = useState(wrapPreferred);
   const [diff, setDiff] = useState(diffPreferred);
   const [layout, setLayout] = useState(diffLayoutPreferred);
   // The line Diff opens at: the one the editor was showing.
@@ -96,11 +100,7 @@ export function BodyCard({
   const comparing = replaces && diff && server !== null;
 
   function switchDiff(on: boolean) {
-    if (on) {
-      const textarea = code.current?.textarea;
-      const lineHeight = textarea ? parseFloat(getComputedStyle(textarea).lineHeight) : 0;
-      setFromLine(lineHeight ? Math.floor(textarea!.scrollTop / lineHeight) : 0);
-    }
+    if (on) setFromLine(code.current?.topLine ?? 0);
     setDiff(on);
     rememberDiff(on);
     setTyped(false);
@@ -139,6 +139,12 @@ export function BodyCard({
     setVim(on);
     code.current?.setVim(on);
     // Straight back into the body, where the keys are.
+    code.current?.textarea.focus({ preventScroll: true });
+  }
+
+  function switchWrap(on: boolean) {
+    setWrap(on);
+    code.current?.setWrap(on);
     code.current?.textarea.focus({ preventScroll: true });
   }
 
@@ -326,6 +332,16 @@ export function BodyCard({
                 Diff
               </Toggle>
             )}
+            <Toggle
+              size="sm"
+              data-testid="wrap"
+              pressed={wrap}
+              onPressedChange={switchWrap}
+              title="Long lines on as many rows as they take"
+              className="border-input"
+            >
+              Wrap
+            </Toggle>
             <Toggle
               size="sm"
               data-testid="vim"

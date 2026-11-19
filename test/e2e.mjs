@@ -23,15 +23,18 @@ import {
   CHROME_BUILD,
   VIM_START,
   VIM_STEPS,
+  WRAP_BODY,
   check,
   expect,
   finish,
   itemsBody,
   requireBuild,
+  rowsAgree,
   sleep,
   startServer,
   testRules,
   vimKeys,
+  wrapLayout,
 } from './fixtures.mjs';
 
 const EXTENSION = requireBuild(CHROME_BUILD);
@@ -2231,6 +2234,65 @@ try {
         });
         await setBody(VIM_START);
       }
+    },
+  );
+  await check(
+    "Wrap: a long line on as many rows as it takes, the textarea, the colours and the line numbers wrapped alike at any width and text size with nothing to scroll sideways, a mistake's mark and vim's block on their characters; off, a row a line again",
+    async () => {
+      const before = await body.inputValue();
+      const wrap = app.locator('[data-testid="wrap"]');
+      const measure = () => app.evaluate(wrapLayout);
+      const seen = [];
+      try {
+        await wrap.click();
+        await setBody(WRAP_BODY);
+        await app.waitForSelector('.code-error');
+        // Vim's block at the end of a line that wraps, then deep in the token's.
+        await typeVim('gg3j$');
+        seen.push(await measure());
+        await typeVim('j0120l');
+        seen.push(await measure());
+        // Narrower, and a bigger text size: the rows wrap anew, the cursor and the mark with them.
+        await app.setViewportSize({ width: 1000, height: 820 });
+        await sleep(300);
+        seen.push(await measure());
+        await app.keyboard.press('ControlOrMeta+=');
+        await sleep(300);
+        seen.push(await measure());
+        await app.keyboard.press('ControlOrMeta+0');
+        await app.setViewportSize({ width: 1280, height: 820 });
+        await sleep(300);
+        // Off: a row a line, scrolled sideways, and the plain numbers.
+        await wrap.click();
+        await sleep(200);
+        seen.push({
+          ...(await measure()),
+          numbers: (await app.textContent('.code-lines')).startsWith('1\n2\n3'),
+        });
+      } finally {
+        if ((await wrap.getAttribute('aria-pressed')) === 'true') await wrap.click();
+        await setBody(before);
+      }
+      expect(
+        [
+          ...seen
+            .slice(0, 4)
+            .map(({ wrapped: on, stored, sideways, rows, starts, block, mark }) => [
+              on,
+              stored,
+              sideways,
+              rowsAgree(rows),
+              starts,
+              block,
+              mark,
+            ]),
+          [seen[4].wrapped, seen[4].stored, seen[4].sideways > 0, seen[4].numbers],
+        ],
+        [
+          ...Array.from({ length: 4 }, () => [true, '1', 0, true, true, true, true]),
+          [false, null, true, true],
+        ],
+      );
     },
   );
   await check(

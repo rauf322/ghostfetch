@@ -253,9 +253,10 @@ export async function startServer() {
         res.end(`<!doctype html><title>editor</title><link rel="stylesheet" href="/src/app/styles/theme.css"><link rel="stylesheet" href="/src/shared/ui/code-editor/code-editor.css"><div style="width:640px"></div>
           <script type="module">
             import { createCodeEditor } from '/src/shared/ui/code-editor/engine/code-editor.ts';
-            import { formatJson } from '/src/shared/lib/json.ts';
+            import { checkJson, formatJson } from '/src/shared/lib/json.ts';
             localStorage.setItem('ghostfetch.vim', '1');
             window.createCodeEditor = createCodeEditor;
+            window.checkJson = checkJson;
             window.formatJson = formatJson;
             window.editor = createCodeEditor({ value: ${JSON.stringify(VIM_START)} });
             document.querySelector('div').append(window.editor.root);
@@ -582,6 +583,97 @@ export const itemsBody = (count) =>
     (_, id) =>
       `  {"id": ${id}, "name": "item ${id}", "url": "https:\\/\\/api.example.com\\/items\\/${id}", "price": ${id}.0}`,
   ).join(',\n')}\n]}`;
+
+// A body for Wrap, which both the Chromium and the Zen test wrap: prose, a token with no spaces,
+// emoji, CJK, lines that start with a tab, over and over so the body is taller than the editor,
+// and a comma missing after a line that wraps.
+const WRAP_VALUES = [
+  '"A long line of prose that goes on and on, well past the width of the editor, so it has to wrap between its words."',
+  `"${'eyJhbGciOiJIUzI1NiJ9'.repeat(8)}"`,
+  '"🙂 smile 🚀 rocket 👩‍💻 dev 🇩🇪 flag, and again 🙂🚀👩‍💻🇩🇪 four of them in a row, and more words to wrap"',
+  '"日本語のテキストはとても長くて、エディターの幅を超えて折り返す必要があります。中文也一样需要换行显示。"',
+];
+export const WRAP_BODY = lines(
+  '{',
+  ...Array.from(
+    { length: 16 },
+    (_, index) =>
+      `${index % 2 ? '\t' : '  '}"k${index}": ${WRAP_VALUES[index % WRAP_VALUES.length]},`,
+  ),
+  '  "missing": "a value well past the editor\'s width, with spaces so it wraps between its words, then no comma"',
+  '  "end": 1',
+  '}',
+);
+
+// Run in the page (it uses nothing else): everything that has to wrap alike with Wrap on,
+// measured in the first body editor. Rows of the textarea's text, of the gutter's rows and of the
+// coloured layer (less the row its trailing line breaks add); whether each line's row starts
+// where the line does in the coloured layer; what's left to scroll sideways; and whether vim's
+// block and the mistake's mark in WRAP_BODY are on their characters.
+export function wrapLayout() {
+  const root = document.querySelector('.code');
+  const textarea = root.querySelector('textarea');
+  const style = getComputedStyle(textarea);
+  const lh = parseFloat(style.lineHeight);
+  const layer = root.querySelector('.code-highlight .code-text');
+  const rows = [...root.querySelectorAll('.code-row')];
+  const top = (element) => element.getBoundingClientRect().top;
+  // A character's box in the coloured layer, whatever tokens it's in.
+  const box = (offset) => {
+    const walker = document.createTreeWalker(layer, NodeFilter.SHOW_TEXT);
+    let at = 0;
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      if (offset < at + node.data.length) {
+        const range = document.createRange();
+        range.setStart(node, offset - at);
+        range.setEnd(node, offset - at + 1);
+        return range.getBoundingClientRect();
+      }
+      at += node.data.length;
+    }
+    return null;
+  };
+  const on = (got, want) =>
+    Boolean(got && want) &&
+    Math.abs(got.left - want.left) < 0.5 &&
+    Math.abs(got.top - want.top) < 0.5;
+  const text = textarea.value;
+  const starts = [0];
+  for (let at = text.indexOf('\n'); at !== -1; at = text.indexOf('\n', at + 1))
+    starts.push(at + 1);
+  const rowOf = (rect) => Math.floor((rect.top + rect.height / 2 - top(layer)) / lh);
+  const mark = root.querySelector('.code-error');
+  const block = root.querySelector('.code-cursor .cursor');
+  return {
+    wrapped: root.hasAttribute('data-wrap'),
+    stored: localStorage.getItem('ghostfetch.wrap'),
+    sideways: textarea.scrollWidth - textarea.clientWidth,
+    rows: [
+      Math.round(
+        (textarea.scrollHeight -
+          parseFloat(style.paddingTop) -
+          parseFloat(style.paddingBottom)) /
+          lh,
+      ),
+      rows.length
+        ? Math.round((rows.at(-1).getBoundingClientRect().bottom - top(rows[0])) / lh)
+        : null,
+      Math.round(layer.getBoundingClientRect().height / lh) - 1,
+    ],
+    starts:
+      rows.length === starts.length &&
+      starts.every(
+        (start, index) =>
+          rowOf(box(start)) === Math.round((top(rows[index]) - top(rows[0])) / lh),
+      ),
+    block: on(block?.getBoundingClientRect(), box(textarea.selectionStart)),
+    mark: on(mark?.getClientRects()[0], box(text.indexOf('"a value well past'))),
+  };
+}
+
+// The rows wrapLayout() measured agree, and there are enough of them to have wrapped.
+export const rowsAgree = ([textarea, gutter, layer]) =>
+  textarea === gutter && gutter === layer && textarea > 20;
 
 // ------------------------------------------------------------ harness
 

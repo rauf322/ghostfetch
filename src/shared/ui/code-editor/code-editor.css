@@ -244,7 +244,8 @@
 /* A layer's text, in a block of one fixed width, far wider than the editor: its lines never wrap,
    so it looks the same at any width, and with the block's width fixed the browser keeps its layout
    when the editor changes width (the window resized, the sidebar's edge dragged) instead of laying
-   out a long body again. A longer line still runs on past the block, as it would anyway. */
+   out a long body again. A longer line still runs on past the block, as it would anyway. With Wrap
+   on (below), the editor gives the block the textarea's width instead. */
 .code-text {
   display: block;
   box-sizing: border-box;
@@ -255,6 +256,62 @@
    inline, and run on from one another. */
 .code-piece {
   display: block;
+}
+
+/* Wrap: a long line on as many rows as it takes, breaking between words where it can and
+   anywhere in a word too long for a row, as the textarea wraps it and as every layer must too:
+   the editor gives each layer's text the textarea's width (setWrapWidth()). The scrollbar's room
+   is kept, so the width doesn't change as the text grows past the editor's height (macOS draws its
+   scrollbars over the text, taking none). */
+.code[data-wrap] .code-main pre,
+.code[data-wrap] .code-main textarea {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  overflow-x: hidden;
+}
+.code[data-wrap] .code-main textarea {
+  scrollbar-gutter: stable;
+}
+/* A mistake's few words after the end of its line would wrap onto the lines below. */
+.code[data-wrap] .code-error-note {
+  display: none;
+}
+/* With Wrap on, the line numbers are rows (the editor's renderRows()), one a line, each holding
+   its line's text, unseen and as wide as the textarea's, so a row is as tall as its line wraps to
+   and its number stands by the line's first row. The gutter stays as wide as its numbers
+   (--code-digits) whatever the rows' width, and the numbers count themselves. */
+.code[data-wrap] .code-gutter {
+  --code-gutter-width: max(34px, calc(var(--code-digits, 1) * 1ch + 19px));
+  contain: inline-size;
+  width: var(--code-gutter-width);
+}
+.code[data-wrap] .code-lines {
+  padding: 0;
+  white-space: normal;
+  counter-reset: line;
+}
+.code-row {
+  position: relative;
+  width: var(--code-wrap-width, 100000px);
+  min-height: 1lh;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  tab-size: 2;
+  text-align: left;
+  color: transparent;
+  counter-increment: line;
+}
+.code-row::before {
+  content: counter(line);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: calc(var(--code-gutter-width) - 9px);
+  text-align: right;
+  color: var(--t20);
+}
+.code-row.error::before {
+  color: var(--text);
 }
 /* The height of the text (fitHeight), which the editor sets on every edit: not inherited, so an
    edit that adds a line doesn't have the browser restyle everything in the editor, the thousands

@@ -76,6 +76,16 @@ export function fontSizePreferred() {
   return FONT_SIZES.includes(size) ? size : DEFAULT_FONT_SIZE;
 }
 
+// Wrap: a long line on as many rows as the editor's width takes, as Neovim's wrap has it, rather
+// than one row that scrolls along. One setting for every body editor, remembered in this browser
+// while it's on, like the text size away from its default.
+const WRAP_KEY = 'ghostfetch.wrap';
+export const wrapPreferred = () => localStorage.getItem(WRAP_KEY) === '1';
+function rememberWrap(on: boolean) {
+  if (on) localStorage.setItem(WRAP_KEY, '1');
+  else localStorage.removeItem(WRAP_KEY);
+}
+
 export function countLines(text: string) {
   let count = 1;
   for (let at = text.indexOf('\n'); at !== -1; at = text.indexOf('\n', at + 1)) count++;
@@ -179,7 +189,8 @@ export function createCodeEditor({
   // textarea, its text in a .code-text of a fixed width (code-editor.css): lines never wrap, so a
   // long body is laid out once, not again whenever the editor changes width. The textarea keeps
   // its width while the sidebar's edge is dragged or the sidebar slides (data-keep-width, see
-  // shared/ui/sidebar.tsx) for the same reason.
+  // shared/ui/sidebar.tsx) for the same reason. With Wrap on, the lines wrap after all: every
+  // layer's text is then as wide as the textarea's (setWrapWidth()), so they all wrap alike.
   root.innerHTML = `
     <div class="code-find" role="search" hidden>
       <span class="code-find-icon" aria-hidden="true">${icon('search', 13)}<span class="code-find-prompt"></span></span>
@@ -212,11 +223,21 @@ export function createCodeEditor({
   const tip = root.querySelector<HTMLElement>('.code-error-tip')!;
   const cursorLayer = root.querySelector<HTMLElement>('.code-cursor .code-text')!;
   const lines = root.querySelector<HTMLElement>('.code-lines')!;
+  const gutter = root.querySelector<HTMLElement>('.code-gutter')!;
+  const texts = [...root.querySelectorAll<HTMLElement>('.code-main .code-text')];
   const findBar = root.querySelector<HTMLElement>('.code-find')!;
   const statusLine = root.querySelector<HTMLElement>('.code-vim')!;
   const sizeBadge = root.querySelector<HTMLElement>('.code-size')!;
   textarea.value = value;
   textarea.placeholder = placeholder;
+  // Wrap, and with it on the line numbers' rows (renderRows()): the element for each line, the
+  // lines they hold, the one marked for a mistake, and how many digits the numbers have.
+  let wrap = wrapPreferred();
+  let rows: HTMLElement[] = [];
+  let rowTexts: string[] = [];
+  let markedRow: HTMLElement | null = null;
+  let digits = 0;
+  applyWrap();
   let lineCount = 0;
   let escaped = false;
   // The mistake being marked, and the line it's on (from 0), or -1.
@@ -299,8 +320,9 @@ export function createCodeEditor({
   // Colours the pieces on screen and a screen's worth around them, and takes the colours off the
   // rest, so the layer holds a few thousand coloured tokens at most, however long the body. The
   // lines tell which pieces are near; the pieces of a long line are told apart by where they are.
-  // It reads first and writes after: a write between reads would have each read lay the layer
-  // out again.
+  // With Wrap on a line takes any number of rows, so every piece is told by where it is, down the
+  // text. It reads first and writes after: a write between reads would have each read lay the
+  // layer out again.
   function paintPieces() {
     if (!pieceElements.length) return;
     const { lineHeight, top } = metrics();
@@ -310,6 +332,13 @@ export function createCodeEditor({
     // What the layer shows: its <pre>, as the text in it is far wider.
     let view: DOMRect | undefined;
     const near = pieceElements.map((element, index) => {
+      if (wrap) {
+        view ??= layer.parentElement!.getBoundingClientRect();
+        const box = element.getBoundingClientRect();
+        return (
+          box.bottom >= view.top - view.height && box.top <= view.bottom + view.height
+        );
+      }
       if (pieceLines[index]! > last || (pieceLines[index + 1] ?? lineCount) < first)
         return false;
       if (element.classList.contains('code-piece')) return true;
@@ -326,10 +355,25 @@ export function createCodeEditor({
   }
 
   // The line numbers, the marked line's in white. Lines typed or deleted add numbers at the end
-  // or take them off, which the browser lays out without going over the rest.
+  // or take them off, which the browser lays out without going over the rest. With Wrap on, they
+  // are rows instead (renderRows()).
   let gutterLines = 0;
   let gutterProblem = -1;
   function renderGutter() {
+    if (wrap) {
+      renderRows();
+      if (String(rows.length).length !== digits) {
+        digits = String(rows.length).length;
+        gutter.style.setProperty('--code-digits', String(digits));
+      }
+      const marked = problemLine >= 0 ? (rows[problemLine] ?? null) : null;
+      if (marked !== markedRow) {
+        markedRow?.classList.remove('error');
+        marked?.classList.add('error');
+        markedRow = marked;
+      }
+      return;
+    }
     const marked = problemLine >= 0 && problemLine < lineCount ? problemLine : -1;
     if (lineCount === gutterLines && marked === gutterProblem) return;
     const text = lines.firstChild;
@@ -348,6 +392,74 @@ export function createCodeEditor({
     }
     gutterLines = lineCount;
     gutterProblem = marked;
+  }
+
+  // With Wrap on, the line numbers are rows (code-editor.css), one a line, each holding its line's
+  // text, unseen, as wide as the textarea's and wrapped as it wraps it: so a number stands by its
+  // line's first row, and where a line starts on screen is where its row is (lineY()). An edit
+  // makes again the rows of the lines it changed, and the rest keep theirs; the numbers count
+  // themselves (a CSS counter), so lines added or taken away don't renumber the rows after them.
+  function renderRows() {
+    const now = textarea.value.split('\n');
+    const shorter = Math.min(now.length, rowTexts.length);
+    let first = 0;
+    while (first < shorter && now[first] === rowTexts[first]) first++;
+    let end = now.length;
+    let oldEnd = rowTexts.length;
+    while (end > first && oldEnd > first && now[end - 1] === rowTexts[oldEnd - 1]) {
+      end--;
+      oldEnd--;
+    }
+    rowTexts = now;
+    if (first === end && first === oldEnd) return;
+    const fresh = now.slice(first, end).map((line) => {
+      const row = document.createElement('div');
+      row.className = 'code-row';
+      row.textContent = line;
+      return row;
+    });
+    const before = rows[oldEnd] ?? null;
+    for (const row of rows.slice(first, oldEnd)) row.remove();
+    const fragment = document.createDocumentFragment();
+    fragment.append(...fresh);
+    lines.insertBefore(fragment, before);
+    rows.splice(first, oldEnd - first, ...fresh);
+  }
+
+  // Where line `line` (from 0) starts down the text, in px from its first line's top: a line a row,
+  // unless Wrap is on, when it's where the line's row is. A fraction of a line goes as far down its
+  // rows; lineAt() goes back from a height to a line, and lineTall() is how tall a line is.
+  function lineY(line: number) {
+    const { lineHeight } = metrics();
+    if (!wrap || !rows.length) return line * lineHeight;
+    const whole = Math.min(Math.max(0, Math.floor(line)), rows.length - 1);
+    const box = rows[whole]!.getBoundingClientRect();
+    return box.top - rows[0]!.getBoundingClientRect().top + (line - whole) * box.height;
+  }
+  function lineAt(y: number) {
+    const { lineHeight } = metrics();
+    if (!wrap || !rows.length) return y / lineHeight;
+    const origin = rows[0]!.getBoundingClientRect().top;
+    let low = 0;
+    let high = rows.length - 1;
+    while (low < high) {
+      const middle = (low + high + 1) >> 1;
+      if (rows[middle]!.getBoundingClientRect().top - origin <= y) low = middle;
+      else high = middle - 1;
+    }
+    const box = rows[low]!.getBoundingClientRect();
+    return low + (y - (box.top - origin)) / box.height;
+  }
+  function lineTall(line: number) {
+    const row = wrap ? rows[line] : undefined;
+    return row ? row.getBoundingClientRect().height : metrics().lineHeight;
+  }
+  // The whole text's height.
+  function textHeight() {
+    if (!wrap || !rows.length) return lineCount * metrics().lineHeight;
+    return (
+      rows.at(-1)!.getBoundingClientRect().bottom - rows[0]!.getBoundingClientRect().top
+    );
   }
 
   // The marks for the mistake: the text of its line up to it invisible, a squiggle under it, its
@@ -379,7 +491,7 @@ export function createCodeEditor({
       text.slice(to, end),
       ...(note ? [span('code-error-note', `   ${note}`)] : []),
     );
-    errors.style.paddingTop = `${problemLine}lh`;
+    errors.style.paddingTop = wrap ? `${lineY(problemLine)}px` : `${problemLine}lh`;
     band.hidden = false;
     bar.hidden = false;
     renderGutter();
@@ -389,7 +501,7 @@ export function createCodeEditor({
   // The layers that hold one line (the mistake's, vim's cursor's) are made as tall as the whole
   // text and the two lines the highlight layer adds, so they scroll as far as the textarea does.
   function fitLayers() {
-    const height = `${lineCount + 2}lh`;
+    const height = wrap ? `calc(${textHeight()}px + 2lh)` : `${lineCount + 2}lh`;
     errors.style.minHeight = height;
     cursorLayer.style.minHeight = height;
   }
@@ -434,10 +546,10 @@ export function createCodeEditor({
     }
     lines.style.transform = `translateY(${-textarea.scrollTop}px)`;
     if (problemLine >= 0) {
-      const { lineHeight, top } = metrics();
-      const y = `translateY(${top + problemLine * lineHeight - textarea.scrollTop}px)`;
+      const { top } = metrics();
+      const y = `translateY(${top + lineY(problemLine) - textarea.scrollTop}px)`;
       for (const mark of [band, bar]) {
-        mark.style.height = `${lineHeight}px`;
+        mark.style.height = `${lineTall(problemLine)}px`;
         mark.style.transform = y;
       }
     }
@@ -449,9 +561,9 @@ export function createCodeEditor({
   function fitHeight() {
     fitLayers();
     if (!fit) return;
-    const { lineHeight, top, bottom } = metrics();
+    const { top, bottom } = metrics();
     const height =
-      lineCount * lineHeight +
+      textHeight() +
       top +
       bottom +
       (textarea.offsetHeight - textarea.clientHeight) +
@@ -468,12 +580,62 @@ export function createCodeEditor({
   }
   // The text area changes size when the editor goes on the page, shows again after being hidden,
   // or the window changes: a narrower one can grow a horizontal scrollbar, and different pieces of
-  // a long body are on screen.
+  // a long body are on screen. With Wrap on, a new width wraps the lines anew, which changes the
+  // text's height: relayout() runs a frame later, as an editor that changed height inside this
+  // would have the browser report a ResizeObserver loop.
   new ResizeObserver(() => {
     measured = null;
+    if (wrap) {
+      setWrapWidth();
+      requestAnimationFrame(relayout);
+      return;
+    }
     fitHeight();
     paintPieces();
   }).observe(textarea);
+
+  // Wrap on or off, as the root's data-wrap (code-editor.css) and the textarea's own wrap.
+  function applyWrap() {
+    if (wrap) root.dataset.wrap = '';
+    else delete root.dataset.wrap;
+    textarea.wrap = wrap ? 'soft' : 'off';
+  }
+
+  // With Wrap on, the width the textarea wraps its lines at, its content box to a fraction of a
+  // pixel, for every layer's text and for the rows, which must wrap them at the same place.
+  // Nothing to measure while it isn't shown (Diff on): the ResizeObserver comes back to it then.
+  function setWrapWidth() {
+    const box = textarea.getBoundingClientRect();
+    if (!box.width) return;
+    const { left, right } = metrics();
+    const width = `${box.width - (textarea.offsetWidth - textarea.clientWidth) - left - right}px`;
+    for (const text of texts) text.style.width = width;
+    gutter.style.setProperty('--code-wrap-width', width);
+  }
+
+  // With Wrap on, after the rows change but not the text (the textarea's width, the text size, the
+  // font coming in): the layers' width again, and what's set down where a line starts, the
+  // mistake's marks, the editor's height and the cursor, again.
+  function relayout() {
+    if (!wrap || !textarea.getClientRects().length) return;
+    setWrapWidth();
+    renderProblem();
+    fitHeight();
+    vim.refresh();
+    if (!root.contains(document.activeElement)) markCaret();
+    sync();
+  }
+  // The editor's font arrives after the first layout the first time a page shows it. (Only while
+  // it hasn't: every editor listening for good would keep every editor made.)
+  if (document.fonts?.status === 'loading')
+    document.fonts.addEventListener(
+      'loadingdone',
+      () => {
+        measured = null;
+        relayout();
+      },
+      { once: true },
+    );
 
   function applyFontSize() {
     root.style.fontSize = fontSize === DEFAULT_FONT_SIZE ? '' : `${fontSize}px`;
@@ -520,19 +682,20 @@ export function createCodeEditor({
     const width = charWidth(was);
     const { scrollTop, scrollLeft, clientHeight, clientWidth } = textarea;
     const cursor = cursorAt();
-    const cursorY = was.top + cursor.line * was.lineHeight - scrollTop;
+    const cursorY = was.top + lineY(cursor.line) - scrollTop;
     const cursorX = was.left + cursor.column * width - scrollLeft;
     const onCursor =
       withCursor && cursorY >= 0 && cursorY + was.lineHeight <= clientHeight;
-    const columnShown = cursorX >= 0 && cursorX + width <= clientWidth;
+    // With Wrap on, nothing is out of view along the lines.
+    const columnShown = !wrap && cursorX >= 0 && cursorX + width <= clientWidth;
     const line = onCursor
       ? cursor.line + 0.5
-      : Math.max(0, (scrollTop + clientHeight / 2 - was.top) / was.lineHeight);
+      : Math.max(0, lineAt(scrollTop + clientHeight / 2 - was.top));
     return {
       line,
       onCursor,
-      y: was.top + line * was.lineHeight - scrollTop,
-      edge: scrollLeft ? (scrollLeft - was.left) / width : null,
+      y: was.top + lineY(line) - scrollTop,
+      edge: !wrap && scrollLeft ? (scrollLeft - was.left) / width : null,
       cursor: onCursor && columnShown ? cursor : null,
     };
   }
@@ -542,7 +705,11 @@ export function createCodeEditor({
   function putView(held: Held, line = held.line, cursor = held.cursor) {
     const now = metrics();
     const width = charWidth(now);
-    textarea.scrollTop = now.top + line * now.lineHeight - held.y;
+    textarea.scrollTop = now.top + lineY(line) - held.y;
+    if (wrap) {
+      textarea.scrollLeft = 0;
+      return;
+    }
     let left = held.edge === null ? 0 : now.left + held.edge * width;
     if (cursor) {
       const x = now.left + cursor.column * width;
@@ -573,6 +740,8 @@ export function createCodeEditor({
     applyFontSize();
     fitHeight();
     putView(sizing);
+    // With Wrap on, the lines wrap anew at the new size: the cursor and the marks set down again.
+    relayout();
     sizing.at = where();
   }
 
@@ -615,6 +784,10 @@ export function createCodeEditor({
   // line, or above it when there's no room below.
   function hover(event: MouseEvent) {
     if (problemLine < 0 || !problem) return;
+    if (wrap) {
+      hoverWrapped(event);
+      return;
+    }
     const { lineHeight, top, left } = metrics();
     const width = charWidth(metrics());
     const box = textarea.getBoundingClientRect();
@@ -652,6 +825,39 @@ export function createCodeEditor({
     tip.style.top = `${
       below + tip.offsetHeight > main.clientHeight
         ? below - lineHeight - tip.offsetHeight - 4
+        : below
+    }px`;
+  }
+  // The same with Wrap on, where the marks may run over rows (and the note isn't shown): the
+  // pointer over any of the marks' boxes, the message under the last of them, or over the first.
+  function hoverWrapped(event: MouseEvent) {
+    const boxes = [...errors.querySelectorAll('.code-error')].flatMap((mark) => [
+      ...mark.getClientRects(),
+    ]);
+    const over = boxes.some(
+      (box) =>
+        event.clientX >= box.left &&
+        event.clientX < box.right &&
+        event.clientY >= box.top &&
+        event.clientY < box.bottom,
+    );
+    if (!over || !problem) {
+      tip.hidden = true;
+      return;
+    }
+    tip.querySelector('strong')!.textContent = `✗ ${problem.message}`;
+    tip.querySelector('span')!.textContent =
+      `Line ${problem.line}, column ${problem.column}`;
+    tip.hidden = false;
+    const main = tip.parentElement!;
+    const area = main.getBoundingClientRect();
+    const first = boxes[0]!;
+    const last = boxes.at(-1)!;
+    tip.style.left = `${Math.max(4, Math.min(first.left - area.left - 6, main.clientWidth - tip.offsetWidth - 4))}px`;
+    const below = last.bottom - area.top + 2;
+    tip.style.top = `${
+      below + tip.offsetHeight > main.clientHeight
+        ? first.top - area.top - tip.offsetHeight - 4
         : below
     }px`;
   }
@@ -820,6 +1026,7 @@ export function createCodeEditor({
     execute: command,
     save: saveNow,
     clipboard: () => clipboard,
+    lineTop: (line) => (wrap ? lineY(line) : null),
     active: vimPreferred(),
   });
 
@@ -858,7 +1065,8 @@ export function createCodeEditor({
       const end = text.indexOf('\n', head);
       caretBefore.data = text.slice(start, head);
       caretAfter.data = text.slice(head, end === -1 ? text.length : end);
-      cursorLayer.style.paddingTop = `${lineOf(text, start)}lh`;
+      const line = lineOf(text, start);
+      cursorLayer.style.paddingTop = wrap ? `${lineY(line)}px` : `${line}lh`;
       cursorLayer.replaceChildren(caretBefore, caret, caretAfter);
     }
   }
@@ -1013,6 +1221,39 @@ export function createCodeEditor({
     get vim() {
       return vim.active;
     },
+    get wrap() {
+      return wrap;
+    },
+    // The Wrap switch: one setting for every body editor, remembered in this browser. What's in
+    // view stays where it is (holdView()), and the line numbers start over in the other form.
+    setWrap(on: boolean) {
+      if (on === wrap) return;
+      const held = holdView(document.activeElement === textarea);
+      wrap = on;
+      rememberWrap(on);
+      applyWrap();
+      lines.replaceChildren();
+      rows = [];
+      rowTexts = [];
+      markedRow = null;
+      digits = 0;
+      gutterLines = 0;
+      gutterProblem = -1;
+      measured = null;
+      if (on) setWrapWidth();
+      else for (const text of texts) text.style.width = '';
+      renderGutter();
+      renderProblem();
+      fitHeight();
+      putView(held);
+      vim.refresh();
+      if (!root.contains(document.activeElement)) markCaret();
+      sync();
+    },
+    // The line at the top of the view, from 0 (Diff opens there).
+    get topLine() {
+      return Math.max(0, Math.floor(lineAt(textarea.scrollTop)));
+    },
     // The Vim switch: one setting for every body editor, remembered in this browser.
     setVim(on: boolean) {
       rememberVim(on);
@@ -1042,7 +1283,7 @@ export function createCodeEditor({
       textarea.setSelectionRange(offset, offset);
       textarea.focus({ preventScroll: true });
       const { lineHeight, top } = metrics();
-      const y = top + lineOf(textarea.value, offset) * lineHeight;
+      const y = top + lineY(lineOf(textarea.value, offset));
       if (
         y < textarea.scrollTop ||
         y + lineHeight > textarea.scrollTop + textarea.clientHeight

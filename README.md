@@ -63,7 +63,7 @@ and in the toolbar popup: green and pulsing while it's on, grey while it's off.
 - Answer with your own body, or keep the server's and change only the status, headers or
   delay.
 - The body editor checks JSON as you type, formats it, searches it (**⌘F**), zooms (**⌘=**
-  and **⌘−**) and has [vim keys](docs/guide.md#vim-keys).
+  and **⌘−**), wraps long lines (**Wrap**) and has [vim keys](docs/guide.md#vim-keys).
 - Rules apply in the list's order and the first match wins: drag one to move it. Changes save
   as you type and apply to open tabs right away.
 - Export rules to a JSON file, and import them again (imported rules arrive turned off).

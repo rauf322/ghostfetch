@@ -103,6 +103,9 @@ interface VimOptions {
   // The system clipboard as the page can read it (the extension's permission), for p; null where
   // it can't, and p puts the register.
   clipboard: () => SystemClipboard | null;
+  // With the editor's Wrap on, where line `line` starts down the text, in px (a line may take
+  // several rows); null with it off, when every line is a row (lh).
+  lineTop: (line: number) => number | null;
   active?: boolean;
 }
 
@@ -191,6 +194,7 @@ export function createVim({
   execute,
   save,
   clipboard,
+  lineTop,
   active: startActive = false,
 }: VimOptions) {
   const [modeLabel, keysLabel, positionLabel] = statusLine.children;
@@ -981,10 +985,10 @@ export function createVim({
   // ---------------------------------------------------------- running commands
 
   function scroll(name: string, count: number) {
-    const { lineHeight, top: padding } = metrics();
+    const { lineHeight } = metrics();
     const visible = Math.max(1, Math.floor(textarea.clientHeight / lineHeight));
     if (name === 'zz' || name === 'zt' || name === 'zb') {
-      const top = padding + lineIndex(text(), head) * lineHeight;
+      const top = blockTop();
       const margin = scrollMargin(lineHeight);
       if (name === 'zt') textarea.scrollTop = top - margin;
       else if (name === 'zb')
@@ -1000,9 +1004,24 @@ export function createVim({
     const direction = name === '<C-d>' || name === '<PageDown>' ? 1 : -1;
     const result = vertical({ text: text(), pos: head, count: lines }, direction);
     if (!result) return undefined;
-    textarea.scrollTop += direction * lines * lineHeight;
+    // As far as the cursor's line moves on screen: with Wrap on, the rows of the lines between.
+    const from = lineTop(lineIndex(text(), head));
+    const to = lineTop(lineIndex(text(), result.pos));
+    textarea.scrollTop +=
+      from === null || to === null ? direction * lines * lineHeight : to - from;
     head = want === Infinity ? result.pos : clamp(text(), result.pos);
     return sync();
+  }
+
+  // Where the block's row is down the textarea, its padding included: its line's, or with Wrap on
+  // the row of its wrapped line it landed on, read from where the block is.
+  function blockTop() {
+    const { lineHeight, top: padding } = metrics();
+    const line = lineIndex(text(), head);
+    if (lineTop(line) === null || !block.isConnected) return padding + line * lineHeight;
+    return (
+      padding + Math.floor((block.offsetTop - padding + 1) / lineHeight) * lineHeight
+    );
   }
 
   function runNormal(command: Command) {
@@ -1260,14 +1279,17 @@ export function createVim({
     } else {
       // The layer holds the cursor's line, invisible, so the block lands exactly on its
       // character, set down as many line heights as there are lines above it (lh, which
-      // follows the text size): only that line, so moving the cursor costs the same in a long
-      // body as in a short one. The editor keeps the layer as tall as the whole text, so it
-      // scrolls as far as the textarea does.
+      // follows the text size), or with Wrap on as far as the editor says the line starts:
+      // only that line, so moving the cursor costs the same in a long body as in a short one,
+      // and with Wrap on it wraps there as the textarea wraps it. The editor keeps the layer as
+      // tall as the whole text, so it scrolls as far as the textarea does.
       const size = atLineEnd(value, head) ? 0 : next(value, head) - head;
       before.data = value.slice(lineStart(value, head), head);
       block.textContent = size ? value.slice(head, head + size) : ' ';
       after.data = value.slice(head + size, lineEnd(value, head));
-      cursorLayer.style.paddingTop = `${lineIndex(value, head)}lh`;
+      const line = lineIndex(value, head);
+      const top = lineTop(line);
+      cursorLayer.style.paddingTop = top === null ? `${line}lh` : `${top}px`;
       if (block.parentNode !== cursorLayer)
         cursorLayer.replaceChildren(before, block, after);
     }
@@ -1294,17 +1316,21 @@ export function createVim({
   // Scrolls the textarea so the cursor stays in view, two lines from the edge where it can.
   function reveal() {
     if (mode === 'insert' || !block.isConnected) return;
-    const { lineHeight, top: padding, left: padLeft, right: padRight } = metrics();
+    const { lineHeight, left: padLeft, right: padRight } = metrics();
     const margin = scrollMargin(lineHeight);
-    const top = padding + lineIndex(text(), head) * lineHeight;
+    const top = blockTop();
     if (top - margin < textarea.scrollTop) textarea.scrollTop = top - margin;
     else if (top + lineHeight + margin > textarea.scrollTop + textarea.clientHeight)
       textarea.scrollTop = top + lineHeight + margin - textarea.clientHeight;
-    const leftEdge = block.offsetLeft - padLeft;
-    const rightEdge = block.offsetLeft + block.offsetWidth + padRight;
-    if (leftEdge < textarea.scrollLeft) textarea.scrollLeft = leftEdge;
-    else if (rightEdge > textarea.scrollLeft + textarea.clientWidth)
-      textarea.scrollLeft = rightEdge - textarea.clientWidth;
+    // With Wrap on, nothing is out of view along the lines (and a block past a row's end would
+    // scroll the text away from its layers).
+    if (lineTop(0) === null) {
+      const leftEdge = block.offsetLeft - padLeft;
+      const rightEdge = block.offsetLeft + block.offsetWidth + padRight;
+      if (leftEdge < textarea.scrollLeft) textarea.scrollLeft = leftEdge;
+      else if (rightEdge > textarea.scrollLeft + textarea.clientWidth)
+        textarea.scrollLeft = rightEdge - textarea.clientWidth;
+    }
     sync();
   }
 
@@ -1617,5 +1643,10 @@ export function createVim({
     keydown,
     searched,
     carry,
+    // Draws the cursor again where it is, after the rows moved under it (Wrap, a width, a text
+    // size) without anything in vim changing.
+    refresh() {
+      paint();
+    },
   };
 }

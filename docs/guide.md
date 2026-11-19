@@ -101,9 +101,13 @@ What's different in Firefox-based browsers:
     current match selected. **⌘= / ⌘−** (Ctrl on Windows and Linux) make its text larger or
     smaller and **⌘0** puts it back, instead of zooming the page. The text grows and shrinks
     around the cursor's line, which stays where it is in the view (or with the cursor out of
-    view, around the middle of the view). **Vim keys** under it turns on
-    [vim keys](#vim-keys). The text size and the Vim switch are remembered for every body
-    editor. **Format** lays the body out two spaces an indent and changes nothing but the
+    view, around the middle of the view). **Wrap** under it shows a long line on as many rows
+    as it takes, as Neovim's `wrap` does, breaking between words where it can and anywhere in a
+    word too long for a row (a token, say); the line's number stands by its first row, and
+    nothing scrolls sideways. The body itself doesn't change. **Vim keys** turns on
+    [vim keys](#vim-keys), whose `j` and `k` still move by lines, not rows. The text size and
+    the Wrap and Vim switches are remembered for every body editor. **Format** lays the body
+    out two spaces an indent and changes nothing but the
     spaces and line breaks: every value stays as you wrote it (`\/` and `\u00e9`, `1.0`, an
     ID too long for JavaScript's numbers, a key given twice, the order of keys), as it does
     for a response in Traffic and a rule made from one. It keeps the cursor on the character
@@ -125,7 +129,7 @@ What's different in Firefox-based browsers:
     480 px, as in a side panel you haven't widened, it's inline. The response it compares with
     is the server's the rule was made from (**Mock this response** on a request no rule
     answered), or else one the server gives a request the rule matches while no rule answers
-    it: the newest Traffic has, or the next one (turn the rule off in the popup and reload the
+    it: the newest Traffic has, or the next one (turn the rule off with its dot and reload the
     page once).
     Until a rule has one, it has no Diff switch. The response is kept apart from the rule: it
     never goes to a page, and an exported rules file doesn't have it. Diff can't be typed in:

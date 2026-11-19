@@ -261,7 +261,10 @@ cursor marked while the body isn't focused, a rule's body where it was when you 
 Format and colours on a body of 370,000 characters, its own find and its vim keys, whose yanks
 it pastes back from the clipboard, and whose `p` pastes the clipboard once the browser allows it
 (the browser's answer stood in for), puts the yank when it doesn't, and asks again with
-`:set clipboard=unnamedplus`; and Diff: Mock this response keeping the server's response
+`:set clipboard=unnamedplus`; Wrap (the textarea, the colours and the line numbers wrapping
+alike at two widths and a bigger text size, with prose, a token, emoji, CJK and tabs, nothing to
+scroll sideways, a mistake's mark and vim's block on their characters, and off again); and Diff:
+Mock this response keeping the server's response
 apart from the rule and out of an exported file, side by side, inline and inline in a narrow
 panel with the counts and rows the diff makes, a key that would type saying it can't, a click on
 a line, a removed line and Enter going to edit there, a rule that's off getting the server's
@@ -328,8 +331,9 @@ stays where it is in the view, as Firefox scrolls a text area its own way, as it
 Format, that a new editor goes back to another's place, that `u` and Ctrl+R right after Format
 go back to the cursor before it and after it, that Visual mode carries on through Format, that
 `u` after a Format too long to undo undoes the changes made since (a character yanked and `x`,
-then `P`, which puts the body back as it was) and stops at the formatted body, and that a yank reaches the
-clipboard, which Firefox only lets a page write during a key press or a click.
+then `P`, which puts the body back as it was) and stops at the formatted body, that a yank reaches the
+clipboard, which Firefox only lets a page write during a key press or a click, and that with
+Wrap on Firefox's text area wraps as the colours and the line numbers do, at two widths.
 Both tests paste from the clipboard of the headless browser, which is its own, so running them
 leaves yours alone (with `HEADED=1` they use the real one).
 

@@ -13,4 +13,5 @@ export type {
   CodeEditor as CodeEditorHandle,
   CodeProblem,
 } from './engine/code-editor.ts';
+export { wrapPreferred } from './engine/code-editor.ts';
 export { vimPreferred } from './vim/vim.ts';

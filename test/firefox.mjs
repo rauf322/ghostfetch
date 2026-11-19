@@ -22,15 +22,18 @@ import {
   FIREFOX_BUILD,
   VIM_START,
   VIM_STEPS,
+  WRAP_BODY,
   check,
   expect,
   finish,
   itemsBody,
   requireBuild,
+  rowsAgree,
   sleep,
   startServer,
   testRules,
   vimKeys,
+  wrapLayout,
 } from './fixtures.mjs';
 
 const FIREFOX = process.env.FIREFOX || '/Applications/Zen.app/Contents/MacOS/zen';
@@ -881,6 +884,54 @@ try {
         ['Gkf[y%', '[1, 2, 3]'],
         ['xu', '[1, 2, 3]'],
       ]);
+    },
+  );
+  await check(
+    "Wrap: Firefox's textarea, the colours and the line numbers wrap alike at two widths, with nothing to scroll sideways, and a mistake's mark and vim's block are on their characters",
+    async () => {
+      // The editor's box, which its width follows.
+      const width = (value) =>
+        editorTab.evaluate((px) => {
+          document.querySelector('div').style.width = px;
+        }, value);
+      await editorTab.evaluate((text) => {
+        const { textarea } = window.editor;
+        textarea.value = text;
+        textarea.setSelectionRange(0, 0);
+        textarea.dispatchEvent(new Event('input'));
+        window.editor.setWrap(true);
+        window.editor.setProblem(window.checkJson(text));
+        textarea.focus();
+      }, WRAP_BODY);
+      await sleep(300);
+      const seen = [];
+      try {
+        await typeVim('gg3j$');
+        seen.push(await editorTab.evaluate(wrapLayout));
+        await width('480px');
+        await sleep(300);
+        seen.push(await editorTab.evaluate(wrapLayout));
+      } finally {
+        await width('640px');
+        await editorTab.evaluate(() => {
+          window.editor.setProblem(null);
+          window.editor.setWrap(false);
+        });
+      }
+      expect(
+        seen.map(({ wrapped, sideways, rows, starts, block, mark }) => [
+          wrapped,
+          sideways,
+          rowsAgree(rows),
+          starts,
+          block,
+          mark,
+        ]),
+        [
+          [true, 0, true, true, true, true],
+          [true, 0, true, true, true, true],
+        ],
+      );
     },
   );
   await editorTab.close();

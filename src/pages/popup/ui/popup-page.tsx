@@ -1,6 +1,7 @@
-// The toolbar popup, with no switches: Ghostfetch says what's on in words, after T3 Code. A header
-// with Recording and Pause, Ghostfetch on the tab's page in one line, then three tabs: what each
-// rule did on this page, every rule, and the sites Ghostfetch runs on.
+// The toolbar popup: Ghostfetch says what's on in words, after T3 Code, and each rule has its dot
+// to turn it on or off. A header with Recording and Pause, Ghostfetch on the tab's page in one
+// line, then three tabs: what each rule did on this page, every rule, and the sites Ghostfetch
+// runs on.
 import { useState } from 'react';
 import {
   countWords,

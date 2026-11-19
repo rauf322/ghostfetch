@@ -189,6 +189,36 @@ async function runChecks(browser, open) {
   );
 
   await check(
+    `${browser}: a rule's switch: a click and Space turn it on and off, and its dot pulses while it's on`,
+    async () => {
+      // What it says, and whether its dot pulses, a moment after each change.
+      const state = async () => {
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        return kit.run(() => {
+          const control = document.querySelector('[data-testid=kit-rule-switch]');
+          return [
+            control.getAttribute('aria-checked'),
+            control.firstElementChild
+              .getAnimations()
+              .some((animation) => animation.animationName === 'signal-pulse'),
+          ];
+        });
+      };
+      const seen = [await state()];
+      await kit.click('[data-testid=kit-rule-switch]');
+      seen.push(await state());
+      await kit.focus('[data-testid=kit-rule-switch]');
+      await kit.press('Space');
+      seen.push(await state());
+      expect(seen, [
+        ['false', false],
+        ['true', true],
+        ['false', false],
+      ]);
+    },
+  );
+
+  await check(
     `${browser}: a signal dot pulses while on, in step with the others, fades in, and is still while paused or off`,
     async () => {
       // Each dot: whether it's on, and its animations, with when each counts from.

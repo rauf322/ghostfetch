@@ -22,23 +22,24 @@ What's different in Firefox-based browsers:
 
 ## The popup and the editor
 
-- **Toolbar popup**: what's on, in words rather than switches, and the one place that turns a
-  rule, recording or Ghostfetch itself on or off (the editor only shows it). The header has
+- **Toolbar popup**: what's on, and the place that turns recording or Ghostfetch itself on or
+  off; a rule's dot turns the rule on or off, here and in the editor's list. The header has
   **Recording** (click it to stop recording, and **Not recording** to start again) and
   **Pause**, which turns Ghostfetch off as a whole until you click **Resume**. Under it, the
   tab's site and whether Ghostfetch is on there, with **Turn off here** for a site you added
   (the built-in hosts are **Always on**). At the bottom, **Open editor** opens the side panel
   (the sidebar in Firefox), and the button beside it opens the editor in a tab. In between are
-  three tabs; in the first two, point at a rule (or reach it with Tab) for its **Turn off** or
-  **Turn on**, which saves at once, and click its name to open it in the editor:
+  three tabs; in the first two, a rule's dot is its switch, green and pulsing while it's on
+  (still while Ghostfetch is paused) and grey while it's off: click it (or reach it with Tab and
+  press Space) to turn the rule on or off, which saves at once. Click its name to open it in the
+  editor:
   - **This page**: what each rule did on the tab's page, such as **2 mocked** or **1 modified ·
     1 failed**, counted while recording since the page loaded (Traffic's **Clear** starts the
     count over; a page opened before Ghostfetch was installed or updated needs a reload
     first). The rules that answered come first, under **Answering here**, and the rest fold
     into **Not answering here**, which opens. On a site Ghostfetch isn't on, **Turn on for …**
     instead, which reloads the page.
-  - **All rules**: every rule in your order, with what it did on the page, or else **On**,
-    **Off** or **Paused** (while Ghostfetch is).
+  - **All rules**: every rule in your order, with what it did on the page.
   - **Sites**: where Ghostfetch runs: the built-in hosts, then the sites you added, each with
     **Remove**.
 - **Side panel (Chrome), sidebar (Firefox, Zen) or tab**: the full editor. Open it from the
@@ -58,12 +59,11 @@ What's different in Firefox-based browsers:
   **Resume** turns it back on.
   - **Rules**: create and edit rules. Changes save as you type and apply to open tabs
     immediately, without reloading. Rules apply in the list's order and the first match wins;
-    drag them to reorder. The editor has nothing to turn a rule on or off: the toolbar popup
-    does that. A rule that's off says **Off** at the right of its name, dimmed, and keeps its
-    place in the list, and its chip, open, says to turn it on in the toolbar popup. One that
-    answered on the page the editor watches says what it did there ("2 mocked") by a green
-    dot, which pulses while Ghostfetch is on. **Duplicate**, in an open rule's header, copies
-    it.
+    drag them to reorder. A rule's dot turns it on or off without opening it, as in the popup:
+    green and pulsing while it's on, grey while it's off. A rule that's off is dimmed and keeps
+    its place in the list, and its chip, open, says **Off**. One that answered on the page the
+    editor watches says what it did there at the right of its name ("2 mocked"). **Duplicate**,
+    in an open rule's header, copies it.
 
     **New rule** (the **+**) asks "What should Ghostfetch answer?" (beside the sidebar it's
     also what shows with no rule open). Paste a path, a full URL (it keeps the path and query,

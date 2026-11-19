@@ -57,15 +57,17 @@
   --tracking-tight: -0.01em;
 
   /* corners: small marks (a status code), controls (buttons, fields, rows), cards and menus, and
-     sheets. Only the signal dot and the popup's pills are round (rounded-full). */
+     sheets. Only the green dots (a rule's switch, the signal dot) and the popup's pills are round
+     (rounded-full). */
   --radius-sm: 5px;
   --radius-md: 9px;
   --radius-lg: 14px;
   --radius-xl: 18px;
 
-  /* Something live (SignalDot: a rule answering, requests recorded): the green dot dims to half
-     and back every 2 s, after T3 Code's "working" dot. Long holds and stepped ramps, so the
-     browser draws a dozen frames a cycle rather than one every refresh. */
+  /* Something live (a rule's switch while it's on, SignalSwitch; SignalDot while requests are
+     recorded): the green dot dims to half and back every 2 s, after T3 Code's "working" dot. Long
+     holds and stepped ramps, so the browser draws a dozen frames a cycle rather than one every
+     refresh. */
   --animate-signal-pulse: signal-pulse 2s infinite;
   @keyframes signal-pulse {
     0%,
@@ -180,6 +182,7 @@ body {
   }
   button:not(:disabled),
   [role='button'],
+  [role='switch'],
   [role='tab'],
   [role='radio'],
   [role='combobox'],

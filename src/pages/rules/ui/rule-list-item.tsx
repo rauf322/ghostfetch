@@ -1,8 +1,9 @@
-// One rule in the list: its name, with what it's doing at the right (what it did on the page the
-// editor watches, or Off), and what it matches and does. There's nothing here to turn it on or off:
-// the toolbar popup does that. Its place in the list is its priority. Click it to open it; drag it
-// to reorder.
+// One rule in the list: its switch (the green dot), its name, with what it did on the page the
+// editor watches at the right ("1 mocked"), and what it matches and does. Its place in the list is
+// its priority. Click it to open it, or its dot to turn it on or off without opening it; drag it
+// to reorder. Under the pointer, a name or URL the row cuts short shows whole in a tooltip.
 import { memo } from 'react';
+import type { PointerEvent } from 'react';
 import {
   countRule,
   countWords,
@@ -18,7 +19,7 @@ import {
   ItemDescription,
   ItemTitle,
 } from '../../../shared/ui/kit/item.tsx';
-import { SignalDot } from '../../../shared/ui/kit/signal-dot.tsx';
+import { RuleSwitch } from '../../../shared/ui/rule-switch.tsx';
 import { ruleSummary } from '../lib/rule-summary.ts';
 import type { RowDrag } from '../model/use-rule-drag.ts';
 
@@ -40,8 +41,8 @@ interface RuleListItemProps {
 }
 
 // Whether a row would draw the same: its rule unchanged (the same copy at the same revision), as
-// selected as it was, and where it stands in a drag too. What it's doing draws again by itself
-// (RuleSignal).
+// selected as it was, and where it stands in a drag too. What it did draws again by itself
+// (RuleDid), and so does its switch when Ghostfetch is turned on or off (RuleSwitch).
 function drawsTheSame(before: RuleListItemProps, after: RuleListItemProps) {
   return (
     before.rule === after.rule &&
@@ -64,6 +65,7 @@ export const RuleListItem = memo(function RuleListItem({
   log,
   onSelect,
 }: RuleListItemProps) {
+  const title = ruleTitle(rule);
   // An unnamed rule already shows its URL as the title.
   const pattern = rule.name.trim()
     ? [rule.match.url, rule.match.graphqlOperation].filter(Boolean).join(' ')
@@ -72,19 +74,30 @@ export const RuleListItem = memo(function RuleListItem({
     <Item
       variant="rule"
       data-testid="rule"
+      // What the rule matches, for the tests to find it by.
+      data-url={rule.match.url}
       selected={selected}
       off={!rule.enabled}
-      title={rule.match.url}
       draggable
       data-drop={drag.drop}
       className={cn(DROP_MARK, drag.dragging && 'opacity-40')}
-      onClick={() => onSelect(rule.id)}
+      // A click on the rule's switch (or on the hidden checkbox Base UI clicks for it) turns the
+      // rule on or off without opening it.
+      onClick={(event) => {
+        if (!(event.target as Element).closest('[data-slot="switch"], input'))
+          onSelect(rule.id);
+      }}
+      onPointerEnter={tipWhenCut}
       {...drag.handlers}
     >
+      {/* The dot lines up with the row's text, 12 px in, and with the name's line. */}
+      <RuleSwitch rule={rule} className="-my-0.5 -ml-[9px] self-start" />
       <ItemContent>
         <div className="flex min-w-0 items-center gap-2">
-          <ItemTitle className="min-w-0">{ruleTitle(rule)}</ItemTitle>
-          <RuleSignal rule={rule} log={log} />
+          <ItemTitle className="min-w-0" data-full={title}>
+            {title}
+          </ItemTitle>
+          <RuleDid rule={rule} log={log} />
         </div>
         <ItemDescription>
           {rule.match.method !== 'ANY' && (
@@ -93,7 +106,10 @@ export const RuleListItem = memo(function RuleListItem({
             </span>
           )}
           {pattern && (
-            <span className="max-w-[62%] flex-none truncate font-mono text-t65">
+            <span
+              data-full={pattern}
+              className="max-w-[62%] flex-none truncate font-mono text-t65"
+            >
               {pattern}
             </span>
           )}
@@ -107,32 +123,33 @@ export const RuleListItem = memo(function RuleListItem({
   );
 }, drawsTheSame);
 
-// At the right of the name: what the rule did on the page, by a pulsing green dot, while it's on
-// and Ghostfetch is recording; Off for a rule that's off, as the popup says it; nothing for one
-// that's on but hasn't answered there. It draws again by itself when Ghostfetch or recording is
-// turned on or off and when the rule answers on the page, so the row doesn't have to.
-function RuleSignal({ rule, log }: { rule: Rule; log: TrafficLog }) {
+// The row's tooltip, set as the pointer comes: the name or the URL in full, only where the row
+// cuts it short (data-full holds it whole). A row that shows both whole has none, so there's no
+// tooltip saying again what it says.
+function tipWhenCut(event: PointerEvent<HTMLElement>) {
+  const row = event.currentTarget;
+  const cut = [...row.querySelectorAll<HTMLElement>('[data-full]')]
+    .filter((part) => part.scrollWidth > part.clientWidth)
+    .map((part) => part.dataset.full);
+  if (cut.length) row.title = cut.join('\n');
+  else row.removeAttribute('title');
+}
+
+// At the right of the name: what the rule did on the page ("1 mocked"), while it's on and
+// Ghostfetch is recording, in green, or grey while Ghostfetch is paused; nothing for a rule that
+// hasn't answered there, or is off (its dot says so). It draws again by itself when Ghostfetch or
+// recording is turned on or off and when the rule answers on the page, so the row doesn't have to.
+function RuleDid({ rule, log }: { rule: Rule; log: TrafficLog }) {
   const { enabled, record } = useStore(settingsStore);
   const did = useTrafficValue(log, (traffic) =>
     countWords(countRule(traffic.entries, rule.id)),
   );
-  if (!rule.enabled)
-    return (
-      <span
-        data-testid="rule-signal"
-        className="ml-auto flex flex-none items-center gap-1.5 text-label text-t40"
-      >
-        <SignalDot on={false} />
-        Off
-      </span>
-    );
-  if (!record || !did) return null;
+  if (!rule.enabled || !record || !did) return null;
   return (
     <span
       data-testid="rule-signal"
-      className="ml-auto flex flex-none items-center gap-1.5 text-label text-signal"
+      className={cn('ml-auto flex-none text-label', enabled ? 'text-signal' : 'text-t50')}
     >
-      <SignalDot on paused={!enabled} />
       {did}
     </span>
   );

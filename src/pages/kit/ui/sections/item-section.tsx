@@ -1,6 +1,8 @@
 // Items: rows of rules and of requests, as the two lists show them, one of each selected. A rule
-// says at the right of its name what it did on the page, or Off, and nothing while it's on but
-// hasn't answered. The requests sit in a card (ItemList), as Traffic's groups do.
+// starts with its switch, the green dot, and says at the right of its name what it did on the
+// page, and nothing while it hasn't answered. The requests sit in a card (ItemList), as Traffic's
+// groups do.
+import { useState } from 'react';
 import { formatDuration } from '../../../../shared/lib/index.ts';
 import { Badge, StatusCode } from '../../../../shared/ui/kit/badge.tsx';
 import {
@@ -10,7 +12,7 @@ import {
   ItemList,
   ItemTitle,
 } from '../../../../shared/ui/kit/item.tsx';
-import { SignalDot } from '../../../../shared/ui/kit/signal-dot.tsx';
+import { SignalSwitch } from '../../../../shared/ui/kit/signal-switch.tsx';
 import { Method } from '../../../../shared/ui/list-detail.tsx';
 import { Cell } from '../cell.tsx';
 
@@ -97,27 +99,36 @@ const REQUESTS: {
 ];
 
 export function ItemSection() {
+  // Which rules are on: their dots switch them, as in the editor's list.
+  const [on, setOn] = useState(() => RULES.map((rule) => rule.on));
   return (
     <Cell title="Item" note="rule rows, and request rows in a card" wide>
       <div className="grid grid-cols-2 gap-6">
         <ul className="m-0 list-none py-1">
           {RULES.map((rule, position) => (
-            <Item key={rule.name} variant="rule" selected={position === 1} off={!rule.on}>
+            <Item
+              key={rule.name}
+              variant="rule"
+              selected={position === 1}
+              off={!on[position]}
+            >
+              <SignalSwitch
+                aria-label={`Turn “${rule.name}” on or off`}
+                checked={on[position]}
+                onCheckedChange={(next) =>
+                  setOn((was) =>
+                    was.map((value, index) => (index === position ? next : value)),
+                  )
+                }
+                className="-my-0.5 -ml-[9px] self-start"
+              />
               <ItemContent>
                 <div className="flex min-w-0 items-center gap-2">
                   <ItemTitle className="min-w-0">{rule.name}</ItemTitle>
-                  {!rule.on ? (
-                    <span className="ml-auto flex flex-none items-center gap-1.5 text-label text-t40">
-                      <SignalDot on={false} />
-                      Off
+                  {on[position] && rule.did && (
+                    <span className="ml-auto flex-none text-label text-signal">
+                      {rule.did}
                     </span>
-                  ) : (
-                    rule.did && (
-                      <span className="ml-auto flex flex-none items-center gap-1.5 text-label text-signal">
-                        <SignalDot on />
-                        {rule.did}
-                      </span>
-                    )
                   )}
                 </div>
                 <ItemDescription>

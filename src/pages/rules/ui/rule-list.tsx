@@ -1,7 +1,7 @@
 // The rules in the sidebar, in their order, under how many of them are on ("12 of 14 on") and
 // the + that makes a new rule. A rule's place in the list is its priority: rules are tried top to
-// bottom, and the first match wins; drag one to move it. A rule that's off stays where it is, and
-// says Off. Search narrows the list.
+// bottom, and the first match wins; drag one to move it. A rule's dot turns it on or off; one
+// that's off stays where it is, its dot grey. Search narrows the list.
 import { ruleRevision, ruleStore } from '../../../shared/api/index.ts';
 import type { TrafficLog } from '../../../shared/api/index.ts';
 import { useStore } from '../../../shared/react/index.ts';
@@ -41,8 +41,8 @@ export function RuleList({ selectedId, query, onSelect, onCreate, log }: RuleLis
         </ListEmpty>
       ) : (
         <section>
-          {/* The label starts over the rules' names. */}
-          <div className="flex h-9 items-center justify-between pt-2 pr-2 pl-[18px]">
+          {/* The label starts over the rules' dots. */}
+          <div className="flex h-9 items-center justify-between pt-2 pr-2 pl-[22px]">
             <h2 className="text-label font-medium text-t40 tabular-nums">
               {visible.length ? `${on} of ${visible.length} on` : 'Rules'}
             </h2>

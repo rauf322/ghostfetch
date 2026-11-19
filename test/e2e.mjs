@@ -2374,7 +2374,7 @@ try {
         if (!count) throw new Error(`the rule says "${state}"`);
         return Number(count);
       };
-      await app.locator('[data-testid="rule"][title="/api/early"]').click();
+      await app.locator('[data-testid="rule"][data-url="/api/early"]').click();
       const before = await fired();
       await page.evaluate(async () => {
         const controller = new AbortController();
@@ -3448,37 +3448,112 @@ try {
   await popup.setViewportSize({ width: 330, height: 560 });
   await popup.goto(`chrome-extension://${extensionId}/popup.html`);
   await check(
-    "the popup lists every rule with its state in words, and a rule's Turn off and Turn on, shown under the pointer, save at once",
+    "the popup lists every rule with its dot, which pulses green while it's on and is grey while it's off, and turns it off and on, saved at once",
     async () => {
       // The popup in a tab of its own is on no website, so it opens on All rules.
       await popup.waitForSelector('[data-testid="popup-rule"]');
       const first = popup.locator('[data-testid="popup-rule"]').first();
-      const toggle = first.getByTestId('rule-toggle');
+      const dot = first.locator('[role="switch"]');
       const stored = async () =>
         (await worker.evaluate(() => chrome.storage.local.get('rules'))).rules[0].enabled;
+      // What's saved, what the dot says, and whether it pulses.
       const state = async () => [
         await stored(),
-        await first.getByTestId('rule-state').textContent(),
-        await toggle.textContent(),
+        await dot.getAttribute('aria-checked'),
+        await dot.evaluate((element) =>
+          element.firstElementChild
+            .getAnimations()
+            .some((animation) => animation.animationName === 'signal-pulse'),
+        ),
       ];
-      // Until the pointer is on the rule, its words show and its button doesn't.
-      const hidden = await toggle.evaluate((button) => getComputedStyle(button).opacity);
       const on = await state();
-      await first.hover();
-      await toggle.click();
+      // No Turn off or Turn on, nor any button but the dot and the name.
+      const buttons = await first.locator('button').count();
+      await dot.click();
       await sleep(200);
       const off = await state();
-      await toggle.click();
+      await dot.click();
       await sleep(200);
       expect(
-        [hidden, on, off, await state()],
-        [
-          '0',
-          [true, 'On', 'Turn off'],
-          [false, 'Off', 'Turn on'],
-          [true, 'On', 'Turn off'],
-        ],
+        [on, off, await state(), buttons],
+        [[true, 'true', true], [false, 'false', false], [true, 'true', true], 1],
       );
+    },
+  );
+  await check(
+    "a long rule name is cut short in the popup, after its dot and inside its row, with nothing moving under the pointer, and the editor's list shows a name or URL whole in a tooltip only when it's cut short",
+    async () => {
+      const rules = (await worker.evaluate(() => chrome.storage.local.get('rules')))
+        .rules;
+      const url = '/api/bill-pay/v2/bills/aedd32c6-6f1e-4c2b-9d7a-1e2f3a4b5c6d';
+      const long = {
+        ...rules[0],
+        id: 'long-name',
+        name: '',
+        match: { ...rules[0].match, url, graphqlOperation: '' },
+      };
+      await setStorage({ rules: [long, ...rules] });
+      try {
+        // The popup: the name cut short, after the dot and inside the row (its 12 px of
+        // padding), its width, and the row's height against the next one's.
+        const row = popup.locator('[data-testid="popup-rule"]').first();
+        await popup.waitForFunction(
+          (name) =>
+            document.querySelector('[data-testid="popup-rule"] button')?.textContent ===
+            name,
+          url,
+          { timeout: 3000 },
+        );
+        const edges = () =>
+          row.evaluate((element) => {
+            const name = element.querySelector('button');
+            const box = (target) => target.getBoundingClientRect();
+            return [
+              name.scrollWidth > name.clientWidth,
+              box(element.querySelector('[role="switch"]')).right <= box(name).left + 0.5,
+              box(name).right <= box(element).right - 12 + 0.5,
+              box(name).width,
+              box(element).height === box(element.nextElementSibling).height,
+            ];
+          });
+        await popup.mouse.move(1, 1);
+        const resting = await edges();
+        await row.hover();
+        await sleep(250);
+        const pointed = await edges();
+        // The editor: each row under the pointer, its tooltip, and what it cuts short.
+        await show('rules');
+        await app.waitForSelector(`[data-testid="rule"][data-url="${url}"]`);
+        const tips = [];
+        for (const item of await app.locator('[data-testid="rule"]').all()) {
+          await item.hover();
+          tips.push(
+            await item.evaluate((element) => {
+              const cut = [...element.querySelectorAll('[data-full]')]
+                .filter((part) => part.scrollWidth > part.clientWidth)
+                .map((part) => part.dataset.full);
+              return [
+                cut.length > 0,
+                element.getAttribute('title') === (cut.join('\n') || null),
+              ];
+            }),
+          );
+        }
+        expect(
+          [
+            resting.filter((each) => typeof each === 'boolean'),
+            pointed[3] === resting[3],
+            tips.every(([, right]) => right),
+            tips.some(([cut]) => cut),
+            tips.some(([cut]) => !cut),
+          ],
+          [[true, true, true, true], true, true, true, true],
+        );
+      } finally {
+        await popup.mouse.move(1, 1);
+        await setStorage({ rules });
+        await sleep(300);
+      }
     },
   );
   await check(
@@ -4016,7 +4091,7 @@ try {
         app.evaluate(() => [
           document.querySelector('[data-testid="rule-list"] h2').textContent,
           [...document.querySelectorAll('[data-testid="rule"]')].map((row) => [
-            row.title,
+            row.dataset.url,
             row.hasAttribute('data-off'),
           ]),
         ]);
@@ -4024,7 +4099,8 @@ try {
       changed[1].enabled = false;
       await setStorage({ rules: changed });
       await app.waitForFunction(
-        (url) => document.querySelector(`[data-testid="rule"][title="${url}"][data-off]`),
+        (url) =>
+          document.querySelector(`[data-testid="rule"][data-url="${url}"][data-off]`),
         changed[1].match.url,
         { timeout: 3000 },
       );
@@ -4091,7 +4167,7 @@ try {
     async () => {
       await show('traffic');
       const rule = (await storedRules())[1];
-      await app.click(`[data-testid="rule"][title="${rule.match.url}"]`);
+      await app.click(`[data-testid="rule"][data-url="${rule.match.url}"]`);
       // The Rules view comes over Traffic, rather than the rule opening under it.
       await app
         .locator('[data-testid="view-traffic"]')
@@ -4250,49 +4326,45 @@ try {
     );
   });
   await check(
-    "the editor has nothing to switch: a rule that's off says Off in the list, and open, to turn it on in the toolbar popup",
+    "a rule's dot in the list turns it off and on and saves it, without opening it; one that's off is greyed, and open, its chip says Off",
     async () => {
-      // The rule the check before opened: unnamed, so the list and the editor show its URL.
-      const row = app.locator('[data-testid="rule"]', { hasText: 'case=delay' }).first();
-      // Turned off and on as the popup does, in storage: nothing in the editor does it.
-      const turn = async (enabled) => {
-        const rules = await storedRules();
-        rules.find((rule) => rule.match.url === 'case=delay').enabled = enabled;
-        await setStorage({ rules });
+      // The rule the check before opened (unnamed, so the list shows its URL), and another.
+      const open = app.locator('[data-testid="rule"][data-url="case=delay"]');
+      const other = app.locator('[data-testid="rule"][data-url="case=method"]');
+      const stored = async (url) =>
+        (await storedRules()).find((rule) => rule.match.url === url).enabled;
+      // What the dot says, what's saved, whether the row is greyed, and the open rule's chip.
+      const state = async () => [
+        (await open.locator('[role="switch"]').getAttribute('aria-checked')) === 'true',
+        await stored('case=delay'),
+        (await open.getAttribute('data-off')) !== null,
+        (await app.textContent('[data-testid="rule-state"]')).startsWith('Off'),
+      ];
+      const flip = async (row) => {
+        await row.locator('[role="switch"]').click();
+        // The editor saves a moment after a change.
         await sleep(400);
       };
-      // Whether the row is marked off, what it says at the right, and the chip over the rule.
-      const state = async () => [
-        await row.getAttribute('data-off'),
-        (await row.locator('[data-testid="rule-signal"]').allTextContents()).join(''),
-        await app.textContent('[data-testid="rule-state"]'),
-      ];
-      // No switch in the list, nor any other control in a rule's row.
-      const controls = await app
-        .locator('[data-testid="rule-list"] li')
-        .evaluateAll(
-          (rows) =>
-            rows.flatMap((each) => [
-              ...each.querySelectorAll(
-                'button, input, [role="switch"], [role="checkbox"]',
-              ),
-            ]).length,
-        );
-      await turn(false);
-      const off = await state();
-      await turn(true);
-      const [onMark, onSays, onChip] = await state();
+      const was = await state();
+      await flip(open);
+      const flipped = await state();
+      await flip(open);
+      const back = await state();
+      // Another rule's dot turns that rule, and the open one stays open.
+      const otherWas = await stored('case=method');
+      await flip(other);
+      const otherFlipped = await stored('case=method');
+      await flip(other);
+      const on = was[0];
       expect(
         [
-          controls,
-          off,
-          [onMark, onSays.includes('Off'), onChip.includes('toolbar popup')],
+          was,
+          flipped,
+          back,
+          otherFlipped === !otherWas,
+          (await open.getAttribute('data-selected')) !== null,
         ],
-        [
-          0,
-          ['true', 'Off', 'Off · turn it on in the toolbar popup'],
-          [null, false, false],
-        ],
+        [[on, on, !on, !on], [!on, !on, on, on], [on, on, !on, !on], true, true],
       );
     },
   );

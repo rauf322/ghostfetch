@@ -284,13 +284,15 @@ a drag beside a long body smooth: the body's text area holding its width until t
 go, a width only the list itself has, and coloured text laid out the same at any width; and what
 keeps typing in one quick: only the piece typed into redrawn, a new line only adding its number,
 the editor's sizes its own, the boxes around it changing only in size between its two layouts,
-and vim's cursor on a layer of one line), nothing in the editor to switch (a rule that's off says
-Off, and open, to turn it on in the popup; Traffic only says whether it's recording), a theme picked
+and vim's cursor on a layer of one line), a rule's dot in the list (it turns the rule off and on,
+saved, without opening it; one that's off is greyed and its chip says Off; Traffic only says
+whether it's recording), a row's tooltip only for a name or URL it cuts short, a theme picked
 in the `⋯` menu (the editor and the open popup
 recoloured, and set before a page draws), every theme's selection colour see-through (the body
 editor's selection lies over its text), the toolbar badge (green with the count, grey with
-"off"), and the popup (each rule's state in words, its Turn off and Turn on under the pointer,
-saved at once, a rule picked in it opening in the editor, the sites you added with Remove, and
+"off"), and the popup (each rule's dot, pulsing while it's on, which turns it off and on, saved
+at once, a long name cut short after it, a rule picked in it opening in the editor, the sites
+you added with Remove, and
 what each rule did on a page, which the page counts by rule and by what the rule did, telling
 the popup nothing of the requests themselves), plus the properties of the
 [security model](security-model.md) (channel theft, forged offers, patched built-ins, built-ins

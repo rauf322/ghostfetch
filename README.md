@@ -47,16 +47,16 @@ panel, and side by side when there's room:
 
 ### Try failures, empty states and slow responses
 
-![New rule: "/api/projects" is typed, Fail with 500 picked and Enter pressed; after a reload the app can't load its projects. In the toolbar popup, All rules, the rule's Turn off turns it off, and after another reload the projects are back.](docs/media/simulate-failure.webp)
+![New rule: "/api/projects" is typed, Fail with 500 picked and Enter pressed; after a reload the app can't load its projects. Back in the list, the rule's green dot turns it off, and after another reload the projects are back.](docs/media/simulate-failure.webp)
 
 **New rule** (the **+**) takes a path, a full URL, or a command from the browser's **Copy as
 cURL**. One click sets a common answer: **Empty list**, **Fail with 500**, **Not found**, **Slow
-by 2 s** or **Logged out (401)**. Turn a rule off or on again from the toolbar popup: its
-**Turn off** or **Turn on**.
+by 2 s** or **Logged out (401)**. A rule's dot turns it off or on again, in the editor's list
+and in the toolbar popup: green and pulsing while it's on, grey while it's off.
 
 ### Shape every part of the answer
 
-![The editor: the rules in the sidebar, each saying what it did on the page (1 mocked, 2 modified) or Off, and the rule "Pro plan user" open, with what it matches, what it responds with, and its JSON body.](docs/media/editor.png)
+![The editor: the rules in the sidebar, each with its dot, green while it's on and grey while it's off, and what it did on the page (1 mocked, 2 modified), and the rule "Pro plan user" open, with what it matches, what it responds with, and its JSON body.](docs/media/editor.png)
 
 - Match a request by its URL (contains, equals, wildcard or regex), its method and its GraphQL
   operation name. **Try a URL** says whether a rule would answer one.
@@ -79,16 +79,14 @@ and copy a request's URL, its body or a cURL command for it.
 ### See what your rules did, from the toolbar
 
 <p align="center">
-  <img src="docs/media/popup.png" width="330" alt="The popup on localhost:5173, recording: under This page, the three rules that answered there, Pro plan user (1 mocked), Slow search (2 modified) and Feature flags (1 mocked), and a folded row for the three that didn't, one on and two off.">
+  <img src="docs/media/popup.png" width="330" alt="The popup on localhost:5173, recording: under This page, the three rules that answered there, each with its green dot, Pro plan user (1 mocked), Slow search (2 modified) and Feature flags (1 mocked), and a folded row for the three that didn't, one on and two off.">
 </p>
 
-The popup says what's on in words. **This page** has the rules that answered on the tab's page
-and what each did there (**1 mocked**, **2 modified**), and folds the rest away; **All rules**
-has every rule, and **Sites** where Ghostfetch runs. Point at a rule for its **Turn off** or
-**Turn on**, or click its name to edit it. The header turns recording on or off and pauses
-Ghostfetch, and a site that isn't built in is turned on (**Turn on for …**) or off (**Turn off
-here**) right there. It's the one place that turns things on or off: the editor has no switches,
-and shows a rule that's off as **Off**.
+**This page** has the rules that answered on the tab's page and what each did there (**1
+mocked**, **2 modified**), and folds the rest away; **All rules** has every rule, and **Sites**
+where Ghostfetch runs. A rule's dot turns it on or off, as in the editor's list; click its name
+to edit it. The header turns recording on or off and pauses Ghostfetch, and a site that isn't
+built in is turned on (**Turn on for …**) or off (**Turn off here**) right there.
 
 ### Pick a theme
 

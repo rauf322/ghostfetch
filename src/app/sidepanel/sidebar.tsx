@@ -3,8 +3,8 @@
 // (pages/rules' RuleList: how many are on, and + for a new one), and along the bottom the ⋯ menu,
 // Import and Export. From 760px wide it stands beside the open view, as wide as its edge was
 // dragged, or hidden (shared/ui/sidebar.tsx); in a narrow side panel it's the Rules view's own
-// screen, under the top bar, which then has the name and the two views. Nothing here turns
-// Ghostfetch, a rule or recording on or off: the toolbar popup does.
+// screen, under the top bar, which then has the name and the two views. A rule's dot turns it on
+// or off; Ghostfetch's own switch and recording's are in the toolbar popup.
 import { useEffect, useRef } from 'react';
 import { RuleList } from '../../pages/rules/index.ts';
 import { ruleStore } from '../../shared/api/index.ts';

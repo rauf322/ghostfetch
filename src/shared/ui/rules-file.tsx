@@ -63,7 +63,7 @@ async function importRules(file: File, onAdded: (rules: Rule[]) => void) {
       `Imported ${imported.length} rule${imported.length === 1 ? '' : 's'}, turned off`,
       {
         kind: 'success',
-        description: `Review them, then turn them on in the toolbar popup.${skippedNote}`,
+        description: `Review them, then turn them on with their dots.${skippedNote}`,
         duration: 7000,
       },
     );

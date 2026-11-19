@@ -1,13 +1,14 @@
-// Toggles and the signal dot, in their states: the bar over Traffic's log, the Vim keys toggle, and
-// the dot that says something is live (a rule answering, requests being recorded) but switches
-// nothing: the toolbar popup does that. A button lights one dot, so the kit test can watch a dot
-// that lights up late pulse in step with the others.
+// Toggles, a rule's switch and the signal dot, in their states: the bar over Traffic's log, the
+// Vim keys toggle, a rule's switch (the green dot, in the editor's list and the popup), and the
+// dot that only says something is live (requests being recorded). A button lights one signal dot,
+// so the kit test can watch a dot that lights up late pulse in step with the others.
 import { useState } from 'react';
 import { Button } from '../../../../shared/ui/kit/button.tsx';
 import { Icon } from '../../../../shared/ui/kit/icon.tsx';
 import { SignalDot } from '../../../../shared/ui/kit/signal-dot.tsx';
+import { SignalSwitch } from '../../../../shared/ui/kit/signal-switch.tsx';
 import { Toggle } from '../../../../shared/ui/kit/toggle.tsx';
-import { Cell, Row } from '../cell.tsx';
+import { Cell, FOCUS, Row } from '../cell.tsx';
 
 export function ToggleSection() {
   const [vim, setVim] = useState(true);
@@ -43,6 +44,16 @@ export function ToggleSection() {
         >
           Vim keys
         </Toggle>
+      </Row>
+      <Row
+        label="A rule's switch: off (live: a click) · on, pulsing · on, Ghostfetch off · disabled · focus"
+        className="flex items-center gap-1"
+      >
+        <SignalSwitch aria-label="Off" data-testid="kit-rule-switch" />
+        <SignalSwitch aria-label="On" defaultChecked />
+        <SignalSwitch aria-label="On, paused" defaultChecked paused />
+        <SignalSwitch aria-label="Disabled" disabled defaultChecked />
+        <SignalSwitch aria-label="Focused" defaultChecked className={FOCUS} />
       </Row>
       <Row
         label="Signal dot: off (live: the button lights it) · on, pulsing · on, Ghostfetch off"

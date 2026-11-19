@@ -20,7 +20,9 @@ import {
   BODY_MODES,
   editRule,
   responseStore,
+  saveRulesNow,
   serverResponse,
+  systemClipboard,
 } from '../../../../shared/api/index.ts';
 import type { BodyMode, Rule } from '../../../../shared/api/index.ts';
 import { formatJson } from '../../../../shared/lib/index.ts';
@@ -228,6 +230,11 @@ export function BodyCard({
             value={response.body}
             fit
             problem={problem}
+            // Vim's Space s and :w: the rule saved at once, rather than a moment after the last
+            // edit (the editor formats the body first for Space s).
+            onSave={saveRulesNow}
+            // Vim's p pastes what's on the clipboard, once the browser lets Ghostfetch read it.
+            clipboard={systemClipboard}
             // Back at this rule, or after a change made elsewhere, the body is where it was.
             placeKey={rule.id}
             onChange={(text) =>

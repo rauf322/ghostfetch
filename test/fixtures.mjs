@@ -445,7 +445,9 @@ export function testRules(origin) {
 // One editing session with the Vim switch on, shared by the Chromium and the Zen test so both
 // engines run the same edits: their editing commands, undo and selections differ. Each step is
 // the keys typed, the body after it (null: unchanged), the cursor (line:column) and the status
-// line's message. The same keys typed into vim 9.1 give the same bodies and cursors.
+// line's message. The same keys typed into vim 9.1 give the same bodies and cursors, but where
+// Ghostfetch differs on purpose: only a yank fills the register (x, d, c and putting over a
+// selection leave it), Space is the leader (Space s formats and saves), and :w saves.
 const lines = (...rows) => rows.join('\n');
 export const VIM_START = lines(
   '{',
@@ -466,6 +468,18 @@ const shifted = lines(
   '  "full_name": "Ada",',
   '    "role": "owner",',
   '      "tags": [1, 2, 3]',
+  '}',
+);
+// `shifted` after Space s, which formats it.
+const formatted = lines(
+  '{',
+  '  "full_name": "Ada",',
+  '  "role": "owner",',
+  '  "tags": [',
+  '    1,',
+  '    2,',
+  '    3',
+  '  ]',
   '}',
 );
 export const VIM_STEPS = [
@@ -527,13 +541,32 @@ export const VIM_STEPS = [
   ['n', null, '3:14', 'Search hit the bottom, continuing at the top'],
   [':2<CR>', null, '2:3'],
   ['x', shifted.replace('"full_name"', 'full_name"'), '2:3'],
-  ['p', shifted.replace('"full_name"', 'f"ull_name"'), '2:4'],
+  // x left the register as it was, so p puts the line yanked before (vim would put the ").
+  [
+    'p',
+    lines(
+      '{',
+      '  full_name": "Ada",',
+      '{',
+      '    "role": "owner",',
+      '      "tags": [1, 2, 3]',
+      '}',
+    ),
+    '3:1',
+  ],
   ['u', shifted.replace('"full_name"', 'full_name"'), '2:3'],
   ['u', shifted, '2:3'],
   ['gg%', null, '5:1'],
   ['di{', lines('{', '}'), '2:1'],
   ['u', shifted, '2:1'],
-  [':w<CR>', null, '2:1', 'Changes save automatically'],
+  [':w<CR>', null, '2:1', 'Saved'],
+  // Space s formats the body and saves it; Space and another key is Space's move and that key.
+  [' s', formatted, '2:1', 'Formatted and saved'],
+  [' l', null, '2:3'],
+  // "owner" yanked goes over "full_name", and then over "Ada" too.
+  [':3<CR>2f"lyiw', null, '3:12'],
+  ['kviwp', formatted.replace('"full_name"', '"owner"'), '2:8'],
+  ['fAviwp', formatted.replace('"full_name": "Ada"', '"owner": "owner"'), '2:17'],
 ];
 
 // Splits a step such as 'ci"x<Esc>' into keys: single characters, or <Esc>, <CR>, <C-r>...

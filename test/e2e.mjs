@@ -1675,6 +1675,10 @@ try {
   });
 
   console.log('vim keys in the body editor');
+  // p reads the clipboard once the browser lets Ghostfetch, which takes the browser's dialog: until
+  // the clipboard check below, the browser was told no, so p puts vim's register, as it does on the
+  // Zen test's page (which reads no clipboard).
+  await app.evaluate(() => localStorage.setItem('ghostfetch.clipboard', '1'));
   const vimSwitch = app.locator('[data-testid="vim"]');
   const body = app.locator('.code textarea');
   const VIM_PRESS = {
@@ -2088,14 +2092,15 @@ try {
     },
   );
   await check(
-    'vim: after a Format too long to undo, u undoes the changes since, back to the formatted body (x, then P, which puts it back as it was) and no further',
+    'vim: after a Format too long to undo, u undoes the changes since, back to the formatted body (a character yanked and x, then P, which puts it back as it was) and no further',
     async () => {
       const before = await body.inputValue();
       await setBody(ITEMS);
       await app.click('[data-testid="format"]');
       const long = await body.inputValue();
       await body.focus();
-      await typeVim('/item 40<CR>x');
+      // x leaves the register as it is, so the character is yanked (yl) for P to put back.
+      await typeVim('/item 40<CR>ylx');
       const deleted = await body.inputValue();
       await typeVim('P');
       const states = [await body.inputValue()];
@@ -2133,6 +2138,99 @@ try {
         [await bar.isHidden(), (await vimState()).cursor, await bodyFocused()],
         [true, '1:1', true],
       );
+    },
+  );
+  await check(
+    "vim: p pastes what's on the clipboard once the browser lets Ghostfetch read it (asked the first time), turned down it puts the yank and doesn't ask again, and :set clipboard=unnamedplus asks again",
+    async () => {
+      const state = async () => [
+        (await body.inputValue()).split('\n').slice(0, 3).join('|'),
+        (await vimState()).message,
+        await app.evaluate(() => [
+          window.asked,
+          localStorage.getItem('ghostfetch.clipboard'),
+        ]),
+      ];
+      try {
+        // The browser's dialog answered (Allow while `allow`), and how many times it was asked:
+        // standing in for a person, as Chromium shows the dialog even when headless. And the
+        // clipboard, which the browser would only let the extension's page read with the
+        // permission granted: what the editor writes to it is what it reads back.
+        await app.evaluate(() => {
+          window.realRequest = chrome.permissions.request;
+          window.asked = 0;
+          window.allow = true;
+          chrome.permissions.request = async () => {
+            window.asked++;
+            return window.allow;
+          };
+          window.clipboardText = '';
+          navigator.clipboard.writeText = async (text) => {
+            window.clipboardText = text;
+          };
+          navigator.clipboard.readText = async () => window.clipboardText;
+          localStorage.removeItem('ghostfetch.clipboard');
+        });
+        await setBody(VIM_START);
+        // Copied in another app: a whole line, which p puts under the cursor's.
+        await app.evaluate(() => {
+          window.clipboardText = '  "copied": true,\n';
+        });
+        await typeVim('p');
+        await app.waitForFunction(() =>
+          document.querySelector('.code textarea').value.includes('"copied"'),
+        );
+        const allowed = await state();
+        // Yanked, then turned down: p puts the yank, and says why it didn't read the clipboard.
+        await typeVim('u');
+        await setBody(VIM_START);
+        await app.evaluate(() => {
+          window.allow = false;
+        });
+        await typeVim('jwwyiwP');
+        await app.waitForFunction(
+          () => document.querySelector('.code-vim-keys').textContent,
+        );
+        const declined = await state();
+        // p again doesn't ask, and puts the yank at once.
+        await typeVim('p');
+        const again = await state();
+        await app.evaluate(() => {
+          window.allow = true;
+        });
+        await typeVim(':set clipboard=unnamedplus<CR>');
+        await app.waitForFunction(
+          () =>
+            document.querySelector('.code-vim-keys').textContent ===
+            'p pastes the clipboard',
+        );
+        const asked = await state();
+        expect(
+          [allowed, declined, again, asked],
+          [
+            ['{|  "copied": true,|  "name": "Ada",', '', [1, null]],
+            [
+              '{|  "namename": "Ada",|  "role": "admin",',
+              'Clipboard not allowed: p puts your yank',
+              [2, '1'],
+            ],
+            ['{|  "namenamename": "Ada",|  "role": "admin",', '', [2, '1']],
+            [
+              '{|  "namenamename": "Ada",|  "role": "admin",',
+              'p pastes the clipboard',
+              [3, null],
+            ],
+          ],
+        );
+      } finally {
+        await app.evaluate(() => {
+          if (window.realRequest) chrome.permissions.request = window.realRequest;
+          delete navigator.clipboard.writeText;
+          delete navigator.clipboard.readText;
+          localStorage.removeItem('ghostfetch.clipboard');
+        });
+        await setBody(VIM_START);
+      }
     },
   );
   await check(

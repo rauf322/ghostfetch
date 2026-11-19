@@ -737,7 +737,7 @@ try {
     },
   );
   await check(
-    "vim: u right after Format puts the cursor back where it was before it and Ctrl+R where it was after it, Visual mode carries on through Format, and after a Format too long to undo, u says there's nothing to undo, but undoes the changes made since, back to the formatted body (x, then P, which puts it back as it was)",
+    "vim: u right after Format puts the cursor back where it was before it and Ctrl+R where it was after it, Visual mode carries on through Format, and after a Format too long to undo, u says there's nothing to undo, but undoes the changes made since, back to the formatted body (a character yanked and x, then P, which puts it back as it was)",
     async () => {
       const strip = (text) => text.replace(/[ \n\t\r]/g, '');
       const put = (text) =>
@@ -790,7 +790,8 @@ try {
       const long = (await state()).text;
       await typeVim('u');
       const refused = await state();
-      await typeVim('/item 40<CR>x');
+      // x leaves the register as it is, so the character is yanked (yl) for P to put back.
+      await typeVim('/item 40<CR>ylx');
       const deleted = (await state()).text;
       await typeVim('P');
       const back = [(await state()).text];

@@ -259,7 +259,9 @@ as it was, and stopping at the formatted body, which is what's saved), the
 cursor marked while the body isn't focused, a rule's body where it was when you come back to it
 (beside the settings, in a side panel with its pane, and after a change made in another view),
 Format and colours on a body of 370,000 characters, its own find and its vim keys, whose yanks
-it pastes back from the clipboard; and Diff: Mock this response keeping the server's response
+it pastes back from the clipboard, and whose `p` pastes the clipboard once the browser allows it
+(the browser's answer stood in for), puts the yank when it doesn't, and asks again with
+`:set clipboard=unnamedplus`; and Diff: Mock this response keeping the server's response
 apart from the rule and out of an exported file, side by side, inline and inline in a narrow
 panel with the counts and rows the diff makes, a key that would type saying it can't, a click on
 a line, a removed line and Enter going to edit there, a rule that's off getting the server's
@@ -318,12 +320,13 @@ vim keys depend on the browser's editing, undo and scrolling, so this test also 
 into the body editor on a plain test page that loads the editor's TypeScript from `src/`
 (Node strips the types). Both tests type the same vim session (`VIM_STEPS` in
 `test/fixtures.mjs`), which gives the same bodies and cursor positions as vim 9.1 typing the
-same keys. There it also sizes the text with Ctrl+= and Ctrl+−, and checks that vim's cursor
+same keys, except where Ghostfetch differs on purpose: only a yank fills the register, Space s
+formats and saves, and `:w` saves. There it also sizes the text with Ctrl+= and Ctrl+−, and checks that vim's cursor
 stays where it is in the view, as Firefox scrolls a text area its own way, as it does through
 Format, that a new editor goes back to another's place, that `u` and Ctrl+R right after Format
 go back to the cursor before it and after it, that Visual mode carries on through Format, that
-`u` after a Format too long to undo undoes the changes made since (`x`, then `P`, which puts
-the body back as it was) and stops at the formatted body, and that a yank reaches the
+`u` after a Format too long to undo undoes the changes made since (a character yanked and `x`,
+then `P`, which puts the body back as it was) and stops at the formatted body, and that a yank reaches the
 clipboard, which Firefox only lets a page write during a key press or a click.
 Both tests paste from the clipboard of the headless browser, which is its own, so running them
 leaves yours alone (with `HEADED=1` they use the real one).

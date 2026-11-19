@@ -121,6 +121,8 @@ for (const browser of ['chrome', 'firefox']) {
       'sidePanel',
       'scripting',
     ]);
+    // Asked for only when vim's p first pastes the clipboard.
+    expect(manifest.optional_permissions, ['clipboardRead']);
     expect(manifest.host_permissions, ['<all_urls>']);
   });
   await check(

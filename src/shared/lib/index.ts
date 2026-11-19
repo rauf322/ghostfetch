@@ -1,6 +1,7 @@
 // Small libraries of Ghostfetch's own, a file each. Plain TypeScript with no npm package and no
 // React, and nothing runs when it's imported: the background, the page scripts, the body editor's
 // engine (which the Zen test serves straight from src/) and the tests can use any of it.
+export type { ClipboardRead, SystemClipboard } from './clipboard.ts';
 export { createStore } from './create-store.ts';
 export type { Store } from './create-store.ts';
 export { curlCommand, parseCurl } from './curl.ts';

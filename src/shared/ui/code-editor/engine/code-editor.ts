@@ -7,7 +7,8 @@
 // language server's client would: a squiggle under it, the line tinted, a note at the end of the
 // line and the whole message on hover. Its look is code-editor.css; the React screens use it
 // through ../code-editor.tsx.
-import { icon } from '../../../lib/index.ts';
+import { formatJson, icon } from '../../../lib/index.ts';
+import type { SystemClipboard } from '../../../lib/index.ts';
 import { createVim, rememberVim, vimPreferred } from '../vim/vim.ts';
 import { createFindBar } from './find-bar.ts';
 import { CHUNK, rechunk, tokens } from './highlight.ts';
@@ -784,6 +785,26 @@ export function createCodeEditor({
     { capture: true },
   );
 
+  // How the page keeps the text, saved at once (setSave()), for vim's Space s and :w.
+  let save: (() => void) | null = null;
+  // Vim's Space s and :w: the text formatted first for Space s, as the page's Format does it
+  // (formatJson() and replace()), and then saved. Says what it did, for vim's status line.
+  function saveNow({ format }: { format: boolean }) {
+    let said = 'Saved';
+    if (format) {
+      const laidOut = formatJson(textarea.value);
+      if (laidOut === null) said = "Saved. Can't format: not valid JSON";
+      else if (laidOut !== textarea.value) {
+        editor.replace(laidOut);
+        said = 'Formatted and saved';
+      }
+    }
+    save?.();
+    return said;
+  }
+  // The system clipboard as the page can read it (setClipboard()), for vim's p, or null.
+  let clipboard: SystemClipboard | null = null;
+
   // The find bar is vim's search line, and vim moves to what it finds, so each needs the other:
   // the find bar gets vim through a function it only calls once both exist.
   const find = createFindBar({ root, textarea, marks, sync, vim: () => vim });
@@ -797,6 +818,8 @@ export function createCodeEditor({
     sync,
     metrics,
     execute: command,
+    save: saveNow,
+    clipboard: () => clipboard,
     active: vimPreferred(),
   });
 
@@ -883,7 +906,7 @@ export function createCodeEditor({
   }
 
   render();
-  return {
+  const editor = {
     root,
     textarea,
     get value() {
@@ -997,6 +1020,14 @@ export function createCodeEditor({
       fitHeight();
       if (!root.contains(document.activeElement)) markCaret();
     },
+    // How the page keeps the text, saved at once, for vim's Space s and :w (saveNow()), or null.
+    setSave(next: (() => void) | null) {
+      save = next;
+    },
+    // The system clipboard as the page can read it, for vim's p, or null: p puts vim's register.
+    setClipboard(next: SystemClipboard | null) {
+      clipboard = next;
+    },
     // The mistake to mark in the current text, or null. Any edit clears it.
     setProblem(next: CodeProblem | null) {
       if (next === problem) return;
@@ -1020,4 +1051,5 @@ export function createCodeEditor({
       sync();
     },
   };
+  return editor;
 }

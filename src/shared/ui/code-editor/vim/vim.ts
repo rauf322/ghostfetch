@@ -1,8 +1,8 @@
 // Vim keys for the code editor, behind the Vim switch under each body editor: Normal, Insert,
-// Visual and Visual Line modes, with motions, operators, text objects, counts, one register
-// (whose yanks go to the system clipboard too), search and "." to repeat a change. Written for
-// this extension, which ships no third-party editor code, and smaller than vim on purpose: no
-// ":" commands, macros, marks or named registers.
+// Visual and Visual Line modes, with motions, operators, text objects, counts, one register that
+// follows the system clipboard, search, "." to repeat a change, and Space as the leader (Space s
+// formats and saves). Written for this extension, which ships no third-party editor code, and
+// smaller than vim on purpose: hardly any ":" commands, no macros, marks or named registers.
 //
 // Positions are offsets into the textarea's text. A line's "\n" (or the end of the text) is its
 // end-of-line position, where vim's own motions step to after the last character. Every change
@@ -30,6 +30,7 @@ import {
   stepLines,
   swapCase,
 } from './text.ts';
+import type { ClipboardRead, SystemClipboard } from '../../../lib/index.ts';
 import type { Command, MotionResult, Range, SearchLine } from './types.ts';
 import {
   charClass,
@@ -96,6 +97,12 @@ interface VimOptions {
   // Runs a browser editing command (insertText, delete, undo, redo) on the body, and fires one
   // input for it, however many the browser makes of a long one.
   execute: (name: string, value?: string) => boolean;
+  // Space s and :w: saves the body at once, formatted first for Space s, and says what it did for
+  // the status line.
+  save: (options: { format: boolean }) => string;
+  // The system clipboard as the page can read it (the extension's permission), for p; null where
+  // it can't, and p puts the register.
+  clipboard: () => SystemClipboard | null;
   active?: boolean;
 }
 
@@ -107,8 +114,19 @@ export const rememberVim = (on: boolean) =>
   localStorage.setItem(STORAGE_KEY, on ? '1' : '0');
 
 // One unnamed register for every editor on the page: yank in one rule's body, put in another's.
-// A yank goes to the system clipboard as well (copy()).
+// It follows the system clipboard, as vim's clipboard=unnamedplus has it: a yank goes to the
+// clipboard as well (copy()), and p takes what's on the clipboard first where the page may read it
+// (paste()), so p puts what you last copied, in the editor or anywhere else. Deletes and changes
+// leave the register and the clipboard as they are, and so does putting over a selection.
 const register = { text: '', linewise: false };
+// What the status line says when p couldn't read the clipboard (ClipboardRead's problem).
+const CLIPBOARD_SAYS = {
+  declined: 'Clipboard not allowed: p puts your yank',
+  unread: "Couldn't read the clipboard",
+  again: 'Clipboard allowed: press p again',
+};
+// The leader key, Space: see keydown().
+const LEADER = ' ';
 const MAX_PUT = 5_000_000;
 const MAX_UNDO = 100;
 
@@ -171,6 +189,8 @@ export function createVim({
   sync,
   metrics,
   execute,
+  save,
+  clipboard,
   active: startActive = false,
 }: VimOptions) {
   const [modeLabel, keysLabel, positionLabel] = statusLine.children;
@@ -504,16 +524,17 @@ export function createVim({
   }
 
   // A yank: into the register, and onto the system clipboard as well, as vim's
-  // clipboard=unnamedplus has it, to paste in another app. Deletes and changes only fill the
-  // register, so they don't overwrite what you copied; and p puts the register, since reading the
-  // clipboard would take a permission the extension doesn't ask for (⌘V pastes it). It's written
-  // while the key is handled: a browser only lets a page write to the clipboard during a key press
-  // or a click.
+  // clipboard=unnamedplus has it, to paste in another app. It's written while the key is handled:
+  // a browser only lets a page write to the clipboard during a key press or a click. `writing` is
+  // the write, which a p right after waits for before it reads the clipboard.
+  let writing: Promise<unknown> = Promise.resolve();
   async function copy(value: string, range: Range) {
     store(value, range);
     const copied = register.text;
     try {
-      await navigator.clipboard.writeText(copied);
+      const write = navigator.clipboard.writeText(copied);
+      writing = write;
+      await write;
     } catch {
       // The browser didn't allow it. Say so, unless something else has been yanked since.
       if (!active || register.text !== copied) return;
@@ -524,7 +545,6 @@ export function createVim({
 
   function remove(range: Range) {
     const value = text();
-    store(value, range);
     let { start } = range;
     // Deleting the last lines also takes the line break before them.
     if (
@@ -543,7 +563,6 @@ export function createVim({
 
   function change(range: Range) {
     const value = text();
-    store(value, range);
     if (!range.linewise) {
       edit(range.start, range.end, '');
       return startInsert(range.start);
@@ -629,8 +648,10 @@ export function createVim({
     head = content.includes('\n') ? at : at + content.length - 1;
   }
 
-  // Visual p and P: the selection is replaced by the register; p puts the replaced text in it.
-  function putOver(range: Range, keepRegister: boolean) {
+  // Visual p and P: the selection is replaced by the register, which keeps what it has, so the same
+  // text can go over the next selection too (as vim's P has it; its p would put the replaced text
+  // in the register).
+  function putOver(range: Range) {
     if (!register.text) {
       message = 'Nothing to put';
       return;
@@ -642,7 +663,6 @@ export function createVim({
     if (!range.linewise && register.linewise) content = `\n${content}`;
     if (range.linewise && !replaced.endsWith('\n')) content = content.replace(/\n$/, '');
     edit(range.start, range.end, content);
-    if (!keepRegister) store(value, range);
     head = range.linewise
       ? firstNonBlank(text(), range.start)
       : range.start + Math.max(0, content.length - 1);
@@ -854,12 +874,29 @@ export function createVim({
     if (!done) message = undo ? 'Already at oldest change' : 'Already at newest change';
   }
 
-  // The ":" line: ":42" goes to line 42. Everything saves as you type, so ":w" just says so.
+  // The ":" line: ":42" goes to line 42, and ":w" (":x", ":update"...) saves the body at once,
+  // though everything saves as you type anyway. There's nothing to quit, so ":q" says that.
+  // ":set clipboard=unnamedplus" has p read the clipboard again after the browser was told not to
+  // let it (the browser asks again), and ":set clipboard=" stops it reading.
   function exCommand(line: string) {
     if (/^\d+$/.test(line)) {
       head = toLineNumber(text(), Math.max(1, Number(line))).pos;
-    } else if (/^(?:w|wa|wq|wqa|x|xa|up|update|q|qa)!?$/.test(line)) {
+    } else if (/^(?:w|wa|wq|wqa|x|xa|up|update)!?$/.test(line)) {
+      message = save({ format: false });
+    } else if (/^(?:q|qa)!?$/.test(line)) {
       message = 'Changes save automatically';
+    } else if (/^set?\s+clipboard\s*[+^]?=\s*unnamed(?:plus)?$/.test(line)) {
+      // p reading the clipboard again, after it was turned down: the browser asks.
+      const asking = clipboard()?.ask();
+      if (!asking) message = "Can't read the clipboard here";
+      else
+        asking.then((granted) => {
+          message = granted ? 'p pastes the clipboard' : CLIPBOARD_SAYS.declined;
+          paint();
+        });
+    } else if (/^set?\s+clipboard\s*=\s*$/.test(line)) {
+      clipboard()?.forget();
+      message = 'p puts your yank';
     } else if (line) {
       message = `Not supported: :${line}`;
     }
@@ -1156,7 +1193,7 @@ export function createVim({
       case 'p':
       case 'P':
         leave();
-        return putOver(range, action === 'P');
+        return putOver(range);
       case 'r':
         if (command.arg === '<CR>') return undefined;
         leave();
@@ -1235,7 +1272,9 @@ export function createVim({
         cursorLayer.replaceChildren(before, block, after);
     }
     modeLabel.textContent = LABELS[mode];
-    let detail = message || keys.join('');
+    // A leader waiting for its key shows as one, not as an invisible space.
+    const typed = keys.length === 1 && keys[0] === LEADER ? '<leader>' : keys.join('');
+    let detail = message || typed;
     if (!detail && mode !== 'normal' && mode !== 'insert') {
       const { start, end } = selection();
       const lines =
@@ -1277,11 +1316,21 @@ export function createVim({
 
   // ---------------------------------------------------------- events
 
+  // Keys typed while p waits for the clipboard, which run after it in order: null while nothing
+  // waits.
+  let waiting: string[] | null = null;
+
   // Handles a keydown in the textarea. Returns true when the editor should leave the key alone:
   // vim used it, or it belongs to the browser (Tab, ⌘C...). In Insert mode only Esc is vim's.
   function keydown(event: KeyboardEvent) {
     if (!active) return false;
     const key = keyName(event);
+    // p is reading the clipboard: the keys vim takes wait their turn (a browser shortcut doesn't).
+    if (waiting && key !== null) {
+      event.preventDefault();
+      waiting.push(key);
+      return true;
+    }
     if (mode === 'insert') {
       if (key !== '<Esc>') return false;
       event.preventDefault();
@@ -1295,27 +1344,110 @@ export function createVim({
       return true;
     }
     event.preventDefault();
+    press(key);
+    return true;
+  }
+
+  // A key vim takes, in Normal or Visual mode; or one that waited for p and comes after a command
+  // that started Insert mode, where it's typed (a character, Enter or Backspace) or leaves it (Esc).
+  function press(key: string) {
+    if (mode === 'insert') {
+      if (key === '<Esc>') leaveInsert();
+      else if (key === '<BS>') exec('delete');
+      else if (key === '<CR>' || [...key].length === 1)
+        exec('insertText', key === '<CR>' ? '\n' : key);
+      finish();
+      return;
+    }
     message = '';
+    // Space at the start of a command in Normal mode is the leader, as most vim setups have it:
+    // Space s formats the body and saves it. Esc lets go of it; any other key gets Space's own
+    // move (to the right, onto the next line at a line's end) and is then a key of its own.
+    if (mode === 'normal' && keys.length === 1 && keys[0] === LEADER) {
+      keys = [];
+      if (key === 's') {
+        message = save({ format: true });
+        finish();
+        return;
+      }
+      if (key === '<Esc>') {
+        finish();
+        return;
+      }
+      run(parse([LEADER], false) as Command);
+    }
+    if (mode === 'normal' && !keys.length && key === LEADER) {
+      keys = [LEADER];
+      paint();
+      return;
+    }
     keys.push(key);
     const command = parse(keys, mode !== 'normal');
     if (command === PENDING) {
       paint();
-      return true;
+      return;
     }
     keys = [];
-    if (command) {
-      // Every command but u and Ctrl+R may be a change: one undo step, ending at Esc if it
-      // opens Insert mode.
-      const moving =
-        mode === 'normal' && (command.action === 'u' || command.action === '<C-r>');
-      if (!moving) beginChange();
-      if (mode === 'normal') runNormal(command);
-      else runVisual(command);
-      // (The command may have started Insert mode, which TypeScript can't see through the call.)
-      if ((mode as Mode) !== 'insert') endChange();
+    // p and P read the clipboard first, where the page may: asked for while the key is handled.
+    if (command && (command.action === 'p' || command.action === 'P')) {
+      const reading = clipboard()?.read(writing);
+      if (reading) return paste(reading, command);
     }
+    if (command) run(command);
     finish();
-    return true;
+  }
+
+  // p or P, the clipboard being read: the keys that come meanwhile wait (`waiting`). Then what it
+  // read goes in the register (take()), the put runs, and the keys that waited after it. With the
+  // editor no longer focused (or vim off) by then, nothing is put: the edit would go wherever the
+  // focus went.
+  function paste(reading: Promise<ClipboardRead>, command: Command) {
+    waiting = [];
+    paint();
+    reading
+      .catch((): ClipboardRead => ({ problem: 'unread' }))
+      .then((read) => {
+        const queued = waiting ?? [];
+        waiting = null;
+        if (!active || document.activeElement !== textarea) return;
+        if ('text' in read) take(read.text);
+        else message = CLIPBOARD_SAYS[read.problem];
+        // Allowed a moment ago, the clipboard isn't given yet: the next p reads it.
+        if (!('problem' in read && read.problem === 'again')) run(command);
+        finish();
+        for (const [index, key] of queued.entries()) {
+          // Another p, reading the clipboard: the rest wait for that one. (press() may have set
+          // `waiting` again, which TypeScript can't see through the call.)
+          const again = waiting as string[] | null;
+          if (again) {
+            again.push(...queued.slice(index));
+            return;
+          }
+          press(key);
+        }
+      });
+  }
+
+  // What p read from the clipboard goes in the register, unless it's there already (a yank, which
+  // keeps whether it was whole lines). Text that ends with a line break goes in as whole lines, as
+  // vim takes the clipboard's.
+  function take(copied: string) {
+    const value = copied.replace(/\r\n?/g, '\n');
+    if (!value || value === register.text) return;
+    register.text = value;
+    register.linewise = value.endsWith('\n');
+  }
+
+  // Runs a command. Every one but u and Ctrl+R may be a change: one undo step, ending at Esc if it
+  // opens Insert mode.
+  function run(command: Command) {
+    const moving =
+      mode === 'normal' && (command.action === 'u' || command.action === '<C-r>');
+    if (!moving) beginChange();
+    if (mode === 'normal') runNormal(command);
+    else runVisual(command);
+    // (The command may have started Insert mode, which TypeScript can't see through the call.)
+    if ((mode as Mode) !== 'insert') endChange();
   }
 
   // Takes over a selection something else made: a click or a drag, ⌘A, a browser shortcut.

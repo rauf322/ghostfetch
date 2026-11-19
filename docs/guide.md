@@ -185,18 +185,31 @@ mark in Normal mode, a green one in Insert mode, inverted white in Visual mode.
 | Text objects | `iw aw iW aW`, `i" a" i' a'`, `i( a( i[ a[ i{ a{`, `ip ap` |
 | Edits | `x X s S r ~ D C Y J p P`, `u` and `Ctrl+R`, `.` to repeat the last change |
 | Search | `/` and `?` in the body's find bar, `n N`, `* #`; operators take them too (`d/foo`) |
-| `:` | `:42` goes to line 42; `:w` and the like only say that changes save automatically |
+| Leader | Space: `Space s` formats the body, as **Format** does, and saves it at once |
+| `:` | `:42` goes to line 42; `:w` saves at once; `:set clipboard=unnamedplus` and `:set clipboard=` (below) |
 
 Motions and text objects behave like vim's own (`cw`, `dw` at the end of a line, `ci"` and
 `di{` in formatted JSON, `dap`). Where it differs:
 
-- There's one register, shared by every body editor on the page. A yank (`y` in Visual mode,
-  `yy`, `Y`, `y` with a motion) also copies to the system clipboard, as vim's
-  `clipboard=unnamedplus` does, so you can paste it in another app; if the browser doesn't
-  allow it, the status line says "Couldn't copy to the clipboard". Deletes and changes (`d`,
-  `x`, `c`) only fill the register, so they don't overwrite what you copied, and `p` puts the
-  register: reading the clipboard would take a permission Ghostfetch doesn't ask for. ⌘C and
-  ⌘V (Ctrl+C and Ctrl+V) keep using the system clipboard in every mode.
+- There's one register, shared by every body editor on the page, and it follows the system
+  clipboard, as vim's `clipboard=unnamedplus` has it. A yank (`y` in Visual mode, `yy`, `Y`,
+  `y` with a motion) also copies to the clipboard, so you can paste it in another app; if the
+  browser doesn't allow it, the status line says "Couldn't copy to the clipboard". `p` and `P`
+  paste what's on the clipboard, copied in the editor or anywhere else, and text that ends with
+  a line break goes in as whole lines.
+- Reading the clipboard takes a permission Ghostfetch asks for only then: the first `p` opens
+  the browser's dialog ("Read data you copy and paste"). Turned down, `p` puts your last yank
+  and doesn't ask again; `:set clipboard=unnamedplus` asks again, and `:set clipboard=` stops
+  reading the clipboard. In Firefox the permission is also under the add-on's **Permissions**
+  in `about:addons`. Chrome 121 doesn't let extensions read with it, so there `p` puts the yank.
+- Deletes and changes (`d`, `x`, `c`), and pasting over a selection, leave the register and the
+  clipboard as they are: only a yank, or a copy anywhere, changes what `p` pastes. So the same
+  text can go over one selection after another. Unlike vim, `ddp` doesn't swap lines: yank
+  first (`yy`, `dd`, `p`).
+- Space is the leader: `Space s` formats the body and saves it at once, saying so on the status
+  line, though every change saves as you type anyway. Space and any other key moves one to the
+  right, as Space does in vim, and then runs that key.
+- ⌘C and ⌘V (Ctrl+C and Ctrl+V) keep using the system clipboard in every mode.
 - Searches ignore case, as with vim's `ignorecase`.
 - `o`, `O`, `cc` and `S` keep the line's indentation. `o` below a line that opens a bracket,
   and `O` above one that closes it, go one level deeper, like Enter in the editor.

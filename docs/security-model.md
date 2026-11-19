@@ -48,3 +48,8 @@ see the [README](../README.md).
   current site, Traffic's list of tabs) with host access, since Ghostfetch has no `tabs`
   permission. Content scripts still only run on the sites Ghostfetch runs on. The `scripting`
   permission is only used to register the content scripts for the sites you add.
+- `clipboardRead` is optional: installing or updating Ghostfetch doesn't ask for it. The body
+  editor's vim keys ask for it the first time `p` pastes, with the browser's own dialog, and only
+  the editor's pages read the clipboard with it, when `p` is pressed; what it reads goes into the
+  body and nowhere else. Turned down, it isn't asked for again (vim's `:set clipboard=` gives it
+  back, and `:set clipboard=unnamedplus` asks again).

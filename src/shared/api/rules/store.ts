@@ -62,6 +62,11 @@ function saveRules({ immediate = false } = {}) {
   else saveTimer = setTimeout(write, 250);
 }
 
+// Writes an edit that's waiting out the pause now: vim's Space s and :w, saving as an editor does.
+export function saveRulesNow() {
+  if (saveTimer) saveRules({ immediate: true });
+}
+
 export function findRule(id: string | null | undefined) {
   return state.rules.find((rule) => rule.id === id);
 }

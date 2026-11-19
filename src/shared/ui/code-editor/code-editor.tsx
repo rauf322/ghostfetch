@@ -3,6 +3,7 @@
 // Traffic.
 import { useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
 import type { ComponentProps, Ref } from 'react';
+import type { SystemClipboard } from '../../lib/index.ts';
 import { cn } from '../cn.ts';
 import { colour, countLines, createCodeEditor } from './engine/code-editor.ts';
 import type {
@@ -24,6 +25,11 @@ interface CodeEditorProps extends Omit<ComponentProps<'div'>, 'onChange' | 'ref'
   fit?: boolean;
   // A mistake in the current text to mark, or null.
   problem?: CodeProblem | null;
+  // Saves the text at once, rather than when it otherwise would: vim's Space s (which formats it
+  // first) and :w.
+  onSave?: () => void;
+  // The system clipboard as the page can read it, for vim's p; without it, p puts vim's register.
+  clipboard?: SystemClipboard;
   // What the editor keeps its place under (the selection and the scroll) once it's gone, for the
   // next one made under it, which starts there: a rule's id, so that its body is where you left
   // it when you come back to the rule, or the editor starts over after a change made elsewhere.
@@ -41,6 +47,8 @@ export function CodeEditor({
   onChange,
   fit = false,
   problem = null,
+  onSave,
+  clipboard,
   placeKey,
   ref,
   className,
@@ -74,6 +82,14 @@ export function CodeEditor({
   useLayoutEffect(() => {
     editor.setProblem(problem);
   }, [editor, problem]);
+  useEffect(() => {
+    editor.setSave(onSave ?? null);
+    return () => editor.setSave(null);
+  }, [editor, onSave]);
+  useEffect(() => {
+    editor.setClipboard(clipboard ?? null);
+    return () => editor.setClipboard(null);
+  }, [editor, clipboard]);
   return <div data-slot="code-editor" ref={slot} className={className} {...props} />;
 }
 

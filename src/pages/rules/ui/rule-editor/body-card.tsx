@@ -24,7 +24,6 @@ import {
   responseStore,
   saveRulesNow,
   serverResponse,
-  systemClipboard,
 } from '../../../../shared/api/index.ts';
 import type { BodyMode, Rule } from '../../../../shared/api/index.ts';
 import { formatJson } from '../../../../shared/lib/index.ts';
@@ -52,6 +51,7 @@ import { Segmented, SegmentedItem } from '../../../../shared/ui/kit/segmented.ts
 import { notify } from '../../../../shared/ui/kit/toast.tsx';
 import { Toggle } from '../../../../shared/ui/kit/toggle.tsx';
 import type { CodeStatus } from '../../lib/rule-checks.ts';
+import { systemClipboard } from '../../model/clipboard.ts';
 import { useWide } from '../../model/use-wide.ts';
 import { ResponseTitle } from './response-title.tsx';
 import { Verdict } from './verdict.tsx';

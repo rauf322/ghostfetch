@@ -86,7 +86,7 @@ src/app/                         the extension's parts, one folder each, which W
   kit/                           the kit page; for npm run dev and the kit test, never in the extension
   styles/                        theme.css, the look's values (colours, the two fonts); themes.css, the other themes' colours; and kit.css: those as Tailwind's theme (type sizes, corners)
 src/pages/                       what the screens show
-  rules/                         the Rules view: the sidebar's rule list, New rule (ui/new-rule/), and the rule editor (ui/rule-editor/, a component per part)
+  rules/                         the Rules view: the sidebar's rule list, New rule (ui/new-rule/), the rule editor (ui/rule-editor/, a component per part), and the clipboard its body editor's vim keys paste from, with the permission that takes (model/clipboard.ts)
   traffic/                       the Traffic view: a tab's live log grouped by time, a request's drawer (ui/request-detail/), Mock this response
   popup/                         the toolbar popup: its header, the tab's site, and its tabs (This page, All rules, Sites)
   kit/                           the kit page: every kit component in its states
@@ -102,7 +102,8 @@ src/shared/                      what more than one part of the extension uses
     open-editor.ts               the editor in the side panel or a tab, and on a rule the popup picked
     page-counts.ts               what each rule did on a tab's page, as the page's bridge counts it, for the popup's This page; and in words, as the popup and the editor's rule list say it
   lib/                           small libraries, a file each (index.ts): JSON, HTML, URLs, durations, status names, cURL
-                                 commands, icons, file names, a download, the side panel, the stores' base, untrusted data, a line diff
+                                 commands, icons, file names, a download, the side panel, the stores' base, untrusted data, a line diff,
+                                 and the shape of the clipboard the body editor's vim keys read
   react/                         useStore(), which redraws a screen when a store changes, and the traffic log's hooks (index.ts)
   ui/                            components, a public file each
     kit/                         the UI kit: React components on Base UI, styled with Tailwind (see UI kit)
@@ -261,10 +262,12 @@ cursor marked while the body isn't focused, a rule's body where it was when you 
 (beside the settings, in a side panel with its pane, and after a change made in another view),
 Format and colours on a body of 370,000 characters, its own find and its vim keys, whose yanks
 it pastes back from the clipboard, and whose `p` pastes the clipboard once the browser allows it
-(the browser's answer stood in for), puts the yank when it doesn't, and asks again with
-`:set clipboard=unnamedplus`; Wrap (the textarea, the colours and the line numbers wrapping
-alike at two widths and a bigger text size, with prose, a token, emoji, CJK and tabs, nothing to
-scroll sideways, a mistake's mark and vim's block on their characters, and off again); and Diff:
+(the browser's answer stood in for), puts the yank when it doesn't, or when the browser gives it
+nothing (but for the once right after the dialog, when it says to press `p` again), and asks
+again with `:set clipboard=unnamedplus`; Wrap (the textarea, the colours and the line numbers
+wrapping alike at two widths and a bigger text size, with prose, a token, emoji, CJK and tabs,
+nothing to scroll sideways, a mistake's mark and vim's block on their characters, and off
+again); and Diff:
 Mock this response keeping the server's response
 apart from the rule and out of an exported file, side by side, inline and inline in a narrow
 panel with the counts and rows the diff makes, a key that would type saying it can't, a click on

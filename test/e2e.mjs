@@ -2144,7 +2144,7 @@ try {
     },
   );
   await check(
-    "vim: p pastes what's on the clipboard once the browser lets Ghostfetch read it (asked the first time), turned down it puts the yank and doesn't ask again, and :set clipboard=unnamedplus asks again",
+    "vim: p pastes what's on the clipboard once the browser lets Ghostfetch read it (asked the first time); where the browser gives it nothing p puts the yank, but for the once right after the dialog, when it says to press p again; turned down it puts the yank and doesn't ask again, and :set clipboard=unnamedplus asks again",
     async () => {
       const state = async () => [
         (await body.inputValue()).split('\n').slice(0, 3).join('|'),
@@ -2154,11 +2154,15 @@ try {
           localStorage.getItem('ghostfetch.clipboard'),
         ]),
       ];
+      // p has read the clipboard, or given up: the status line says something again.
+      const said = () =>
+        app.waitForFunction(() => document.querySelector('.code-vim-keys').textContent);
       try {
         // The browser's dialog answered (Allow while `allow`), and how many times it was asked:
         // standing in for a person, as Chromium shows the dialog even when headless. And the
         // clipboard, which the browser would only let the extension's page read with the
-        // permission granted: what the editor writes to it is what it reads back.
+        // permission granted: what the editor writes to it is what it reads back, unless the
+        // browser gives nothing (`unreadable`).
         await app.evaluate(() => {
           window.realRequest = chrome.permissions.request;
           window.asked = 0;
@@ -2171,8 +2175,61 @@ try {
           navigator.clipboard.writeText = async (text) => {
             window.clipboardText = text;
           };
-          navigator.clipboard.readText = async () => window.clipboardText;
+          navigator.clipboard.readText = async () => {
+            if (window.unreadable)
+              throw new DOMException('Read permission denied.', 'NotAllowedError');
+            return window.clipboardText;
+          };
           localStorage.removeItem('ghostfetch.clipboard');
+        });
+        // Allowed, but the browser gives nothing, before this page has ever read the clipboard
+        // (Chrome 121, or a clipboard it's told to keep to itself): p puts the yank at once, and
+        // says so. (Taken for the read right after the dialog, it would put nothing there, however
+        // often p was pressed.)
+        await app.evaluate(() => {
+          window.unreadable = true;
+          document.hasFocus = () => true;
+        });
+        await setBody(VIM_START);
+        await typeVim('jwwyiwP');
+        await said();
+        const unread = await state();
+        // Right after the browser's dialog, which took the focus, Chrome gives nothing yet: p
+        // says to press it again and puts nothing, the once. A page that still isn't given the
+        // clipboard gets the yank from then on.
+        await app.evaluate(() => {
+          document.hasFocus = () => false;
+        });
+        await typeVim('p');
+        await said();
+        const pressAgain = await state();
+        await typeVim('p');
+        await said();
+        const afterAgain = await state();
+        expect(
+          [unread, pressAgain, afterAgain],
+          [
+            [
+              '{|  "namename": "Ada",|  "role": "admin",',
+              "Couldn't read the clipboard",
+              [1, null],
+            ],
+            [
+              '{|  "namename": "Ada",|  "role": "admin",',
+              'Clipboard allowed: press p again',
+              [2, null],
+            ],
+            [
+              '{|  "namenamename": "Ada",|  "role": "admin",',
+              "Couldn't read the clipboard",
+              [3, null],
+            ],
+          ],
+        );
+        await app.evaluate(() => {
+          window.unreadable = false;
+          window.asked = 0;
+          delete document.hasFocus;
         });
         await setBody(VIM_START);
         // Copied in another app: a whole line, which p puts under the cursor's.
@@ -2230,6 +2287,7 @@ try {
           if (window.realRequest) chrome.permissions.request = window.realRequest;
           delete navigator.clipboard.writeText;
           delete navigator.clipboard.readText;
+          delete document.hasFocus;
           localStorage.removeItem('ghostfetch.clipboard');
         });
         await setBody(VIM_START);

@@ -8,15 +8,15 @@
 // A browser only lets a page ask for a permission while it handles a key press or a click, and
 // Firefox not even after an await, so read() and ask() ask first, before anything else, while vim
 // handles the key. The shape (SystemClipboard, ClipboardRead) is shared/lib's, which the editor's
-// engine knows too.
-import type { ClipboardRead, SystemClipboard } from '../lib/index.ts';
+// engine knows; this is the Rules page's, as only a rule's body editor reads the clipboard.
+import type { ClipboardRead, SystemClipboard } from '../../../shared/lib/index.ts';
 
 const PERMISSION: chrome.permissions.Permissions = { permissions: ['clipboardRead'] };
 // Set once the permission was turned down (or given back), so p doesn't ask every time.
 const DECLINED_KEY = 'ghostfetch.clipboard';
-// Whether this page has read the clipboard since it opened: a read that fails before that may be
-// the one right after the dialog, which took the focus.
-let readHere = false;
+// Whether this page has answered `again`, which it does once: where the browser never gives the
+// clipboard, p has to go on putting the yank.
+let saidAgain = false;
 // Whether this page has looked whether a permission turned down was granted since.
 let looked = false;
 
@@ -24,17 +24,25 @@ let looked = false;
 const permissions = () =>
   globalThis.chrome?.permissions && navigator.clipboard ? chrome.permissions : null;
 
+// Reads the clipboard, once `after` is done. Chrome gives it only to a page that has the focus,
+// which the dialog it asked with has just taken: that read fails and the next p's won't, so it
+// answers `again`. A read that fails with the focus here (Chrome 121, which doesn't let an
+// extension read with the permission; a clipboard the browser is told to keep to itself) answers
+// `unread`, and p puts the yank: answered `again` as well, p would put nothing there, ever.
 function readText(after: Promise<unknown>): Promise<ClipboardRead> {
   return after
     .catch(() => {})
-    .then(() => navigator.clipboard.readText())
-    .then(
-      (text) => {
-        readHere = true;
-        return { text };
-      },
-      () => ({ problem: readHere ? 'unread' : 'again' }),
-    );
+    .then(() => {
+      const focused = document.hasFocus();
+      return navigator.clipboard.readText().then(
+        (text): ClipboardRead => ({ text }),
+        (): ClipboardRead => {
+          if (focused || saidAgain) return { problem: 'unread' };
+          saidAgain = true;
+          return { problem: 'again' };
+        },
+      );
+    });
 }
 
 function ask(): Promise<boolean> | null {

@@ -128,7 +128,7 @@ const CLIPBOARD_SAYS = {
   unread: "Couldn't read the clipboard",
   again: 'Clipboard allowed: press p again',
 };
-// The leader key, Space: see keydown().
+// The leader key, Space: see press().
 const LEADER = ' ';
 const MAX_PUT = 5_000_000;
 const MAX_UNDO = 100;
@@ -177,11 +177,12 @@ const NATIVE_EDITS = new Set([
 ]);
 
 // Wires vim into a code editor. The editor lends it its textarea, the text of a <pre> above the
-// highlighted text for the block cursor, the status line, and four hooks: find(query, from,
-// options) for n, N, * and #; openSearch({ backward, from, then }) to open the find bar as vim's
-// search line, where `then` is an operator waiting for the match ("d/foo"); sync() to bring the
-// layers along after vim scrolls the textarea; and metrics() for the textarea's line height and
-// padding.
+// highlighted text for the block cursor, the status line, and its hooks (VimOptions): find(query,
+// from, options) for n, N, * and #; openSearch({ backward, from, then }) to open the find bar as
+// vim's search line, where `then` is an operator waiting for the match ("d/foo"); sync() to bring
+// the layers along after vim scrolls the textarea; metrics() for the textarea's line height and
+// padding; execute() for its edits; save() for Space s and :w; clipboard() for p; and lineTop()
+// for where a line starts while the editor wraps them.
 export function createVim({
   root,
   textarea,

@@ -77,7 +77,6 @@ export type {
   RuntimeMessage,
 } from './messages.ts';
 export { askPageCounts, countRule, countWords } from './page-counts.ts';
-export { systemClipboard } from './clipboard.ts';
 export {
   openInSidePanel,
   openInTab,

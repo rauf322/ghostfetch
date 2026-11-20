@@ -1,11 +1,11 @@
-// The system clipboard as the body editor's vim reads it for p: the shape only. The extension's
-// pages read it through shared/api's systemClipboard (with the permission it takes); the editor's
-// engine, which knows nothing of the extension, gets it from the page.
+// The system clipboard as the body editor's vim reads it for p: the shape only. The Rules page
+// reads it through its systemClipboard (pages/rules/model/clipboard.ts, with the permission it
+// takes); the editor's engine, which knows nothing of the extension, gets it from the page.
 
 // What p read: the clipboard's text, or why there's none: `declined` (the browser was told not to
-// let Ghostfetch read it, just now), `unread` (the browser didn't give it), `again` (allowed a
-// moment ago, but not given yet: Chrome reads only into a focused page, and its dialog took the
-// focus).
+// let Ghostfetch read it, just now), `unread` (the browser didn't give it: p puts the yank), `again`
+// (allowed a moment ago, but not given yet: Chrome reads only into a focused page, and its dialog
+// took the focus; p puts nothing, and the next p reads it).
 export type ClipboardRead =
   | { text: string }
   | { problem: 'declined' | 'unread' | 'again' };

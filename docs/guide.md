@@ -208,7 +208,10 @@ Motions and text objects behave like vim's own (`cw`, `dw` at the end of a line,
   the browser's dialog ("Read data you copy and paste"). Turned down, `p` puts your last yank
   and doesn't ask again; `:set clipboard=unnamedplus` asks again, and `:set clipboard=` stops
   reading the clipboard. In Firefox the permission is also under the add-on's **Permissions**
-  in `about:addons`. Chrome 121 doesn't let extensions read with it, so there `p` puts the yank.
+  in `about:addons`. Right after you allow it, Chrome may not hand the clipboard over yet (its
+  dialog has the focus): the status line says "Clipboard allowed: press p again", once. Where
+  the browser doesn't give the clipboard at all (Chrome 121 doesn't let extensions read with the
+  permission), `p` puts the yank and says "Couldn't read the clipboard".
 - Deletes and changes (`d`, `x`, `c`), and pasting over a selection, leave the register and the
   clipboard as they are: only a yank, or a copy anywhere, changes what `p` pastes. So the same
   text can go over one selection after another. Unlike vim, `ddp` doesn't swap lines: yank

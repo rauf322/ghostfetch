@@ -396,9 +396,11 @@ export function createCodeEditor({
 
   // With Wrap on, the line numbers are rows (code-editor.css), one a line, each holding its line's
   // text, unseen, as wide as the textarea's and wrapped as it wraps it: so a number stands by its
-  // line's first row, and where a line starts on screen is where its row is (lineY()). An edit
-  // makes again the rows of the lines it changed, and the rest keep theirs; the numbers count
-  // themselves (a CSS counter), so lines added or taken away don't renumber the rows after them.
+  // line's first row, and where a line starts on screen is where its row is (lineY()). The numbers
+  // count themselves (a CSS counter), and the browser counts every one of them again whenever a
+  // row goes or comes: in a body of 20,000 lines that took 170 ms, at each key while every edit
+  // made its line's row anew. So the lines an edit changed keep their rows, which take the new
+  // text, and rows come or go only for the lines it added or took away.
   function renderRows() {
     const now = textarea.value.split('\n');
     const shorter = Math.min(now.length, rowTexts.length);
@@ -411,19 +413,23 @@ export function createCodeEditor({
       oldEnd--;
     }
     rowTexts = now;
-    if (first === end && first === oldEnd) return;
-    const fresh = now.slice(first, end).map((line) => {
-      const row = document.createElement('div');
-      row.className = 'code-row';
-      row.textContent = line;
-      return row;
-    });
-    const before = rows[oldEnd] ?? null;
-    for (const row of rows.slice(first, oldEnd)) row.remove();
-    const fragment = document.createDocumentFragment();
-    fragment.append(...fresh);
-    lines.insertBefore(fragment, before);
-    rows.splice(first, oldEnd - first, ...fresh);
+    // The lines from `first` to `end` are in the place of the rows from `first` to `oldEnd`.
+    const kept = Math.min(end, oldEnd);
+    for (let line = first; line < kept; line++) rows[line]!.textContent = now[line]!;
+    if (oldEnd > end) {
+      for (const row of rows.splice(end, oldEnd - end)) row.remove();
+    } else if (end > oldEnd) {
+      const fresh = now.slice(oldEnd, end).map((line) => {
+        const row = document.createElement('div');
+        row.className = 'code-row';
+        row.textContent = line;
+        return row;
+      });
+      const fragment = document.createDocumentFragment();
+      fragment.append(...fresh);
+      lines.insertBefore(fragment, rows[oldEnd] ?? null);
+      rows.splice(oldEnd, 0, ...fresh);
+    }
   }
 
   // Where line `line` (from 0) starts down the text, in px from its first line's top: a line a row,
@@ -583,7 +589,7 @@ export function createCodeEditor({
   // a long body are on screen. With Wrap on, a new width wraps the lines anew, which changes the
   // text's height: relayout() runs a frame later, as an editor that changed height inside this
   // would have the browser report a ResizeObserver loop.
-  new ResizeObserver(() => {
+  const resized = new ResizeObserver(() => {
     measured = null;
     if (wrap) {
       setWrapWidth();
@@ -592,7 +598,16 @@ export function createCodeEditor({
     }
     fitHeight();
     paintPieces();
-  }).observe(textarea);
+  });
+  // What it watches: the box of the textarea's text, or with Wrap on the textarea's whole box,
+  // padding and all. setWrapWidth() changes the padding, in the observer's own turn too, and a
+  // change made there to the box it watches is one it has yet to report, which the browser reports
+  // as an error (a ResizeObserver loop). The whole box stays as it is whatever the padding.
+  function watchSize() {
+    resized.disconnect();
+    resized.observe(textarea, { box: wrap ? 'border-box' : 'content-box' });
+  }
+  watchSize();
 
   // Wrap on or off, as the root's data-wrap (code-editor.css) and the textarea's own wrap.
   function applyWrap() {
@@ -601,16 +616,39 @@ export function createCodeEditor({
     textarea.wrap = wrap ? 'soft' : 'off';
   }
 
-  // With Wrap on, the width the textarea wraps its lines at, its content box to a fraction of a
-  // pixel, for every layer's text and for the rows, which must wrap them at the same place.
-  // Nothing to measure while it isn't shown (Diff on): the ResizeObserver comes back to it then.
+  // With Wrap on, the width the text wraps at, for the textarea and for what has to wrap it at
+  // the same places: every layer's text, and the rows. It's the room the textarea has across (less
+  // its scrollbar and its padding), kept half a character clear of a whole number of characters;
+  // what that leaves over goes to the textarea's padding on the right (`spare`). Chromium measures
+  // each token's span on the highlight layer by itself and rounds it up, so at a width that a
+  // row's characters only just fitted as one piece of text, as the textarea has them, the tokens
+  // didn't: the row broke a word early on the layer, and from there on the cursor wasn't on the
+  // character drawn under it. (At 6.9 px a character, 3 widths in 100 were such, for a long list
+  // on one line.) Nothing to measure while the editor isn't shown (Diff on): the ResizeObserver
+  // comes back to it then.
+  let spare = 0;
   function setWrapWidth() {
     const box = textarea.getBoundingClientRect();
     if (!box.width) return;
-    const { left, right } = metrics();
-    const width = `${box.width - (textarea.offsetWidth - textarea.clientWidth) - left - right}px`;
-    for (const text of texts) text.style.width = width;
-    gutter.style.setProperty('--code-wrap-width', width);
+    const now = metrics();
+    // The padding the stylesheet gives the textarea, which a layer has too: the textarea's own
+    // may have what was added here before.
+    const padding = parseFloat(getComputedStyle(scrollers[0]!).paddingRight);
+    const room =
+      box.width - (textarea.offsetWidth - textarea.clientWidth) - now.left - padding;
+    const character = charWidth(now);
+    const width = Math.max(
+      0,
+      Math.min(room, (Math.max(1, Math.floor(room / character - 0.5)) + 0.5) * character),
+    );
+    if (room - width !== spare) {
+      spare = room - width;
+      textarea.style.paddingRight = `${padding + spare}px`;
+      // (The padding is among what's measured.)
+      measured = null;
+    }
+    for (const text of texts) text.style.width = `${width}px`;
+    gutter.style.setProperty('--code-wrap-width', `${width}px`);
   }
 
   // With Wrap on, after the rows change but not the text (the textarea's width, the text size, the
@@ -1221,9 +1259,6 @@ export function createCodeEditor({
     get vim() {
       return vim.active;
     },
-    get wrap() {
-      return wrap;
-    },
     // The Wrap switch: one setting for every body editor, remembered in this browser. What's in
     // view stays where it is (holdView()), and the line numbers start over in the other form.
     setWrap(on: boolean) {
@@ -1232,6 +1267,7 @@ export function createCodeEditor({
       wrap = on;
       rememberWrap(on);
       applyWrap();
+      watchSize();
       lines.replaceChildren();
       rows = [];
       rowTexts = [];
@@ -1241,7 +1277,12 @@ export function createCodeEditor({
       gutterProblem = -1;
       measured = null;
       if (on) setWrapWidth();
-      else for (const text of texts) text.style.width = '';
+      else {
+        // The layers' text as wide as it was, and the textarea's padding its stylesheet's again.
+        for (const text of texts) text.style.width = '';
+        textarea.style.paddingRight = '';
+        spare = 0;
+      }
       renderGutter();
       renderProblem();
       fitHeight();

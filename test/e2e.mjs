@@ -24,17 +24,21 @@ import {
   VIM_START,
   VIM_STEPS,
   WRAP_BODY,
+  WRAP_TOKENS,
   check,
   expect,
   finish,
   itemsBody,
+  narrowEditor,
   requireBuild,
   rowsAgree,
   sleep,
   startServer,
   testRules,
   vimKeys,
+  wrapBreaks,
   wrapLayout,
+  wrapRoom,
 } from './fixtures.mjs';
 
 const EXTENSION = requireBuild(CHROME_BUILD);
@@ -2295,12 +2299,25 @@ try {
     },
   );
   await check(
-    "Wrap: a long line on as many rows as it takes, the textarea, the colours and the line numbers wrapped alike at any width and text size with nothing to scroll sideways, a mistake's mark and vim's block on their characters; off, a row a line again",
+    "Wrap: a long line on as many rows as it takes, the textarea, the colours and the line numbers wrapped alike at any width and text size with nothing to scroll sideways, a mistake's mark and vim's block on their characters, an edit changing only its own line's row, and a row of many tokens that only just fits breaking where the textarea breaks it; off, a row a line again",
     async () => {
       const before = await body.inputValue();
       const wrap = app.locator('[data-testid="wrap"]');
       const measure = () => app.evaluate(wrapLayout);
+      // Three frames on: the editor lays its rows out again the frame after its width changes.
+      const drawn = () =>
+        app.evaluate(
+          () =>
+            new Promise((resolve) =>
+              requestAnimationFrame(() =>
+                requestAnimationFrame(() => requestAnimationFrame(resolve)),
+              ),
+            ),
+        );
+      const lineCount = WRAP_BODY.split('\n').length;
       const seen = [];
+      const edits = [];
+      let edge;
       try {
         await wrap.click();
         await setBody(WRAP_BODY);
@@ -2320,6 +2337,49 @@ try {
         await app.keyboard.press('ControlOrMeta+0');
         await app.setViewportSize({ width: 1280, height: 820 });
         await sleep(300);
+        // An edit that keeps the number of lines changes its line's row where it is, and a new
+        // line adds a row: no other row goes or comes. (A row put in or taken out has the browser
+        // count every row's number again, which in a body of 20,000 lines took 170 ms a key.)
+        // The rows there are, how many of them were there before, the first that wasn't, and
+        // whether the second line's row has its text.
+        const rows = () =>
+          app.evaluate(() => {
+            const all = [...document.querySelectorAll('.code-row')];
+            const second = document.querySelector('.code textarea').value.split('\n')[1];
+            return [
+              all.length,
+              all.filter((row) => row.wasThere).length,
+              all.findIndex((row) => !row.wasThere),
+              all[1].textContent === second,
+            ];
+          });
+        await app.evaluate(() => {
+          for (const row of document.querySelectorAll('.code-row')) row.wasThere = true;
+        });
+        await typeVim('ggjix<Esc>');
+        edits.push(await rows());
+        await typeVim('o<Esc>');
+        edits.push(await rows());
+        // A width a whisker past a whole number of characters: a row that just fits as plain
+        // text, as the textarea has it, doesn't once it's cut into tokens, which Chromium measures
+        // one by one and rounds up. The editor keeps the width its text wraps at half a character
+        // clear of that, so the coloured rows break where the textarea's do.
+        await setBody(WRAP_TOKENS);
+        await drawn();
+        const { room, character } = await app.evaluate(wrapRoom);
+        await app.evaluate(
+          narrowEditor,
+          room - (Math.floor(room / character) - 3) * character - 0.1,
+        );
+        await drawn();
+        edge = {
+          ...(await app.evaluate(wrapRoom)),
+          ...(await app.evaluate(wrapBreaks)),
+          rows: (await measure()).rows,
+        };
+        await app.evaluate(narrowEditor, 0);
+        await setBody(WRAP_BODY);
+        await app.waitForSelector('.code-error');
         // Off: a row a line, scrolled sideways, and the plain numbers.
         await wrap.click();
         await sleep(200);
@@ -2328,6 +2388,7 @@ try {
           numbers: (await app.textContent('.code-lines')).startsWith('1\n2\n3'),
         });
       } finally {
+        await app.evaluate(narrowEditor, 0);
         if ((await wrap.getAttribute('aria-pressed')) === 'true') await wrap.click();
         await setBody(before);
       }
@@ -2344,10 +2405,26 @@ try {
               block,
               mark,
             ]),
+          edits,
+          // The width the editor was given, past a whole number of characters; the width its text
+          // wraps at, likewise; the rows that break somewhere else in the coloured layer; and that
+          // there were rows to break, the same number in the textarea.
+          [
+            Math.round((edge.room % edge.character) * 10) / 10,
+            Math.round(((edge.wraps / edge.character) % 1) * 100) / 100,
+            edge.astray,
+            edge.breaks > 10,
+            rowsAgree(edge.rows),
+          ],
           [seen[4].wrapped, seen[4].stored, seen[4].sideways > 0, seen[4].numbers],
         ],
         [
           ...Array.from({ length: 4 }, () => [true, '1', 0, true, true, true, true]),
+          [
+            [lineCount, lineCount, -1, true],
+            [lineCount + 1, lineCount, 2, true],
+          ],
+          [0.1, 0.5, 0, true, true],
           [false, null, true, true],
         ],
       );

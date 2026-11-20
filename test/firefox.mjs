@@ -23,17 +23,21 @@ import {
   VIM_START,
   VIM_STEPS,
   WRAP_BODY,
+  WRAP_TOKENS,
   check,
   expect,
   finish,
   itemsBody,
+  narrowEditor,
   requireBuild,
   rowsAgree,
   sleep,
   startServer,
   testRules,
   vimKeys,
+  wrapBreaks,
   wrapLayout,
+  wrapRoom,
 } from './fixtures.mjs';
 
 const FIREFOX = process.env.FIREFOX || '/Applications/Zen.app/Contents/MacOS/zen';
@@ -887,31 +891,55 @@ try {
     },
   );
   await check(
-    "Wrap: Firefox's textarea, the colours and the line numbers wrap alike at two widths, with nothing to scroll sideways, and a mistake's mark and vim's block are on their characters",
+    "Wrap: Firefox's textarea, the colours and the line numbers wrap alike at two widths, with nothing to scroll sideways, a mistake's mark and vim's block are on their characters, and a row of many tokens that only just fits breaks where the plain text breaks it",
     async () => {
       // The editor's box, which its width follows.
       const width = (value) =>
         editorTab.evaluate((px) => {
           document.querySelector('div').style.width = px;
         }, value);
+      const put = (text) =>
+        editorTab.evaluate((value) => {
+          const { textarea } = window.editor;
+          textarea.value = value;
+          textarea.setSelectionRange(0, 0);
+          textarea.dispatchEvent(new Event('input'));
+        }, text);
+      await put(WRAP_BODY);
       await editorTab.evaluate((text) => {
-        const { textarea } = window.editor;
-        textarea.value = text;
-        textarea.setSelectionRange(0, 0);
-        textarea.dispatchEvent(new Event('input'));
         window.editor.setWrap(true);
         window.editor.setProblem(window.checkJson(text));
-        textarea.focus();
+        window.editor.textarea.focus();
       }, WRAP_BODY);
       await sleep(300);
       const seen = [];
+      let edge;
       try {
         await typeVim('gg3j$');
         seen.push(await editorTab.evaluate(wrapLayout));
         await width('480px');
         await sleep(300);
         seen.push(await editorTab.evaluate(wrapLayout));
+        // A width a whisker past a whole number of characters, and a body of many short tokens:
+        // the editor keeps the width its text wraps at half a character clear of that (which
+        // Chromium needs, as the Chromium test says), and the coloured rows break where the plain
+        // ones do.
+        await width('640px');
+        await put(WRAP_TOKENS);
+        await sleep(300);
+        const { room, character } = await editorTab.evaluate(wrapRoom);
+        await editorTab.evaluate(
+          narrowEditor,
+          room - (Math.floor(room / character) - 3) * character - 0.1,
+        );
+        await sleep(300);
+        edge = {
+          ...(await editorTab.evaluate(wrapRoom)),
+          ...(await editorTab.evaluate(wrapBreaks)),
+          rows: (await editorTab.evaluate(wrapLayout)).rows,
+        };
       } finally {
+        await editorTab.evaluate(narrowEditor, 0);
         await width('640px');
         await editorTab.evaluate(() => {
           window.editor.setProblem(null);
@@ -919,17 +947,27 @@ try {
         });
       }
       expect(
-        seen.map(({ wrapped, sideways, rows, starts, block, mark }) => [
-          wrapped,
-          sideways,
-          rowsAgree(rows),
-          starts,
-          block,
-          mark,
-        ]),
+        [
+          ...seen.map(({ wrapped, sideways, rows, starts, block, mark }) => [
+            wrapped,
+            sideways,
+            rowsAgree(rows),
+            starts,
+            block,
+            mark,
+          ]),
+          [
+            Math.round((edge.room % edge.character) * 10) / 10,
+            Math.round(((edge.wraps / edge.character) % 1) * 100) / 100,
+            edge.astray,
+            edge.breaks > 10,
+            rowsAgree(edge.rows),
+          ],
+        ],
         [
           [true, 0, true, true, true, true],
           [true, 0, true, true, true, true],
+          [0.1, 0.5, 0, true, true],
         ],
       );
     },

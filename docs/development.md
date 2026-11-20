@@ -266,8 +266,10 @@ it pastes back from the clipboard, and whose `p` pastes the clipboard once the b
 nothing (but for the once right after the dialog, when it says to press `p` again), and asks
 again with `:set clipboard=unnamedplus`; Wrap (the textarea, the colours and the line numbers
 wrapping alike at two widths and a bigger text size, with prose, a token, emoji, CJK and tabs,
-nothing to scroll sideways, a mistake's mark and vim's block on their characters, and off
-again); and Diff:
+nothing to scroll sideways, a mistake's mark and vim's block on their characters, an edit
+changing only its own line's row, a row of many tokens that only just fits breaking where the
+textarea breaks it, at a width made a tenth of a pixel past a whole number of characters, and
+off again); and Diff:
 Mock this response keeping the server's response
 apart from the rule and out of an exported file, side by side, inline and inline in a narrow
 panel with the counts and rows the diff makes, a key that would type saying it can't, a click on
@@ -338,7 +340,9 @@ go back to the cursor before it and after it, that Visual mode carries on throug
 `u` after a Format too long to undo undoes the changes made since (a character yanked and `x`,
 then `P`, which puts the body back as it was) and stops at the formatted body, that a yank reaches the
 clipboard, which Firefox only lets a page write during a key press or a click, and that with
-Wrap on Firefox's text area wraps as the colours and the line numbers do, at two widths.
+Wrap on Firefox's text area wraps as the colours and the line numbers do, at two widths and at
+one a tenth of a pixel past a whole number of characters, where the text wraps half a character
+clear of that.
 Both tests paste from the clipboard of the headless browser, which is its own, so running them
 leaves yours alone (with `HEADED=1` they use the real one).
 

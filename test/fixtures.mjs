@@ -618,8 +618,10 @@ export function wrapLayout() {
   const layer = root.querySelector('.code-highlight .code-text');
   const rows = [...root.querySelectorAll('.code-row')];
   const top = (element) => element.getBoundingClientRect().top;
-  // A character's box in the coloured layer, whatever tokens it's in.
+  // A character's box in the coloured layer, whatever tokens it's in (none for an offset that
+  // isn't in the text: a body without WRAP_BODY's mistake).
   const box = (offset) => {
+    if (offset < 0) return null;
     const walker = document.createTreeWalker(layer, NodeFilter.SHOW_TEXT);
     let at = 0;
     for (let node = walker.nextNode(); node; node = walker.nextNode()) {
@@ -674,6 +676,104 @@ export function wrapLayout() {
 // The rows wrapLayout() measured agree, and there are enough of them to have wrapped.
 export const rowsAgree = ([textarea, gutter, layer]) =>
   textarea === gutter && gutter === layer && textarea > 20;
+
+// A body for Wrap whose long lines are many short tokens, each coloured in a span of its own: a
+// list of numbers on one line and a list of objects on another, as a body that isn't laid out has
+// them, and lines after them so the body is taller than the editor.
+export const WRAP_TOKENS = lines(
+  '{',
+  `  "values": [${Array.from({ length: 120 }, (_, at) => at * 7).join(', ')}],`,
+  `  "users": ${JSON.stringify(
+    Array.from({ length: 6 }, (_, id) => ({
+      id,
+      name: `User ${id}`,
+      roles: ['admin', 'editor'],
+      active: id % 2 === 0,
+      tags: [1, 2, 3, 4, 5],
+    })),
+  )},`,
+  ...Array.from({ length: 40 }, (_, at) => `  "f${at}": ${at},`),
+  '  "end": 1',
+  '}',
+);
+
+// Run in the page: with Wrap on, the room the first body editor's text has across (the textarea's
+// width less its scrollbar and the padding the layers over it have), a character's width, and
+// the width the editor has the text wrap at, which it keeps half a character clear of a whole
+// number of characters (code-editor.ts, setWrapWidth()).
+export function wrapRoom() {
+  const root = document.querySelector('.code');
+  const textarea = root.querySelector('textarea');
+  const text = root.querySelector('.code-highlight .code-text');
+  const padding = getComputedStyle(text.parentElement);
+  const style = getComputedStyle(textarea);
+  const ruler = document.createElement('canvas').getContext('2d');
+  ruler.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+  return {
+    room:
+      textarea.getBoundingClientRect().width -
+      (textarea.offsetWidth - textarea.clientWidth) -
+      parseFloat(padding.paddingLeft) -
+      parseFloat(padding.paddingRight),
+    character: ruler.measureText('0'.repeat(20)).width / 20,
+    wraps: parseFloat(text.style.width),
+  };
+}
+
+// Run in the page: makes the box the first body editor is in `by` px narrower than it would be (0
+// for as wide as it would be).
+export function narrowEditor(by) {
+  const box = document.querySelector('.code').parentElement;
+  box.style.maxWidth = '';
+  if (by) box.style.maxWidth = `${box.getBoundingClientRect().width - by}px`;
+}
+
+// Run in the page: with Wrap on, where a new row starts inside a line, in the line numbers' rows
+// (plain text, a node a line, as the textarea has its text) and in the coloured layer (a span a
+// token): how many such places the plain rows have, and how many only one of the two has.
+export function wrapBreaks() {
+  const root = document.querySelector('.code');
+  const lh = parseFloat(getComputedStyle(root.querySelector('textarea')).lineHeight);
+  const range = document.createRange();
+  // Among the characters of `nodes` (text nodes, in order, the first at `base`), the offsets of
+  // those drawn lower than the one before in their line.
+  const starts = (nodes, base) => {
+    const found = [];
+    let at = base;
+    let last = null;
+    for (const node of nodes) {
+      for (let index = 0; index < node.data.length; index++, at++) {
+        if (node.data[index] === '\n') {
+          last = null;
+          continue;
+        }
+        range.setStart(node, index);
+        range.setEnd(node, index + 1);
+        const box = range.getClientRects()[0];
+        if (!box?.width) continue;
+        if (last !== null && box.top > last + lh / 2) found.push(at);
+        last = box.top;
+      }
+    }
+    return found;
+  };
+  const plain = [];
+  let offset = 0;
+  for (const row of root.querySelectorAll('.code-row')) {
+    const node = row.firstChild;
+    if (node) plain.push(...starts([node], offset));
+    offset += (node?.data.length ?? 0) + 1;
+  }
+  const walker = document.createTreeWalker(
+    root.querySelector('.code-highlight .code-text'),
+    NodeFilter.SHOW_TEXT,
+  );
+  const nodes = [];
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) nodes.push(node);
+  const coloured = new Set(starts(nodes, 0));
+  const shared = plain.filter((at) => coloured.has(at)).length;
+  return { breaks: plain.length, astray: plain.length + coloured.size - 2 * shared };
+}
 
 // ------------------------------------------------------------ harness
 

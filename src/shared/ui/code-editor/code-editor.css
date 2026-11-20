@@ -260,9 +260,11 @@
 
 /* Wrap: a long line on as many rows as it takes, breaking between words where it can and
    anywhere in a word too long for a row, as the textarea wraps it and as every layer must too:
-   the editor gives each layer's text the textarea's width (setWrapWidth()). The scrollbar's room
-   is kept, so the width doesn't change as the text grows past the editor's height (macOS draws its
-   scrollbars over the text, taking none). */
+   the editor gives each layer's text the width the textarea's text has, which it keeps half a
+   character clear of a whole number of characters by adding to the textarea's padding on the
+   right (setWrapWidth()). The scrollbar's room is kept, so the width doesn't change as the text
+   grows past the editor's height (where a scrollbar takes room: macOS may draw it over the
+   text). */
 .code[data-wrap] .code-main pre,
 .code[data-wrap] .code-main textarea {
   white-space: pre-wrap;
@@ -279,7 +281,8 @@
 /* With Wrap on, the line numbers are rows (the editor's renderRows()), one a line, each holding
    its line's text, unseen and as wide as the textarea's, so a row is as tall as its line wraps to
    and its number stands by the line's first row. The gutter stays as wide as its numbers
-   (--code-digits) whatever the rows' width, and the numbers count themselves. */
+   (--code-digits) whatever the rows' width, and the numbers count themselves: all of them again
+   whenever a row goes or comes, so an edit keeps its line's row and changes its text. */
 .code[data-wrap] .code-gutter {
   --code-gutter-width: max(34px, calc(var(--code-digits, 1) * 1ch + 19px));
   contain: inline-size;

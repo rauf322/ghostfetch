@@ -92,7 +92,8 @@ interface VimOptions {
   ) => { index: number; wrapped: boolean } | null;
   openSearch: (line: SearchLine) => void;
   sync: () => void;
-  // The textarea's line height and padding, as the editor keeps them.
+  // The textarea's line height and padding, as the editor keeps them (with Wrap on, the padding
+  // on the right has what the editor adds to it, which nothing here goes by).
   metrics: () => { lineHeight: number; top: number; left: number; right: number };
   // Runs a browser editing command (insertText, delete, undo, redo) on the body, and fires one
   // input for it, however many the browser makes of a long one.

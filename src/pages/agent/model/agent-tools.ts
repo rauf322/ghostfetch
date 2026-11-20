@@ -106,8 +106,8 @@ export function createAgentTools({ log, place }: { log: TrafficLog; place: strin
   const rules = () => ruleStore.state.rules;
   const positionOf = (id: string) => rules().findIndex((rule) => rule.id === id);
 
-  // The page the editor watches, or null with none.
-  function page() {
+  // The page the editor watches, or null with none: for the editor's own use.
+  function watched() {
     const { target, targetUrl, connected } = log.snapshot();
     const url = targetUrl || target?.url || '';
     if (!url) return null;
@@ -115,25 +115,39 @@ export function createAgentTools({ log, place }: { log: TrafficLog; place: strin
       url,
       title: target?.title ?? '',
       devHost: isBuiltInHost(siteOf(url)),
+      connected,
+    };
+  }
+
+  // The page as the agent hears of it: a dev page in full; any other only as not being one, its
+  // address and title staying in the browser, as its requests do.
+  function page() {
+    const seen = watched();
+    if (!seen) return null;
+    if (!seen.devHost) return { devHost: false };
+    return {
+      url: seen.url,
+      title: seen.title,
+      devHost: true,
       // The page's log has reached the editor, so its requests are listed as they're made. Not
-      // yet, for a moment after the editor picks a page with a long log; never, on a page
-      // Ghostfetch doesn't run on, or one that loaded before Ghostfetch did.
-      logConnected: connected,
+      // yet, for a moment after the editor picks a page with a long log; never, on a page that
+      // loaded before Ghostfetch did.
+      logConnected: seen.connected,
     };
   }
 
   // The page, if the agent may see its requests.
   function devPage() {
-    const watched = page();
-    if (!watched)
+    const seen = watched();
+    if (!seen)
       throw new Error(
         "The editor isn't watching a page: open the app in a tab of the editor's window.",
       );
-    if (!watched.devHost)
+    if (!seen.devHost)
       throw new Error(
-        `The editor is watching ${siteOf(watched.url) || watched.url}, which isn't on localhost, *.localhost, 127.0.0.1 or a local.* host, so its requests stay in the browser. Open the dev app (or pick it in Traffic's page picker).`,
+        "The editor is watching a page that isn't on localhost, *.localhost, 127.0.0.1 or a local.* host, so its requests stay in the browser. Open the dev app (or pick it in Traffic's page picker).",
       );
-    return watched;
+    return seen;
   }
 
   function ruleById(id: unknown) {
@@ -155,7 +169,7 @@ export function createAgentTools({ log, place }: { log: TrafficLog; place: strin
 
   // What the page the editor watches saw each rule do, if the agent may see it.
   function didHere() {
-    const entries = page()?.devHost ? log.snapshot().entries : [];
+    const entries = watched()?.devHost ? log.snapshot().entries : [];
     return (id: string) => countWords(countRule(entries, id));
   }
 
@@ -275,13 +289,16 @@ export function createAgentTools({ log, place }: { log: TrafficLog; place: strin
 
     try_url({ url, method, body }: Params) {
       if (typeof url !== 'string' || !url.trim()) throw new Error('Give it a URL.');
-      const watched = page();
+      // A path is taken as on the page the editor watches, if that's a dev page: any other page's
+      // address stays in the browser.
+      const seen = watched();
+      const base = seen?.devHost ? seen.url : undefined;
       let full: string;
       try {
-        full = new URL(url.trim(), watched?.url).href;
+        full = new URL(url.trim(), base).href;
       } catch {
         throw new Error(
-          `“${url}” isn't a URL${watched ? '' : ", and there's no page to take a path as on"}.`,
+          `“${url}” isn't a URL${base ? '' : ": give it in full, as the editor isn't watching a dev page to take a path as on"}.`,
         );
       }
       const request = {
@@ -311,7 +328,7 @@ export function createAgentTools({ log, place }: { log: TrafficLog; place: strin
     },
 
     recent_requests({ limit, url, action }: Params) {
-      const watched = devPage();
+      const dev = devPage();
       const count = Math.min(Math.max(Math.trunc(Number(limit)) || 30, 1), 200);
       const { record } = settingsStore.state;
       const requests = log
@@ -324,7 +341,7 @@ export function createAgentTools({ log, place }: { log: TrafficLog; place: strin
         )
         .slice(0, count);
       return {
-        page: { url: watched.url, title: watched.title },
+        page: { url: dev.url, title: dev.title },
         recording: record,
         note: record
           ? undefined

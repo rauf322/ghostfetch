@@ -22,10 +22,13 @@ see the [README](../README.md).
   pairing code a coding agent's `ghostfetch-mcp` gives, the editor connects to it on
   `127.0.0.1` and lets the agent read and change the rules, and see the requests of the page it
   watches, only if that page is on a dev host (`localhost`, `*.localhost`, `127.0.0.1`,
-  `local.*`). `ghostfetch-mcp` turns away a web page's WebSocket by its Origin, and an editor
-  without its token; the token is kept in `~/.config/ghostfetch/agent-token`, readable by you
-  alone. What the agent reads goes to it and to its model provider. Programs running as you can
-  read the token, as they can your browser profile. See [Agent access](agent-access.md).
+  `local.*`); of any other page the agent learns only that it isn't one. In Firefox, turning it
+  on takes your consent to that data (the manifest's optional data collection: browsing activity,
+  website content), checked again before each of the agent's tools. `ghostfetch-mcp` turns away a
+  web page's WebSocket by its Origin, and an editor without its token; the token is kept in
+  `~/.config/ghostfetch/agent-token`, readable by you alone. What the agent reads goes to it and
+  to its model provider. Programs running as you can read the token, as they can your browser
+  profile. See [Agent access](agent-access.md).
 - **Only runs where it should.** The built-in hosts' content scripts are declared in the
   manifest; the sites you add get theirs registered at runtime, for those sites only. Any
   other website can't see Ghostfetch, your rules or your traffic. The `local.*` pattern is

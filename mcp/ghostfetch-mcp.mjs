@@ -409,7 +409,7 @@ server.registerTool(
   {
     title: "Ghostfetch's status",
     description:
-      "Whether Ghostfetch's editor is connected, and if so: Ghostfetch on or off, recording, how many rules there are, and the page the editor watches: devHost, whether you can see its requests (only on a dev host), and logConnected, whether they're arriving yet (for a moment after the editor picks a page, they aren't). If it isn't connected, says how the user connects it, with the pairing code.",
+      "Whether Ghostfetch's editor is connected, and if so: Ghostfetch on or off, recording, how many rules there are, and the page the editor watches. A dev page (localhost, *.localhost, 127.0.0.1, local.*) comes with its URL and title, and logConnected: whether its requests are arriving yet (for a moment after the editor picks a page, they aren't). Any other page is only devHost: false, its address and requests staying in the browser. If it isn't connected, says how the user connects it, with the pairing code.",
     inputSchema: z.object({}),
     annotations: readOnly,
   },

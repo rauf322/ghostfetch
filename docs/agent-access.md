@@ -1,12 +1,12 @@
-# Agent access (prototype)
+# Agent access
 
 Lets a coding agent (OpenCode, Claude Code, any MCP client) make and change your rules, and see
 what your dev app asked for, so you don't have to write mocks by hand. You keep Ghostfetch's
 editor open, the agent works through it, and you check the result in your app, as with a rule you
 made yourself.
 
-It's a prototype on the `prototype/agent-access` branch: the extension built from this branch, and
-`ghostfetch-mcp`, the small program in `mcp/` that the agent runs.
+It takes Ghostfetch 0.24.1 or later, and `ghostfetch-mcp`, the small program in this
+repository's [`mcp/`](../mcp/) folder that the agent runs.
 
 ## How it works
 
@@ -26,22 +26,15 @@ made would, shows in the editor's list at once and answers on open pages straigh
 
 ## Set it up
 
-Once, in a checkout of the branch, with Node 24 or later:
+Once, with [Node.js](https://nodejs.org) 24 or later: get this repository and `ghostfetch-mcp`'s
+packages (three: the MCP SDK, `ws` and `zod`, pinned in `mcp/package-lock.json`).
 
 ```sh
-npm install                # the extension's own packages
-npm install --prefix mcp   # ghostfetch-mcp's
-npm run build              # .output/chrome-mv3 and .output/firefox-mv3, with Agent access
+git clone https://github.com/rauf322/ghostfetch.git
+npm install --prefix ghostfetch/mcp
 ```
 
-Load the build in place of the Ghostfetch you use
-([Build and load it](development.md#build-and-load-it)). In Chrome it's an extension of its own,
-with rules of its own: turn the other one off in `chrome://extensions` while you try this one
-(two would both answer the page), and bring your rules over with Export and Import. In Zen or
-Firefox, the temporary add-on stands in for the installed one, which has the same ID, until the
-browser restarts.
-
-Then tell your agent how to start `ghostfetch-mcp`, with the path to this checkout:
+Then tell your agent how to start `ghostfetch-mcp`, with the path to that folder:
 
 ```sh
 # OpenCode, for every project (or leave out --global for this project's opencode.json)
@@ -58,6 +51,10 @@ Pair the editor with it, once:
 2. Open Ghostfetch's editor (the side panel, Firefox's sidebar, or the editor in a tab), click
    **Agent** at the bottom of its sidebar (`>_`, after Export: its name shows where the sidebar
    has room for it), paste the code and click **Turn on**.
+3. In Firefox and Zen, Firefox then asks whether Ghostfetch may share browsing activity and
+   website content: that's what the agent gets (below), and it goes to `ghostfetch-mcp` on your
+   computer, not to Ghostfetch's developer. Allow it, or Agent access stays off. You can withdraw
+   it later in `about:addons` (Ghostfetch → Permissions and data), which turns Agent access off.
 
 The editor remembers the code, and every editor you open connects by itself while Agent access
 is on. **Turn off** in any of them turns it off in all; **Turn on** again uses the code it
@@ -79,7 +76,7 @@ in the toast, for a few seconds.
 
 | Tool | What it does |
 | --- | --- |
-| `status` | Whether an editor is connected (if not, how to connect one, with the pairing code); Ghostfetch on or paused, recording, the page the editor watches, how many rules |
+| `status` | Whether an editor is connected (if not, how to connect one, with the pairing code); Ghostfetch on or paused, recording, how many rules, and the page the editor watches if it's a dev page (any other only as not being one) |
 | `list_rules` | Every rule in the order they're tried, with what each matches and answers with, and what it did on the page |
 | `get_rule` | One rule in full, and what's wrong with it: a regex that doesn't compile, a body that isn't valid JSON, a header row the page won't get |
 | `save_rule` | Makes a rule, or changes one (only the fields given), and where it goes in the list |
@@ -98,8 +95,9 @@ as it was until the page asks again, or you reload it.
 - It reads and changes every rule, as you can in the editor. It can't turn Ghostfetch or
   recording on or off, or add or remove a site: that stays in the toolbar popup.
 - It sees requests only from a page on a dev host (`localhost`, `*.localhost`, `127.0.0.1`, a
-  `local.*` host), and only from the page the editor watches. On any other site, what Traffic
-  shows stays in the browser.
+  `local.*` host), and only from the page the editor watches. Of a page on any other site it
+  learns only that it isn't a dev page: its address, its title and what Traffic shows stay in the
+  browser.
 - What it reads goes to the agent, and from there to the agent's model provider: response bodies
   from your dev server included. Keep that in mind with real data behind your dev app.
 - A response body is text from a server, which the agent reads as input. An agent can be steered
@@ -110,6 +108,10 @@ as it was until the page asks again, or you reload it.
 - **Off until you turn it on, in the editor.** Until then the editor connects to nothing. On, it
   connects only to `127.0.0.1`: the extension pages' CSP allows a WebSocket to `127.0.0.1` and no
   other connection, which `npm run test:release` checks.
+- **With your consent, in Firefox.** The manifest declares what the agent gets as optional data
+  collection (browsing activity, website content), as Mozilla's policies have it for data that
+  leaves the browser. **Turn on** asks for it with Firefox's own prompt; without it Agent access
+  stays off, and withdrawn in `about:addons` it turns off before the agent's next tool.
 - **Paired.** On its first run `ghostfetch-mcp` makes a token, kept in
   `~/.config/ghostfetch/agent-token` (readable by you alone), and the pairing code is its port and
   that token. An editor with another code is turned away. Delete the file to make a new token, and
@@ -129,7 +131,7 @@ The editor shows the agent that asked last.
 `GHOSTFETCH_AGENT_PORT` sets another port (and so another pairing code), and
 `GHOSTFETCH_AGENT_TOKEN_FILE` another token file.
 
-## Limits of the prototype
+## Limits
 
 - The editor has to be open: Agent access lives in it, not in the background.
 - The agent sees the requests of one page, the one the editor watches.
@@ -143,8 +145,8 @@ The editor shows the agent that asked last.
   `zod`), so none of them enters the extension's packages, its lockfile or the sources zip
   (which takes only what rebuilds the extension).
 - `src/pages/agent/`: the editor's side. `model/agent-connection.ts` is the connection (pairing,
-  trying again while `ghostfetch-mcp` isn't there, one setting for every editor),
-  `model/agent-tools.ts` what each tool does, `ui/` the panel and the **Agent** button.
+  Firefox's consent, trying again while `ghostfetch-mcp` isn't there, one setting for every
+  editor), `model/agent-tools.ts` what each tool does, `ui/` the panel and the **Agent** button.
 - Between them, JSON over the WebSocket: the editor says `{ type: 'hello', token }` and gets
   `welcome` (with the agent's name) or `refused` and a close with code 4001. Then
   `ghostfetch-mcp` sends `{ type: 'call', id, method, params }` and the editor answers
@@ -153,4 +155,5 @@ The editor shows the agent that asked last.
   same way.
 - `npm run test:agent` builds, starts `ghostfetch-mcp` as an agent does, with the SDK's own
   client, pairs the editor through its panel in Chromium and drives every tool against the test
-  server's pages. `npm run test:firefox` connects Zen's editor too.
+  server's pages. `npm run test:firefox` connects Zen's editor too, its test copy given the data
+  consent at install (a prompt automation can't answer).

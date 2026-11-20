@@ -96,7 +96,7 @@ export default defineConfig({
   manifest: ({ command }) => ({
     name: 'Ghostfetch',
     description:
-      'Mock and modify API responses. Runs locally, makes no network calls of its own.',
+      'Mock and modify API responses, right in the browser. Runs locally: no account, no analytics.',
     minimum_chrome_version: '121',
     // Desktop Firefox and its forks (Zen) only. No gecko_android: addons.mozilla.org lists an
     // add-on for Firefox for Android when its manifest names it, and Android has no sidebar for
@@ -105,7 +105,14 @@ export default defineConfig({
       gecko: {
         id: '@ghostfetch',
         strict_min_version: '140.0',
-        data_collection_permissions: { required: ['none'] },
+        // Nothing unless the user turns on Agent access, which gives a coding agent on their
+        // computer (through ghostfetch-mcp) the rules and a dev page's requests: Mozilla counts
+        // that as data the extension transmits, so Firefox asks for consent to it then
+        // (pages/agent/model/agent-connection.ts).
+        data_collection_permissions: {
+          required: ['none'],
+          optional: ['browsingActivity', 'websiteContent'],
+        },
       },
     },
     // Up to 0.8, declarativeNetRequest too, for redirect, header and block rules. The browser

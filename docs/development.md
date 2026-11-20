@@ -349,8 +349,10 @@ clear of that.
 Both tests paste from the clipboard of the headless browser, which is its own, so running them
 leaves yours alone (with `HEADED=1` they use the real one). With ghostfetch-mcp's packages
 installed, the Zen test also has its background hook open the editor in a tab with Agent access
-on, and checks that it connects, that a rule the agent saves answers on the page at once, and that
-the agent sees the request.
+on, and checks that Firefox is one that asks for data consent and that it's given (the test copy
+declares it required, given at install, as a prompt can't be answered by automation), that the
+editor connects, that a rule the agent saves answers on the page at once, and that the agent
+sees the request.
 
 `test/agent.mjs` is [Agent access](agent-access.md) end to end in Chromium: it starts
 ghostfetch-mcp as an agent starts it, with the MCP SDK's own client, pairs the editor through its

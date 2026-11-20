@@ -11,8 +11,16 @@ import { Icon } from '../../../shared/ui/kit/icon.tsx';
 import { Input } from '../../../shared/ui/kit/input.tsx';
 import { SignalDot } from '../../../shared/ui/kit/signal-dot.tsx';
 import { parsePairingCode } from '../lib/pairing-code.ts';
-import { agentStore, turnOffAgent, turnOnAgent } from '../model/agent-connection.ts';
+import {
+  ASKS_CONSENT,
+  agentStore,
+  turnOffAgent,
+  turnOnAgent,
+} from '../model/agent-connection.ts';
 import type { AgentActivity, AgentStatus } from '../model/agent-connection.ts';
+
+// Setting up ghostfetch-mcp and an agent: docs/agent-access.md, on GitHub.
+const SETUP = 'https://github.com/rauf322/ghostfetch/blob/main/docs/agent-access.md';
 
 const WORDS: Record<AgentStatus, string> = {
   off: 'Off',
@@ -31,7 +39,7 @@ export function AgentPanel({
   onClose: () => void;
   onOpenRule: (id: string) => void;
 }) {
-  const { status, code, agent, activity } = useStore(agentStore);
+  const { status, code, agent, activity, declined } = useStore(agentStore);
   const asking = status === 'off' || status === 'refused';
   return (
     <section
@@ -63,7 +71,7 @@ export function AgentPanel({
           </Button>
         </div>
         {asking ? (
-          <PairingForm code={code} refused={status === 'refused'} />
+          <PairingForm code={code} refused={status === 'refused'} declined={declined} />
         ) : (
           <>
             <p
@@ -87,9 +95,17 @@ export function AgentPanel({
   );
 }
 
-// The pairing code, and Turn on. It starts from the code remembered (as ghostfetch-mcp writes it,
-// however it was pasted), each time it shows.
-function PairingForm({ code, refused }: { code: string; refused: boolean }) {
+// The pairing code, and Turn on (which, in Firefox, asks for the consent first). It starts from the
+// code remembered (as ghostfetch-mcp writes it, however it was pasted), each time it shows.
+function PairingForm({
+  code,
+  refused,
+  declined,
+}: {
+  code: string;
+  refused: boolean;
+  declined: boolean;
+}) {
   const [draft, setDraft] = useState(code);
   return (
     <form
@@ -102,7 +118,17 @@ function PairingForm({ code, refused }: { code: string; refused: boolean }) {
       <p className="m-0 text-meta leading-[1.55] text-t50">
         {refused
           ? 'ghostfetch-mcp turned that code down: ask your agent for its pairing code again.'
-          : 'A coding agent, through ghostfetch-mcp, can read and change your rules, and see the requests of the localhost page this editor watches. Paste the pairing code it gives you.'}
+          : declined
+            ? "It needs Firefox's consent, for your rules and the localhost page's requests to go to ghostfetch-mcp on this computer, and from there to your agent. Turn on asks again."
+            : `A coding agent, through ghostfetch-mcp, can read and change your rules, and see the requests of the localhost page this editor watches. Paste the pairing code it gives you.${ASKS_CONSENT ? ' Firefox then asks for your consent: what the agent gets goes to ghostfetch-mcp, on this computer.' : ''}`}{' '}
+        <a
+          href={SETUP}
+          target="_blank"
+          rel="noreferrer"
+          className="text-t65 underline decoration-t40 underline-offset-3 hover:text-foreground hover:decoration-foreground"
+        >
+          Setting it up
+        </a>
       </p>
       <Input
         size="sm"

@@ -6,8 +6,8 @@
 
 <p align="center">
   Mock and modify the API responses your web app gets, right in the browser.<br>
-  For Chrome and Firefox-based browsers such as Zen. It runs locally and makes no network
-  calls of its own.
+  For Chrome and Firefox-based browsers such as Zen. It runs locally, with no account and no
+  analytics.
 </p>
 
 <p align="center">
@@ -88,6 +88,16 @@ where Ghostfetch runs. A rule's dot turns it on or off, as in the editor's list;
 to edit it. The header turns recording on or off and pauses Ghostfetch, and a site that isn't
 built in is turned on (**Turn on for …**) or off (**Turn off here**) right there.
 
+### Let a coding agent write your mocks
+
+Turn on **Agent access** (`>_` at the bottom of the editor's sidebar) and a coding agent such as
+OpenCode or Claude Code can make and change your rules, and see what your dev app asked for,
+through `ghostfetch-mcp`, a small MCP server in [`mcp/`](mcp/) that the agent runs on your
+computer. Ask it to "make checkout fail with a 500" or "mock what the users endpoint returns, on
+the pro plan", and check the result in your app: the editor lists what the agent changed, and a
+rule it deletes comes back with **Undo**. It's off until you turn it on, and it sees requests only
+from localhost pages. [Setting it up](docs/agent-access.md).
+
 ### Pick a theme
 
 ![The editor in each of the six themes: Ghostfetch, Rosé Pine, Rosé Pine Moon, Rosé Pine Dawn, Catppuccin Macchiato and Vague.](docs/media/themes.png)
@@ -125,8 +135,13 @@ all.
 
 ## Privacy
 
-- No network requests of its own: no account and no analytics, its fonts are bundled, and cURL
-  commands and URLs are read inside the extension.
+- Apart from Agent access, below, no network requests of its own: no account and no analytics,
+  its fonts are bundled, and cURL commands and URLs are read inside the extension.
+- Agent access is off until you turn it on. On, the editor connects to `ghostfetch-mcp` on your
+  computer (`127.0.0.1` only) and gives the coding agent running it your rules and the requests
+  of the localhost page the editor watches, bodies included; the agent may send them on to its
+  model provider. Firefox asks for your consent to that (browsing activity and website content)
+  as you turn it on, and you can withdraw it in its add-on settings.
 - Rules stay in the browser's extension storage on your machine.
 - The packages are plain, unminified JavaScript built from this repository, so what you install
   can be read.

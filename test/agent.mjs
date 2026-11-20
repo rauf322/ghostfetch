@@ -424,7 +424,7 @@ try {
   );
 
   await check(
-    "the requests of a page that isn't on a dev host stay in the browser",
+    "a page that isn't on a dev host stays in the browser: its requests, what the rules did there, and its address and title",
     async () => {
       await page.goto(`${EVIL_ORIGIN}/`);
       await app.waitForFunction(() => true);
@@ -437,15 +437,21 @@ try {
       const requests = await tool('recent_requests');
       const one = await tool('get_request', { id: real });
       const listed = await tool('list_rules');
+      // A path, which would be on that page's site.
+      const tried = await tool('try_url', { url: '/api/user' });
       await page.goto(`${ORIGIN}/`);
+      const told = JSON.stringify([said, requests, one, tried]);
+      const away = "The editor is watching a page that isn't on localhost";
       expect(
         [
-          said.page?.url,
-          requests.error?.startsWith('The editor is watching evil.test'),
-          one.error?.startsWith('The editor is watching evil.test'),
+          said.page,
+          requests.error?.startsWith(away),
+          one.error?.startsWith(away),
           listed.rules?.every((rule) => rule.didHere === undefined),
+          tried.error?.startsWith("“/api/user” isn't a URL: give it in full"),
+          told.includes('evil') || told.includes(String(new URL(EVIL_ORIGIN).port)),
         ],
-        [`${EVIL_ORIGIN}/`, true, true, true],
+        [{ devHost: false }, true, true, true, true, false],
       );
     },
   );

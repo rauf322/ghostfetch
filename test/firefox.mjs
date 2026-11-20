@@ -80,6 +80,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (request.command === 'apis') {
       return { sidebarOpen: typeof chrome.sidebarAction?.open, sidePanel: typeof chrome.sidePanel };
     }
+    if (request.command === 'consent') {
+      // What Agent access goes by: whether this is a browser that asks for data consent (the
+      // editor looks for getBrowserInfo), and whether the consent to what the agent gets is given.
+      return {
+        asks: 'getBrowserInfo' in chrome.runtime,
+        given: await chrome.permissions.contains({ data_collection: ['browsingActivity', 'websiteContent'] }),
+      };
+    }
     if (request.command === 'openEditor') {
       // The editor in a tab, with Agent access turned on with this pairing code, as its panel
       // leaves it (the background page shares the editor's localStorage).
@@ -119,6 +127,11 @@ function makeTestCopy() {
     js: ['test-hook.js'],
     run_at: 'document_start',
   });
+  // Agent access's consent, which a person gives in Firefox's prompt as they click Turn on, and
+  // automation can't: required here instead of optional, it's given as the copy is installed.
+  manifest.browser_specific_settings.gecko.data_collection_permissions = {
+    required: ['browsingActivity', 'websiteContent'],
+  };
   fs.writeFileSync(path.join(copy, 'manifest.json'), JSON.stringify(manifest, null, 2));
   fs.writeFileSync(path.join(copy, 'test-hook.js'), CONTENT_HOOK);
   fs.appendFileSync(path.join(copy, 'background.js'), BACKGROUND_HOOK);
@@ -511,8 +524,9 @@ try {
     );
   else
     await check(
-      "Agent access: Firefox's editor connects to ghostfetch-mcp over its WebSocket, a rule the agent saves answers on the page, and the agent sees the request",
+      "Agent access: Firefox asks for data consent and it's given (the test copy's, at install); the editor connects to ghostfetch-mcp over its WebSocket, a rule the agent saves answers on the page, and the agent sees the request",
       async () => {
+        const consent = await send({ command: 'consent' });
         const tokenDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ghostfetch-agent-'));
         const agent = await startAgent({
           port: await freePort(),
@@ -549,6 +563,7 @@ try {
           await agent.tool('delete_rule', { id: saved.rule?.id });
           expect(
             [
+              consent,
               [status.connected, status.editor, status.page?.url, status.page?.devHost],
               [saved.created, saved.problems],
               [answered.status, answered.body],
@@ -558,6 +573,7 @@ try {
               ]),
             ],
             [
+              { asks: true, given: true },
               [true, 'a tab', `${ORIGIN}/`, true],
               [true, []],
               [200, { zen: true }],

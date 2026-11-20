@@ -114,7 +114,7 @@ for (const browser of ['chrome', 'firefox']) {
     );
     expect(
       manifest.description,
-      'Mock and modify API responses. Runs locally, makes no network calls of its own.',
+      'Mock and modify API responses, right in the browser. Runs locally: no account, no analytics.',
     );
     expect(manifest.permissions, [
       'storage',
@@ -142,12 +142,16 @@ for (const browser of ['chrome', 'firefox']) {
       });
       expect([manifest.options_page, manifest.icons], ['sidepanel.html', ICONS]);
       // Desktop Firefox only: no gecko_android, which would have addons.mozilla.org list it for
-      // Firefox for Android too, where there's no sidebar for the editor (wxt.config.ts).
+      // Firefox for Android too, where there's no sidebar for the editor (wxt.config.ts). Nothing
+      // collected but what Agent access gives the user's agent, with their consent.
       expect(manifest.browser_specific_settings, {
         gecko: {
           id: '@ghostfetch',
           strict_min_version: '140.0',
-          data_collection_permissions: { required: ['none'] },
+          data_collection_permissions: {
+            required: ['none'],
+            optional: ['browsingActivity', 'websiteContent'],
+          },
         },
       });
     },

@@ -533,6 +533,119 @@ try {
     },
   );
 
+  await check(
+    "save_rule changes what a rule applies to (its URL, host and port included, mode and method) and what it answers with (status, headers set and removed, content type, delay, the server's own body), each on the page at once",
+    async () => {
+      const host = new URL(ORIGIN).host;
+      // What the page gets: the status, the body, the headers in question, and how long it took.
+      const fetched = (method, url) =>
+        page.evaluate(
+          async ([how, where]) => {
+            const started = performance.now();
+            const response = await fetch(where, { method: how });
+            const text = await response.text();
+            const headers = {};
+            for (const name of ['content-type', 'x-real', 'x-flag'])
+              if (response.headers.has(name)) headers[name] = response.headers.get(name);
+            return {
+              status: response.status,
+              text,
+              headers,
+              ms: performance.now() - started,
+            };
+          },
+          [method, url],
+        );
+      // Whether the rule answered it.
+      const ruled = async (method, url) =>
+        (await fetched(method, url)).text.includes('"agent"');
+      const id = (
+        await tool('save_rule', {
+          name: 'Retargeted',
+          match: { url: 'localhost:5173/api/user', method: 'GET' },
+          response: { body: { from: 'agent' } },
+        })
+      ).rule?.id;
+      const seen = [];
+      // Another app's host and port, then this one's.
+      seen.push(await ruled('GET', '/api/user?case=retarget'));
+      await tool('save_rule', { id, match: { url: `${host}/api/user` } });
+      seen.push(await ruled('GET', '/api/user?case=retarget'));
+      await tool('save_rule', { id, match: { mode: 'equals', url: '/api/user?id=7' } });
+      seen.push(
+        await ruled('GET', '/api/user?id=7'),
+        await ruled('GET', '/api/user?id=8'),
+      );
+      await tool('save_rule', {
+        id,
+        match: { mode: 'regex', url: String.raw`/api/user\?id=\d+$` },
+      });
+      seen.push(
+        await ruled('GET', '/api/user?id=8'),
+        await ruled('GET', '/api/user?id=x'),
+      );
+      await tool('save_rule', {
+        id,
+        match: { mode: 'wildcard', url: '*/api/users/*/orders', method: 'POST' },
+      });
+      seen.push(
+        await ruled('POST', '/api/users/7/orders'),
+        await ruled('GET', '/api/users/7/orders'),
+      );
+      await tool('save_rule', {
+        id,
+        response: {
+          status: 201,
+          contentType: 'text/plain',
+          body: 'Order placed',
+          delay: 600,
+          headers: [{ name: 'X-Flag', value: 'beta' }],
+        },
+      });
+      const answered = await fetched('POST', '/api/users/7/orders');
+      // The server's own body, with its status changed, one of its headers removed and one added.
+      const kept = (
+        await tool('save_rule', {
+          name: 'Kept',
+          match: { url: '/api/user?case=kept', mode: 'equals' },
+          response: {
+            bodyMode: 'original',
+            status: 500,
+            headers: [
+              { op: 'remove', name: 'x-real' },
+              { name: 'X-Flag', value: 'kept' },
+            ],
+          },
+        })
+      ).rule?.id;
+      const fromServer = await fetched('GET', '/api/user?case=kept');
+      let logged;
+      for (let attempt = 0; attempt < 20; attempt++) {
+        logged = (await tool('recent_requests', { url: 'case=kept', limit: 1 }))
+          .requests?.[0];
+        if (logged) break;
+        await sleep(150);
+      }
+      // As it found them.
+      await tool('delete_rule', { id });
+      await tool('delete_rule', { id: kept });
+      expect(
+        [
+          seen,
+          [answered.status, answered.text, answered.headers, answered.ms >= 550],
+          [fromServer.status, JSON.parse(fromServer.text).name, fromServer.headers],
+          [logged?.status, logged?.rule?.did],
+        ],
+        [
+          [false, true, true, false, true, false, true, false],
+          [201, 'Order placed', { 'content-type': 'text/plain', 'x-flag': 'beta' }, true],
+          [500, 'Real', { 'content-type': 'application/json', 'x-flag': 'kept' }],
+          [500, 'modified'],
+        ],
+      );
+    },
+  );
+
   await check('no uncaught errors in the pages', async () => {
     if (errors.length) throw new Error(errors.join('\n'));
   });

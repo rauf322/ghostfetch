@@ -360,8 +360,11 @@ agent did, the page's requests and what each rule did, Mock this response, a rul
 the fields given, turned off and moved, which rule would answer a URL, what's wrong with a broken
 rule, a delete undone in the editor, no requests from a page that isn't on a dev host, the page's
 own WebSocket to ghostfetch-mcp turned away, every open editor following one turned off, the editor
-waiting while ghostfetch-mcp is gone and connecting again when it's back, and a second
-ghostfetch-mcp working through the first and taking the port when the first ends. It also checks
+waiting while ghostfetch-mcp is gone and connecting again when it's back, a second
+ghostfetch-mcp working through the first and taking the port when the first ends, and a rule the
+agent points at another app's host and port, then this one's, then matches by equals, regex,
+wildcard and method, and answers with a status, a header, a content type and a delay, or with the
+server's own body under another status, a header of the server's removed. It also checks
 that the footer's Agent button fits beside ⋯, Import and Export from the sidebar's narrowest width
 up, named only where there's room.
 

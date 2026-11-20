@@ -2,7 +2,7 @@
 // are kept as text only, none from event streams: a response's up to 1 MB, not read at all past
 // 5 MB by its Content-Length, and a request's up to 100 KB. Only that 1 MB of a response is ever
 // held here (readBody()).
-import type { EntryKind, LogEntry, Rule } from '../../shared/api/index.ts';
+import type { EntryKind, LogEntry, PageRule } from '../../shared/api/index.ts';
 import { report } from './page-channel.ts';
 import type { PageRequest, RuleResult } from './types.ts';
 
@@ -41,13 +41,16 @@ export function makeEntry(
     truncated: false,
     ruleId: null,
     ruleName: '',
+    groupName: '',
     action: '',
     error: '',
     ...extra,
   };
 }
 
-export function ruleFields(rule: Rule) {
+// The rule that answered, as the log keeps it: its id, its name as the editor shows it, and the
+// name of its group, which the bridge sends with it.
+export function ruleFields(rule: PageRule) {
   return {
     ruleId: rule.id,
     ruleName:
@@ -55,6 +58,7 @@ export function ruleFields(rule: Rule) {
       rule.match?.graphqlOperation ||
       rule.match?.url ||
       'Untitled rule',
+    groupName: typeof rule.groupName === 'string' ? rule.groupName : '',
   };
 }
 
@@ -64,7 +68,7 @@ export function ruleEntry(
   kind: EntryKind,
   request: PageRequest,
   started: number,
-  rule: Rule,
+  rule: PageRule,
   result: RuleResult,
   body = result.body ?? '',
 ) {

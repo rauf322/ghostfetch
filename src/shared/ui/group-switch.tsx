@@ -1,0 +1,38 @@
+// A group's switch, in the editor's rule list and the popup: the same green dot as a rule's,
+// pulsing while the group is on, still while it's on but Ghostfetch is off, grey while it's off.
+// Turned off, its rules stop answering, each keeping its own switch for when it's turned on again.
+// Saved at once: the popup can close at any moment.
+import type { ComponentProps } from 'react';
+import { editGroup, settingsStore } from '../api/index.ts';
+import type { Group } from '../api/index.ts';
+import { useStore } from '../react/index.ts';
+import { SignalSwitch } from './kit/signal-switch.tsx';
+
+export function GroupSwitch({
+  group,
+  ...props
+}: Omit<ComponentProps<typeof SignalSwitch>, 'checked' | 'onCheckedChange' | 'paused'> & {
+  group: Group;
+}) {
+  const { enabled } = useStore(settingsStore);
+  return (
+    <SignalSwitch
+      checked={group.enabled}
+      paused={!enabled}
+      aria-label={`Turn the group “${group.name}” on or off`}
+      title={
+        !group.enabled
+          ? `Off: its rules don't answer. Click to turn ${group.name} on`
+          : enabled
+            ? `On. Click to turn ${group.name} off, and its rules with it`
+            : `On, but Ghostfetch is off. Click to turn ${group.name} off`
+      }
+      onCheckedChange={(on) =>
+        editGroup(group.id, (current) => {
+          current.enabled = on;
+        })
+      }
+      {...props}
+    />
+  );
+}

@@ -1,8 +1,9 @@
 // New rule, after ChatGPT's first screen: "What should Ghostfetch answer?", one input for a URL or
-// a cURL command with the pickers under it, the starters, and the page's latest requests to mock.
-// Everything is read here, with nothing sent anywhere. Enter makes the rule and opens it, with the
-// cursor in its body. Beside the list it's also what shows with no rule open; in a narrow panel it
-// takes the list's place, with a button back to it.
+// a cURL command with the pickers under it (the group the rule goes into among them, once there's
+// a group), the starters, and the page's latest requests to mock. Everything is read here, with
+// nothing sent anywhere. Enter makes the rule and opens it, with the cursor in its body. Beside the
+// list it's also what shows with no rule open; in a narrow panel it takes the list's place, with a
+// button back to it.
 import { useEffect, useRef, useState } from 'react';
 import type { LogEntry, Method, Rule, TrafficLog } from '../../../../shared/api/index.ts';
 import { PaneScroll } from '../../../../shared/ui/list-detail.tsx';
@@ -22,6 +23,8 @@ import { Starters } from './starters.tsx';
 export function NewRule({
   log,
   focus,
+  group,
+  onGroupChange,
   onCreate,
   onMock,
   onCancel,
@@ -30,6 +33,9 @@ export function NewRule({
   log: TrafficLog;
   // Put the cursor in the input: New rule was clicked.
   focus: boolean;
+  // The group the rule goes into ('' for none), its Mocks' too.
+  group: string;
+  onGroupChange: (group: string) => void;
   onCreate: (rule: Rule) => void;
   onMock: (rule: Rule, entry: LogEntry) => void;
   onCancel: () => void;
@@ -100,8 +106,10 @@ export function NewRule({
             field={field}
             text={text}
             draft={draft}
+            group={group}
             onTextChange={changeText}
             onDraftChange={change}
+            onGroupChange={onGroupChange}
             onSubmit={submit}
           />
           <Starters chosen={draft.starter} onChoose={choose} />

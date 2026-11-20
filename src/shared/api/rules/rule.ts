@@ -9,6 +9,7 @@ export function createRule(): Rule {
     id: crypto.randomUUID(),
     name: '',
     enabled: true,
+    group: '',
     match: { url: '', mode: 'contains', method: 'ANY', graphqlOperation: '' },
     response: {
       bodyMode: 'replace',
@@ -55,8 +56,16 @@ function bodyMode(mode: unknown): BodyMode {
   return mode === 'merge' || mode === 'script' ? 'original' : 'replace';
 }
 
+// An id as Ghostfetch makes them (a UUID), or one an older version or a rules file has: a rule's
+// or a group's.
+export function isId(value: unknown): value is string {
+  return typeof value === 'string' && /^[\w-]{1,64}$/.test(value);
+}
+
 // Rebuilds a rule field by field from known keys and types, so stored, older or imported
 // rules (which may come from an untrusted file) can't carry unexpected values into the UI.
+// Its group is kept as it says, if it's an id: a group that isn't there leaves it ungrouped
+// (store.ts), and an import gives its groups new ids (rules-file.tsx).
 export function normalizeRule(input: unknown, { newId = false } = {}): Rule {
   const raw = input as Untrusted;
   const base = createRule();
@@ -64,12 +73,10 @@ export function normalizeRule(input: unknown, { newId = false } = {}): Rule {
   const response: Untrusted = isObject(raw?.response) ? raw.response : {};
   const status = String(response.status ?? '');
   return {
-    id:
-      !newId && typeof raw?.id === 'string' && /^[\w-]{1,64}$/.test(raw.id)
-        ? raw.id
-        : base.id,
+    id: !newId && isId(raw?.id) ? raw!.id : base.id,
     name: text(raw?.name),
     enabled: raw?.enabled !== false,
+    group: isId(raw?.group) ? raw!.group : '',
     match: {
       url: text(match.url),
       mode: isKey(MATCH_MODES, match.mode) ? match.mode : 'contains',

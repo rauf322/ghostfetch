@@ -13,6 +13,7 @@ import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
 import {
+  createRule,
   headerProblem,
   isSiteEnabled,
   normalizeSites,
@@ -4999,6 +5000,541 @@ try {
         [watching.includes('control'), listed, kept.includes(title)],
         [true, 1, true],
         `followed to: ${watching}; picked by hand, then: ${kept}`,
+      );
+    },
+  );
+
+  console.log('groups');
+  const storedGroups = async () =>
+    (await worker.evaluate(() => chrome.storage.local.get({ groups: [] }))).groups;
+  // A rule for these checks, named "From …", answering /api/user?case=grouped with { from }.
+  const grouped = (id, from, group = '', patch = {}) => ({
+    ...createRule(),
+    id,
+    name: `From ${from}`,
+    group,
+    match: {
+      url: '/api/user?case=grouped',
+      mode: 'contains',
+      method: 'ANY',
+      graphqlOperation: '',
+    },
+    response: { ...createRule().response, body: JSON.stringify({ from }) },
+    ...patch,
+  });
+  const PR1 = (patch = {}) => ({
+    id: 'g-1',
+    name: 'PR-1',
+    enabled: true,
+    at: 1,
+    ...patch,
+  });
+  // The editor's list as it draws it: each group's header and each rule's name, in order.
+  const listed = () =>
+    app.evaluate(() =>
+      [
+        ...document.querySelectorAll(
+          '[data-testid="rule-list"] [data-testid="rule"], [data-testid="rule-list"] [data-testid="group"]',
+        ),
+      ].map((row) =>
+        row.dataset.testid === 'group'
+          ? `group ${row.dataset.group}`
+          : row.querySelector('[data-slot="item-title"]').textContent,
+      ),
+    );
+  // Sets rules and groups for a check and puts the suite's own back after it.
+  const withGroups = async (rules, groups, run) => {
+    const original = await storedRules();
+    await setStorage({ rules, groups });
+    await sleep(400);
+    try {
+      await run();
+    } finally {
+      await setStorage({ rules: original, groups: [] });
+      await sleep(400);
+    }
+  };
+
+  await check(
+    "a group's rules answer only while it's on, in the order: of two groups whose rules match a request the higher one's answers, and an ungrouped rule under them once both are off; a group's switch applies at once, the page follows the order the editor shows, and the badge counts only the rules that answer",
+    async () => {
+      const groups = (one, two, flip = false) => [
+        { id: 'g-a', name: 'PR-1', enabled: one, at: flip ? 1 : 0 },
+        { id: 'g-b', name: 'PR-2', enabled: two, at: flip ? 0 : 1 },
+      ];
+      const seen = [];
+      const look = async (stored) => {
+        await setStorage(stored);
+        await sleep(400);
+        seen.push([
+          (await call('/api/user?case=grouped')).body?.from,
+          await worker.evaluate(() => chrome.action.getBadgeText({})),
+        ]);
+      };
+      await withGroups(
+        [grouped('ga', 'A', 'g-a'), grouped('gb', 'B', 'g-b'), grouped('gu', 'loose')],
+        groups(true, true),
+        async () => {
+          await look({ groups: groups(true, true) });
+          await look({ groups: groups(false, true) });
+          await look({ groups: groups(false, false) });
+          // PR-2 above PR-1, as the editor lists them, though the rules are kept as they were.
+          await look({ groups: groups(true, true, true) });
+        },
+      );
+      expect(seen, [
+        ['A', '3'],
+        ['B', '2'],
+        ['loose', '1'],
+        ['B', '3'],
+      ]);
+    },
+  );
+
+  await check(
+    "the sidebar draws a group as a block: its header, its dot where an ungrouped rule's is, its name and how many of its rules are on, then its rules set in; turned off, it and its rules fade, their dots green but still and the open rule's chip saying so; its name folds it, kept when the editor opens again; a search shows a group with the rules of it that match, or all of them when its name matches",
+    async () => {
+      await withGroups(
+        [
+          grouped('u1', 'one'),
+          grouped('a1', 'A1', 'g-1'),
+          grouped('a2', 'A2', 'g-1', { enabled: false }),
+          grouped('u2', 'two'),
+        ],
+        [PR1()],
+        async () => {
+          await show('rules');
+          const header = app.locator('[data-testid="group"][data-group="PR-1"]');
+          await header.waitFor({ timeout: 3000 });
+          const order = await listed();
+          const dots = await app.evaluate(() => {
+            const left = (row) =>
+              row.querySelector('[role="switch"]').getBoundingClientRect().left;
+            const rule = (name) =>
+              [...document.querySelectorAll('[data-testid="rule"]')].find((row) =>
+                row.textContent.includes(name),
+              );
+            return [
+              left(document.querySelector('[data-testid="group"]')),
+              left(rule('From one')),
+              left(rule('From A1')),
+            ];
+          });
+          const count = await header.locator('[data-testid="group-count"]').textContent();
+          const a1 = app.locator('[data-testid="rule"]', { hasText: 'From A1' });
+          await a1.click();
+          await header.locator('[role="switch"]').click();
+          await sleep(300);
+          const dot = a1.locator('[role="switch"]');
+          const off = [
+            (await storedGroups())[0].enabled,
+            await header.evaluate((row) => row.hasAttribute('data-off')),
+            await a1.evaluate((row) => row.hasAttribute('data-off')),
+            await dot.getAttribute('aria-checked'),
+            await dot.evaluate((element) =>
+              element.firstElementChild
+                .getAnimations()
+                .some((animation) => animation.animationName === 'signal-pulse'),
+            ),
+            await app.locator('[data-testid="rule-state"]').textContent(),
+            (await app.locator('[data-testid="rules-head-path"]').textContent())
+              .replace(/\s+/g, ' ')
+              .trim(),
+          ];
+          await header.locator('[role="switch"]').click();
+          await sleep(300);
+          await header.locator('[data-testid="group-name"]').click();
+          const folded = await listed();
+          await app.reload();
+          await app.waitForSelector('[data-testid="group"]');
+          const reopened = await listed();
+          await app.click(
+            '[data-testid="group"][data-group="PR-1"] [data-testid="group-name"]',
+          );
+          const search = app.locator('[aria-label="Search rules"]');
+          await search.fill('A1');
+          const found = await listed();
+          await search.fill('pr-1');
+          const byName = await listed();
+          await search.fill('');
+          expect(
+            [
+              order,
+              Math.abs(dots[0] - dots[1]) < 1,
+              Math.round(dots[2] - dots[1]),
+              count,
+              off,
+              folded,
+              reopened,
+              found,
+              byName,
+            ],
+            [
+              ['From one', 'group PR-1', 'From A1', 'From A2', 'From two'],
+              true,
+              14,
+              '1 of 2 on',
+              [
+                false,
+                true,
+                true,
+                'true',
+                false,
+                'Paused while PR-1 is off',
+                'Rules / PR-1 / From A1',
+              ],
+              ['From one', 'group PR-1', 'From two'],
+              ['From one', 'group PR-1', 'From two'],
+              ['group PR-1', 'From A1'],
+              ['group PR-1', 'From A1', 'From A2'],
+            ],
+          );
+        },
+      );
+    },
+  );
+
+  await check(
+    "New group makes one at the top, its name ready to type; Move to group puts a rule at the group's top; the group's + makes a rule at its top, and New rule then offers that group to the next rule; a name another group has, in any case, is turned down",
+    async () => {
+      await withGroups([grouped('u1', 'one'), grouped('u2', 'two')], [], async () => {
+        await show('rules');
+        await app.waitForSelector('[data-testid="rule"]');
+        await app.click('[data-testid="new-group"]');
+        const field = app.locator('[data-testid="group-name-input"]');
+        await field.waitFor({ timeout: 3000 });
+        const ready = await field.evaluate(
+          (input) =>
+            input === document.activeElement &&
+            input.selectionStart === 0 &&
+            input.selectionEnd === input.value.length &&
+            input.value,
+        );
+        await field.fill('PR-7');
+        await field.press('Enter');
+        await sleep(300);
+        const [made] = await storedGroups();
+        await app.locator('[data-testid="rule"]', { hasText: 'From two' }).click();
+        await app.click('[data-testid="rule-menu"]');
+        await app.click('[data-testid="move-to-group"]');
+        await app.click('[data-testid="move-to"][data-group="PR-7"]');
+        await sleep(300);
+        const moved = (await storedRules()).map((rule) => [
+          rule.id,
+          rule.group === made.id,
+        ]);
+        await app.click(
+          '[data-testid="group"][data-group="PR-7"] [data-testid="group-new-rule"]',
+        );
+        await app.waitForFunction(
+          () => document.activeElement?.dataset.testid === 'composer-input',
+          null,
+          { timeout: 3000 },
+        );
+        const offered = await app.locator('[data-testid="picker-group"]').textContent();
+        await app.keyboard.type('/api/user?case=in-group');
+        await app.keyboard.press('Enter');
+        await sleep(400);
+        const [first] = await storedRules();
+        await app.click('[data-testid="new-rule"]');
+        const next = await app.locator('[data-testid="picker-group"]').textContent();
+        await app.click('[data-testid="new-group"]');
+        await field.waitFor({ timeout: 3000 });
+        await field.fill('pr-7');
+        await field.press('Enter');
+        const refused = await app
+          .locator('[data-slot="toast"]', { hasText: 'already a group called' })
+          .waitFor({ timeout: 3000 })
+          .then(
+            () => true,
+            () => false,
+          );
+        await field.press('Escape');
+        await sleep(300);
+        expect(
+          [
+            ready,
+            [made.name, made.at, made.enabled],
+            moved,
+            offered,
+            [first.match.url, first.group === made.id],
+            next,
+            refused,
+            (await storedGroups()).map((group) => group.name),
+          ],
+          [
+            'New group',
+            ['PR-7', 0, true],
+            [
+              ['u2', true],
+              ['u1', false],
+            ],
+            'PR-7',
+            ['/api/user?case=in-group', true],
+            'PR-7',
+            true,
+            ['New group', 'PR-7'],
+          ],
+        );
+      });
+    },
+  );
+
+  await check(
+    "a group's Duplicate copies it with its rules and their switches, on, at the top, named … copy and ready to rename; Delete takes it with its rules, and Undo brings them back where they were; Ungroup leaves its rules where it was",
+    async () => {
+      await withGroups(
+        [
+          grouped('u1', 'one'),
+          grouped('a1', 'A1', 'g-1'),
+          grouped('a2', 'A2', 'g-1', { enabled: false }),
+        ],
+        [PR1()],
+        async () => {
+          await show('rules');
+          const menu = async (name, item) => {
+            await app.click(
+              `[data-testid="group"][data-group="${name}"] [data-testid="group-menu"]`,
+            );
+            await app.click(`[data-testid="${item}"]`);
+            await sleep(300);
+          };
+          await app
+            .locator('[data-testid="group"][data-group="PR-1"]')
+            .waitFor({ timeout: 3000 });
+          await menu('PR-1', 'duplicate-group');
+          const renaming = await app
+            .locator('[data-testid="group-name-input"]')
+            .inputValue();
+          await app.keyboard.press('Escape');
+          const copy = (await storedGroups()).find((group) => group.name === 'PR-1 copy');
+          const copies = (await storedRules())
+            .filter((rule) => rule.group === copy.id)
+            .map((rule) => [rule.name, rule.enabled, !['a1', 'a2'].includes(rule.id)]);
+          await menu('PR-1 copy', 'delete-group');
+          const gone = [(await storedGroups()).length, (await storedRules()).length];
+          await app.click(
+            '[data-slot="toast"]:has-text("Deleted “PR-1 copy” and its 2 rules") button:has-text("Undo")',
+          );
+          await sleep(300);
+          const back = [
+            (await storedGroups()).map((group) => [group.name, group.at]),
+            (await storedRules()).length,
+          ];
+          await menu('PR-1', 'ungroup');
+          const left = [
+            (await storedGroups()).map((group) => group.name),
+            (await storedRules()).slice(2).map((rule) => [rule.id, rule.group]),
+          ];
+          expect(
+            [renaming, [copy.at, copy.enabled], copies, gone, back, left],
+            [
+              'PR-1 copy',
+              [0, true],
+              [
+                ['From A1', true, true],
+                ['From A2', false, true],
+              ],
+              [1, 3],
+              [
+                [
+                  ['PR-1 copy', 0],
+                  ['PR-1', 2],
+                ],
+                5,
+              ],
+              [
+                ['PR-1 copy'],
+                [
+                  ['u1', ''],
+                  ['a1', ''],
+                  ['a2', ''],
+                ],
+              ],
+            ],
+          );
+        },
+      );
+    },
+  );
+
+  await check(
+    "dragging: a rule onto a group's header, below its middle, goes to the top of the group; onto an ungrouped rule, out of it; a group's header onto an ungrouped rule moves the group with its rules",
+    async () => {
+      await withGroups(
+        [grouped('u1', 'one'), grouped('a1', 'A1', 'g-1'), grouped('u2', 'two')],
+        [PR1()],
+        async () => {
+          await show('rules');
+          const header = app.locator('[data-testid="group"][data-group="PR-1"]');
+          await header.waitFor({ timeout: 3000 });
+          const row = (name) => app.locator('[data-testid="rule"]', { hasText: name });
+          const shape = async () =>
+            (await storedRules()).map((rule) => [rule.id, rule.group ? 'PR-1' : '']);
+          await row('From two').dragTo(header, { targetPosition: { x: 60, y: 30 } });
+          await sleep(300);
+          const into = await shape();
+          await row('From A1').dragTo(row('From one'), {
+            targetPosition: { x: 60, y: 5 },
+          });
+          await sleep(300);
+          const out = await shape();
+          await header.dragTo(row('From A1'), { targetPosition: { x: 60, y: 5 } });
+          await sleep(300);
+          expect(
+            [into, out, await shape(), (await storedGroups())[0].at],
+            [
+              [
+                ['u1', ''],
+                ['u2', 'PR-1'],
+                ['a1', 'PR-1'],
+              ],
+              [
+                ['a1', ''],
+                ['u1', ''],
+                ['u2', 'PR-1'],
+              ],
+              [
+                ['u2', 'PR-1'],
+                ['a1', ''],
+                ['u1', ''],
+              ],
+              0,
+            ],
+          );
+        },
+      );
+    },
+  );
+
+  await check(
+    "the popup's All rules lists a group in its place with its dot, which turns it off and on, saved at once, and its rules set in under it; its name folds it, as the editor's list then does; This page names a rule's group",
+    async () => {
+      // The group on top, so its rule is the one that answers on the page.
+      await withGroups(
+        [grouped('a1', 'A1', 'g-1'), grouped('u1', 'one')],
+        [PR1({ at: 0 })],
+        async () => {
+          await popup.reload();
+          const group = popup.locator('[data-testid="popup-group"][data-group="PR-1"]');
+          await group.waitFor({ timeout: 3000 });
+          const rows = () =>
+            popup.evaluate(() =>
+              [
+                ...document.querySelectorAll(
+                  '[data-testid="popup-rule"], [data-testid="popup-group"]',
+                ),
+              ].map((row) =>
+                row.dataset.testid === 'popup-group'
+                  ? `group ${row.dataset.group}`
+                  : row.querySelector('button').textContent,
+              ),
+            );
+          const shown = await rows();
+          await group.locator('[role="switch"]').click();
+          await sleep(200);
+          const off = (await storedGroups())[0].enabled;
+          await group.locator('[role="switch"]').click();
+          await sleep(200);
+          const on = (await storedGroups())[0].enabled;
+          await group.locator('[data-testid="popup-group-name"]').click();
+          const folded = await rows();
+          await show('rules');
+          await app
+            .locator('[data-testid="rule"]', { hasText: 'From A1' })
+            .waitFor({ state: 'detached', timeout: 3000 });
+          await group.locator('[data-testid="popup-group-name"]').click();
+          await app
+            .locator('[data-testid="rule"]', { hasText: 'From A1' })
+            .waitFor({ timeout: 3000 });
+          // This page, beside the page, where PR-1's rule just answered.
+          await call('/api/user?case=grouped');
+          await sleep(300);
+          await page.bringToFront();
+          const opened = context.waitForEvent('page', {
+            predicate: (candidate) => candidate.url().includes('popup.html'),
+          });
+          await worker.evaluate(() =>
+            chrome.tabs.create({ url: 'popup.html', active: false }),
+          );
+          const here = await opened;
+          let named;
+          try {
+            await here.waitForSelector('[data-testid="rule-group"]', { timeout: 5000 });
+            named = await here
+              .locator('[data-testid="rule-group"]')
+              .first()
+              .textContent();
+          } finally {
+            await here.close();
+            await popup.bringToFront();
+          }
+          expect(
+            [shown, off, on, folded, named],
+            [
+              ['group PR-1', 'From A1', 'From one'],
+              false,
+              true,
+              ['group PR-1', 'From one'],
+              'PR-1',
+            ],
+          );
+        },
+      );
+    },
+  );
+
+  await check(
+    "Export group saves the group and its rules; imported, the group comes in at the top, turned off, its rules' switches as they were, a name that's taken given a number",
+    async () => {
+      await withGroups(
+        [
+          grouped('u1', 'one'),
+          grouped('a1', 'A1', 'g-1'),
+          grouped('a2', 'A2', 'g-1', { enabled: false }),
+        ],
+        [PR1()],
+        async () => {
+          await show('rules');
+          await app.click(
+            '[data-testid="group"][data-group="PR-1"] [data-testid="group-menu"]',
+          );
+          const [download] = await Promise.all([
+            app.waitForEvent('download'),
+            app.click('text=Export group'),
+          ]);
+          const file = JSON.parse(fs.readFileSync(await download.path(), 'utf8'));
+          await app.setInputFiles('[data-testid="import-file"]', {
+            name: 'pr-1.json',
+            mimeType: 'application/json',
+            buffer: Buffer.from(JSON.stringify(file)),
+          });
+          await sleep(500);
+          const groups = await storedGroups();
+          const imported = groups.find((group) => group.name === 'PR-1 (2)');
+          expect(
+            [
+              [file.ghostfetch, file.groups.map((group) => group.name)],
+              file.rules.map((rule) => rule.name),
+              groups.map((group) => [group.name, group.at, group.enabled]),
+              (await storedRules())
+                .filter((rule) => rule.group === imported?.id)
+                .map((rule) => [rule.name, rule.enabled]),
+            ],
+            [
+              [2, ['PR-1']],
+              ['From A1', 'From A2'],
+              [
+                ['PR-1 (2)', 0, false],
+                ['PR-1', 2, true],
+              ],
+              [
+                ['From A1', true],
+                ['From A2', false],
+              ],
+            ],
+          );
+        },
       );
     },
   );

@@ -1,8 +1,8 @@
 // One request in the list: its method (green when a rule answered it), its path, then what the rule
-// did and which rule ("Mocked by Feature flags"), or why it failed and the rule it was under
-// ("Aborted · Feature flags"), or else where the request went and what made it; on the right its
-// status over how long it took. Entries come from the page, so everything in them is shown as
-// text, never as HTML.
+// did and which rule, with its group if it was in one ("Mocked by Feature flags · PR-1"), or why it
+// failed and the rule it was under ("Aborted · Feature flags"), or else where the request went and
+// what made it; on the right its status over how long it took. Entries come from the page, so
+// everything in them is shown as text, never as HTML.
 import { memo } from 'react';
 import type { LogEntry } from '../../../shared/api/index.ts';
 import { formatDuration, splitUrl } from '../../../shared/lib/index.ts';
@@ -23,6 +23,7 @@ export const RequestRow = memo(function RequestRow({
 }) {
   const { host, path } = splitUrl(entry.url);
   const answered = entry.action === 'mocked' || entry.action === 'modified';
+  const rule = [entry.ruleName, entry.groupName].filter(Boolean).join(' · ');
   return (
     <Item
       variant="request"
@@ -43,11 +44,9 @@ export const RequestRow = memo(function RequestRow({
         <span className="flex min-w-0 items-center gap-1 overflow-hidden text-label whitespace-nowrap text-t40">
           {entry.action ? (
             <>
-              <ActionBadge entry={entry} title={entry.error || entry.ruleName} />
+              <ActionBadge entry={entry} title={entry.error || rule} />
               {answered && <span className="flex-none text-signal">by</span>}
-              <span className="truncate pl-0.5 text-t65">
-                {entry.error || entry.ruleName}
-              </span>
+              <span className="truncate pl-0.5 text-t65">{entry.error || rule}</span>
             </>
           ) : (
             <span className="truncate">

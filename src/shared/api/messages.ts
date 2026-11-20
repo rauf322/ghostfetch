@@ -4,12 +4,16 @@
 import type { LogEntry } from './log-entry.ts';
 import type { Rule } from './rules/types.ts';
 
-// The bridge to the interceptor, over their private MessageChannel: the rules that are on.
+// A rule as the page gets it: with the name of its group, if it's in one, which the traffic log
+// keeps beside the rule's own.
+export type PageRule = Rule & { groupName?: string };
+
+// The bridge to the interceptor, over their private MessageChannel: the rules that answer.
 export interface PageState {
   type: 'state';
   enabled: boolean;
   record: boolean;
-  rules: Rule[];
+  rules: PageRule[];
 }
 
 // The interceptor to the bridge: a request it saw. The page can forge these, so the bridge

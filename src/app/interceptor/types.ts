@@ -1,6 +1,6 @@
 // What the interceptor's parts pass each other: a request as the rules see it, what a matched rule
 // gives the page, the rules as the bridge sent them, and what it keeps on an XMLHttpRequest.
-import type { EntryAction, Rule } from '../../shared/api/index.ts';
+import type { EntryAction, PageRule } from '../../shared/api/index.ts';
 
 // A request as the rules see it.
 export interface PageRequest {
@@ -29,7 +29,7 @@ export interface RuleResult {
 
 // A response rule, with its URL pattern made into a test.
 export interface Compiled {
-  rule: Rule;
+  rule: PageRule;
   test: (url: string) => boolean;
 }
 

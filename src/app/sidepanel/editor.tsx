@@ -4,7 +4,9 @@
 // is open: Traffic lists it, a rule says how often it fired there, and New rule offers what the
 // page just asked for. Between the views it opens rules: one picked in the sidebar, one picked in
 // Traffic, one made by New rule or from a captured response, the first of an import, and one the
-// popup asks for. While Agent access is on, it does what a coding agent's tools ask (pages/agent).
+// popup asks for. A rule it makes goes into the group New rule and Mock this response offer, at its
+// top: the one the last rule made went into, or the group whose + was clicked. While Agent access
+// is on, it does what a coding agent's tools ask (pages/agent).
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAgentAccess } from '../../pages/agent/index.ts';
 import { RulesPage } from '../../pages/rules/index.ts';
@@ -29,6 +31,7 @@ import { Alert } from '../../shared/ui/kit/alert.tsx';
 import { Tabs, TabsContent } from '../../shared/ui/kit/tabs.tsx';
 import { notify } from '../../shared/ui/kit/toast.tsx';
 import { Split } from '../../shared/ui/list-detail.tsx';
+import { lastRuleGroup, rememberRuleGroup } from '../../shared/ui/new-rule-group.ts';
 import { ImportRulesInput, exportRules } from '../../shared/ui/rules-file.tsx';
 import { SidebarHandle } from '../../shared/ui/sidebar.tsx';
 import { Sidebar } from './sidebar.tsx';
@@ -53,6 +56,9 @@ export function Editor({ inTab, windowId }: { inTab: boolean; windowId: number }
   // A rule New rule just made, whose body gets the cursor, once: the body says when it has it.
   const [created, setCreated] = useState<string | null>(null);
   const [query, setQuery] = useState('');
+  // The group a rule made here goes into ('' for none), as New rule's and Mock this response's
+  // pickers show it.
+  const [ruleGroup, setRuleGroup] = useState(lastRuleGroup);
   // The side panel follows the active tab; the editor in a tab keeps the tab it picked.
   const log = useTrafficLog(!inTab);
   useAgentAccess({ log, inTab });
@@ -78,11 +84,21 @@ export function Editor({ inTab, windowId }: { inTab: boolean; windowId: number }
     [showView, select],
   );
 
+  // A rule made here, at the top of the group the pickers show, or of the list: that group is the
+  // one the next rule goes into to start with, too.
+  const place = useCallback(
+    (rule: Rule) => {
+      rememberRuleGroup(ruleGroup);
+      return addRule(rule, { group: ruleGroup, index: 0 });
+    },
+    [ruleGroup],
+  );
+
   // A rule made from a request (Mock this response, New rule's Mock) keeps the server's response
   // it was made from, for its body's Diff: if the server gave it, not a rule.
   const mockRule = useCallback(
     (draft: Rule, entry: LogEntry) => {
-      const rule = addRule(normalizeRule(draft), 0);
+      const rule = place(normalizeRule(draft));
       if (fromServer(entry)) keepServerResponse(rule.id, responseFromEntry(entry));
       openRule(rule.id);
       notify('Rule created', {
@@ -90,30 +106,35 @@ export function Editor({ inTab, windowId }: { inTab: boolean; windowId: number }
         description: 'Edit the body: it applies right away.',
       });
     },
-    [openRule],
+    [openRule, place],
   );
 
   const openTraffic = useCallback(() => showView('traffic'), [showView]);
 
-  // New rule: the composer takes the open rule's place, with the cursor in it.
-  const compose = useCallback(() => {
-    setQuery('');
-    select(null);
-    setComposing(true);
-    showView('rules');
-  }, [select, showView]);
+  // New rule: the composer takes the open rule's place, with the cursor in it, the group its
+  // picker shows the one whose + was clicked, or else the one the last rule made went into.
+  const compose = useCallback(
+    (group?: string) => {
+      setQuery('');
+      setRuleGroup(group ?? lastRuleGroup());
+      select(null);
+      setComposing(true);
+      showView('rules');
+    },
+    [select, showView],
+  );
 
-  // A new rule goes first in the list, open with the cursor in its body: in the editor, not Diff,
-  // which a body is typed in out of.
+  // A new rule goes first in its group or the list, open with the cursor in its body: in the
+  // editor, not Diff, which a body is typed in out of.
   const create = useCallback(
     (rule: Rule) => {
       setQuery('');
       if (diffPreferred()) rememberDiff(false);
-      const added = addRule(rule, 0);
+      const added = place(rule);
       select(added.id);
       setCreated(added.id);
     },
-    [select],
+    [select, place],
   );
 
   const forgetCreated = useCallback(() => setCreated(null), []);
@@ -200,6 +221,8 @@ export function Editor({ inTab, windowId }: { inTab: boolean; windowId: number }
               selectedId={selectedRule}
               composing={composingNow}
               created={created}
+              ruleGroup={ruleGroup}
+              onRuleGroupChange={setRuleGroup}
               onSelect={select}
               onCreate={create}
               onBodyFocused={forgetCreated}
@@ -214,14 +237,22 @@ export function Editor({ inTab, windowId }: { inTab: boolean; windowId: number }
             data-testid="view-traffic"
             className="flex min-h-0 flex-1 flex-col"
           >
-            <TrafficPage log={log} onMock={mockRule} onOpenRule={openRule} />
+            <TrafficPage
+              log={log}
+              ruleGroup={ruleGroup}
+              onRuleGroupChange={setRuleGroup}
+              onMock={mockRule}
+              onOpenRule={openRule}
+            />
           </TabsContent>
         </main>
       </Split>
 
       <ImportRulesInput
         ref={importInput}
-        onImported={(rules) => openRule(rules[0]!.id)}
+        onImported={(rules) => {
+          if (rules[0]) openRule(rules[0].id);
+        }}
       />
     </Tabs>
   );

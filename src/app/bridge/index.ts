@@ -1,17 +1,18 @@
 // Isolated-world half of the content script. Reads rules from extension storage and hands
-// the ones that are on to the interceptor (the page-world half) over a private MessageChannel,
-// whose port is offered exactly once, before any page script runs. The top frame also keeps
-// the tab's traffic log, so the editor can show requests made before it was opened, and counts
-// it for the popup.
+// the ones that answer (on, and in no group or a group that's on) to the interceptor (the
+// page-world half) over a private MessageChannel, whose port is offered exactly once, before any
+// page script runs. The top frame also keeps the tab's traffic log, so the editor can show
+// requests made before it was opened, and counts it for the popup.
 // Built as bridge.js: WXT's wrapper runs this function at once and adds no globals of its own.
 import { defineUnlistedScript } from 'wxt/utils/define-unlisted-script';
-import { isResponseRule } from '../../shared/api/index.ts';
+import { isResponseRule, layOut, normalizeGroups } from '../../shared/api/index.ts';
 import type {
   LogEntry,
   LogPortMessage,
   LogViewerMessage,
   PageCounts,
   PageState,
+  Rule,
   RuleCount,
   RuntimeMessage,
 } from '../../shared/api/index.ts';
@@ -59,17 +60,36 @@ export default defineUnlistedScript(() => {
         enabled: true,
         record: true,
         rules: [],
-      })) as { enabled: boolean; record: boolean; rules: unknown };
+        groups: [],
+      })) as { enabled: boolean; record: boolean; rules: unknown; groups: unknown };
       recording = stored.record;
+      // The groups as the editor has them, and the rules in the order it shows (store.ts):
+      // each group's rules together, in the group's place.
+      const groups = normalizeGroups(stored.groups);
+      const names = new Map(groups.map((group) => [group.id, group.name]));
+      const off = new Set(
+        groups.filter((group) => !group.enabled).map((group) => group.id),
+      );
+      const kept = Array.isArray(stored.rules)
+        ? (stored.rules.filter(
+            (rule) => rule && typeof rule === 'object' && isResponseRule(rule),
+          ) as Rule[])
+        : [];
+      const ordered = layOut(kept, groups).flatMap((entry) =>
+        entry.kind === 'rule' ? [entry.rule] : entry.rules,
+      );
       port.postMessage({
         type: 'state',
         enabled: stored.enabled,
         record: stored.record,
-        // As they're stored, which can still include a redirect, header or block rule from
-        // before 0.9.0 until the rules are next saved.
-        rules: Array.isArray(stored.rules)
-          ? stored.rules.filter((rule) => isResponseRule(rule) && rule?.enabled)
-          : [],
+        // As they're stored but for their order, which can still include a redirect, header or
+        // block rule from before 0.9.0 until the rules are next saved: the ones on, in no group
+        // or a group that's on, each in a group with the group's name, for the traffic log.
+        rules: ordered
+          .filter((rule) => rule.enabled && !off.has(rule.group))
+          .map((rule) =>
+            names.has(rule.group) ? { ...rule, groupName: names.get(rule.group) } : rule,
+          ),
       } satisfies PageState);
     } catch {
       // The extension was reloaded or removed; this copy of the script is orphaned.
@@ -104,6 +124,7 @@ export default defineUnlistedScript(() => {
       truncated: raw.truncated === true,
       ruleId: text(raw.ruleId, 64) || null,
       ruleName: text(raw.ruleName, 300),
+      groupName: text(raw.groupName, 300),
       action: ACTIONS.has(raw.action) ? raw.action : '',
       error: text(raw.error, 1000),
     };
@@ -142,7 +163,10 @@ export default defineUnlistedScript(() => {
   }
 
   chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'local' && (changes.rules || changes.enabled || changes.record))
+    if (
+      area === 'local' &&
+      (changes.rules || changes.groups || changes.enabled || changes.record)
+    )
       sendState();
   });
 

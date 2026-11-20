@@ -5,7 +5,14 @@
 // reload setting), the popup's count of what each rule did on a page, the messages between the
 // background, the page scripts and the screens, and opening the editor. No React and no npm package: the background and the page
 // scripts import from here too, and keep only what they use.
-export type { BodyMode, HeaderRow, MatchMode, Method, Rule } from './rules/types.ts';
+export type {
+  BodyMode,
+  Group,
+  HeaderRow,
+  MatchMode,
+  Method,
+  Rule,
+} from './rules/types.ts';
 export { BODY_MODES, MATCH_MODES, MAX_DELAY, METHODS } from './rules/catalog.ts';
 export {
   createRule,
@@ -14,6 +21,17 @@ export {
   normalizeRules,
   ruleTitle,
 } from './rules/rule.ts';
+export {
+  NEW_GROUP,
+  createGroup,
+  freeName,
+  groupName,
+  nameTaken,
+  normalizeGroups,
+  offGroups,
+} from './rules/group.ts';
+export type { StoredGroup } from './rules/group.ts';
+export { duplicateGroup } from './rules/duplicate-group.ts';
 export { graphqlOperation, ruleFromEntry } from './rules/rule-from-entry.ts';
 export { headerProblem } from './rules/header-check.ts';
 export { urlTester } from './rules/url-match.ts';
@@ -30,19 +48,37 @@ export {
 } from './rules/server-responses.ts';
 export type { ServerResponse } from './rules/server-responses.ts';
 export {
+  addEntries,
+  addGroup,
   addRule,
   addRules,
+  editGroup,
   editRule,
+  findGroup,
+  findGroupNamed,
   findRule,
+  groupOf,
+  groupPosition,
+  inOffGroup,
   initRules,
+  layOut,
+  moveGroup,
+  moveGroupTo,
   moveRule,
+  moveRuleTo,
+  placeAt,
+  placeOf,
+  removeGroup,
   removeRule,
+  restoreGroup,
   ruleRevision,
   ruleStore,
   saveRulesNow,
+  storedGroups,
   touchRule,
+  ungroup,
 } from './rules/store.ts';
-export type { RuleChange } from './rules/store.ts';
+export type { Entry, GroupEntry, Place, RuleChange, RuleEntry } from './rules/store.ts';
 export {
   isBuiltInHost,
   isSiteEnabled,
@@ -72,6 +108,7 @@ export type {
   LogViewerMessage,
   PageCounts,
   PageLog,
+  PageRule,
   PageState,
   RuleCount,
   RuntimeMessage,

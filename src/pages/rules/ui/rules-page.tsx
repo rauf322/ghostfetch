@@ -19,6 +19,9 @@ interface RulesPageProps {
   composing: boolean;
   // A rule New rule just made, whose body gets the cursor, once: the body says when it has it.
   created: string | null;
+  // The group a rule New rule makes goes into ('' for none), and its picker's change.
+  ruleGroup: string;
+  onRuleGroupChange: (group: string) => void;
   onSelect: (id: string | null) => void;
   // New rule made a rule.
   onCreate: (rule: Rule) => void;
@@ -35,6 +38,8 @@ export function RulesPage({
   selectedId,
   composing,
   created,
+  ruleGroup,
+  onRuleGroupChange,
   onSelect,
   onCreate,
   onBodyFocused,
@@ -77,6 +82,8 @@ export function RulesPage({
           <NewRule
             log={log}
             focus={composing}
+            group={ruleGroup}
+            onGroupChange={onRuleGroupChange}
             onCreate={onCreate}
             onMock={onMock}
             onCancel={onCancel}

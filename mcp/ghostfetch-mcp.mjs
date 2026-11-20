@@ -22,7 +22,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/server/stdio';
 import { WebSocket, WebSocketServer } from 'ws';
 import * as z from 'zod/v4';
 
-const VERSION = '0.1.0';
+const VERSION = '0.2.0';
 const PORT = Number(process.env.GHOSTFETCH_AGENT_PORT) || 47318;
 const TOKEN_FILE =
   process.env.GHOSTFETCH_AGENT_TOKEN_FILE ||
@@ -307,6 +307,8 @@ const server = new McpServer(
     instructions: [
       'Ghostfetch is a browser extension that mocks and changes the responses a web page gets from fetch() and XMLHttpRequest, by rules, on the pages it runs on: localhost, *.localhost, 127.0.0.1, local.* hosts and sites the user added.',
       'These tools read and change its rules through its editor, which the user keeps open, and show what the page the editor watches asked for (only for localhost, *.localhost, 127.0.0.1 and local.* pages).',
+      'Rules are tried in one order, top to bottom: the first that matches a request and is answering (on, in no group or a group that is on) answers it. A group is a named block of rules in that order, one level deep, with a switch of its own: turned off, none of its rules answer, each keeping its own switch. Group names are unique.',
+      "Users keep a group per branch or PR they work on. Put the rules you make in the group for the work at hand (group on save_rule and mock_request): one of the user's that fits (list_rules has them), or, if none does, ask the user or make one named after the branch.",
       'Start with status. A rule applies at once: reload the page for requests it already made. To mock what the app really gets, find the request with recent_requests and use mock_request, then change the rule with save_rule.',
     ].join(' '),
   },
@@ -409,7 +411,7 @@ server.registerTool(
   {
     title: "Ghostfetch's status",
     description:
-      "Whether Ghostfetch's editor is connected, and if so: Ghostfetch on or off, recording, how many rules there are, and the page the editor watches. A dev page (localhost, *.localhost, 127.0.0.1, local.*) comes with its URL and title, and logConnected: whether its requests are arriving yet (for a moment after the editor picks a page, they aren't). Any other page is only devHost: false, its address and requests staying in the browser. If it isn't connected, says how the user connects it, with the pairing code.",
+      "Whether Ghostfetch's editor is connected, and if so: Ghostfetch on or off, recording, how many rules there are (on, and answering: on, in a group that's on), how many groups (and on), and the page the editor watches. A dev page (localhost, *.localhost, 127.0.0.1, local.*) comes with its URL and title, and logConnected: whether its requests are arriving yet (for a moment after the editor picks a page, they aren't). Any other page is only devHost: false, its address and requests staying in the browser. If it isn't connected, says how the user connects it, with the pairing code.",
     inputSchema: z.object({}),
     annotations: readOnly,
   },
@@ -430,12 +432,12 @@ server.registerTool(
 tool('list_rules', {
   title: 'List rules',
   description:
-    "Every rule, in the order they're tried: the first enabled rule that matches a request answers it. Each with its id, name, whether it's on, what it matches, what it answers with, and what it did on the page the editor watches.",
+    "Every rule, in the order they're tried: the first that matches a request and is answering (on, in no group or a group that's on) answers it. Each with its position in that order, id, name, group, whether it's on and whether it's answering, what it matches, what it answers with, and what it did on the page the editor watches. And every group: id, name, whether it's on, its position among the list's top-level entries (groups and ungrouped rules, 0 the top), and how many rules it has and has on.",
   input: {
     query: z
       .string()
       .optional()
-      .describe('Only rules whose name or URL pattern contains this.'),
+      .describe("Only rules whose name, URL pattern or group's name contains this."),
   },
 });
 
@@ -446,20 +448,33 @@ tool('get_rule', {
   input: { id: z.string() },
 });
 
+// A rule's group, for the tools that put one in a group.
+const group = z
+  .string()
+  .optional()
+  .describe(
+    "The group to put the rule in, by its name (or id). A name no group has makes a new group, at the top of the list, on. '' takes the rule out of its group.",
+  );
+
 tool('save_rule', {
   title: 'Create or change a rule',
   description:
-    'Creates a rule, or with an id changes that rule: only the fields given change. A new rule goes first in the list (it wins over the others) unless position says otherwise. Returns once the change has reached the open pages, so the next request a page makes gets it; what a page loaded before stays as it was until the page asks again or reloads. Returns the rule and anything wrong with it.',
+    "Creates a rule, or with an id changes that rule: only the fields given change. A new rule goes first in its group, or in the list if it's in none (so it wins over the others there), unless position says otherwise. Returns once the change has reached the open pages, so the next request a page makes gets it; what a page loaded before stays as it was until the page asks again or reloads. Returns the rule, its group, and anything wrong with it (off, its group off).",
   input: {
     id: z.string().optional().describe('The rule to change. Leave it out to create one.'),
     name: z.string().optional(),
-    enabled: z.boolean().optional().describe('Whether the rule is on.'),
+    enabled: z.boolean().optional().describe('Whether the rule is on (its own switch).'),
+    group: group.describe(
+      "The group to put the rule in, by its name (or id). A name no group has makes a new group, at the top of the list, on. '' takes the rule out of its group. Left out: a change keeps the rule where it is, a new rule goes in no group.",
+    ),
     position: z
       .number()
       .int()
       .min(0)
       .optional()
-      .describe('Where it goes in the list, from 0, the first, which is tried first.'),
+      .describe(
+        "Where it's tried in the whole order, from 0, the first: in a group, as near to that as the group's block allows.",
+      ),
     match: match.optional(),
     response: response.optional(),
   },
@@ -474,10 +489,52 @@ tool('delete_rule', {
   annotations: { ...writes, destructiveHint: true },
 });
 
+tool('save_group', {
+  title: 'Create or change a group',
+  description:
+    "Creates a group, or changes one (by id, or by name when no id is given): renames it, turns it on or off (off, none of its rules answer, each keeping its own switch), or moves it with its rules. A new group goes at the top of the list, on, unless position or enabled say otherwise; with copyOf it starts as a copy of that group's rules. Returns once the change has reached the open pages.",
+  input: {
+    id: z.string().optional().describe('The group to change.'),
+    name: z
+      .string()
+      .optional()
+      .describe(
+        "The group's name: with an id, its new name; without, the group to change, or the one to create if no group has it. Names are unique, ignoring case.",
+      ),
+    enabled: z.boolean().optional().describe('Whether the group is on.'),
+    position: z
+      .number()
+      .int()
+      .min(0)
+      .optional()
+      .describe(
+        "Where it goes among the list's top-level entries (groups and ungrouped rules), from 0, the top: a group higher up wins where its rules and another's match the same request.",
+      ),
+    copyOf: z
+      .string()
+      .optional()
+      .describe(
+        'Only for a new group: the group (by name or id) whose rules it starts with, copied with their switches.',
+      ),
+  },
+  annotations: writes,
+});
+
+tool('delete_group', {
+  title: 'Delete a group',
+  description:
+    'Deletes a group and its rules. Returns them as they were; the user can also undo it in the editor for a few seconds. To keep the rules, take them out of the group first (save_rule with group "").',
+  input: {
+    id: z.string().optional(),
+    name: z.string().optional().describe('The group, by name, when no id is given.'),
+  },
+  annotations: { ...writes, destructiveHint: true },
+});
+
 tool('try_url', {
   title: 'Which rule answers a request',
   description:
-    'Which rule would answer a request, as the page decides: the first enabled rule that matches it. Also lists the other rules that match (off, or further down). A URL starting with / is taken as on the page the editor watches.',
+    "Which rule would answer a request, as the page decides: the first that matches it and is on, in no group or a group that's on. Also lists the other rules that match (off, in a group that's off, or further down), each with its group. A URL starting with / is taken as on the page the editor watches.",
   input: {
     url: z.string(),
     method: z.enum(METHODS.slice(1)).optional().describe('GET unless given.'),
@@ -524,10 +581,11 @@ tool('get_request', {
 tool('mock_request', {
   title: 'Mock a request',
   description:
-    "Makes a rule from a request in recent_requests, as Traffic's Mock this response does: it matches the request's method and path (for GraphQL, its operation) and answers with its status and body. The rule goes first in the list; change it with save_rule.",
+    "Makes a rule from a request in recent_requests, as Traffic's Mock this response does: it matches the request's method and path (for GraphQL, its operation) and answers with its status and body. The rule goes first in its group, or in the list if it's in none; change it with save_rule.",
   input: {
     id: z.string(),
     name: z.string().optional(),
+    group,
   },
   annotations: writes,
 });

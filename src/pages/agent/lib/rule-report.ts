@@ -1,12 +1,22 @@
 // What the agent's tools say about a rule: a line for list_rules, and what's wrong with it (as the
 // rule editor would point it out), so an agent can put right what it saved.
 import { BODY_MODES, headerProblem, ruleTitle } from '../../../shared/api/index.ts';
-import type { Rule } from '../../../shared/api/index.ts';
+import type { Group, Rule } from '../../../shared/api/index.ts';
 import { checkJson } from '../../../shared/lib/index.ts';
 
-// A rule in list_rules: where it is in the list, what it matches, what it answers with, in short,
-// and what it did on the page the editor watches ("2 mocked"), when that's a dev page.
-export function ruleSummary(rule: Rule, position: number, did: string) {
+// A rule in list_rules: where it's tried in the order, its group, whether it's on and whether it
+// answers (it's on, its group is too, and Ghostfetch isn't paused), what it matches, what it
+// answers with, in short, and what it did on the page the editor watches ("2 mocked"), when that's
+// a dev page.
+export function ruleSummary(
+  rule: Rule,
+  {
+    position,
+    group,
+    answering,
+    did,
+  }: { position: number; group: Group | undefined; answering: boolean; did: string },
+) {
   const { match, response } = rule;
   const replace = response.bodyMode === 'replace';
   return {
@@ -14,7 +24,9 @@ export function ruleSummary(rule: Rule, position: number, did: string) {
     id: rule.id,
     name: rule.name,
     title: ruleTitle(rule),
+    group: group?.name,
     enabled: rule.enabled,
+    answering,
     match: {
       method: match.method,
       mode: match.mode,

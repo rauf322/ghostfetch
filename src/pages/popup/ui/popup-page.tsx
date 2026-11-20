@@ -31,7 +31,7 @@ export function PopupPage({
   activeTab: chrome.tabs.Tab | undefined;
 }) {
   const { enabled, record } = useStore(settingsStore);
-  const { rules } = useStore(ruleStore);
+  const { rules, entries } = useStore(ruleStore);
   const { sites } = useStore(siteStore);
   const host = siteOf(activeTab?.url);
   const runsHere = isSiteEnabled(sites, activeTab?.url);
@@ -73,14 +73,16 @@ export function PopupPage({
           runsHere={runsHere}
           enabled={enabled}
           rules={rules}
+          entries={entries}
           counts={counts}
           windowId={windowId}
         />
       )}
       {view === 'rules' &&
-        (rules.length ? (
+        (entries.length ? (
           <RuleList
             rules={rules}
+            entries={entries}
             counts={counts?.record ? counts.rules : undefined}
             split={false}
             enabled={enabled}

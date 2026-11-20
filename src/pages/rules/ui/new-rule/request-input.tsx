@@ -1,10 +1,12 @@
 // New rule's input, after ChatGPT's: a field for a URL or a cURL command, which grows with what you
-// paste, and under it the pickers (method, how the URL is compared, status, delay) and the button
-// that makes the rule. Enter makes it too; Shift+Enter starts a new line.
+// paste, and under it the pickers (method, how the URL is compared, status, delay, and the group
+// the rule goes into, once there's a group) and the button that makes the rule. Enter makes it
+// too; Shift+Enter starts a new line.
 import type { RefObject } from 'react';
 import { MATCH_MODES, METHODS } from '../../../../shared/api/index.ts';
 import type { MatchMode, Method } from '../../../../shared/api/index.ts';
 import { formatDuration, statusLabel } from '../../../../shared/lib/index.ts';
+import { GroupPicker } from '../../../../shared/ui/group-picker.tsx';
 import { Button } from '../../../../shared/ui/kit/button.tsx';
 import { Icon } from '../../../../shared/ui/kit/icon.tsx';
 import { SERVER_RESPONSE, chooseStatus, statusChoice } from '../../lib/rule-draft.ts';
@@ -37,16 +39,20 @@ export function RequestInput({
   field,
   text,
   draft,
+  group,
   onTextChange,
   onDraftChange,
+  onGroupChange,
   onSubmit,
 }: {
   field: RefObject<HTMLTextAreaElement | null>;
   text: string;
   draft: Draft;
+  group: string;
   onTextChange: (text: string) => void;
   // A picker's change; the status and the delay are the answer's, so they unpick the starter.
   onDraftChange: (change: Partial<Draft>) => void;
+  onGroupChange: (group: string) => void;
   onSubmit: () => void;
 }) {
   return (
@@ -112,6 +118,7 @@ export function RequestInput({
             items={DELAY_ITEMS}
             onChange={(delay) => onDraftChange({ delay: Number(delay) })}
           />
+          <GroupPicker value={group} onChange={onGroupChange} />
         </div>
         <Button
           variant="primary"

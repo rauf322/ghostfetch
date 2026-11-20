@@ -1,8 +1,11 @@
-// What to do with an open request: Mock this response, the one big button, and a row of quieter
-// ones: copy the URL, the request as a cURL command, and the response's body.
-import { ruleFromEntry } from '../../../../shared/api/index.ts';
+// What to do with an open request: Mock this response, the one big button, with the group the rule
+// goes into under it once there's a group, and a row of quieter ones: copy the URL, the request as
+// a cURL command, and the response's body.
+import { ruleFromEntry, ruleStore } from '../../../../shared/api/index.ts';
 import type { LogEntry, Rule } from '../../../../shared/api/index.ts';
 import { curlCommand } from '../../../../shared/lib/index.ts';
+import { useStore } from '../../../../shared/react/index.ts';
+import { GroupPicker } from '../../../../shared/ui/group-picker.tsx';
 import { Button } from '../../../../shared/ui/kit/button.tsx';
 import { Icon } from '../../../../shared/ui/kit/icon.tsx';
 import type { IconName } from '../../../../shared/ui/kit/icon.tsx';
@@ -11,13 +14,18 @@ import { notify } from '../../../../shared/ui/kit/toast.tsx';
 export function RequestActions({
   entry,
   pretty,
+  ruleGroup,
+  onRuleGroupChange,
   onMock,
 }: {
   entry: LogEntry;
   // The response body pretty-printed, or null when it isn't JSON.
   pretty: string | null;
+  ruleGroup: string;
+  onRuleGroupChange: (group: string) => void;
   onMock: (draft: Rule, entry: LogEntry) => void;
 }) {
+  const { groups } = useStore(ruleStore);
   async function copy(text: string, what: string) {
     try {
       await navigator.clipboard.writeText(text);
@@ -51,6 +59,12 @@ export function RequestActions({
         <Icon name="wand" />
         Mock this response
       </Button>
+      {groups.length > 0 && (
+        <div className="flex min-w-0 items-center gap-2 text-meta text-t50">
+          Into
+          <GroupPicker value={ruleGroup} onChange={onRuleGroupChange} />
+        </div>
+      )}
       {/* Each as wide as its words, sharing what's left: the three fit a side panel side by
           side, where equal thirds would cut "Copy as cURL" short. */}
       <div className="flex flex-wrap gap-1.5">

@@ -1,5 +1,6 @@
 // What's known about an open request, a row each in one card: its URL, when it was sent, its
-// Content-Type, and the rule that acted on it (with a link to open it) or that none did.
+// Content-Type, and the rule that acted on it, with its group if it was in one (and a link to open
+// it), or that none did.
 import type { ReactNode } from 'react';
 import type { LogEntry } from '../../../../shared/api/index.ts';
 import { cn } from '../../../../shared/ui/cn.ts';
@@ -29,7 +30,9 @@ export function RequestFacts({
         {entry.ruleId ? (
           <>
             <ActionBadge entry={entry} />
-            <span className="min-w-0 truncate">{entry.ruleName}</span>
+            <span className="min-w-0 truncate">
+              {[entry.ruleName, entry.groupName].filter(Boolean).join(' · ')}
+            </span>
             <Button
               variant="link"
               size="inline"

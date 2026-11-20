@@ -27,6 +27,8 @@ export interface LogEntry {
   truncated: boolean;
   ruleId: string | null;
   ruleName: string;
+  // The group the rule was in then, by its name, or '' for none.
+  groupName: string;
   action: EntryAction;
   error: string;
 }

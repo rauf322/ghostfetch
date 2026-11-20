@@ -93,7 +93,7 @@ src/pages/                       what the screens show
   kit/                           the kit page: every kit component in its states
 src/shared/                      what more than one part of the extension uses
   api/                           what's kept in chrome.storage and what the parts send each other (index.ts)
-    rules/                       a rule: its fields and their names, making one, URL matching, and the screens' copy of the rules; apart from them, the server's responses their bodies' Diff compares with
+    rules/                       a rule: its fields and their names, making one, URL matching, and the screens' copy of the rules and their groups (store.ts: the order, kept as the rules, each naming its group, and the groups, each with its place); groups (group.ts), and a copy of one; apart from them, the server's responses their bodies' Diff compares with
     sites/                       the sites Ghostfetch runs on, the screens' copy of the ones you added, turning one on or off
     settings.ts                  Ghostfetch on or off, and recording, which only the popup changes
     log-entry.ts                 a request in a tab's traffic log
@@ -112,8 +112,10 @@ src/shared/                      what more than one part of the extension uses
     list-detail.tsx              the editor's layout: the sidebar, as wide as its edge was dragged, and what's open beside it, in a row (a flexbox: Firefox lays a grid's items out again from scratch)
     sidebar.tsx                  the sidebar's width and whether it's hidden, the edge that resizes it (and what keeps its width meanwhile), and the button (and ⌘B) that hides it
     theme.ts                     the themes, and the one in use; theme-menu.tsx, the ⋯ menus' Theme row
-    rules-file.tsx               rules files: export every rule or one, import one (its rules arrive turned off)
-    rule-switch.tsx              a rule's switch, the green dot (the kit's SignalSwitch), in the editor's rule list and the popup
+    rules-file.tsx               rules files: export every rule, a group or one rule, import one (its rules and groups arrive turned off)
+    rule-switch.tsx              a rule's switch, the green dot (the kit's SignalSwitch), in the editor's rule list and the popup; group-switch.tsx, a group's
+    group-folds.ts               which groups are folded, in the editor's list and the popup alike
+    group-picker.tsx             the group a new rule goes into, where New rule and Mock this response make one; new-rule-group.ts, the one it starts on
     cn.ts                        cn(), which joins the kit's class names
 wxt.config.ts                    the manifest (permissions, content scripts, CSP, Firefox ID) and the build settings
 components.json                  settings for shadcn's CLI, for adding a kit component
@@ -136,7 +138,9 @@ test/kit.mjs                     the UI kit under the real CSP, in Chromium and 
 test/release.mjs                 checks the built manifests, files and zips before an upload
 test/fixtures.mjs                test server, hostile pages and rules shared by the tests
 README.md                        what Ghostfetch does, installing it, and building it from source (it goes in the sources zip)
+GLOSSARY.md                      the words Ghostfetch uses for its own things (rule, group, order, on, answering, paused), and the ones it doesn't
 docs/                            guide.md, using it in full; security-model.md; agent-access.md; this file
+  adr/                           decisions worth knowing the reasons for, one file each (0001: the order decides which rule answers)
   media/                         the README's screenshots and recordings, and the Thorn Glass at 512 px
 .output/                         what the build makes: chrome-mv3/, firefox-mv3/ (*-kit/: the kit test's builds)
 web-ext-artifacts/               what npm run zip makes: the packages for each browser, the .xpi and the sources zip
@@ -228,7 +232,12 @@ compile, and no pattern with or without a GraphQL operation), and that the rule 
 says the same for every case: both use one function, `urlTester`. And that the requests the
 editor keeps a rule's server's response from, for its Diff (`entryTester`), are the ones the page
 would answer with the rule, for every case crossed with methods and the ways a request names a
-GraphQL operation. It needs no browser either, and `npm test` runs it after `test/diff.mjs`.
+GraphQL operation. Then the order: of two rules that match, the first answers; the order the
+editor and the page rebuild from what's stored (`layOut`), each group in its place with its rules
+in theirs, the ungrouped rules filling the rest, a rule whose group isn't there ungrouped; stored
+groups rebuilt (`normalizeGroups`: an id and a name no other has, on unless they say they're off);
+and the names a new group, a copy and an import get. It needs no browser either, and `npm test`
+runs it after `test/diff.mjs`.
 
 `test/curl.mjs` checks cURL commands both ways. Traffic's Copy as cURL: the command for a request,
 and that whatever the page put in it (quotes, `$(…)`, backticks, `;`, in the URL, the body or the
@@ -307,7 +316,16 @@ at once, a long name cut short after it, This page keeping a rule where it is wh
 turns it off, so the same spot turns it back on, a rule picked in it opening in the editor,
 the sites you added with Remove, and
 what each rule did on a page, which the page counts by rule and by what the rule did, telling
-the popup nothing of the requests themselves), plus the properties of the
+the popup nothing of the requests themselves), groups (a group's rules answering only while it's
+on, the higher of two groups' rules answering, the page following the order the editor shows,
+the badge counting only the rules that answer; the sidebar's block, its rules set in and
+faded with their dots still while it's off, the open rule's chip and path saying so, a fold
+kept, a search finding a group by its rules or its name; New group with its name ready to type
+and a name that's taken turned down, Move to group, a group's + and New rule's picker on its
+group after; Duplicate, Delete and its Undo, Ungroup; a rule dragged into a group and out of
+one, and a group dragged; the popup's All rules with a group's dot and fold, This page naming a
+rule's group; and Export group with its import, off and at the top, renamed where its name is
+taken), plus the properties of the
 [security model](security-model.md) (channel theft, forged offers, patched built-ins, built-ins
 that try to reach the interceptor through `.caller`, HTML injection, hostile rule files, sites
 that aren't turned on getting nothing, `local.*` hosts and a lookalike URL, turning a site on
@@ -366,7 +384,10 @@ waiting while ghostfetch-mcp is gone and connecting again when it's back, a seco
 ghostfetch-mcp working through the first and taking the port when the first ends, and a rule the
 agent points at another app's host and port, then this one's, then matches by equals, regex,
 wildcard and method, and answers with a status, a header, a content type and a delay, or with the
-server's own body under another status, a header of the server's removed. It also checks
+server's own body under another status, a header of the server's removed. And groups: a rule
+saved into a group no group has yet, which that makes, named in list_rules, recent_requests and
+Traffic; the group turned off, which the page, try_url and the rule's report then pass by; a
+copy made where it's told, a rename, and delete_group, undone in the editor. It also checks
 that the footer's Agent button fits beside ⋯, Import and Export from the sidebar's narrowest width
 up, named only where there's room.
 

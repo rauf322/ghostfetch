@@ -21,6 +21,7 @@ export default defineBackground(() => {
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'local') return;
     if (changes.sites) scheduleSync();
-    else if (changes.rules || changes.enabled) scheduleSync({ scripts: false });
+    else if (changes.rules || changes.groups || changes.enabled)
+      scheduleSync({ scripts: false });
   });
 });

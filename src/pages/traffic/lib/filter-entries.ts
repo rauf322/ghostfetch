@@ -1,6 +1,6 @@
 // The requests the list shows, newest first: All, Matched (a rule matched them) or Errors (a
 // status of 400 or more, a request that failed, or a rule's error); with a search, only those
-// whose method, URL, status or rule name has its text in it, ignoring case.
+// whose method, URL, status, rule name or rule's group has its text in it, ignoring case.
 import type { LogEntry } from '../../../shared/api/index.ts';
 
 export type TrafficFilter = 'all' | 'matched' | 'errors';
@@ -23,7 +23,7 @@ export function filterEntries(
       (entry) =>
         FILTERS[filter](entry) &&
         (!query ||
-          `${entry.method} ${entry.url} ${entry.status ?? ''} ${entry.ruleName}`
+          `${entry.method} ${entry.url} ${entry.status ?? ''} ${entry.ruleName} ${entry.groupName}`
             .toLowerCase()
             .includes(query)),
     )

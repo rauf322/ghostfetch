@@ -1,7 +1,7 @@
 // The top of a rule: whether it's answering requests and how often it has on the page the editor
 // watches ("Mocking · fired 3× on Acme dashboard"), its name, which you edit in place, and one
 // sentence that says what it does.
-import { editRule, settingsStore } from '../../../../shared/api/index.ts';
+import { editRule, groupOf, settingsStore } from '../../../../shared/api/index.ts';
 import type { Rule, TrafficLog, TrafficSnapshot } from '../../../../shared/api/index.ts';
 import { useStore, useTrafficValue } from '../../../../shared/react/index.ts';
 import { cn } from '../../../../shared/ui/cn.ts';
@@ -47,17 +47,20 @@ const times = (traffic: TrafficSnapshot, id: string, failed: boolean) =>
 
 // The chip over the name. Green while the rule answers requests, with how often it has on the page
 // the editor watches (while recording, which is how Ghostfetch knows); grey while it's off (its dot
-// in the list, or in the popup, turns it on), or on while Ghostfetch is off. Only what the log has
-// seen: it starts over with Clear and, unless Keep on reload is on, with a page load, so a count of
-// none goes unsaid.
+// in the list, or in the popup, turns it on), or on while its group is off or Ghostfetch is. Only
+// what the log has seen: it starts over with Clear and, unless Keep on reload is on, with a page
+// load, so a count of none goes unsaid.
 function RuleState({ rule, log }: { rule: Rule; log: TrafficLog }) {
   const { enabled, record } = useStore(settingsStore);
   const hits = useTrafficValue(log, (traffic) => times(traffic, rule.id, false));
   const failures = useTrafficValue(log, (traffic) => times(traffic, rule.id, true));
   const page = useTrafficValue(log, (traffic) => traffic.target?.title ?? '');
-  const live = rule.enabled && enabled;
+  const group = groupOf(rule);
+  const live = rule.enabled && enabled && group?.enabled !== false;
   let words = 'Off';
   if (rule.enabled && !enabled) words = 'Paused while Ghostfetch is off';
+  else if (rule.enabled && group?.enabled === false)
+    words = `Paused while ${group.name} is off`;
   else if (live) {
     words = rule.response.bodyMode === 'replace' ? 'Mocking' : 'Modifying';
     const fired = [hits && `fired ${hits}×`, failures && `failed ${failures}×`]

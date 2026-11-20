@@ -34,7 +34,8 @@ interface SidebarProps {
   selectedId: string | null;
   // A rule was picked: it opens, in the Rules view, from Traffic too.
   onSelect: (id: string) => void;
-  onNewRule: () => void;
+  // New rule: the + (in the group New rule offers), or a group's + (in that group).
+  onNewRule: (group?: string) => void;
   onImport: () => void;
   onExport: () => void;
   inTab: boolean;

@@ -152,7 +152,7 @@ try {
           await app.textContent('[data-testid="agent-words"]'),
           JSON.parse(await app.evaluate(() => localStorage.getItem('ghostfetch.agent'))),
           [said.connected, said.editor, said.page?.url, said.page?.devHost],
-          [said.ghostfetch?.on, said.ghostfetch?.recording, said.rules],
+          [said.ghostfetch?.on, said.ghostfetch?.recording, said.rules, said.groups],
         ],
         [
           true,
@@ -160,7 +160,7 @@ try {
           'ghostfetch-test is connected. Keep this editor open while it works.',
           { code, on: true },
           [true, 'a tab', `${ORIGIN}/`, true],
-          [true, true, { total: 0, on: 0 }],
+          [true, true, { total: 0, on: 0, answering: 0 }, { total: 0, on: 0 }],
         ],
       );
     },
@@ -419,6 +419,100 @@ try {
       expect(
         [deleted.deleted?.name, gone, (await stored()).map((rule) => rule.name)],
         ['Real user', ['Agent made'], ['Agent made', 'Real user']],
+      );
+    },
+  );
+
+  await check(
+    "groups: save_rule with a group no group has makes it, at the top, the rule in it; list_rules, recent_requests and Traffic name it; save_group turns it off, and the page, try_url and the rule's report pass it by; save_group copies it into a new group where it's told, and renames one; delete_group deletes one with its rules, which Undo in the editor brings back",
+    async () => {
+      const saved = await tool('save_rule', {
+        name: 'Grouped',
+        group: 'feat/checkout',
+        match: { url: '/api/agent-grouped' },
+        response: { body: { grouped: true } },
+      });
+      const answered = await call('/api/agent-grouped');
+      const listed = await tool('list_rules');
+      const group = listed.groups?.find((each) => each.name === 'feat/checkout');
+      const inList = listed.rules?.find((rule) => rule.id === saved.rule?.id);
+      // Once the request has reached the editor's log, which Traffic lists.
+      await app.click('[data-testid="nav-traffic"]');
+      const row = app.locator('[data-testid="request"]', { hasText: 'agent-grouped' });
+      await row.first().waitFor({ timeout: 3000 });
+      const traffic = await row.first().textContent();
+      await app.click('[data-testid="nav-rules"]');
+      const requests = await tool('recent_requests', { url: '/api/agent-grouped' });
+
+      const off = await tool('save_group', { name: 'feat/checkout', enabled: false });
+      const passed = await call('/api/agent-grouped');
+      const tried = await tool('try_url', { url: '/api/agent-grouped' });
+      const report = await tool('get_rule', { id: saved.rule?.id });
+      const copied = await tool('save_group', {
+        name: 'feat/checkout-2',
+        copyOf: 'feat/checkout',
+        position: 1,
+      });
+      const renamed = await tool('save_group', { id: group?.id, name: 'PR-12' });
+      const deleted = await tool('delete_group', { name: 'feat/checkout-2' });
+      const gone = (await tool('list_rules')).groups.map((each) => each.name);
+      await app.click(
+        '[data-slot="toast"]:has-text("feat/checkout-2") [data-slot="toast-action"]',
+      );
+      await sleep(300);
+      const back = (await tool('list_rules')).groups.map((each) => [
+        each.name,
+        each.position,
+      ]);
+      await tool('delete_group', { name: 'PR-12' });
+      await tool('delete_group', { name: 'feat/checkout-2' });
+      expect(
+        [
+          [saved.created, saved.group, saved.position],
+          answered,
+          [group?.position, group?.enabled, group?.rules],
+          [inList?.group, inList?.answering],
+          requests.requests?.[0]?.rule?.group,
+          traffic.includes('Grouped · feat/checkout'),
+          [off.group?.enabled, off.problems?.[0]?.startsWith("It's off")],
+          passed.status,
+          [tried.answeredBy, tried.alsoMatching?.map((rule) => [rule.title, rule.group])],
+          report.problems?.some((problem) =>
+            problem.startsWith('Its group “feat/checkout” is off'),
+          ),
+          [
+            copied.created,
+            copied.group?.position,
+            copied.group?.enabled,
+            copied.group?.rules,
+          ],
+          [renamed.created, renamed.group?.name, renamed.group?.enabled],
+          [deleted.deleted?.name, deleted.rules?.map((rule) => rule.name)],
+          gone,
+          back,
+          (await stored()).map((rule) => rule.name),
+        ],
+        [
+          [true, 'feat/checkout', 0],
+          { status: 200, body: { grouped: true } },
+          [0, true, 1],
+          ['feat/checkout', true],
+          'feat/checkout',
+          true,
+          [false, true],
+          404,
+          [null, [['Grouped', { name: 'feat/checkout', enabled: false }]]],
+          true,
+          [true, 1, true, 1],
+          [false, 'PR-12', false],
+          ['feat/checkout-2', ['Grouped']],
+          ['PR-12'],
+          [
+            ['PR-12', 0],
+            ['feat/checkout-2', 1],
+          ],
+          ['Agent made', 'Real user'],
+        ],
       );
     },
   );

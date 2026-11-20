@@ -47,6 +47,10 @@ const PATHS = {
   edit: '<path d="M4 20l1.2-4.4L16.5 4.3a2.1 2.1 0 0 1 3 3L8.2 18.6 4 20zM14.5 6.5l3 3"/>',
   pause: '<path d="M9 5v14M15 5v14"/>',
   play: '<path d="M8 5.5v13l10.5-6.5z"/>',
+  group:
+    '<path d="M3 7.5A1.5 1.5 0 0 1 4.5 6H9l2 2h8.5A1.5 1.5 0 0 1 21 9.5v8a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5z"/>',
+  newgroup:
+    '<path d="M3 7.5A1.5 1.5 0 0 1 4.5 6H9l2 2h8.5A1.5 1.5 0 0 1 21 9.5v8a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5zM12 11v5M9.5 13.5h5"/>',
 };
 
 export type IconName = keyof typeof PATHS;

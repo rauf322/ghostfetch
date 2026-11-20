@@ -3,12 +3,21 @@
 // rule editor's URL tester (testResult, src/pages/rules/lib/rule-checks.ts) says the same for
 // every one of them, so Try a URL in the rule editor tells the truth. And that the requests the
 // editor keeps a rule's server's response from, for its Diff (entryTester), are the ones the page
-// would answer with the rule: the same URLs, methods and GraphQL operations.
+// would answer with the rule: the same URLs, methods and GraphQL operations. Then which of two
+// rules answers, and the order with groups, as the editor and the page rebuild it from what's
+// stored (layOut, normalizeGroups), and the names a new group gets.
 //
 //   node test/matching.mjs      (npm test runs it after test/diff.mjs)
 import { compile, findRule } from '../src/app/interceptor/matching.ts';
 import { testResult } from '../src/pages/rules/lib/rule-checks.ts';
-import { entryTester } from '../src/shared/api/index.ts';
+import {
+  createRule,
+  entryTester,
+  freeName,
+  layOut,
+  normalizeGroups,
+  offGroups,
+} from '../src/shared/api/index.ts';
 import { check, expect, finish } from './fixtures.mjs';
 
 const API = 'https://api.example.test';
@@ -146,6 +155,102 @@ await check(
                 ]);
             }
     expect([disagree.slice(0, 5), tried > 1000], [[], true]);
+  },
+);
+
+console.log('the order, and groups');
+// A rule with an id and a group, matching /api/user.
+const member = (id, group = '') => ({
+  ...createRule(),
+  id,
+  group,
+  match: { url: '/api/user', mode: 'contains', method: 'ANY', graphqlOperation: '' },
+});
+
+await check('of two rules that match a request, the one tried first answers', () => {
+  const [first, second] = [member('first'), member('second')];
+  const state = {
+    enabled: true,
+    record: false,
+    rules: compile([first, second]),
+    needsBody: false,
+  };
+  const request = (url) => findRule(state, { url, method: 'GET', body: '' })?.id;
+  expect([request(`${API}/api/user`), request(`${API}/api/other`)], ['first', undefined]);
+});
+
+await check(
+  "the order from what's stored: each group in its place among the top-level entries with its rules in their order, the ungrouped rules filling the rest in theirs, a rule whose group isn't there ungrouped, and a group with no place last",
+  () => {
+    const groups = normalizeGroups([
+      { id: 'g1', name: 'PR-1', at: 1 },
+      { id: 'g2', name: 'PR-2', at: 3 },
+      { id: 'g3', name: 'Empty' },
+    ]);
+    const rules = [
+      member('a'),
+      member('b', 'g1'),
+      member('c'),
+      member('d', 'g2'),
+      member('e', 'gone'),
+      member('f', 'g1'),
+    ];
+    const entries = layOut(rules, groups);
+    expect(
+      [
+        entries.map((entry) =>
+          entry.kind === 'rule'
+            ? entry.rule.id
+            : `${entry.group.name}: ${entry.rules.map((each) => each.id).join(' ')}`,
+        ),
+        rules.find((each) => each.id === 'e').group,
+      ],
+      [['a', 'PR-1: b f', 'c', 'PR-2: d', 'e', 'Empty: '], ''],
+    );
+  },
+);
+
+await check(
+  "stored groups are rebuilt: one without an id, or with another's, is left out; a name another has gets a number, ignoring case, an empty one is New group; a group is on unless it says it's off",
+  () => {
+    const groups = normalizeGroups([
+      { id: 'x', name: 'PR-1' },
+      { id: 'x', name: 'Again' },
+      { name: 'No id' },
+      { id: 'y', name: 'pr-1' },
+      { id: 'z', name: '  \n ', enabled: false },
+      'junk',
+      null,
+    ]);
+    expect(
+      [
+        groups.map((group) => [group.id, group.name, group.enabled]),
+        [...offGroups([{ id: 'g1', enabled: false }, { id: 'g2' }, { enabled: false }])],
+      ],
+      [
+        [
+          ['x', 'PR-1', true],
+          ['y', 'pr-1 (2)', true],
+          ['z', 'New group', false],
+        ],
+        ['g1'],
+      ],
+    );
+  },
+);
+
+await check(
+  'a new group or a copy takes the first name no group has, and an import the next number in brackets',
+  () => {
+    const taken = [{ name: 'New group' }, { name: 'new group 2' }, { name: 'PR-1' }];
+    expect(
+      [
+        freeName('New group', taken),
+        freeName('PR-1 copy', taken),
+        freeName('PR-1', taken, 'brackets'),
+      ],
+      ['New group 3', 'PR-1 copy', 'PR-1 (2)'],
+    );
   },
 );
 

@@ -2,10 +2,10 @@
 // operation name match it. The URL patterns are made into tests once, as the rules arrive, by
 // urlTester, which the editor's URL tester uses too.
 import { urlTester } from '../../shared/api/index.ts';
-import type { Rule } from '../../shared/api/index.ts';
+import type { PageRule, Rule } from '../../shared/api/index.ts';
 import type { Compiled, PageRequest, PageRules } from './types.ts';
 
-export function compile(rules: Rule[]) {
+export function compile(rules: PageRule[]) {
   const compiled: Compiled[] = [];
   for (const rule of rules) {
     try {

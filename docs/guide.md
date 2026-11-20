@@ -30,19 +30,22 @@ What's different in Firefox-based browsers:
   (the built-in hosts are **Always on**). At the bottom, **Open editor** opens the side panel
   (the sidebar in Firefox), and the button beside it opens the editor in a tab. In between are
   three tabs; in the first two, a rule's dot is its switch, green and pulsing while it's on
-  (still while Ghostfetch is paused) and grey while it's off: click it (or reach it with Tab and
-  press Space) to turn the rule on or off, which saves at once. Click its name to open it in the
-  editor:
+  (still while its group or Ghostfetch is off) and grey while it's off: click it (or reach it
+  with Tab and press Space) to turn the rule on or off, which saves at once. Click its name to
+  open it in the editor:
   - **This page**: what each rule did on the tab's page, such as **2 mocked** or **1 modified ·
     1 failed**, counted while recording since the page loaded (Traffic's **Clear** starts the
     count over; a page opened before Ghostfetch was installed or updated needs a reload
     first). The rules that answered come first, under **Answering here**, and the rest fold
-    into **Not answering here**, which opens. A rule you turn off stays where it is, greyed,
-    with what it did, so the same dot turns it on again; it joins the others when the page
-    loads again. On a site Ghostfetch isn't on, **Turn on for …** instead, which reloads the
-    page.
+    into **Not answering here**, which opens. A rule in a [group](#groups) has the group's
+    name beside what it matches. A rule you turn off stays where it is, greyed, with what it
+    did, so the same dot turns it on again; it joins the others when the page loads again. On
+    a site Ghostfetch isn't on, **Turn on for …** instead, which reloads the page.
   - **All rules**: every rule in your order, with what it did on the page (in grey once the
-    rule is off).
+    rule is off), and the [groups](#groups) in their place: each with its own dot, which turns
+    the group on or off, its name, which folds it or unfolds it as in the editor, and how many
+    of its rules are on, its rules set in under it. Switching from one PR's mocks to
+    another's is two clicks here.
   - **Sites**: where Ghostfetch runs: the built-in hosts, then the sites you added, each with
     **Remove**.
 - **Side panel (Chrome), sidebar (Firefox, Zen) or tab**: the full editor. Open it from the
@@ -67,6 +70,31 @@ What's different in Firefox-based browsers:
     its place in the list, and its chip, open, says **Off**. One that answered on the page the
     editor watches says what it did there at the right of its name ("2 mocked"). **Duplicate**,
     in an open rule's header, copies it.
+
+    <a id="groups"></a>**Groups** keep the rules for one piece of work together, a PR's, say,
+    to turn on and off as one. **New group** (beside **+**) makes one at the top of the list,
+    its name ready to type (double-click a group's name to rename it; no two groups share a
+    name). A group stands in the list as a block, its rules set in under its header, which has
+    a dot of its own: turned off, none of its rules answer, and each keeps its own switch, so
+    turning the group on again brings back just the rules that were on. A rule in a group
+    that's off fades, its dot green but still, as under Pause, and its chip says **Paused
+    while PR-1 is off**. Groups and the rules outside them are tried in one order, top to
+    bottom: of the rules that match a request, the highest one that's on, in a group that's
+    on, answers. Where two groups' rules match the same request, then, the higher group wins,
+    and a new group, like a new rule, goes on top; drag one above the other to change that.
+    Drag a rule into a group (onto its header, below its middle), out of one or between them,
+    and a group's header to move the group with its rules; **Move to group** in a rule's `⋯`
+    menu moves it too, or into a **New group…**. A group's name folds it or unfolds it
+    (remembered, and the popup's **All rules** shares it), its **+** makes a rule at its top,
+    and its `⋯` menu has **Rename**, **Duplicate** (a copy with the same rules, on, at the top
+    of the list, to start another PR from), **Export group**, **Ungroup** (the group goes, its
+    rules stay where they were) and **Delete** (with its rules, and **Undo** in the toast).
+    Once there's a group, **New rule** and **Mock this response** say which group the rule
+    goes into: the one the last rule made there went into, or the group whose **+** you
+    clicked, and you can pick another, or none. **Export group** saves the group and its rules
+    to hand to someone else: importing the file brings the group in at the top of the list,
+    turned off, its rules' own switches as they were, so its dot then turns on just what the
+    sender had on.
 
     **New rule** (the **+**) asks "What should Ghostfetch answer?" (beside the sidebar it's
     also what shows with no rule open). Paste a path, a full URL (it keeps the path and query,
@@ -142,12 +170,13 @@ What's different in Firefox-based browsers:
     body of yours to compare, so no Diff. Like Vim keys, it's remembered for every body editor.
   - **Traffic**: live `fetch`/XHR log of a tab, newest first, grouped by when ("Just now", "A
     few minutes ago", "About 10 minutes ago"). What a rule did is in green ("Mocked by Feature
-    flags"), and a request that failed says why ("Aborted · Feature flags", "Timed out after
-    800 ms (xhr.timeout)"). The bar along the top picks the page to watch, says whether
-    requests are **Recording** (the popup starts and stops that), and has **Keep on reload**
-    (keep the log when the page reloads) and **Clear**;
+    flags", and "Mocked by Users list · PR-1" for a rule in a group), and a request that
+    failed says why ("Aborted · Feature flags", "Timed out after 800 ms (xhr.timeout)"). The
+    bar along the top picks the page to watch, says whether requests are **Recording** (the
+    popup starts and stops that), and has **Keep on reload** (keep the log when the page
+    reloads) and **Clear**;
     under it, **All**, **Matched** and **Errors** (a status of 400 or more, a failed request or
-    a rule's error), each with its count, and a search by URL, status or rule. In the side
+    a rule's error), each with its count, and a search by URL, status, rule or group. In the side
     panel Traffic watches the tab you're on, from the moment it opens a web page; a page you
     pick instead stays until you switch tabs. In a tab of its own it keeps the page you
     picked. Either way, when that page closes or goes somewhere that isn't a web page, it

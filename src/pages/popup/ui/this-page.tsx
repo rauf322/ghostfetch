@@ -2,7 +2,7 @@
 // Where Ghostfetch isn't on, the one thing to do there instead: turn it on, which reloads the page.
 import type { ReactNode } from 'react';
 import { turnOnFor } from '../../../shared/api/index.ts';
-import type { PageCounts, Rule } from '../../../shared/api/index.ts';
+import type { Entry, PageCounts, Rule } from '../../../shared/api/index.ts';
 import { Button } from '../../../shared/ui/kit/button.tsx';
 import { RuleList } from './rule-list.tsx';
 
@@ -12,6 +12,7 @@ export function ThisPage({
   runsHere,
   enabled,
   rules,
+  entries,
   counts,
   windowId,
 }: {
@@ -20,6 +21,7 @@ export function ThisPage({
   runsHere: boolean;
   enabled: boolean;
   rules: Rule[];
+  entries: Entry[];
   counts: PageCounts | null | undefined;
   windowId: number;
 }) {
@@ -39,6 +41,7 @@ export function ThisPage({
       )}
       <RuleList
         rules={rules}
+        entries={entries}
         counts={counts?.record ? counts.rules : undefined}
         split={counts?.record === true}
         enabled={enabled}

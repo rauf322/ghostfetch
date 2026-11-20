@@ -76,23 +76,31 @@ in the toast, for a few seconds.
 
 | Tool | What it does |
 | --- | --- |
-| `status` | Whether an editor is connected (if not, how to connect one, with the pairing code); Ghostfetch on or paused, recording, how many rules, and the page the editor watches if it's a dev page (any other only as not being one) |
-| `list_rules` | Every rule in the order they're tried, with what each matches and answers with, and what it did on the page |
-| `get_rule` | One rule in full, and what's wrong with it: a regex that doesn't compile, a body that isn't valid JSON, a header row the page won't get |
-| `save_rule` | Makes a rule, or changes one (only the fields given), and where it goes in the list |
+| `status` | Whether an editor is connected (if not, how to connect one, with the pairing code); Ghostfetch on or paused, recording, how many rules (on, and answering) and groups, and the page the editor watches if it's a dev page (any other only as not being one) |
+| `list_rules` | Every rule in the order they're tried, with its group, what it matches and answers with, whether it's answering, and what it did on the page; and every group, with its place and how many of its rules are on |
+| `get_rule` | One rule in full, and what's wrong with it: a regex that doesn't compile, a body that isn't valid JSON, a header row the page won't get, it or its group off |
+| `save_rule` | Makes a rule, or changes one (only the fields given), the group it's in (a name no group has makes one) and where it's tried in the order |
 | `delete_rule` | Deletes a rule, and returns it as it was |
-| `try_url` | Which rule would answer a request, and which others match it |
-| `recent_requests` | What the page asked for, newest first, and what a rule did to each (mocked, modified, failed) or none |
+| `save_group` | Makes a group, or a copy of one, or renames one, turns it on or off, or moves it with its rules |
+| `delete_group` | Deletes a group and its rules, and returns them as they were |
+| `try_url` | Which rule would answer a request, and which others match it (off, in a group that's off, or further down) |
+| `recent_requests` | What the page asked for, newest first, and what a rule did to each (mocked, modified, failed), and in which group, or none |
 | `get_request` | One of those requests with its bodies |
-| `mock_request` | A rule made from one of those requests, as Traffic's **Mock this response** makes it |
+| `mock_request` | A rule made from one of those requests, as Traffic's **Mock this response** makes it, in the group given |
 
-`save_rule`, `delete_rule` and `mock_request` return once the change has reached the open pages,
-so the next request a page makes gets the new answer. What a page loaded before the change stays
-as it was until the page asks again, or you reload it.
+The tools that change something return once the change has reached the open pages, so the next
+request a page makes gets the new answer. What a page loaded before the change stays as it was
+until the page asks again, or you reload it.
+
+The agent is told that a group usually holds one branch's or PR's mocks, and to put the rules it
+makes in the group for the work at hand: one of yours that fits, or, if none does, to ask you or
+make one named after the branch. A rule's position is where it's tried in the whole order; a
+group's, its place among the list's top-level entries.
 
 ## What the agent can and can't do
 
-- It reads and changes every rule, as you can in the editor. It can't turn Ghostfetch or
+- It reads and changes every rule and group, as you can in the editor; a rule or group it
+  deletes comes back with **Undo** in the editor's toast. It can't turn Ghostfetch or
   recording on or off, or add or remove a site: that stays in the toolbar popup.
 - It sees requests only from a page on a dev host (`localhost`, `*.localhost`, `127.0.0.1`, a
   `local.*` host), and only from the page the editor watches. Of a page on any other site it

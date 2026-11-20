@@ -15,11 +15,15 @@ import { RequestHeader } from './request-header.tsx';
 
 export const RequestDetail = memo(function RequestDetail({
   entry,
+  ruleGroup,
+  onRuleGroupChange,
   onClose,
   onMock,
   onOpenRule,
 }: {
   entry: LogEntry;
+  ruleGroup: string;
+  onRuleGroupChange: (group: string) => void;
   onClose: () => void;
   onMock: (draft: Rule, entry: LogEntry) => void;
   onOpenRule: (id: string) => void;
@@ -36,7 +40,13 @@ export const RequestDetail = memo(function RequestDetail({
       <RequestHeader entry={entry} onClose={onClose} />
       <PaneScroll className="gap-4 px-4 pb-4 beside:px-5">
         {entry.error && <Alert variant="error">{entry.error}</Alert>}
-        <RequestActions entry={entry} pretty={pretty} onMock={onMock} />
+        <RequestActions
+          entry={entry}
+          pretty={pretty}
+          ruleGroup={ruleGroup}
+          onRuleGroupChange={onRuleGroupChange}
+          onMock={onMock}
+        />
         <RequestFacts entry={entry} onOpenRule={onOpenRule} />
         <RequestBodies entry={entry} pretty={pretty} requestPretty={requestPretty} />
       </PaneScroll>

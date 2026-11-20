@@ -1,31 +1,56 @@
 // What the agent's tools (mcp/ghostfetch-mcp.mjs) do, here in the editor, with the editor's own
-// code: the rules as shared/api keeps them (which saves them, sends them to open pages and redraws
-// the screens), and the log of the page the editor watches. What a tool is given is checked here
-// again, and a rule is rebuilt by normalizeRule before it's kept, as an imported one is. The
-// agent sees requests only from a page on a dev host (localhost, *.localhost, 127.0.0.1, local.*):
-// what the editor watches on any other site stays in the browser.
+// code: the rules and their groups as shared/api keeps them (which saves them, sends them to open
+// pages and redraws the screens), and the log of the page the editor watches. What a tool is given
+// is checked here again, and a rule is rebuilt by normalizeRule before it's kept, as an imported
+// one is. The agent sees requests only from a page on a dev host (localhost, *.localhost,
+// 127.0.0.1, local.*): what the editor watches on any other site stays in the browser.
+//
+// A rule's position is where it's tried in the whole order (0, the first, is tried first); a
+// group's is its place among the list's top-level entries, groups and ungrouped rules (0 is the
+// top). The agent names a group by its name (names are unique, ignoring case) or its id.
 import {
+  addGroup,
   addRule,
   countRule,
   countWords,
+  createGroup,
   createRule,
+  duplicateGroup,
+  editGroup,
   editRule,
   entryTester,
+  findGroup,
+  findGroupNamed,
   findRule,
   fromServer,
+  groupName,
+  groupOf,
+  groupPosition,
   isBuiltInHost,
   keepServerResponse,
+  moveGroupTo,
   moveRule,
+  moveRuleTo,
+  nameTaken,
   normalizeRule,
+  placeAt,
+  removeGroup,
   removeRule,
   responseFromEntry,
+  restoreGroup,
   ruleFromEntry,
   ruleStore,
   ruleTitle,
   settingsStore,
   siteOf,
 } from '../../../shared/api/index.ts';
-import type { LogEntry, Rule, TrafficLog } from '../../../shared/api/index.ts';
+import type {
+  Group,
+  LogEntry,
+  Place,
+  Rule,
+  TrafficLog,
+} from '../../../shared/api/index.ts';
 import { notify } from '../../../shared/ui/kit/toast.tsx';
 import { ruleProblems, ruleSummary } from '../lib/rule-report.ts';
 import { noteActivity } from './agent-connection.ts';
@@ -34,6 +59,9 @@ type Params = Record<string, unknown>;
 
 const isObject = (value: unknown): value is Params =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
+
+const plural = (count: number, word: string) =>
+  `${count} ${word}${count === 1 ? '' : 's'}`;
 
 // The fields of a rule a tool gave, as the rule keeps them: a body that isn't a string is JSON,
 // pretty-printed; a status given as a number is text. normalizeRule checks the rest.
@@ -92,7 +120,12 @@ function requestSummary(entry: LogEntry) {
     status: entry.status,
     durationMs: entry.duration === null ? null : Math.round(entry.duration),
     rule: entry.ruleId
-      ? { id: entry.ruleId, name: entry.ruleName, did: entry.action || 'nothing' }
+      ? {
+          id: entry.ruleId,
+          name: entry.ruleName,
+          group: entry.groupName || undefined,
+          did: entry.action || 'nothing',
+        }
       : null,
     error: entry.error || undefined,
     frame: entry.frame || undefined,
@@ -102,9 +135,46 @@ function requestSummary(entry: LogEntry) {
   };
 }
 
+// The rules of a group, in their order.
+function rulesOf(group: Group) {
+  const entry = ruleStore.state.entries.find(
+    (each) => each.kind === 'group' && each.group.id === group.id,
+  );
+  return entry?.kind === 'group' ? entry.rules : [];
+}
+
+// A group as the tools tell of it.
+function groupBrief(group: Group) {
+  const rules = rulesOf(group);
+  return {
+    id: group.id,
+    name: group.name,
+    enabled: group.enabled,
+    position: groupPosition(group.id),
+    rules: rules.length,
+    rulesOn: rules.filter((rule) => rule.enabled).length,
+  };
+}
+
+// The group a tool names, by its id or its name.
+function groupNamed({ id, name }: Params) {
+  const found =
+    (typeof id === 'string' ? findGroup(id) : undefined) ??
+    (typeof name === 'string' && id === undefined ? findGroupNamed(name) : undefined);
+  if (!found)
+    throw new Error(
+      `No group has the ${id !== undefined ? `id ${JSON.stringify(id)}` : `name ${JSON.stringify(name)}`}: list_rules has them.`,
+    );
+  return found;
+}
+
 export function createAgentTools({ log, place }: { log: TrafficLog; place: string }) {
   const rules = () => ruleStore.state.rules;
   const positionOf = (id: string) => rules().findIndex((rule) => rule.id === id);
+  // Whether a rule answers the requests it matches: it's on, its group is too, and Ghostfetch
+  // isn't paused.
+  const answering = (rule: Rule) =>
+    rule.enabled && groupOf(rule)?.enabled !== false && settingsStore.state.enabled;
 
   // The page the editor watches, or null with none: for the editor's own use.
   function watched() {
@@ -173,29 +243,67 @@ export function createAgentTools({ log, place }: { log: TrafficLog; place: strin
     return (id: string) => countWords(countRule(entries, id));
   }
 
-  // A rule after a change: where it is, and what keeps it from answering.
-  function report(rule: Rule) {
-    const problems = ruleProblems(rule);
-    if (!rule.enabled)
-      problems.push("It's off, so it answers nothing until it's turned on.");
+  // The group a rule goes into, as a tool gave it: by its id or its name, made (at the top of the
+  // list, on) if no group has that name; '' (or null) for none; undefined if the tool gave none.
+  function groupFor(value: unknown) {
+    if (value === undefined) return undefined;
+    if (value === null) return '';
+    if (typeof value !== 'string')
+      throw new Error('group is the name (or id) of a group, or "" for none.');
+    const byId = findGroup(value);
+    if (byId) return byId.id;
+    const name = groupName(value);
+    if (!name) return '';
+    const found = findGroupNamed(name);
+    if (found) return found.id;
+    const made = addGroup(createGroup(name), 0);
+    noteActivity(`Created the group “${name}”`, null);
+    return made.id;
+  }
+
+  // What keeps a group from answering.
+  function groupProblems(group: Group) {
+    const problems: string[] = [];
+    if (!group.enabled)
+      problems.push(
+        "It's off, so none of its rules answer until it's turned on (save_group with enabled: true).",
+      );
     if (!settingsStore.state.enabled)
       problems.push(
         "Ghostfetch is paused (its toolbar popup), so no rule answers until it's resumed.",
       );
-    return { rule, position: positionOf(rule.id), problems };
+    return problems;
   }
 
-  // Moves a rule to `position` in the list (0, the first, is tried first).
-  function moveTo(id: string, position: unknown) {
-    if (typeof position !== 'number' || !Number.isInteger(position)) return;
-    const to = Math.min(Math.max(position, 0), rules().length - 1);
-    const from = positionOf(id);
-    if (from !== to) moveRule(id, from < to ? to + 1 : to);
+  // A rule after a change: where it is, and what keeps it from answering.
+  function report(rule: Rule) {
+    const problems = ruleProblems(rule);
+    const group = groupOf(rule);
+    if (!rule.enabled)
+      problems.push("It's off, so it answers nothing until it's turned on.");
+    if (group && !group.enabled)
+      problems.push(
+        `Its group “${group.name}” is off, so it answers nothing until the group is turned on (save_group with enabled: true).`,
+      );
+    if (!settingsStore.state.enabled)
+      problems.push(
+        "Ghostfetch is paused (its toolbar popup), so no rule answers until it's resumed.",
+      );
+    return { rule, group: group?.name, position: positionOf(rule.id), problems };
+  }
+
+  // Where a rule goes: in `group` ('' for none), at `position` in the order if one is given, or
+  // else at the top of the group, or of the list.
+  function placeFor(group: string, position: unknown): Place {
+    return typeof position === 'number' && Number.isFinite(position)
+      ? placeAt(Math.trunc(position), group)
+      : { group, index: 0 };
   }
 
   return {
     status() {
       const { enabled, record } = settingsStore.state;
+      const { groups } = ruleStore.state;
       return {
         ghostfetch: {
           version: chrome.runtime.getManifest().version,
@@ -207,6 +315,11 @@ export function createAgentTools({ log, place }: { log: TrafficLog; place: strin
         rules: {
           total: rules().length,
           on: rules().filter((rule) => rule.enabled).length,
+          answering: rules().filter(answering).length,
+        },
+        groups: {
+          total: groups.length,
+          on: groups.filter((group) => group.enabled).length,
         },
       };
     },
@@ -215,13 +328,22 @@ export function createAgentTools({ log, place }: { log: TrafficLog; place: strin
       const wanted = typeof query === 'string' ? query.toLowerCase() : '';
       const did = didHere();
       return {
+        groups: ruleStore.state.groups.map(groupBrief),
         rules: rules()
-          .map((rule, position) => ruleSummary(rule, position, did(rule.id)))
+          .map((rule, position) =>
+            ruleSummary(rule, {
+              position,
+              group: groupOf(rule),
+              answering: answering(rule),
+              did: did(rule.id),
+            }),
+          )
           .filter(
             (rule) =>
               !wanted ||
               rule.title.toLowerCase().includes(wanted) ||
-              rule.match.url.toLowerCase().includes(wanted),
+              rule.match.url.toLowerCase().includes(wanted) ||
+              Boolean(rule.group?.toLowerCase().includes(wanted)),
           ),
       };
     },
@@ -241,6 +363,7 @@ export function createAgentTools({ log, place }: { log: TrafficLog; place: strin
           match: { ...current.match, ...match },
           response: { ...current.response, ...response },
         });
+        const group = groupFor(params.group);
         editRule(
           current.id,
           (rule) => {
@@ -252,7 +375,16 @@ export function createAgentTools({ log, place }: { log: TrafficLog; place: strin
           // The agent may reload the page next: it's saved at once.
           { immediate: true },
         );
-        moveTo(current.id, params.position);
+        if (typeof params.position === 'number')
+          moveRuleTo(current.id, Math.trunc(params.position), group);
+        else if (group !== undefined && group !== current.group)
+          // Into a group, at its top; out of one, just above it, so it's tried about where it was.
+          moveRule(
+            current.id,
+            group
+              ? { group, index: 0 }
+              : { group: '', index: Math.max(groupPosition(current.group), 0) },
+          );
         noteActivity(`Changed “${ruleTitle(current)}”`, current.id);
         await rulesApplied();
         return { created: false, ...report(current) };
@@ -267,24 +399,113 @@ export function createAgentTools({ log, place }: { log: TrafficLog; place: strin
         },
         { newId: true },
       );
-      const position = typeof params.position === 'number' ? params.position : 0;
-      addRule(made, Math.min(Math.max(Math.trunc(position), 0), rules().length));
+      addRule(made, placeFor(groupFor(params.group) ?? '', params.position));
       noteActivity(`Created “${ruleTitle(made)}”`, made.id);
       await rulesApplied();
       return { created: true, ...report(made) };
     },
 
     async delete_rule({ id }: Params) {
+      const position = positionOf(ruleById(id).id);
       const removed = removeRule(ruleById(id).id)!;
       const title = ruleTitle(removed.rule);
+      const group = findGroup(removed.place.group)?.name;
       noteActivity(`Deleted “${title}”`, null);
       notify(`The agent deleted “${title}”`, {
         icon: 'trash',
         action: 'Undo',
-        onAction: () => addRule(removed.rule, removed.index),
+        onAction: () => addRule(removed.rule, removed.place),
       });
       await rulesApplied();
-      return { deleted: removed.rule, position: removed.index };
+      return { deleted: removed.rule, group, position };
+    },
+
+    async save_group(params: Params) {
+      const { id, name, enabled, position, copyOf } = params;
+      const wanted = typeof name === 'string' ? groupName(name) : '';
+      if (name !== undefined && !wanted)
+        throw new Error("A group's name can't be empty.");
+      let group =
+        typeof id === 'string'
+          ? findGroup(id)
+          : wanted
+            ? findGroupNamed(wanted)
+            : undefined;
+      if (id !== undefined && !group)
+        throw new Error(
+          `No group has the id ${JSON.stringify(id)}: list_rules has them.`,
+        );
+      const index =
+        typeof position === 'number' && Number.isFinite(position)
+          ? Math.max(Math.trunc(position), 0)
+          : undefined;
+      if (!group) {
+        if (!wanted)
+          throw new Error('Give the new group a name (or an id, to change one).');
+        if (copyOf !== undefined) {
+          const source = groupNamed({
+            id: typeof copyOf === 'string' && findGroup(copyOf) ? copyOf : undefined,
+            name: copyOf,
+          });
+          group = duplicateGroup(source, wanted);
+          noteActivity(`Copied “${source.name}” as “${group.name}”`, null);
+        } else {
+          group = addGroup(createGroup(wanted), 0);
+          noteActivity(`Created the group “${group.name}”`, null);
+        }
+        if (enabled === false)
+          editGroup(group.id, (current) => {
+            current.enabled = false;
+          });
+        if (index !== undefined) moveGroupTo(group.id, index);
+        await rulesApplied();
+        return {
+          created: true,
+          group: groupBrief(group),
+          problems: groupProblems(group),
+        };
+      }
+      if (copyOf !== undefined)
+        throw new Error(
+          `A group called “${group.name}” is there already: give the copy a name no group has.`,
+        );
+      if (wanted && nameTaken(wanted, ruleStore.state.groups, group.id))
+        throw new Error(
+          `Another group is called “${wanted}”: each has a name of its own.`,
+        );
+      const was = { name: group.name, enabled: group.enabled };
+      editGroup(group.id, (current) => {
+        if (wanted) current.name = wanted;
+        if (typeof enabled === 'boolean') current.enabled = enabled;
+      });
+      if (index !== undefined) moveGroupTo(group.id, index);
+      noteActivity(
+        was.name === group.name && index === undefined && was.enabled !== group.enabled
+          ? `Turned “${group.name}” ${group.enabled ? 'on' : 'off'}`
+          : `Changed the group “${group.name}”`,
+        null,
+      );
+      await rulesApplied();
+      return { created: false, group: groupBrief(group), problems: groupProblems(group) };
+    },
+
+    async delete_group(params: Params) {
+      const group = groupNamed(params);
+      const removed = removeGroup(group.id)!;
+      const rulesWord = removed.rules.length
+        ? ` and its ${removed.rules.length === 1 ? 'rule' : plural(removed.rules.length, 'rule')}`
+        : '';
+      noteActivity(`Deleted the group “${group.name}”${rulesWord}`, null);
+      notify(`The agent deleted “${group.name}”${rulesWord}`, {
+        icon: 'trash',
+        action: 'Undo',
+        onAction: () => restoreGroup(removed),
+      });
+      await rulesApplied();
+      return {
+        deleted: { ...group, position: removed.index },
+        rules: removed.rules,
+      };
     },
 
     try_url({ url, method, body }: Params) {
@@ -309,13 +530,20 @@ export function createAgentTools({ log, place }: { log: TrafficLog; place: strin
       const matching = rules()
         .map((rule, position) => ({ rule, position }))
         .filter(({ rule }) => entryTester(rule)(request));
-      const answer = matching.find(({ rule }) => rule.enabled);
-      const brief = ({ rule, position }: { rule: Rule; position: number }) => ({
-        id: rule.id,
-        title: ruleTitle(rule),
-        position,
-        enabled: rule.enabled,
-      });
+      // The first that's on, in no group or a group that's on, as the page decides.
+      const answer = matching.find(
+        ({ rule }) => rule.enabled && groupOf(rule)?.enabled !== false,
+      );
+      const brief = ({ rule, position }: { rule: Rule; position: number }) => {
+        const group = groupOf(rule);
+        return {
+          id: rule.id,
+          title: ruleTitle(rule),
+          position,
+          enabled: rule.enabled,
+          group: group ? { name: group.name, enabled: group.enabled } : undefined,
+        };
+      };
       return {
         method: request.method,
         url: full,
@@ -371,11 +599,14 @@ export function createAgentTools({ log, place }: { log: TrafficLog; place: strin
       };
     },
 
-    async mock_request({ id, name }: Params) {
+    async mock_request({ id, name, group }: Params) {
       const entry = entryById(id);
       const draft = ruleFromEntry(entry);
       if (typeof name === 'string') draft.name = name;
-      const made = addRule(normalizeRule(draft), 0);
+      const made = addRule(
+        normalizeRule(draft),
+        placeFor(groupFor(group) ?? '', undefined),
+      );
       // Its Diff compares it with what the server sent, as Mock this response's does.
       if (fromServer(entry)) keepServerResponse(made.id, responseFromEntry(entry));
       noteActivity(

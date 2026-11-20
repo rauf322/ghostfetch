@@ -37,9 +37,12 @@ What's different in Firefox-based browsers:
     1 failed**, counted while recording since the page loaded (Traffic's **Clear** starts the
     count over; a page opened before Ghostfetch was installed or updated needs a reload
     first). The rules that answered come first, under **Answering here**, and the rest fold
-    into **Not answering here**, which opens. On a site Ghostfetch isn't on, **Turn on for …**
-    instead, which reloads the page.
-  - **All rules**: every rule in your order, with what it did on the page.
+    into **Not answering here**, which opens. A rule you turn off stays where it is, greyed,
+    with what it did, so the same dot turns it on again; it joins the others when the page
+    loads again. On a site Ghostfetch isn't on, **Turn on for …** instead, which reloads the
+    page.
+  - **All rules**: every rule in your order, with what it did on the page (in grey once the
+    rule is off).
   - **Sites**: where Ghostfetch runs: the built-in hosts, then the sites you added, each with
     **Remove**.
 - **Side panel (Chrome), sidebar (Firefox, Zen) or tab**: the full editor. Open it from the
@@ -160,8 +163,8 @@ What's different in Firefox-based browsers:
 The look is calm, after [T3 Code](https://github.com/pingdotgg/t3code), Revolut and ChatGPT: a
 near-black canvas with cards a step lighter, soft corners, Geist for words and Commit Mono for
 what is code (URLs, methods, status codes, headers, bodies), in sentence case. There is one
-colour, green, which means "on" or "a rule fired"; a rule that answered on the page has a green
-dot that pulses. Errors and failed requests are inverted white instead of red.
+colour, green, which means "on" or "a rule fired"; a rule that's on has a green dot that
+pulses. Errors and failed requests are inverted white instead of red.
 
 The editor's `⋯` menu has **Theme**: Ghostfetch's own (above, the default), **Rosé Pine**,
 **Rosé Pine Moon**, **Rosé Pine Dawn** (light), **Catppuccin Macchiato** and **Vague**. Each

@@ -3619,6 +3619,83 @@ try {
     },
   );
   await check(
+    "the popup's This page keeps a rule where it is when its dot turns it off, under Answering here with what it did, so a second click on the same spot turns the same rule back on",
+    async () => {
+      // Up to 0.22 a rule turned off there left for the folded Not answering here at once, the
+      // next rule came up under the pointer, and a second click turned that one off too.
+      const { rules, enabled, record } = await worker.evaluate(() =>
+        chrome.storage.local.get(['rules', 'enabled', 'record']),
+      );
+      const stored = async () =>
+        (await worker.evaluate(() => chrome.storage.local.get('rules'))).rules.map(
+          (rule) => rule.enabled,
+        );
+      let here;
+      try {
+        await setStorage({ enabled: true, record: true });
+        // Two rules answer on the page, and the popup opens beside it, as the toolbar's would:
+        // in a background tab, which takes the page's tab as the one it's about.
+        await call('/api/user?case=replace');
+        await call('/api/user?case=merge');
+        await sleep(300);
+        await page.bringToFront();
+        const opened = context.waitForEvent('page', {
+          predicate: (candidate) => candidate.url().includes('popup.html'),
+        });
+        await worker.evaluate(() =>
+          chrome.tabs.create({ url: 'popup.html', active: false }),
+        );
+        here = await opened;
+        here.on('pageerror', (error) => errors.push(`popup: ${error.message}`));
+        await here.waitForSelector('[data-testid="not-answering"]', { timeout: 5000 });
+        // The rules under Answering here: each one's name, whether its dot says on, and what it
+        // did. And the count beside This page.
+        const listed = () =>
+          here.evaluate(() => {
+            const fold = document.querySelector('[data-testid="not-answering"]');
+            return [
+              [...document.querySelectorAll('[data-testid="popup-rule"]')]
+                .filter(
+                  (row) =>
+                    fold.compareDocumentPosition(row) & Node.DOCUMENT_POSITION_PRECEDING,
+                )
+                .map((row) => [
+                  row.querySelector('button').textContent,
+                  row.querySelector('[role="switch"]').getAttribute('aria-checked') ===
+                    'true',
+                  row.querySelector('[data-testid="rule-did"]')?.textContent ?? '',
+                ]),
+              document.querySelector('[data-testid="view-page"]').textContent,
+            ];
+          });
+        const initial = await stored();
+        const changed = async () =>
+          (await stored()).filter((on, index) => on !== initial[index]).length;
+        const before = await listed();
+        const box = await here
+          .locator('[data-testid="popup-rule"] [role="switch"]')
+          .first()
+          .boundingBox();
+        const spot = [box.x + box.width / 2, box.y + box.height / 2];
+        await here.mouse.click(...spot);
+        await sleep(300);
+        const off = [await listed(), await changed()];
+        await here.mouse.click(...spot);
+        await sleep(300);
+        const [[first, ...others], tab] = before;
+        expect(
+          [before[0].length >= 2, first[1], off, [await listed(), await changed()]],
+          [true, true, [[[[first[0], false, first[2]], ...others], tab], 1], [before, 0]],
+        );
+      } finally {
+        await here?.close();
+        await popup.bringToFront();
+        await setStorage({ rules, enabled, record });
+        await sleep(300);
+      }
+    },
+  );
+  await check(
     "the ⋯ menu's Theme recolours the editor and the open popup at once, a page draws in it from the start, and Ghostfetch's own comes back",
     async () => {
       // The theme on <html>, the page's colour, and what's remembered.

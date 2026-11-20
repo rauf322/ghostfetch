@@ -38,9 +38,10 @@ export function PopupPage({
   const counts = usePageCounts(activeTab?.id, runsHere);
   // A tab that isn't on a website has no page to tell about, so it opens on every rule.
   const [view, setView] = useState<View>(host ? 'page' : 'rules');
-  // How many rules answered on the page, while that's known (recording, and Ghostfetch on there).
+  // How many rules answered on the page, while that's known (recording, and Ghostfetch on there):
+  // the ones under "Answering here" (RuleList), on now or not.
   const answering = counts?.record
-    ? rules.filter((rule) => rule.enabled && countWords(counts.rules[rule.id])).length
+    ? rules.filter((rule) => countWords(counts.rules[rule.id])).length
     : null;
 
   return (

@@ -2,7 +2,9 @@
 // on, still while Ghostfetch is paused, grey while it's off, as in the editor's list. Then its
 // name, which opens it in the editor, with what it did on the tab's page at the right ("2
 // mocked"), and what it matches under it. Split, the rules that answered on the page come first,
-// under "Answering here", and the rest fold into one row that opens.
+// under "Answering here", and the rest fold into one row that opens. A rule is where what it did
+// on the page puts it, not where its switch does: turned off, it stays in its place under
+// "Answering here", so the same spot turns it on again, until the page loads anew.
 import { useState } from 'react';
 import { countWords, openRuleInEditor, ruleTitle } from '../../../shared/api/index.ts';
 import type { Rule, RuleCount } from '../../../shared/api/index.ts';
@@ -29,7 +31,9 @@ export function RuleList({
   title: string;
 }) {
   const [open, setOpen] = useState(false);
-  const answers = (rule: Rule) => rule.enabled && countWords(counts?.[rule.id]) !== '';
+  // Whether it's on now or not: a row that left as its dot was clicked would put the next rule
+  // under the pointer.
+  const answers = (rule: Rule) => countWords(counts?.[rule.id]) !== '';
   const here = split ? rules.filter(answers) : rules;
   const rest = split ? rules.filter((rule) => !answers(rule)) : [];
   const on = rest.filter((rule) => rule.enabled).length;
@@ -91,7 +95,9 @@ function RuleRow({
   enabled: boolean;
   windowId: number;
 }) {
-  const did = rule.enabled ? countWords(count) : '';
+  // What it did on the page: green while it's still answering there, grey once it or Ghostfetch
+  // is off.
+  const did = countWords(count);
   return (
     // As in the editor's list: the dot lines up with the label over the rules, and with the name's
     // line. It saves at once, as the popup can close at any moment.
@@ -118,7 +124,7 @@ function RuleRow({
               data-testid="rule-did"
               className={cn(
                 'ml-auto flex-none text-label',
-                enabled ? 'text-signal' : 'text-t50',
+                rule.enabled && enabled ? 'text-signal' : 'text-t50',
               )}
             >
               {did}

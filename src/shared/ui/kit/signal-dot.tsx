@@ -6,7 +6,7 @@ import { cn } from '../cn.ts';
 // Recording); a rule's dot, which is its switch, is SignalSwitch. The dot is 6 px, as T3
 // Code's beside "Working" is. Unlike T3 Code's (motion-safe), it pulses with reduced motion too:
 // the pulse is a fade, with nothing moving, which is what Reduce Motion swaps movement for, and
-// without it a rule that's answering wouldn't look live there.
+// without it recording wouldn't look live there.
 export function SignalDot({
   on,
   paused = false,

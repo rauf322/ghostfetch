@@ -111,6 +111,7 @@ src/shared/                      what more than one part of the extension uses
     sidebar.tsx                  the sidebar's width and whether it's hidden, the edge that resizes it (and what keeps its width meanwhile), and the button (and ⌘B) that hides it
     theme.ts                     the themes, and the one in use; theme-menu.tsx, the ⋯ menus' Theme row
     rules-file.tsx               rules files: export every rule or one, import one (its rules arrive turned off)
+    rule-switch.tsx              a rule's switch, the green dot (the kit's SignalSwitch), in the editor's rule list and the popup
     cn.ts                        cn(), which joins the kit's class names
 wxt.config.ts                    the manifest (permissions, content scripts, CSP, Firefox ID) and the build settings
 components.json                  settings for shadcn's CLI, for adding a kit component
@@ -294,8 +295,9 @@ in the `⋯` menu (the editor and the open popup
 recoloured, and set before a page draws), every theme's selection colour see-through (the body
 editor's selection lies over its text), the toolbar badge (green with the count, grey with
 "off"), and the popup (each rule's dot, pulsing while it's on, which turns it off and on, saved
-at once, a long name cut short after it, a rule picked in it opening in the editor, the sites
-you added with Remove, and
+at once, a long name cut short after it, This page keeping a rule where it is when its dot
+turns it off, so the same spot turns it back on, a rule picked in it opening in the editor,
+the sites you added with Remove, and
 what each rule did on a page, which the page counts by rule and by what the rule did, telling
 the popup nothing of the requests themselves), plus the properties of the
 [security model](security-model.md) (channel theft, forged offers, patched built-ins, built-ins

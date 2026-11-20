@@ -3,7 +3,8 @@
 What Ghostfetch protects against, and what it has to trust. For what it is and how to install it,
 see the [README](../README.md).
 
-- **No network calls of its own, and few libraries, only in its own pages.** Ghostfetch's code is
+- **No network calls of its own but Agent access's, and few libraries, only in its own pages.**
+  Ghostfetch's code is
   all in `src/`. The popup and the editor are React components on Base UI (see
   [UI kit](development.md#ui-kit)); those two, what they're built on (React DOM and its
   scheduler, Base UI's utils, Floating UI, use-sync-external-store) and the kit's three helpers
@@ -14,8 +15,17 @@ see the [README](../README.md).
   that start each one: a pass-through and a `try`/`catch`. The page-world script is built so it
   adds no globals to the page and runs entirely in strict mode, so a built-in the page patches
   can't reach its functions or their arguments through `.caller`. The extension pages run under
-  a strict CSP (`connect-src 'none'`, no remote scripts, images or styles, no inline code, no
-  `<style>` tags); `npm run test:release` checks all three in the built packages.
+  a strict CSP (no connection but a WebSocket to `127.0.0.1`, for Agent access; no remote
+  scripts, images or styles, no inline code, no `<style>` tags); `npm run test:release` checks
+  all three in the built packages.
+- **Agent access is off until you turn it on, and paired.** Turned on in the editor with the
+  pairing code a coding agent's `ghostfetch-mcp` gives, the editor connects to it on
+  `127.0.0.1` and lets the agent read and change the rules, and see the requests of the page it
+  watches, only if that page is on a dev host (`localhost`, `*.localhost`, `127.0.0.1`,
+  `local.*`). `ghostfetch-mcp` turns away a web page's WebSocket by its Origin, and an editor
+  without its token; the token is kept in `~/.config/ghostfetch/agent-token`, readable by you
+  alone. What the agent reads goes to it and to its model provider. Programs running as you can
+  read the token, as they can your browser profile. See [Agent access](agent-access.md).
 - **Only runs where it should.** The built-in hosts' content scripts are declared in the
   manifest; the sites you add get theirs registered at runtime, for those sites only. Any
   other website can't see Ghostfetch, your rules or your traffic. The `local.*` pattern is

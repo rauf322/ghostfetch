@@ -19,6 +19,7 @@
     "test:firefox": "wxt build -b firefox && node test/firefox.mjs",
     "test:kit": "NODE_ENV=production wxt build --mode kit && NODE_ENV=production wxt build -b firefox --mode kit && node test/kit.mjs",
     "test:release": "npm run zip && node test/release.mjs",
+    "test:agent": "wxt build && node test/agent.mjs",
     "lint:firefox": "wxt build -b firefox && web-ext lint --source-dir .output/firefox-mv3",
     "start:zen": "ZEN=/Applications/Zen.app/Contents/MacOS/zen wxt -b firefox"
   },

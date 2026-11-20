@@ -4,8 +4,9 @@
 // is open: Traffic lists it, a rule says how often it fired there, and New rule offers what the
 // page just asked for. Between the views it opens rules: one picked in the sidebar, one picked in
 // Traffic, one made by New rule or from a captured response, the first of an import, and one the
-// popup asks for.
+// popup asks for. While Agent access is on, it does what a coding agent's tools ask (pages/agent).
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useAgentAccess } from '../../pages/agent/index.ts';
 import { RulesPage } from '../../pages/rules/index.ts';
 import { TrafficPage } from '../../pages/traffic/index.ts';
 import {
@@ -54,6 +55,7 @@ export function Editor({ inTab, windowId }: { inTab: boolean; windowId: number }
   const [query, setQuery] = useState('');
   // The side panel follows the active tab; the editor in a tab keeps the tab it picked.
   const log = useTrafficLog(!inTab);
+  useAgentAccess({ log, inTab });
   const importInput = useRef<HTMLInputElement>(null);
   const chooseFile = () => importInput.current!.click();
 

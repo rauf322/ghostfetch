@@ -1,9 +1,11 @@
 // Shared by the Chromium test (e2e.mjs) and the Firefox/Zen test (firefox.mjs): the fake
-// backend with its hostile pages, the rules under test, and a tiny check/expect harness, which
-// the release and UI kit checks (release.mjs, kit.mjs) use too.
+// backend with its hostile pages, the rules under test, ghostfetch-mcp started as an agent starts
+// it (agent.mjs too), and a tiny check/expect harness, which the release and UI kit checks
+// (release.mjs, kit.mjs) use too.
 import fs from 'node:fs';
 import http from 'node:http';
-import { stripTypeScriptTypes } from 'node:module';
+import { createRequire, stripTypeScriptTypes } from 'node:module';
+import net from 'node:net';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRule } from '../src/shared/api/index.ts';
@@ -773,6 +775,60 @@ export function wrapBreaks() {
   const coloured = new Set(starts(nodes, 0));
   const shared = plain.filter((at) => coloured.has(at)).length;
   return { breaks: plain.length, astray: plain.length + coloured.size - 2 * shared };
+}
+
+// ------------------------------------------------------------ Agent access
+
+// ghostfetch-mcp (mcp/), whose packages (the MCP client an agent would be, among them) are its own:
+// `npm install --prefix mcp`.
+const MCP_DIR = path.join(ROOT, 'mcp');
+export const AGENT_READY = fs.existsSync(path.join(MCP_DIR, 'node_modules'));
+// The pairing code in what ghostfetch-mcp says while no editor is connected.
+export const PAIRING_CODE = /\b(\d+-[A-Z2-9]{4}(?:-[A-Z2-9]{4}){3})\b/;
+
+// A port nothing listens on, for ghostfetch-mcp.
+export function freePort() {
+  return new Promise((resolve) => {
+    const probe = net.createServer().listen(0, '127.0.0.1', () => {
+      const { port } = probe.address();
+      probe.close(() => resolve(port));
+    });
+  });
+}
+
+// ghostfetch-mcp, started as an agent starts it (over stdio, by a real MCP client), on `port`, with
+// its token in `tokenFile`; and tool(name, args), which calls a tool and gives back what it
+// returned (its JSON), or { error } with the error's words, or { text } for words that aren't JSON.
+export async function startAgent({ port, tokenFile }) {
+  const fromMcp = createRequire(path.join(MCP_DIR, 'package.json'));
+  const { Client } = fromMcp('@modelcontextprotocol/client');
+  const { StdioClientTransport } = fromMcp('@modelcontextprotocol/client/stdio');
+  const client = new Client({ name: 'ghostfetch-test', version: '1.0.0' });
+  await client.connect(
+    new StdioClientTransport({
+      command: process.execPath,
+      args: [path.join(MCP_DIR, 'ghostfetch-mcp.mjs')],
+      env: {
+        ...process.env,
+        GHOSTFETCH_AGENT_PORT: String(port),
+        GHOSTFETCH_AGENT_TOKEN_FILE: tokenFile,
+      },
+      stderr: 'pipe',
+    }),
+  );
+  return {
+    async tool(name, args = {}) {
+      const result = await client.callTool({ name, arguments: args });
+      const text = result.content.map((part) => part.text).join('\n');
+      if (result.isError) return { error: text };
+      try {
+        return JSON.parse(text);
+      } catch {
+        return { text };
+      }
+    },
+    close: () => client.close(),
+  };
 }
 
 // ------------------------------------------------------------ harness

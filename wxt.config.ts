@@ -21,10 +21,11 @@ const relativePaths = {
 // (an absolute path here) but only creates .output/ itself.
 const ARTIFACTS = fileURLToPath(new URL('web-ext-artifacts/', import.meta.url));
 
-// The extension pages' Content-Security-Policy, the same string Ghostfetch has always shipped.
-// test/release.mjs checks both built manifests against it.
+// The extension pages' Content-Security-Policy. They connect to nothing but ghostfetch-mcp, Agent
+// access's companion, over a WebSocket on 127.0.0.1 (pages/agent): at any port, as the pairing code
+// names it. test/release.mjs checks both built manifests against it.
 export const CSP =
-  "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'none'; object-src 'none'; form-action 'none'; base-uri 'none'";
+  "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src ws://127.0.0.1:*; object-src 'none'; form-action 'none'; base-uri 'none'";
 
 // `npm run dev` only: Vite's hot reload adds <style> tags, talks to its server over a WebSocket
 // and serves the pages' stylesheet (and so the font) from that server, all of which the CSP
@@ -35,8 +36,8 @@ const DEV_CSP = CSP.replace(
   "style-src 'self'",
   `style-src 'self' 'unsafe-inline' ${DEV_SERVER}`,
 ).replace(
-  "connect-src 'none'",
-  `connect-src ws://localhost:${DEV_PORT} ${DEV_SERVER}; font-src 'self' ${DEV_SERVER}`,
+  'connect-src ws://127.0.0.1:*',
+  `connect-src ws://127.0.0.1:* ws://localhost:${DEV_PORT} ${DEV_SERVER}; font-src 'self' ${DEV_SERVER}`,
 );
 
 const ICONS = {

@@ -1,0 +1,21 @@
+{
+  "name": "ghostfetch-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Lets a coding agent read and change Ghostfetch's rules, through Ghostfetch's editor",
+  "bin": {
+    "ghostfetch-mcp": "ghostfetch-mcp.mjs"
+  },
+  "type": "module",
+  "dependencies": {
+    "@modelcontextprotocol/server": "2.4.0",
+    "ws": "8.23.0",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "2.4.0"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

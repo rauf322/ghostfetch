@@ -244,6 +244,15 @@ URL matching: *contains*, *equals* (a bare path such as `/api/users?page=1` work
 *wildcard* (`*`) or *regex*. A rule can also match a **GraphQL operation name**, read from the
 request body or the `operationName` query param.
 
+## Agent access (prototype)
+
+A coding agent (OpenCode, Claude Code, any MCP client) can make and change your rules, and see
+what your dev app asked for, through `ghostfetch-mcp`, which it runs. Turn it on with **Agent**
+(`>_`) at the bottom of the editor's sidebar and the pairing code the agent gives you, keep the
+editor open while the agent works, and check the result in your app. Its panel lists what the
+agent changed; a rule it deletes comes back with **Undo**. Setting it up, the tools, and what
+the agent can and can't see: [Agent access](agent-access.md).
+
 ## Limits worth knowing
 
 - Rules only see `fetch()` and `XMLHttpRequest` calls made by page scripts, not

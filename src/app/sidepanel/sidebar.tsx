@@ -4,8 +4,10 @@
 // Import and Export. From 760px wide it stands beside the open view, as wide as its edge was
 // dragged, or hidden (shared/ui/sidebar.tsx); in a narrow side panel it's the Rules view's own
 // screen, under the top bar, which then has the name and the two views. A rule's dot turns it on
-// or off; Ghostfetch's own switch and recording's are in the toolbar popup.
-import { useEffect, useRef } from 'react';
+// or off; Ghostfetch's own switch and recording's are in the toolbar popup. The footer's Agent
+// opens Agent access over it (pages/agent).
+import { useEffect, useRef, useState } from 'react';
+import { AgentButton, AgentPanel } from '../../pages/agent/index.ts';
 import { RuleList } from '../../pages/rules/index.ts';
 import { ruleStore } from '../../shared/api/index.ts';
 import type { TrafficLog } from '../../shared/api/index.ts';
@@ -65,6 +67,7 @@ export function Sidebar({
   const { rules } = useStore(ruleStore);
   const collapsed = useSidebarHidden();
   const search = useRef<HTMLInputElement>(null);
+  const [agentOpen, setAgentOpen] = useState(false);
 
   // "/" puts the cursor in the search field, from anywhere that isn't a field itself (in the
   // body editor it's vim's search), while the field is on screen.
@@ -137,7 +140,11 @@ export function Sidebar({
         onCreate={onNewRule}
         log={log}
       />
-      <PaneFooter>
+      {agentOpen && (
+        <AgentPanel onClose={() => setAgentOpen(false)} onOpenRule={onSelect} />
+      )}
+      {/* A container: Agent shows its name where there's room for it. */}
+      <PaneFooter className="@container">
         <EditorMenu
           inTab={inTab}
           windowId={windowId}
@@ -154,6 +161,7 @@ export function Sidebar({
           <Icon name="export" size={14} />
           Export
         </Button>
+        <AgentButton open={agentOpen} onToggle={() => setAgentOpen(!agentOpen)} />
       </PaneFooter>
     </ListPane>
   );

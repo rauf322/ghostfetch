@@ -15,8 +15,9 @@ import {
 } from './fixtures.mjs';
 
 const { version } = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
+// Written out rather than imported from wxt.config.ts, so a change there has to be made here too.
 const CSP =
-  "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'none'; object-src 'none'; form-action 'none'; base-uri 'none'";
+  "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src ws://127.0.0.1:*; object-src 'none'; form-action 'none'; base-uri 'none'";
 const ICONS = {
   16: 'icons/icon16.png',
   32: 'icons/icon32.png',
@@ -96,7 +97,7 @@ console.log('manifests');
 for (const browser of ['chrome', 'firefox']) {
   const manifest = manifests[browser];
   await check(
-    `${browser}: the release CSP is exactly the one Ghostfetch has always shipped`,
+    `${browser}: the release CSP is exactly Ghostfetch's: no connections but a WebSocket to 127.0.0.1 (Agent access)`,
     async () => {
       expect(manifest.content_security_policy, { extension_pages: CSP });
     },

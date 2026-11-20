@@ -13,13 +13,17 @@
 // rules, this test loads a temporary copy of the built extension (.output/firefox-mv3) with two
 // test-only hooks; the build itself is never touched:
 // - a content script on /__control that writes extension storage when that page asks;
-// - a background listener that reports what only extension code can see.
+// - a background listener that reports what only extension code can see, and opens the editor in
+//   a tab with Agent access on, which ghostfetch-mcp then drives (as test/agent.mjs does in
+//   Chromium).
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { launch } from 'puppeteer-core';
 import {
+  AGENT_READY,
   FIREFOX_BUILD,
+  PAIRING_CODE,
   VIM_START,
   VIM_STEPS,
   WRAP_BODY,
@@ -27,11 +31,13 @@ import {
   check,
   expect,
   finish,
+  freePort,
   itemsBody,
   narrowEditor,
   requireBuild,
   rowsAgree,
   sleep,
+  startAgent,
   startServer,
   testRules,
   vimKeys,
@@ -43,12 +49,24 @@ import {
 const FIREFOX = process.env.FIREFOX || '/Applications/Zen.app/Contents/MacOS/zen';
 
 const CONTENT_HOOK = `
+// Firefox suspends a background page that's been idle, and the message that wakes it can find no
+// one to answer it yet ("Receiving end does not exist"): it's sent again, a moment later.
+async function toBackground(request) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await chrome.runtime.sendMessage({ ghostfetchTest: request });
+    } catch (error) {
+      if (attempt >= 20 || !/Receiving end does not exist/.test(error.message)) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+  }
+}
 window.addEventListener('message', async (event) => {
   const request = event.data?.ghostfetchTest;
   if (event.source !== window || !request) return;
   const result = request.command === 'setStorage'
     ? await chrome.storage.local.set(request.values)
-    : await chrome.runtime.sendMessage({ ghostfetchTest: request });
+    : await toBackground(request);
   window.postMessage({ ghostfetchTestReply: { id: request.id, result: result ?? null } }, '*');
 });
 `;
@@ -61,6 +79,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   (async () => {
     if (request.command === 'apis') {
       return { sidebarOpen: typeof chrome.sidebarAction?.open, sidePanel: typeof chrome.sidePanel };
+    }
+    if (request.command === 'openEditor') {
+      // The editor in a tab, with Agent access turned on with this pairing code, as its panel
+      // leaves it (the background page shares the editor's localStorage).
+      localStorage.setItem('ghostfetch.agent', JSON.stringify({ code: request.agentCode, on: true }));
+      const tab = await chrome.tabs.create({ url: chrome.runtime.getURL('/sidepanel.html'), active: false });
+      return tab.id;
+    }
+    if (request.command === 'closeTab') {
+      await chrome.tabs.remove(request.id);
+      localStorage.removeItem('ghostfetch.agent');
+      return null;
     }
     if (request.command === 'traffic') {
       // Connects to the tab's log exactly like the editor's Traffic view does, and takes its first
@@ -75,7 +105,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       }));
     }
     return null;
-  })().then(sendResponse);
+  })().then(sendResponse, (error) => sendResponse({ hookError: String(error) }));
   return true;
 });
 `;
@@ -472,6 +502,75 @@ try {
       expect(r, { early: { early: 'mocked' }, wrapped: true });
     },
   );
+
+  // Here, while the background page is still awake: Firefox suspends one that's been idle a while,
+  // as it is after the editor's checks below.
+  if (!AGENT_READY)
+    console.log(
+      '  - Agent access: skipped, as ghostfetch-mcp has no packages (npm install --prefix mcp)',
+    );
+  else
+    await check(
+      "Agent access: Firefox's editor connects to ghostfetch-mcp over its WebSocket, a rule the agent saves answers on the page, and the agent sees the request",
+      async () => {
+        const tokenDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ghostfetch-agent-'));
+        const agent = await startAgent({
+          port: await freePort(),
+          tokenFile: path.join(tokenDir, 'token'),
+        });
+        let editor = null;
+        try {
+          const code = PAIRING_CODE.exec((await agent.tool('status')).text ?? '')?.[1];
+          // The page in front, so the editor, opened behind it, watches it (the page used last).
+          await page.bringToFront();
+          editor = await send({ command: 'openEditor', agentCode: code });
+          if (typeof editor !== 'number') throw new Error(JSON.stringify(editor));
+          // Connected, watching the page, and its log arrived: by now it's a long one, of large
+          // bodies, which takes a moment.
+          let status;
+          for (let attempt = 0; attempt < 60; attempt++) {
+            status = await agent.tool('status');
+            if (status.connected && status.page?.logConnected) break;
+            await sleep(250);
+          }
+          const saved = await agent.tool('save_rule', {
+            name: 'From the agent',
+            match: { url: '/api/agent-zen', method: 'GET' },
+            response: { body: { zen: true } },
+          });
+          // At once: save_rule answers once the rule is on the page.
+          const answered = await call('/api/agent-zen');
+          let requests;
+          for (let attempt = 0; attempt < 20; attempt++) {
+            requests = await agent.tool('recent_requests', { url: '/api/agent-zen' });
+            if (requests.requests?.length) break;
+            await sleep(150);
+          }
+          await agent.tool('delete_rule', { id: saved.rule?.id });
+          expect(
+            [
+              [status.connected, status.editor, status.page?.url, status.page?.devHost],
+              [saved.created, saved.problems],
+              [answered.status, answered.body],
+              requests.requests?.map((request) => [
+                request.rule?.name,
+                request.rule?.did,
+              ]),
+            ],
+            [
+              [true, 'a tab', `${ORIGIN}/`, true],
+              [true, []],
+              [200, { zen: true }],
+              [['From the agent', 'mocked']],
+            ],
+          );
+        } finally {
+          if (typeof editor === 'number') await send({ command: 'closeTab', id: editor });
+          await agent.close();
+          fs.rmSync(tokenDir, { recursive: true, force: true });
+        }
+      },
+    );
 
   console.log("vim keys in the body editor (the editor's own code, on a plain page)");
   const editorTab = await open(`${ORIGIN}/editor`, 'editor');

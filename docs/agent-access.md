@@ -5,8 +5,9 @@ what your dev app asked for, so you don't have to write mocks by hand. You keep 
 editor open, the agent works through it, and you check the result in your app, as with a rule you
 made yourself.
 
-It takes Ghostfetch 0.24.1 or later, and `ghostfetch-mcp`, the small program in this
-repository's [`mcp/`](../mcp/) folder that the agent runs.
+It takes Ghostfetch 0.24.1 or later (0.25.0 for [groups](guide.md#groups)), and
+`ghostfetch-mcp`, the small program in this repository's [`mcp/`](../mcp/) folder that the
+agent runs. To update `ghostfetch-mcp`, pull this repository and start the agent's session again.
 
 ## How it works
 

@@ -1364,7 +1364,7 @@ try {
         textarea.blur();
       });
       // Once the body is saved: a change from elsewhere takes the place of a save still waiting
-      // (store.ts), and would bring the body back as it was.
+      // (order-storage.ts), and would bring the body back as it was.
       await worker.evaluate(
         async (body) => {
           for (let tries = 0; tries < 60; tries++) {

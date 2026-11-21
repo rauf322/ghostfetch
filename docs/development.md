@@ -98,7 +98,7 @@ src/pages/                       what the screens show
   kit/                           the kit page: every kit component in its states
 src/shared/                      what more than one part of the extension uses
   api/                           what's kept in chrome.storage and what the parts send each other (index.ts)
-    rules/                       a rule: its fields and their names, making one, which requests it matches (url-match.ts and request-match.ts, the one test the page and the editor both ask), whether it's answering (answering.ts), what's wrong with it (problems.ts), and the screens' copy of the rules and their groups (store.ts: the order, kept as the rules, each naming its group, and the groups, each with its place); groups (group.ts), and a copy of one; apart from them, the server's responses their bodies' Diff compares with
+    rules/                       a rule: its fields and their names, making one, which requests it matches (url-match.ts and request-match.ts, the one test the page and the editor both ask), whether it's answering (answering.ts), what's wrong with it (problems.ts); the order and every operation on it, which keeps two groups from sharing a name (order.ts), how it's kept, as the rules, each naming its group, and the groups, each with its place (order-storage.ts), and the screens' copy of it, which saves and redraws after each operation (store.ts); groups (group.ts), and a copy of one; apart from them, the server's responses their bodies' Diff compares with
     sites/                       the sites Ghostfetch runs on, the screens' copy of the ones you added, turning one on or off
     settings.ts                  Ghostfetch on or off, and recording, which only the popup changes
     log-entry.ts                 a request in a tab's traffic log
@@ -135,6 +135,7 @@ mcp/                             ghostfetch-mcp, the MCP server a coding agent r
 test/json.mjs                    the body editor's JSON check against JSON.parse, the pieces it colours a long body in, after edits too, Format, and where it puts the cursor
 test/diff.mjs                    the body's Diff without a browser: the lines kept, removed and added (the fewest), and the parts of a changed line
 test/matching.mjs                which URLs a rule's pattern matches, that the rule editor's Try a URL says what the page does, and that Diff keeps responses from the same requests
+test/order.mjs                   the order without a browser: every operation on it (rules and groups put, moved, deleted and put back, a group renamed), and that no two groups come to share a name
 test/curl.mjs                    cURL commands both ways: Copy as cURL (nothing the page sent breaks out of its quotes), New rule's reading of one
 test/e2e.mjs                     end-to-end test in Chromium (Playwright)
 test/firefox.mjs                 end-to-end test in Zen or Firefox (puppeteer-core)
@@ -249,6 +250,20 @@ the first two), and what's wrong with one (`regexError`, and `bodyProblem`, whic
 JSON body of the rule's own). It needs no browser either, and `npm test` runs it after
 `test/diff.mjs`.
 
+`test/order.mjs` checks the order's own operations (`src/shared/api/rules/order.ts`), each on an
+order of ungrouped rules and groups: what's kept of an order (its rules from the top, each naming
+its group, and its groups, each with its place) and the order laid out from that again; where a
+rule is, and the place for one to be tried nth, never inside a group it isn't going into; rules
+put, taken out and moved, down their own list, into a group, out of one and between two, to a
+place as a drag gives it (before what's there now) and as the agent does (to be tried nth); groups
+added, deleted and put back, moved both ways, turned off, which leaves their rules' own switches
+as they were, and taken away; and the order's own rule, that no two groups share a name: a rename
+to a name another group has, in any case, or to one with nothing in it is refused and says which
+(`renameGroup`), and a group that comes in under a taken name, added, put back or imported, gets
+the next free one in brackets. Last, that a rule and a group stay the objects they were through
+all of it, which is what the screens tell them by. It needs no browser, and `npm test` runs it
+after `test/matching.mjs`.
+
 `test/curl.mjs` checks cURL commands both ways. Traffic's Copy as cURL: the command for a request,
 and that whatever the page put in it (quotes, `$(…)`, backticks, `;`, in the URL, the body or the
 method, a URL that starts with a dash) stays inside its quotes when a shell reads the command. New
@@ -256,7 +271,7 @@ rule: what it reads from a command (Chrome's Copy as cURL over several lines, `$
 their `\u`, `\x` and octal escapes, one past U+10FFFF as U+FFFD, `-X`, `-G`, `-I`, `--url`,
 options that take a value, known to it or not), that every command Copy as cURL writes reads back as the same request, what it reads
 from a URL (a bare origin keeps its host) or from "POST /path", which Accept values become the
-Content-Type, and the rule it makes. `npm test` runs it after `test/matching.mjs`.
+Content-Type, and the rule it makes. `npm test` runs it after `test/order.mjs`.
 
 `test/e2e.mjs` loads the built extension into Chromium, runs a local API and checks the rules
 against fetch and XHR (that rules saved by older versions do what they should, and that a rule

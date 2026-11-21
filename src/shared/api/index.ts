@@ -51,12 +51,13 @@ export {
   serverResponse,
 } from './rules/server-responses.ts';
 export type { ServerResponse } from './rules/server-responses.ts';
+export { layOut } from './rules/order.ts';
+export type { Entry, GroupEntry, Place, Renamed, RuleEntry } from './rules/order.ts';
 export {
   addEntries,
   addGroup,
   addRule,
   addRules,
-  editGroup,
   editRule,
   findGroup,
   findGroupNamed,
@@ -65,7 +66,6 @@ export {
   groupPosition,
   inOffGroup,
   initRules,
-  layOut,
   moveGroup,
   moveGroupTo,
   moveRule,
@@ -74,15 +74,17 @@ export {
   placeOf,
   removeGroup,
   removeRule,
+  renameGroup,
   restoreGroup,
   ruleRevision,
   ruleStore,
   saveRulesNow,
   storedGroups,
   touchRule,
+  turnGroup,
   ungroup,
 } from './rules/store.ts';
-export type { Entry, GroupEntry, Place, RuleChange, RuleEntry } from './rules/store.ts';
+export type { RuleChange } from './rules/store.ts';
 export {
   isBuiltInHost,
   isSiteEnabled,

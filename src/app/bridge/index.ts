@@ -68,7 +68,7 @@ export default defineUnlistedScript(() => {
         groups: [],
       })) as { enabled: boolean; record: boolean; rules: unknown; groups: unknown };
       recording = stored.record;
-      // The groups as the editor has them, and the rules in the order it shows (store.ts):
+      // The groups as the editor has them, and the rules in the order it shows (order.ts):
       // each group's rules together, in the group's place.
       const groups = normalizeGroups(stored.groups);
       const names = new Map(groups.map((group) => [group.id, group.name]));

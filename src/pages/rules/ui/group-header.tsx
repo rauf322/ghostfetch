@@ -3,7 +3,7 @@
 // its rules are on, + for a new rule at its top, and its ⋯ menu. Drag it to move the group with its
 // rules. A group that's off fades, as its rules do.
 import { useEffect, useRef, useState } from 'react';
-import { editGroup, groupName, nameTaken, ruleStore } from '../../../shared/api/index.ts';
+import { groupName, renameGroup } from '../../../shared/api/index.ts';
 import type { Group, Rule } from '../../../shared/api/index.ts';
 import { cn } from '../../../shared/ui/cn.ts';
 import { GroupSwitch } from '../../../shared/ui/group-switch.tsx';
@@ -120,17 +120,12 @@ function NameField({ group, onDone }: { group: Group; onDone: () => void }) {
   function commit() {
     if (done.current) return;
     const name = groupName(text);
-    if (name && name !== group.name) {
-      if (nameTaken(name, ruleStore.state.groups, group.id)) {
-        notify(`There's already a group called “${name}”`, {
-          kind: 'error',
-          description: 'Each group has a name of its own: pick another.',
-        });
-        return;
-      }
-      editGroup(group.id, (current) => {
-        current.name = name;
+    if (name && name !== group.name && renameGroup(group.id, name) === 'taken') {
+      notify(`There's already a group called “${name}”`, {
+        kind: 'error',
+        description: 'Each group has a name of its own: pick another.',
       });
+      return;
     }
     finish();
   }

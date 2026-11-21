@@ -45,7 +45,8 @@ export interface Rule {
 // A group of rules (docs/glossary/rules.md): a name no other group has, and a switch of its own.
 // Its rules stand together in the order, in its place, and answer only while it's on as well as
 // they; turned off, it leaves their own switches as they were. One level only: a group holds
-// rules, never another group. Where it stands in the order is kept with the rules (store.ts).
+// rules, never another group. Where it stands in the order is kept with the rules
+// (order-storage.ts).
 export interface Group {
   id: string;
   name: string;

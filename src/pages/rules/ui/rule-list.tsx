@@ -22,7 +22,7 @@ import { Button } from '../../../shared/ui/kit/button.tsx';
 import { Icon } from '../../../shared/ui/kit/icon.tsx';
 import { ListEmpty } from '../../../shared/ui/list-detail.tsx';
 import { filterEntries } from '../lib/filter-rules.ts';
-import { renameGroup, renamingStore } from '../model/renaming.ts';
+import { renamingStore, setRenaming } from '../model/renaming.ts';
 import { useRuleDrag } from '../model/use-rule-drag.ts';
 import { GroupBlock } from './group-block.tsx';
 import { NoRulesYet } from './no-rules.tsx';
@@ -69,7 +69,7 @@ export function RuleList({ selectedId, query, onSelect, onCreate, log }: RuleLis
 
   function newGroup() {
     const group = addGroup(createGroup(freeName(NEW_GROUP, ruleStore.state.groups)), 0);
-    renameGroup(group.id);
+    setRenaming(group.id);
   }
 
   return (
@@ -143,8 +143,8 @@ export function RuleList({ selectedId, query, onSelect, onCreate, log }: RuleLis
                   onSelect={onSelect}
                   onCreate={onCreate}
                   onFold={() => setFolded(entry.group.id, !isFolded(entry.group.id))}
-                  onRename={renameGroup}
-                  onRenamed={() => renameGroup(null)}
+                  onRename={setRenaming}
+                  onRenamed={() => setRenaming(null)}
                 />
               ),
             )}

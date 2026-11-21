@@ -3,7 +3,7 @@
 // Turned off, its rules stop answering, each keeping its own switch for when it's turned on again.
 // Saved at once: the popup can close at any moment.
 import type { ComponentProps } from 'react';
-import { editGroup, settingsStore } from '../api/index.ts';
+import { settingsStore, turnGroup } from '../api/index.ts';
 import type { Group } from '../api/index.ts';
 import { useStore } from '../react/index.ts';
 import { SignalSwitch } from './kit/signal-switch.tsx';
@@ -27,11 +27,7 @@ export function GroupSwitch({
             ? `On. Click to turn ${group.name} off, and its rules with it`
             : `On, but Ghostfetch is off. Click to turn ${group.name} off`
       }
-      onCheckedChange={(on) =>
-        editGroup(group.id, (current) => {
-          current.enabled = on;
-        })
-      }
+      onCheckedChange={(on) => turnGroup(group.id, on)}
       {...props}
     />
   );

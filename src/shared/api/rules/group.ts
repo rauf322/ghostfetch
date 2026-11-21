@@ -5,7 +5,7 @@ import type { Untrusted } from '../../lib/index.ts';
 import { isId } from './rule.ts';
 import type { Group } from './types.ts';
 
-// A group as it's kept: with its place among the order's top-level entries (store.ts).
+// A group as it's kept: with its place among the order's top-level entries (order.ts).
 export interface StoredGroup extends Group {
   at: number;
 }

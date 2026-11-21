@@ -16,7 +16,6 @@ import {
   createGroup,
   createRule,
   duplicateGroup,
-  editGroup,
   editRule,
   entryTester,
   findGroup,
@@ -33,11 +32,11 @@ import {
   moveGroupTo,
   moveRule,
   moveRuleTo,
-  nameTaken,
   normalizeRule,
   placeAt,
   removeGroup,
   removeRule,
+  renameGroup,
   responseFromEntry,
   restoreGroup,
   ruleFromEntry,
@@ -45,6 +44,7 @@ import {
   ruleTitle,
   settingsStore,
   siteOf,
+  turnGroup,
   wouldAnswer,
 } from '../../../shared/api/index.ts';
 import type {
@@ -456,10 +456,7 @@ export function createAgentTools({ log, place }: { log: TrafficLog; place: strin
           group = addGroup(createGroup(wanted), 0);
           noteActivity(`Created the group “${group.name}”`, null);
         }
-        if (enabled === false)
-          editGroup(group.id, (current) => {
-            current.enabled = false;
-          });
+        if (enabled === false) turnGroup(group.id, false);
         if (index !== undefined) moveGroupTo(group.id, index);
         await rulesApplied();
         return {
@@ -472,15 +469,12 @@ export function createAgentTools({ log, place }: { log: TrafficLog; place: strin
         throw new Error(
           `A group called “${group.name}” is there already: give the copy a name no group has.`,
         );
-      if (wanted && nameTaken(wanted, ruleStore.state.groups, group.id))
+      const was = { name: group.name, enabled: group.enabled };
+      if (wanted && renameGroup(group.id, wanted) === 'taken')
         throw new Error(
           `Another group is called “${wanted}”: each has a name of its own.`,
         );
-      const was = { name: group.name, enabled: group.enabled };
-      editGroup(group.id, (current) => {
-        if (wanted) current.name = wanted;
-        if (typeof enabled === 'boolean') current.enabled = enabled;
-      });
+      if (typeof enabled === 'boolean') turnGroup(group.id, enabled);
       if (index !== undefined) moveGroupTo(group.id, index);
       noteActivity(
         was.name === group.name && index === undefined && was.enabled !== group.enabled

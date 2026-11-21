@@ -31,7 +31,7 @@ import { Icon } from '../../../../shared/ui/kit/icon.tsx';
 import { notify } from '../../../../shared/ui/kit/toast.tsx';
 import { exportRule } from '../../../../shared/ui/rules-file.tsx';
 import { duplicateRule } from '../../model/duplicate-rule.ts';
-import { renameGroup } from '../../model/renaming.ts';
+import { setRenaming } from '../../model/renaming.ts';
 
 // No group, as the radio group's value: not an id a group can have.
 const NONE = '*none';
@@ -75,7 +75,7 @@ export function RuleMenu({
   function moveToNew() {
     const group = addGroup(createGroup(freeName(NEW_GROUP, ruleStore.state.groups)), 0);
     moveRule(rule.id, { group: group.id, index: 0 });
-    renameGroup(group.id);
+    setRenaming(group.id);
   }
 
   return (

@@ -3,7 +3,7 @@
 // command is pasted. New rule: what it reads from a command (as the browsers' Copy as cURL writes
 // one, or as people type one), from a URL or from "GET /path", and the rule it makes.
 //
-//   node test/curl.mjs      (npm test runs it after test/matching.mjs)
+//   node test/curl.mjs      (npm test runs it after test/order.mjs)
 import { execFileSync } from 'node:child_process';
 import {
   NEW_DRAFT,

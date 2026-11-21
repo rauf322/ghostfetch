@@ -5371,28 +5371,46 @@ try {
           const row = (name) => app.locator('[data-testid="rule"]', { hasText: name });
           const shape = async () =>
             (await storedRules()).map((rule) => [rule.id, rule.group ? 'PR-1' : '']);
+          // What's left of a drag once it's dropped: a drop mark, or something faded as being
+          // dragged. Up to 0.25.0 a rule moved into a group or out of one kept both, the group's
+          // header outlined and the rule faded: its row was drawn anew in another list, and the
+          // browser's dragend went to the row taken out, which React no longer hears.
+          const leftovers = () =>
+            app.evaluate(() =>
+              [
+                ...document.querySelectorAll(
+                  '[data-testid="rule-list"] [data-drop], [data-testid="rule-list"] .opacity-40',
+                ),
+              ].map((element) => element.dataset.testid),
+            );
           await row('From two').dragTo(header, { targetPosition: { x: 60, y: 30 } });
           await sleep(300);
-          const into = await shape();
+          const into = [await shape(), await leftovers()];
           await row('From A1').dragTo(row('From one'), {
             targetPosition: { x: 60, y: 5 },
           });
           await sleep(300);
-          const out = await shape();
+          const out = [await shape(), await leftovers()];
           await header.dragTo(row('From A1'), { targetPosition: { x: 60, y: 5 } });
           await sleep(300);
           expect(
-            [into, out, await shape(), (await storedGroups())[0].at],
+            [into, out, await shape(), (await storedGroups())[0].at, await leftovers()],
             [
               [
-                ['u1', ''],
-                ['u2', 'PR-1'],
-                ['a1', 'PR-1'],
+                [
+                  ['u1', ''],
+                  ['u2', 'PR-1'],
+                  ['a1', 'PR-1'],
+                ],
+                [],
               ],
               [
-                ['a1', ''],
-                ['u1', ''],
-                ['u2', 'PR-1'],
+                [
+                  ['a1', ''],
+                  ['u1', ''],
+                  ['u2', 'PR-1'],
+                ],
+                [],
               ],
               [
                 ['u2', 'PR-1'],
@@ -5400,6 +5418,166 @@ try {
                 ['u1', ''],
               ],
               0,
+              [],
+            ],
+          );
+        },
+      );
+    },
+  );
+
+  await check(
+    "while a rule is dragged, a mark shows only where it would land: a line in a group starts under its rules' dots, one out of any group is as wide as the list; none over the list's label or out of the list (up to 0.25.0 the last one stayed); under a list that ends with a group, the rule goes to the end of the list, out of the group",
+    async () => {
+      await withGroups(
+        [grouped('u1', 'one'), grouped('a1', 'A1', 'g-1'), grouped('a2', 'A2', 'g-1')],
+        [PR1()],
+        async () => {
+          await show('rules');
+          await app
+            .locator('[data-testid="group"][data-group="PR-1"]')
+            .waitFor({ timeout: 3000 });
+          const row = (name) => app.locator('[data-testid="rule"]', { hasText: name });
+          // Each mark: what has it, which, and where a line starts, from the list's left edge.
+          const marks = () =>
+            app.evaluate(() => {
+              const list = document
+                .querySelector('[data-testid="rule-list"]')
+                .getBoundingClientRect();
+              return [
+                ...document.querySelectorAll('[data-testid="rule-list"] [data-drop]'),
+              ].map((element) => [
+                element.dataset.testid,
+                element.dataset.drop,
+                Math.round(
+                  element.getBoundingClientRect().left +
+                    parseFloat(
+                      getComputedStyle(element, `::${element.dataset.drop}`).left,
+                    ) -
+                    list.left,
+                ),
+              ]);
+            });
+          // Chromium fires this drag's dragover only now and then, where a pointer resting in
+          // one place gets one every 50 ms or so: two small nudges make it fire where it stops.
+          const moveTo = async ([x, y]) => {
+            await app.mouse.move(x, y, { steps: 6 });
+            for (const nudge of [1, 0]) {
+              await sleep(80);
+              await app.mouse.move(x + nudge, y);
+            }
+            await sleep(150);
+            return marks();
+          };
+          const lowerEdge = async (locator) => {
+            const box = await locator.boundingBox();
+            return [box.x + 120, box.y + box.height - 5];
+          };
+          const upperEdge = async (locator) => {
+            const box = await locator.boundingBox();
+            return [box.x + 120, box.y + 5];
+          };
+          const label = await app.locator('[data-testid="rule-list"] h2').boundingBox();
+          const entries = await app
+            .locator('[data-testid="rule-list"] [data-entries]')
+            .boundingBox();
+          const from = await row('From one').boundingBox();
+          await app.mouse.move(from.x + 60, from.y + from.height / 2);
+          await app.mouse.down();
+          await app.mouse.move(from.x + 64, from.y + from.height / 2 + 4, { steps: 3 });
+          const seen = [
+            await moveTo(await lowerEdge(row('From A2'))),
+            await moveTo(await upperEdge(row('From A1'))),
+            await moveTo([label.x + 10, label.y + label.height / 2]),
+            await moveTo(await upperEdge(row('From A1'))),
+            await moveTo([900, 420]),
+            await moveTo([entries.x + 120, entries.y + entries.height + 30]),
+          ];
+          await app.mouse.up();
+          await sleep(400);
+          expect(
+            [
+              seen,
+              (await storedRules()).map((rule) => [rule.id, rule.group ? 'PR-1' : '']),
+              (await storedGroups())[0].at,
+              await app.evaluate(
+                () =>
+                  document.querySelectorAll(
+                    '[data-testid="rule-list"] [data-drop], [data-testid="rule-list"] .opacity-40',
+                  ).length,
+              ),
+            ],
+            [
+              [
+                [['rule', 'after', 32]],
+                [['rule', 'before', 32]],
+                [],
+                [['rule', 'before', 32]],
+                [],
+                [['group-block', 'after', 6]],
+              ],
+              [
+                ['a1', 'PR-1'],
+                ['a2', 'PR-1'],
+                ['u1', ''],
+              ],
+              0,
+              0,
+            ],
+          );
+        },
+      );
+    },
+  );
+
+  await check(
+    'the open rule moved into a folded group, by Move to group or by a drag onto its header, unfolds it, so the rule stays in sight, picked (up to 0.25.0 it went out of sight); the group folded by hand with the open rule in it stays folded',
+    async () => {
+      await withGroups(
+        [grouped('u1', 'one'), grouped('a1', 'A1', 'g-1')],
+        [PR1()],
+        async () => {
+          await show('rules');
+          const header = app.locator('[data-testid="group"][data-group="PR-1"]');
+          await header.waitFor({ timeout: 3000 });
+          const name = header.locator('[data-testid="group-name"]');
+          // Whether the group is open, and which rule the list shows picked.
+          const seen = async () => [
+            await name.getAttribute('aria-expanded'),
+            await app.evaluate(
+              () =>
+                document.querySelector(
+                  '[data-testid="rule-list"] [data-testid="rule"][data-selected] [data-slot="item-title"]',
+                )?.textContent ?? null,
+            ),
+          ];
+          await app.locator('[data-testid="rule"]', { hasText: 'From one' }).click();
+          await name.click();
+          const folded = await seen();
+          await app.click('[data-testid="rule-menu"]');
+          await app.click('[data-testid="move-to-group"]');
+          await app.click('[data-testid="move-to"][data-group="PR-1"]');
+          await sleep(300);
+          const moved = await seen();
+          await name.click();
+          await sleep(200);
+          const byHand = await seen();
+          await app.click('[data-testid="rule-menu"]');
+          await app.click('[data-testid="move-to-group"]');
+          await app.click('[data-testid="move-to-none"]');
+          await sleep(300);
+          const box = await header.boundingBox();
+          await app
+            .locator('[data-testid="rule"]', { hasText: 'From one' })
+            .dragTo(header, { targetPosition: { x: 140, y: box.height - 5 } });
+          await sleep(300);
+          expect(
+            [folded, moved, byHand, await seen()],
+            [
+              ['false', 'From one'],
+              ['true', 'From one'],
+              ['false', null],
+              ['true', 'From one'],
             ],
           );
         },

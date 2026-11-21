@@ -323,7 +323,10 @@ faded with their dots still while it's off, the open rule's chip and path saying
 kept, a search finding a group by its rules or its name; New group with its name ready to type
 and a name that's taken turned down, Move to group, a group's + and New rule's picker on its
 group after; Duplicate, Delete and its Undo, Ungroup; a rule dragged into a group and out of
-one, and a group dragged; the popup's All rules with a group's dot and fold, This page naming a
+one, and a group dragged, with nothing of the drag left once it's dropped; while a rule is
+dragged, a mark only where it would land, a line in a group set in under its rules' dots and one
+out of any as wide as the list, none over the list's label or out of it, and under the list's
+last entry its end; the popup's All rules with a group's dot and fold, This page naming a
 rule's group; and Export group with its import, off and at the top, renamed where its name is
 taken), plus the properties of the
 [security model](security-model.md) (channel theft, forged offers, patched built-ins, built-ins

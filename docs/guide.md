@@ -83,7 +83,11 @@ What's different in Firefox-based browsers:
     on, answers. Where two groups' rules match the same request, then, the higher group wins,
     and a new group, like a new rule, goes on top; drag one above the other to change that.
     Drag a rule into a group (onto its header, below its middle), out of one or between them,
-    and a group's header to move the group with its rules; **Move to group** in a rule's `⋯`
+    and a group's header to move the group with its rules; let go under the list's last entry
+    to put either at the end of the list, out of any group. Where it would land shows as you
+    drag: a line set in under a group's rules lands in that group, a line as wide as the list
+    lands out of any group, and a group's header outlined means the top of that group; where
+    nothing shows, letting go leaves it where it was. **Move to group** in a rule's `⋯`
     menu moves it too, or into a **New group…**. A group's name folds it or unfolds it
     (remembered, and the popup's **All rules** shares it), its **+** makes a rule at its top,
     and its `⋯` menu has **Rename**, **Duplicate** (a copy with the same rules, on, at the top

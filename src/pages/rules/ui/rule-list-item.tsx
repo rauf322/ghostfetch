@@ -25,7 +25,7 @@ import {
 import { RuleSwitch } from '../../../shared/ui/rule-switch.tsx';
 import { ruleSummary } from '../lib/rule-summary.ts';
 import type { RowDrag } from '../model/use-rule-drag.ts';
-import { DROP_MARK } from './drop-marks.ts';
+import { DROP_MARK, GROUPED_DROP_MARK } from './drop-marks.ts';
 
 interface RuleListItemProps {
   rule: Rule;
@@ -88,8 +88,13 @@ export const RuleListItem = memo(function RuleListItem({
       off={!rule.enabled || Boolean(groupOff)}
       draggable
       data-drop={drag.drop}
-      // Set in under its group's header: its dot under the group's name.
-      className={cn(DROP_MARK, inGroup && 'pl-[26px]', drag.dragging && 'opacity-40')}
+      // Set in under its group's header: its dot under the group's name, and a line where a drop
+      // would land set in with it.
+      className={cn(
+        inGroup ? GROUPED_DROP_MARK : DROP_MARK,
+        inGroup && 'pl-[26px]',
+        drag.dragging && 'opacity-40',
+      )}
       // A click on the rule's switch (or on the hidden checkbox Base UI clicks for it) turns the
       // rule on or off without opening it.
       onClick={(event) => {

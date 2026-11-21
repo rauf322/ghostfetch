@@ -41,10 +41,10 @@ interface RuleListProps {
 export function RuleList({ selectedId, query, onSelect, onCreate, log }: RuleListProps) {
   const { entries } = useStore(ruleStore);
   useStore(foldStore);
-  const drag = useRuleDrag();
   const { id: renaming } = useStore(renamingStore);
   const searching = Boolean(query.trim());
   const visible = filterEntries(entries, query);
+  const drag = useRuleDrag(visible.at(-1));
   const shown = visible.flatMap((entry) =>
     entry.kind === 'rule' ? [entry.rule] : entry.rules,
   );
@@ -57,11 +57,15 @@ export function RuleList({ selectedId, query, onSelect, onCreate, log }: RuleLis
     ),
   );
 
-  // A rule opened in a folded group (from Traffic, the popup, or just made in it) unfolds it.
+  // A rule opened in a folded group (from Traffic, the popup, or just made in it) unfolds it, and
+  // so does the open rule moved into one (its ⋯ menu's Move to group, or a drag), so the rule
+  // stays in sight, picked: on opening a rule, and on the open rule going to another group.
+  // Folding the open rule's group by hand leaves it folded.
+  const selectedGroup = findRule(selectedId)?.group ?? '';
   useEffect(() => {
-    const group = findRule(selectedId)?.group;
-    if (group && isFolded(group)) setFolded(group, false);
-  }, [selectedId]);
+    if (selectedId && selectedGroup && isFolded(selectedGroup))
+      setFolded(selectedGroup, false);
+  }, [selectedId, selectedGroup]);
 
   function newGroup() {
     const group = addGroup(createGroup(freeName(NEW_GROUP, ruleStore.state.groups)), 0);
@@ -69,17 +73,20 @@ export function RuleList({ selectedId, query, onSelect, onCreate, log }: RuleLis
   }
 
   return (
-    // A container: a group's header shows how many of its rules are on where there's room.
+    // A container: a group's header shows how many of its rules are on where there's room. A
+    // rule or group dragged under the last entry goes to the end of the list (use-rule-drag.ts),
+    // so there's always a little room under it, however long the list.
     <div
       data-testid="rule-list"
       className="@container/rules min-h-0 flex-1 overflow-auto py-1 scroll-thin"
+      {...drag.list()}
     >
       {none ? (
         <ListEmpty>
           <p>{`No rules match “${query}”.`}</p>
         </ListEmpty>
       ) : (
-        <section>
+        <section className="pb-3">
           {/* The label starts over the rules' dots. */}
           <div className="flex h-9 items-center justify-between pt-2 pr-2 pl-[22px]">
             <h2 className="text-label font-medium text-t40 tabular-nums">
@@ -108,7 +115,7 @@ export function RuleList({ selectedId, query, onSelect, onCreate, log }: RuleLis
               </Button>
             </div>
           </div>
-          <ul>
+          <ul data-entries>
             {visible.map((entry) =>
               entry.kind === 'rule' ? (
                 <RuleListItem

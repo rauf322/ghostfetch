@@ -1,5 +1,5 @@
 // A rule's URL pattern, without a browser: which URLs the page's interceptor answers with it
-// (findRule, src/app/interceptor/matching.ts), for each way of comparing a URL, and that the
+// (findRule, src/interception/matching.ts), for each way of comparing a URL, and that the
 // rule editor's URL tester (testResult, src/pages/rules/lib/rule-checks.ts) says the same for
 // every one of them, so Try a URL in the rule editor tells the truth. And that the requests the
 // editor keeps a rule's server's response from, for its Diff (entryTester), are the ones the page
@@ -9,7 +9,7 @@
 // (isAnswering, wouldAnswer); and what's wrong with one (regexError, bodyProblem).
 //
 //   node test/matching.mjs      (npm test runs it after test/diff.mjs)
-import { compile, findRule } from '../src/app/interceptor/matching.ts';
+import { compile, findRule } from '../src/interception/matching.ts';
 import { testResult } from '../src/pages/rules/lib/rule-checks.ts';
 import {
   bodyProblem,

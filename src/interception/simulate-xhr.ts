@@ -3,7 +3,7 @@
 // getters and events are played back from the result, in the order a real one fires them. The
 // server's body, where the rule keeps it, is held as the bytes it came as, and read the way the
 // XMLHttpRequest's responseType asks for it.
-import type { Rule } from '../../shared/api/index.ts';
+import type { Rule } from '../shared/api/index.ts';
 import { applyRule, hasBody } from './apply-rule.ts';
 import { nativeFetch } from './fetch.ts';
 import { canCapture, makeEntry, ruleEntry, ruleFields } from './log-entries.ts';

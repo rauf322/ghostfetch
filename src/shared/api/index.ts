@@ -3,14 +3,7 @@
 // screens' copy of them, the two switches, and the rules that answer as the page gets them. No
 // React and no npm package: the background and the page scripts import from here too, and keep
 // only what they use.
-export type {
-  BodyMode,
-  Group,
-  HeaderRow,
-  MatchMode,
-  Method,
-  Rule,
-} from './rules/types.ts';
+export type { Group, Rule } from './rules/types.ts';
 export { BODY_MODES, MATCH_MODES, MAX_DELAY, METHODS } from './rules/catalog.ts';
 export {
   createRule,
@@ -31,10 +24,6 @@ export {
 export type { StoredGroup } from './rules/group.ts';
 export { duplicateGroup } from './rules/duplicate-group.ts';
 export { graphqlOperation, ruleFromEntry } from './rules/rule-from-entry.ts';
-export { headerProblem } from './rules/header-check.ts';
-export { urlTester } from './rules/url-match.ts';
-export { requestTester } from './rules/request-match.ts';
-export type { RuleRequest } from './rules/request-match.ts';
 export { isAnswering, wouldAnswer } from './rules/answering.ts';
 export { bodyProblem, hasJsonBody, regexError } from './rules/problems.ts';
 export {

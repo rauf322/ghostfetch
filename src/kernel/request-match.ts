@@ -1,11 +1,12 @@
 // Which requests a rule matches, made into a test once: its method, its URL by the rule's pattern
 // (urlTester), and for GraphQL its operation, which a request names in its body or else in its
-// URL. The one test the page's interceptor answers requests by (app/interceptor/matching.ts), the
-// editor keeps a rule's server's response by (entryTester, server-responses.ts) and the agent's
-// try_url tries a request with, so neither of those two can say what the page wouldn't do. Throws,
-// as urlTester does, if the pattern is a regex that doesn't compile. Every field has a default:
-// the page gets the rules as they're stored. test/matching.mjs checks the cases.
-import type { Rule } from './types.ts';
+// URL. The one test the page's interceptor answers requests by (interception/matching.ts), the
+// editor keeps a rule's server's response by (entryTester, shared/api/rules/server-responses.ts)
+// and the agent's try_url tries a request with, so neither of those two can say what the page
+// wouldn't do. Throws, as urlTester does, if the pattern is a regex that doesn't compile. Every
+// field has a default: the page gets the rules as they're stored. test/matching.mjs checks the
+// cases.
+import type { RuleMatch } from './rule-parts.ts';
 import { urlTester } from './url-match.ts';
 
 // A request as a rule sees it: its method, its full URL, and its body as text ('' with none).
@@ -16,7 +17,7 @@ export interface RuleRequest {
 }
 
 export function requestTester(
-  match: Partial<Rule['match']>,
+  match: Partial<RuleMatch>,
 ): (request: RuleRequest) => boolean {
   const { method = 'ANY', graphqlOperation = '' } = match;
   const url = urlTester(match);

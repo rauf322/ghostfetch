@@ -18,6 +18,7 @@
 // once you scroll to it. code-editor.css reads both, and code-diff.css the same for Diff.
 import { useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
+import type { BodyMode } from '../../../../kernel/index.ts';
 import {
   BODY_MODES,
   editRule,
@@ -25,7 +26,7 @@ import {
   saveRulesNow,
   serverResponse,
 } from '../../../../shared/api/index.ts';
-import type { BodyMode, Rule } from '../../../../shared/api/index.ts';
+import type { Rule } from '../../../../shared/api/index.ts';
 import { formatJson } from '../../../../lib/index.ts';
 import { useStore } from '../../../../ui/use-store.ts';
 import { cn } from '../../../../ui/cn.ts';

@@ -8,8 +8,8 @@
 // what another just kept. Only the editor reads them.
 import { createStore, formatJson } from '../../../lib/index.ts';
 import type { LogEntry } from '../../../traffic/index.ts';
-import { requestTester } from './request-match.ts';
-import type { RuleRequest } from './request-match.ts';
+import { requestTester } from '../../../kernel/index.ts';
+import type { RuleRequest } from '../../../kernel/index.ts';
 import { ruleStore } from './store.ts';
 import type { Rule } from './types.ts';
 

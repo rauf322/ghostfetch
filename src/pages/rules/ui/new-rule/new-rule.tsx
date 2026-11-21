@@ -5,7 +5,8 @@
 // list it's also what shows with no rule open; in a narrow panel it takes the list's place, with a
 // button back to it.
 import { useEffect, useRef, useState } from 'react';
-import type { Method, Rule } from '../../../../shared/api/index.ts';
+import type { Method } from '../../../../kernel/index.ts';
+import type { Rule } from '../../../../shared/api/index.ts';
 import type { LogEntry, TrafficLog } from '../../../../traffic/index.ts';
 import { PaneScroll } from '../../../../ui/list-detail.tsx';
 import {

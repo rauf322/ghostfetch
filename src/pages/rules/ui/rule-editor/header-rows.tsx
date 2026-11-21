@@ -4,8 +4,10 @@
 // headers of the response).
 import { useRef } from 'react';
 import { flushSync } from 'react-dom';
-import { editRule, headerProblem } from '../../../../shared/api/index.ts';
-import type { HeaderRow, Rule } from '../../../../shared/api/index.ts';
+import { headerProblem } from '../../../../kernel/index.ts';
+import type { HeaderRow } from '../../../../kernel/index.ts';
+import { editRule } from '../../../../shared/api/index.ts';
+import type { Rule } from '../../../../shared/api/index.ts';
 import { cn } from '../../../../ui/cn.ts';
 import { Button } from '../../../../ui/kit/button.tsx';
 import { CardHint } from '../../../../ui/kit/card.tsx';

@@ -4,9 +4,9 @@
 import { formatJson, splitUrl } from '../../../lib/index.ts';
 import type { LogEntry } from '../../../traffic/index.ts';
 import { METHODS } from './catalog.ts';
-import { bodyOperation } from './request-match.ts';
+import { bodyOperation } from '../../../kernel/index.ts';
 import { createRule } from './rule.ts';
-import type { Method } from './types.ts';
+import type { Method } from '../../../kernel/index.ts';
 
 export function ruleFromEntry(entry: LogEntry) {
   const rule = createRule();

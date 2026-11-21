@@ -2,7 +2,8 @@
 // body is valid JSON (and if not, where it goes wrong). What's wrong with a rule is shared/api's
 // to say (regexError, hasJsonBody), as the agent's tools ask it too; this puts it in the editor's
 // words.
-import { hasJsonBody, urlTester } from '../../../shared/api/index.ts';
+import { urlTester } from '../../../kernel/index.ts';
+import { hasJsonBody } from '../../../shared/api/index.ts';
 import type { Rule } from '../../../shared/api/index.ts';
 import { checkJson } from '../../../lib/index.ts';
 import type { JsonProblem } from '../../../lib/index.ts';

@@ -1,10 +1,10 @@
 // Whether the page gets a rule's header row, as the browser decides it: a header's name is a token
 // (letters, digits and ! # $ % & ' * + - . ^ _ ` | ~), its value Latin-1 text on one line, and no
 // page ever sees Set-Cookie. '' when it does; else why not, in the words the rule editor shows under
-// the row. The interceptor skips the rows this says no to (app/interceptor/apply-rule.ts), so the
+// the row. The interceptor skips the rows this says no to (interception/apply-rule.ts), so the
 // editor can't call a row skipped that the page gets, or the other way round. Rules reach the page
 // as they're stored, so the row's fields may be anything.
-import type { HeaderRow } from './types.ts';
+import type { HeaderRow } from './rule-parts.ts';
 
 const TOKEN = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/;
 

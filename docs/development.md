@@ -84,22 +84,34 @@ is made from a request) may import; and `traffic/ui/index.ts`, which only the pa
 extension's own pages in `app` may. Traffic's own `ui` takes what the first door offers from it
 too.
 
+Interception is the third, `interception`: what runs in the page's own world, where it wraps
+`fetch` and `XMLHttpRequest` and answers a request with the rule that matches it. Its one door,
+`interception/index.ts`, is for the interceptor alone: `app/interceptor`, the part WXT builds
+into `interceptor.js`, keeps only the entry, which decides whether it runs on the page and starts
+it. What Interception and the rules must agree on, so that the editor can't say what the page
+wouldn't do, is the kernel, `kernel`: what a rule's match and its answer are made of, which
+requests a rule matches, and which of its header rows the page gets. The kernel is used through
+its `index.ts`, and `shared/api`, `shared/ui`, the pages, every part in `app` and `interception`
+may import it.
+
 `shared` has no slices, only segments, one for each kind of code: `api` for what Ghostfetch
 keeps in `chrome.storage` and what the bridge sends the page (but for the sites you added, which
 are `sites`'), and `ui` for the components that show a rule or a group. `api` is used through its
 `index.ts`, and so are `lib` (small libraries of Ghostfetch's own), `platform` (what differs
-between the browsers, and opening the editor), `sites` and `body-editor`. `ui` and `shared/ui`
-have a public file per component or hook instead, as FSD advises, so a screen that shows a button
-doesn't load the rest of the kit with it. `lib`, `platform`, `sites`, `shared/api` and `traffic`
-outside its `ui` are plain TypeScript, with no React and no npm package. `lib` imports nothing
-else; `platform` only `lib`; `sites` only `lib` and `platform`; `traffic` only `lib`, `platform`,
-`sites` and, until the rules have a folder of their own, `shared/api`; and `shared/api` only
-`lib` and `traffic`. That is what keeps the background, which uses `shared/api`, `sites`,
-`traffic` and `lib`, and the page scripts, which use `shared/api`, `traffic` and `lib`, free of
-the screens' libraries. Besides npm packages, `ui` imports only `lib` and `platform`,
-`body-editor` only `lib` and `ui`, and `traffic/ui` only `lib`, `platform`, `ui`, `body-editor`,
-`sites`, `shared/api`, `shared/ui` and the rest of `traffic`. `npm run lint` checks all this with
-eslint-plugin-boundaries, whose policies are in `oxlint.config.ts`.
+between the browsers, and opening the editor), the kernel, `interception`, `sites` and
+`body-editor`. `ui` and `shared/ui` have a public file per component or hook instead, as FSD
+advises, so a screen that shows a button doesn't load the rest of the kit with it. `lib`,
+`platform`, the kernel, `interception`, `sites`, `shared/api` and `traffic` outside its `ui` are
+plain TypeScript, with no React and no npm package. `lib` imports nothing else; `platform` and the
+kernel only `lib`; `sites` only `lib` and `platform`; `traffic` only `lib`, `platform`, `sites`
+and, until the rules have a folder of their own, `shared/api`; `interception` only the kernel,
+`lib`, `traffic` and, until then, `shared/api`; and `shared/api` only `lib`, the kernel and
+`traffic`. That is what keeps the background, which uses `shared/api`, `sites`, `traffic` and
+`lib`, and the page scripts, the bridge with `shared/api`, `traffic` and `lib` and the interceptor
+with `interception`, free of the screens' libraries. Besides npm packages, `ui` imports only
+`lib` and `platform`, `body-editor` only `lib` and `ui`, and `traffic/ui` only `lib`, `platform`,
+`ui`, `body-editor`, `sites`, `shared/api`, `shared/ui` and the rest of `traffic`. `npm run lint`
+checks all this with eslint-plugin-boundaries, whose policies are in `oxlint.config.ts`.
 
 Inside a page the files are grouped by what they're for: `ui/` holds its components, `model/` its
 state and what changes it, and `lib/` plain functions. A page composes components of its own,
@@ -108,7 +120,7 @@ one per part of the screen, so each file is about one thing.
 ```
 src/app/                         the extension's parts, one folder each, which WXT builds (wxt.config.ts)
   background/                    service worker (Chrome) or event page (Firefox): content scripts for added sites, badge
-  interceptor/                   page world: wraps fetch/XHR, applies the rules
+  interceptor/                   page world: the entry WXT builds, which decides whether to run on the page and starts Interception (src/interception/)
   bridge/                        isolated world: passes rules in, and starts the tab's traffic log (src/traffic/infrastructure/tab-log.ts), which it gives what the page reports
   popup/                         the toolbar popup's page
   sidepanel/                     the editor (Chrome's side panel, Firefox's sidebar, or a tab): its sidebar, the top bar of a narrow panel, and its menus
@@ -120,7 +132,7 @@ src/pages/                       what the screens show
   agent/                         Agent access, in the editor: the connection to ghostfetch-mcp, what each of the agent's tools does, and its panel and button (see agent-access.md)
 src/shared/                      what more than one part of the extension uses
   api/                           what's kept in chrome.storage and what the bridge sends the page (index.ts)
-    rules/                       a rule: its fields and their names, making one, which requests it matches (url-match.ts and request-match.ts, the one test the page and the editor both ask), whether it's answering (answering.ts), what's wrong with it (problems.ts); the order and every operation on it, which keeps two groups from sharing a name (order.ts), how it's kept, as the rules, each naming its group, and the groups, each with its place (order-storage.ts), and the screens' copy of it, which saves and redraws after each operation (store.ts); groups (group.ts), and a copy of one; apart from them, the server's responses their bodies' Diff compares with
+    rules/                       a rule: its fields (built from the kernel's parts) and their names, making one, whether it's answering (answering.ts), what's wrong with it (problems.ts); the order and every operation on it, which keeps two groups from sharing a name (order.ts), how it's kept, as the rules, each naming its group, and the groups, each with its place (order-storage.ts), and the screens' copy of it, which saves and redraws after each operation (store.ts); groups (group.ts), and a copy of one; apart from them, the server's responses their bodies' Diff compares with
     settings.ts                  Ghostfetch on or off, and recording, which only the popup changes
     messages.ts                  what the bridge sends the interceptor: the rules that answer, with the two switches
   ui/                            the components that show a rule or a group, a public file each
@@ -139,7 +151,16 @@ src/traffic/                     Traffic, what the page asked for and what each 
   infrastructure/                the tab's own log, which the bridge starts in each page (tab-log.ts): it rebuilds what the page reports and keeps it, an iframe's by way of the top frame, counts it for the popup, and gives it to the Traffic view over a port
   contract.ts                    the messages Traffic's parts send each other: the interceptor's report of a request, an iframe's entry, the popup's question and the counts that answer it, and what goes over the log's port
   ui/                            the Traffic view: a tab's live log grouped by time, a request's drawer (request-detail/), Mock this response; and the hooks that run the editor's live log and read it (use-traffic-log.ts)
+src/interception/                Interception, what runs in the page's own world (index.ts, for the interceptor alone); its words are in glossary/interception.md
+  page-channel.ts                the private channel to the bridge, which offers its port once, before any page script runs: the rules arrive over it, and the page's requests go back over it
+  fetch.ts                       window.fetch, wrapped; xhr.ts, XMLHttpRequest, wrapped; simulate-xhr.ts, an XMLHttpRequest a rule answers, its state and events played back in the order a real one fires them
+  matching.ts                    which rule a request gets, the first that matches it; apply-rule.ts, what it gets: the rule's own body, or the server's under the rule's status, headers and delay
+  log-entries.ts                 the page's requests as entries for the tab's traffic log; request.ts, a request as the page made it, read for the rules and the log; types.ts, what the parts pass each other
 src/body-editor/                 the body editor (plain DOM code, its find bar and vim keys) and its React component, and the body's Diff (CodeDiff) (index.ts)
+src/kernel/                      what Rules and Interception must agree on, so that the editor can't say what the page wouldn't do (index.ts)
+  rule-parts.ts                  what a rule's match and its answer are made of: the methods, the ways of comparing a URL, the body modes, a header row, and the two halves themselves
+  url-match.ts                   how a rule's URL pattern matches, which Try a URL asks too; request-match.ts, which requests a rule matches, which the Diff keeps the server's responses by and the agent's try_url tries
+  header-check.ts                whether the page gets a rule's header row, as the browser decides it, which the rule editor marks its rows by
 src/platform/                    what differs between the browsers, and opening the editor (index.ts)
   side-panel.ts                  Chrome's side panel or Firefox's sidebar, whichever the browser has; firefox.d.ts, what @types/chrome doesn't describe of Firefox
   open-editor.ts                 the editor in the side panel or a tab, and on a rule the popup picked

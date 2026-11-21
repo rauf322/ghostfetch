@@ -1,9 +1,10 @@
 // What the agent's tools say about a rule: a line for list_rules, and what's wrong with it (as the
-// rule editor would point it out: both ask shared/api), so an agent can put right what it saved.
+// rule editor would point it out: both ask shared/api and the kernel), so an agent can put right
+// what it saved.
+import { headerProblem } from '../../../kernel/index.ts';
 import {
   BODY_MODES,
   bodyProblem,
-  headerProblem,
   regexError,
   ruleTitle,
 } from '../../../shared/api/index.ts';

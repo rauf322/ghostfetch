@@ -62,6 +62,11 @@ keeps what only it uses, and anything that more than one part of the extension n
 `shared`, so the pages can't tangle with each other. A page is used from outside only through
 its `index.ts`.
 
+This layout is being changed, a stage at a time, to one cut by bounded context
+([ADR 0002](adr/0002-the-code-is-cut-by-bounded-context.md)): Rules, Interception, Traffic, Sites,
+Agent access and the Body editor, whose words are in [`docs/glossary/`](glossary/) and how they
+relate in the [Glossary Map](../GLOSSARY-MAP.md). What follows is where the code is now.
+
 `shared` has no slices, only segments, one for each kind of code: `api` for what Ghostfetch
 keeps in `chrome.storage` and what its parts send each other, `lib` for small libraries of its
 own, `react` for where those meet React, and `ui` for components. `api`, `lib` and `react` are
@@ -138,9 +143,10 @@ test/kit.mjs                     the UI kit under the real CSP, in Chromium and 
 test/release.mjs                 checks the built manifests, files and zips before an upload
 test/fixtures.mjs                test server, hostile pages and rules shared by the tests
 README.md                        what Ghostfetch does, installing it, and building it from source (it goes in the sources zip)
-GLOSSARY.md                      the words Ghostfetch uses for its own things (rule, group, order, on, answering, paused), and the ones it doesn't
+GLOSSARY-MAP.md                  the bounded contexts Ghostfetch's words belong to, and how they relate
 docs/                            guide.md, using it in full; security-model.md; agent-access.md; this file
-  adr/                           decisions worth knowing the reasons for, one file each (0001: the order decides which rule answers)
+  glossary/                      the words of each context, and the ones it doesn't use: rules.md (rule, group, order, on, answering, paused), interception.md, traffic.md, sites.md, agent-access.md, body-editor.md
+  adr/                           decisions worth knowing the reasons for, one file each (0001: the order decides which rule answers; 0002: the code is cut by bounded context, not by layer)
   media/                         the README's screenshots and recordings, and the Thorn Glass at 512 px
 .output/                         what the build makes: chrome-mv3/, firefox-mv3/ (*-kit/: the kit test's builds)
 web-ext-artifacts/               what npm run zip makes: the packages for each browser, the .xpi and the sources zip

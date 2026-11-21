@@ -4,12 +4,13 @@
 // useStore(ruleStore); a component that draws one rule can skip a redraw its rule's revision
 // (ruleRevision()) says it doesn't need.
 //
-// The order (GLOSSARY.md, docs/adr/0001) is one list of ungrouped rules and groups, each group's
-// rules together in its place: `entries` is its top level, which the screens draw; `rules` every
-// rule in it from the top, the order the page tries them in; `groups` every group in it. It's kept
-// as two lists: `rules` as it always has been, each rule saying which group it's in, which is what
-// the page reads (the bridge) and what an older version would read; and `groups`, each with its
-// place among the top-level entries (`at`), which is also where a group with no rules stands.
+// The order (docs/glossary/rules.md, docs/adr/0001) is one list of ungrouped rules and groups,
+// each group's rules together in its place: `entries` is its top level, which the screens draw;
+// `rules` every rule in it from the top, the order the page tries them in; `groups` every group
+// in it. It's kept as two lists: `rules` as it always has been, each rule saying which group
+// it's in, which is what the page reads (the bridge) and what an older version would read; and
+// `groups`, each with its place among the top-level entries (`at`), which is also where a group
+// with no rules stands.
 import { createStore } from '../../lib/index.ts';
 import { freeName, normalizeGroups } from './group.ts';
 import type { StoredGroup } from './group.ts';

@@ -1,7 +1,8 @@
-# Ghostfetch
+# Rules
 
-A browser extension for front-end developers that answers a web app's fetch and XHR requests with
-rules, in place of or on top of what its server sends.
+What Ghostfetch should answer, and which rule wins: the rules, their groups, the order they're
+tried in and their switches. One of Ghostfetch's bounded contexts
+([Glossary Map](../../GLOSSARY-MAP.md)).
 
 ## Language
 

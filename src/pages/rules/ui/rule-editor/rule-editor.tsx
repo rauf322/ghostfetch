@@ -10,7 +10,8 @@
 // height. Back at a rule, the pane and the settings are scrolled where they were, and the body
 // editor is where you left it (its placeKey).
 import { useRef, useState } from 'react';
-import type { Rule, TrafficLog } from '../../../../shared/api/index.ts';
+import type { Rule } from '../../../../shared/api/index.ts';
+import type { TrafficLog } from '../../../../traffic/index.ts';
 import { PaneScroll, PaneSection } from '../../../../ui/list-detail.tsx';
 import { codeStatus } from '../../lib/rule-checks.ts';
 import { useKeptScroll } from '../../model/use-kept-scroll.ts';

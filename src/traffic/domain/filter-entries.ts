@@ -1,7 +1,7 @@
 // The requests the list shows, newest first: All, Matched (a rule matched them) or Errors (a
 // status of 400 or more, a request that failed, or a rule's error); with a search, only those
 // whose method, URL, status, rule name or rule's group has its text in it, ignoring case.
-import type { LogEntry } from '../../../shared/api/index.ts';
+import type { LogEntry } from './log-entry.ts';
 
 export type TrafficFilter = 'all' | 'matched' | 'errors';
 

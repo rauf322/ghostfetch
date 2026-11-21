@@ -9,13 +9,15 @@ const rootPath = fileURLToPath(new URL('.', import.meta.url));
 
 // The layers, from the top: app, pages, shared (Feature-Sliced Design's "pages first"), and
 // under them what has left the layers for the layout by bounded context (docs/adr/0002): the
-// folders that know no domain (lib, platform, ui and body-editor), and Sites, the first context
-// with a folder of its own (sites). A page is used through its index.ts. shared has segments
-// instead of slices: api, react and ui. api and react are each used through their index.ts, as
-// lib, platform, sites and the body editor (body-editor/) are; ui and shared/ui have a public
-// file per component or hook, so a screen bundles only what it shows. The editor's engine/ and
-// vim/ are plain TypeScript the Zen test serves straight from src/: they import only .ts files
-// by relative path, and no npm package. The first descriptor a file matches is its type.
+// folders that know no domain (lib, platform, ui and body-editor), and the contexts with a folder
+// of their own, Sites (sites) and Traffic (traffic, whose ui/ is a type of its own, traffic-ui:
+// its React is all there). A page is used through its index.ts. shared has segments instead of
+// slices: api and ui. api is used through its index.ts, as lib, platform, sites and the body
+// editor (body-editor/) are, and Traffic through its two, traffic/index.ts and
+// traffic/ui/index.ts; ui and shared/ui have a public file per component or hook, so a screen
+// bundles only what it shows. The editor's engine/ and vim/ are plain TypeScript the Zen test
+// serves straight from src/: they import only .ts files by relative path, and no npm package.
+// The first descriptor a file matches is its type.
 const elements = [
   {
     type: 'editor-engine',
@@ -27,6 +29,8 @@ const elements = [
   { type: 'platform', pattern: 'src/platform', partialMatch: false },
   { type: 'ui', pattern: 'src/ui', partialMatch: false },
   { type: 'sites', pattern: 'src/sites', partialMatch: false },
+  { type: 'traffic-ui', pattern: 'src/traffic/ui', partialMatch: false },
+  { type: 'traffic', pattern: 'src/traffic', partialMatch: false },
   { type: 'shared', pattern: 'src/shared/*', capture: ['segment'], partialMatch: false },
   { type: 'pages', pattern: 'src/pages/*', capture: ['slice'], partialMatch: false },
   { type: 'app', pattern: 'src/app/*', capture: ['part'], partialMatch: false },
@@ -49,13 +53,19 @@ const notUi = {
 
 // Processed in order; the last policy matching an import decides.
 const policies = [
-  // The layers: app imports anything; a page its own folder, shared, sites and the folders that
-  // know no domain, never another page; shared only shared and those folders, and shared/ui
-  // sites too.
+  // The layers: app imports anything; a page its own folder, shared, sites, traffic by either of
+  // its doors and the folders that know no domain, never another page; shared only shared and
+  // those folders, and shared/ui sites too.
   { from: type('app'), allow: { to: [type('*'), packages] } },
   {
     from: type('pages'),
-    allow: { to: [samePage, type('shared', 'sites', ...noDomain), packages] },
+    allow: {
+      to: [
+        samePage,
+        type('shared', 'sites', 'traffic', 'traffic-ui', ...noDomain),
+        packages,
+      ],
+    },
   },
   { from: type('shared'), allow: { to: [type('shared', ...noDomain), packages] } },
   { from: segment('ui'), allow: { to: type('sites') } },
@@ -63,25 +73,39 @@ const policies = [
   // the body editor only lib and ui, each with npm packages.
   { from: type('ui'), allow: { to: [type('lib', 'platform'), packages] } },
   { from: type('body-editor'), allow: { to: [type('lib', 'ui'), packages] } },
-  // lib imports nothing else, platform and shared/api only lib, and sites only lib and platform:
-  // no React, no UI and no npm package, so what the background and the page scripts reach
-  // through shared/api, sites and lib is free of all three.
+  // Traffic's ui/, where its React is: sites, shared/api, what is left of shared/ui, the folders
+  // that know no domain and npm packages (and the rest of traffic, further down).
   {
-    from: [type('lib', 'platform', 'sites'), segment('api')],
+    from: type('traffic-ui'),
+    allow: { to: [type('sites', ...noDomain), segment('api', 'ui'), packages] },
+  },
+  // lib imports nothing else, platform and shared/api only lib, sites only lib and platform, and
+  // traffic outside its ui/ those two, sites and, until the rules leave it, shared/api, which
+  // imports traffic in its turn (the rules read an entry): no React, no UI and no npm package, so
+  // what the background and the page scripts reach through shared/api, sites, traffic and lib is
+  // free of all three.
+  {
+    from: [type('lib', 'platform', 'sites', 'traffic'), segment('api')],
     disallow: { to: [type('*'), packages] },
     message:
-      'lib, platform, sites and shared/api are plain TypeScript: they import lib only, and sites platform too.',
+      'lib, platform, sites, shared/api and traffic outside its ui/ are plain TypeScript: no npm package, and no folder of src/ but the ones each may import (oxlint.config.ts).',
   },
-  { from: [type('platform', 'sites'), segment('api')], allow: { to: type('lib') } },
-  { from: type('sites'), allow: { to: type('platform') } },
-  // The background and the page scripts: shared/api, sites, lib and WXT's helpers.
+  {
+    from: [type('platform', 'sites', 'traffic'), segment('api')],
+    allow: { to: type('lib') },
+  },
+  { from: type('sites', 'traffic'), allow: { to: type('platform') } },
+  { from: type('traffic'), allow: { to: [type('sites'), segment('api')] } },
+  { from: segment('api'), allow: { to: type('traffic') } },
+  // The background and the page scripts: shared/api, sites, traffic but for its ui/, lib and
+  // WXT's helpers.
   { from: notUi, disallow: { to: [type('*'), packages] } },
   {
     from: notUi,
     allow: {
       to: [
         segment('api'),
-        type('lib', 'sites'),
+        type('lib', 'sites', 'traffic'),
         { module: { origin: 'external', source: 'wxt' } },
       ],
     },
@@ -98,16 +122,24 @@ const policies = [
       {
         element: {
           type: 'shared',
-          captured: { segment: ['api', 'react'] },
+          captured: { segment: ['api'] },
           fileInternalPath: '!index.ts',
         },
       },
-      { element: { type: ['lib', 'platform', 'sites'], fileInternalPath: '!index.ts' } },
+      {
+        element: {
+          type: ['lib', 'platform', 'sites', 'traffic', 'traffic-ui'],
+          fileInternalPath: '!index.ts',
+        },
+      },
     ],
     disallow: { from: type('*') },
     message:
-      'shared/api, shared/react, lib, platform and sites are used through their index.ts.',
+      'shared/api, lib, platform, sites, traffic and traffic/ui are used through their index.ts.',
   },
+  // Traffic's own ui/ may reach past traffic/index.ts, for what is the Traffic view's alone (its
+  // filters and time groups), which that door doesn't offer.
+  { from: type('traffic-ui'), allow: { to: type('traffic') } },
   {
     to: { element: { type: 'body-editor', fileInternalPath: '!index.ts' } },
     disallow: { from: type('*') },

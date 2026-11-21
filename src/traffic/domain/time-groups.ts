@@ -2,7 +2,7 @@
 // by day: a handful of stretches ("Just now", "A few minutes ago", "About 10 minutes ago"), so a
 // session's log reads as a few cards rather than one a minute. `entries` come newest first, and
 // so do the groups.
-import type { LogEntry } from '../../../shared/api/index.ts';
+import type { LogEntry } from './log-entry.ts';
 
 // Each stretch ends `until` minutes ago.
 const STRETCHES: [until: number, label: string][] = [

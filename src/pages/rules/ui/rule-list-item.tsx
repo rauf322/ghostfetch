@@ -7,16 +7,12 @@
 // whole in a tooltip.
 import { memo } from 'react';
 import type { PointerEvent } from 'react';
-import {
-  countRule,
-  countWords,
-  ruleTitle,
-  settingsStore,
-  wouldAnswer,
-} from '../../../shared/api/index.ts';
-import type { Rule, TrafficLog } from '../../../shared/api/index.ts';
+import { ruleTitle, settingsStore, wouldAnswer } from '../../../shared/api/index.ts';
+import type { Rule } from '../../../shared/api/index.ts';
+import { countRule, countWords } from '../../../traffic/index.ts';
+import type { TrafficLog } from '../../../traffic/index.ts';
 import { useStore } from '../../../ui/use-store.ts';
-import { useTrafficValue } from '../../../shared/react/index.ts';
+import { useTrafficValue } from '../../../traffic/ui/index.ts';
 import { cn } from '../../../ui/cn.ts';
 import { Item, ItemContent, ItemDescription, ItemTitle } from '../../../ui/kit/item.tsx';
 import { RuleSwitch } from '../../../shared/ui/rule-switch.tsx';

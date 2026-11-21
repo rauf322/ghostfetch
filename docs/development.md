@@ -70,23 +70,36 @@ first to leave the layers is what knows nothing of rules, sites or requests: `li
 `ui` and `body-editor`, each a folder of `src/` of its own. What's left in the layers imports
 them, and they import nothing of the layers. Sites is the first context with a folder of its
 own, `sites`: where Ghostfetch runs, from the hosts it's built for to the content scripts the
-background registers for the sites you added. The pages, the extension's parts in `app` and
-`shared/ui` may import it; `shared/api` may not.
+background registers for the sites you added. The pages, the extension's parts in `app`,
+`shared/ui` and `traffic` may import it; `shared/api` may not.
+
+Traffic is the second, `traffic`: what the page asked for and what each rule did, from the log
+each tab's page keeps to the Traffic view. It's the first with layers inside: `domain` says what
+a request in a log is, and which of them the view lists; `application` has the editor's live copy
+of a log and a page's counts; `infrastructure` the tab's own log, which the bridge starts in each
+page; and `ui` the Traffic view and the log's hooks. The messages its parts send each other are
+in `contract.ts`. It has two doors and no other way in: `traffic/index.ts`, with no React, which
+the pages, every part in `app` (the background and the page scripts too) and `shared/api` (a rule
+is made from a request) may import; and `traffic/ui/index.ts`, which only the pages and the
+extension's own pages in `app` may. Traffic's own `ui` takes what the first door offers from it
+too.
 
 `shared` has no slices, only segments, one for each kind of code: `api` for what Ghostfetch
-keeps in `chrome.storage` and what its parts send each other (but for the sites you added, which
-are `sites`'), `react` for where that meets React, and `ui` for the components that show a rule
-or a group. `api` and `react` are each used through their `index.ts`, and so are `lib` (small
-libraries of Ghostfetch's own), `platform` (what differs between the browsers, and opening the
-editor), `sites` and `body-editor`. `ui` and `shared/ui` have a public file per component or hook
-instead, as FSD advises, so a screen that shows a button doesn't load the rest of the kit with
-it. `lib`, `platform`, `sites` and `shared/api` are plain TypeScript, with no React and no npm
-package: `lib` imports nothing else, `platform` and `shared/api` only `lib`, and `sites` only
-`lib` and `platform`, which is what keeps the background, which uses `shared/api`, `sites` and
-`lib`, and the page scripts, which use `shared/api` and `lib`, free of the screens' libraries.
-`ui` imports only `lib` and `platform` besides npm packages, and `body-editor` only `lib` and
-`ui`. `npm run lint` checks all this with eslint-plugin-boundaries, whose policies are in
-`oxlint.config.ts`.
+keeps in `chrome.storage` and what the bridge sends the page (but for the sites you added, which
+are `sites`'), and `ui` for the components that show a rule or a group. `api` is used through its
+`index.ts`, and so are `lib` (small libraries of Ghostfetch's own), `platform` (what differs
+between the browsers, and opening the editor), `sites` and `body-editor`. `ui` and `shared/ui`
+have a public file per component or hook instead, as FSD advises, so a screen that shows a button
+doesn't load the rest of the kit with it. `lib`, `platform`, `sites`, `shared/api` and `traffic`
+outside its `ui` are plain TypeScript, with no React and no npm package. `lib` imports nothing
+else; `platform` only `lib`; `sites` only `lib` and `platform`; `traffic` only `lib`, `platform`,
+`sites` and, until the rules have a folder of their own, `shared/api`; and `shared/api` only
+`lib` and `traffic`. That is what keeps the background, which uses `shared/api`, `sites`,
+`traffic` and `lib`, and the page scripts, which use `shared/api`, `traffic` and `lib`, free of
+the screens' libraries. Besides npm packages, `ui` imports only `lib` and `platform`,
+`body-editor` only `lib` and `ui`, and `traffic/ui` only `lib`, `platform`, `ui`, `body-editor`,
+`sites`, `shared/api`, `shared/ui` and the rest of `traffic`. `npm run lint` checks all this with
+eslint-plugin-boundaries, whose policies are in `oxlint.config.ts`.
 
 Inside a page the files are grouped by what they're for: `ui/` holds its components, `model/` its
 state and what changes it, and `lib/` plain functions. A page composes components of its own,
@@ -96,26 +109,20 @@ one per part of the screen, so each file is about one thing.
 src/app/                         the extension's parts, one folder each, which WXT builds (wxt.config.ts)
   background/                    service worker (Chrome) or event page (Firefox): content scripts for added sites, badge
   interceptor/                   page world: wraps fetch/XHR, applies the rules
-  bridge/                        isolated world: passes rules in, collects the traffic log and counts it for the popup
+  bridge/                        isolated world: passes rules in, and starts the tab's traffic log (src/traffic/infrastructure/tab-log.ts), which it gives what the page reports
   popup/                         the toolbar popup's page
   sidepanel/                     the editor (Chrome's side panel, Firefox's sidebar, or a tab): its sidebar, the top bar of a narrow panel, and its menus
   kit/                           the kit page, every kit component in its states (ui/); for npm run dev and the kit test, never in the extension
   styles/                        theme.css, the look's values (colours, the two fonts); themes.css, the other themes' colours; and kit.css: those as Tailwind's theme (type sizes, corners)
 src/pages/                       what the screens show
   rules/                         the Rules view: the sidebar's rule list, New rule (ui/new-rule/), the rule editor (ui/rule-editor/, a component per part), and the clipboard its body editor's vim keys paste from, with the permission that takes (model/clipboard.ts)
-  traffic/                       the Traffic view: a tab's live log grouped by time, a request's drawer (ui/request-detail/), Mock this response
   popup/                         the toolbar popup: its header, the tab's site, and its tabs (This page, All rules, Sites)
   agent/                         Agent access, in the editor: the connection to ghostfetch-mcp, what each of the agent's tools does, and its panel and button (see agent-access.md)
 src/shared/                      what more than one part of the extension uses
-  api/                           what's kept in chrome.storage and what the parts send each other (index.ts)
+  api/                           what's kept in chrome.storage and what the bridge sends the page (index.ts)
     rules/                       a rule: its fields and their names, making one, which requests it matches (url-match.ts and request-match.ts, the one test the page and the editor both ask), whether it's answering (answering.ts), what's wrong with it (problems.ts); the order and every operation on it, which keeps two groups from sharing a name (order.ts), how it's kept, as the rules, each naming its group, and the groups, each with its place (order-storage.ts), and the screens' copy of it, which saves and redraws after each operation (store.ts); groups (group.ts), and a copy of one; apart from them, the server's responses their bodies' Diff compares with
     settings.ts                  Ghostfetch on or off, and recording, which only the popup changes
-    log-entry.ts                 a request in a tab's traffic log
-    traffic-log.ts               the editor's live log of the tab it watches (Traffic, how often a rule fired, New rule's recent requests)
-    preserve.ts                  Keep on reload: whether that log keeps what it has when the page reloads
-    messages.ts                  the messages between the background, the bridge, the interceptor, the Traffic tab and the popup
-    page-counts.ts               what each rule did on a tab's page, as the page's bridge counts it, for the popup's This page; and in words, as the popup and the editor's rule list say it
-  react/                         the traffic log's hooks (index.ts)
+    messages.ts                  what the bridge sends the interceptor: the rules that answer, with the two switches
   ui/                            the components that show a rule or a group, a public file each
     rules-file.tsx               rules files: export every rule, a group or one rule, import one (its rules and groups arrive turned off)
     rule-switch.tsx              a rule's switch, the green dot (the kit's SignalSwitch), in the editor's rule list and the popup; group-switch.tsx, a group's
@@ -126,6 +133,12 @@ src/sites/                       Sites, where Ghostfetch runs (index.ts); its wo
   store.ts                       the screens' copy of the sites you added, and turning Ghostfetch on or off for one
   content-scripts.ts             registering the content scripts for the sites you added, which the background calls
   contract.ts                    the message that asks the background to register them again
+src/traffic/                     Traffic, what the page asked for and what each rule did (index.ts, with no React, and ui/index.ts); its words are in glossary/traffic.md
+  domain/                        a request in a tab's traffic log (log-entry.ts); which of them the Traffic view lists (filter-entries.ts), in groups by how long ago they were made (time-groups.ts)
+  application/                   the editor's live log of the tab it watches (traffic-log.ts: Traffic, how often a rule fired, New rule's recent requests); Keep on reload, whether that log keeps what it has when the page reloads (preserve.ts); what each rule did on a tab's page, as the page counts it for the popup's This page, and in words, as the popup and the editor's rule list say it (page-counts.ts)
+  infrastructure/                the tab's own log, which the bridge starts in each page (tab-log.ts): it rebuilds what the page reports and keeps it, an iframe's by way of the top frame, counts it for the popup, and gives it to the Traffic view over a port
+  contract.ts                    the messages Traffic's parts send each other: the interceptor's report of a request, an iframe's entry, the popup's question and the counts that answer it, and what goes over the log's port
+  ui/                            the Traffic view: a tab's live log grouped by time, a request's drawer (request-detail/), Mock this response; and the hooks that run the editor's live log and read it (use-traffic-log.ts)
 src/body-editor/                 the body editor (plain DOM code, its find bar and vim keys) and its React component, and the body's Diff (CodeDiff) (index.ts)
 src/platform/                    what differs between the browsers, and opening the editor (index.ts)
   side-panel.ts                  Chrome's side panel or Firefox's sidebar, whichever the browser has; firefox.d.ts, what @types/chrome doesn't describe of Firefox

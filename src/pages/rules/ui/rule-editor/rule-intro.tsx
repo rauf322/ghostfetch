@@ -7,9 +7,10 @@ import {
   isAnswering,
   settingsStore,
 } from '../../../../shared/api/index.ts';
-import type { Rule, TrafficLog, TrafficSnapshot } from '../../../../shared/api/index.ts';
+import type { Rule } from '../../../../shared/api/index.ts';
+import type { TrafficLog, TrafficSnapshot } from '../../../../traffic/index.ts';
 import { useStore } from '../../../../ui/use-store.ts';
-import { useTrafficValue } from '../../../../shared/react/index.ts';
+import { useTrafficValue } from '../../../../traffic/ui/index.ts';
 import { cn } from '../../../../ui/cn.ts';
 import { Input } from '../../../../ui/kit/input.tsx';
 import { describeRule } from '../../lib/rule-summary.ts';

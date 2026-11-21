@@ -2,8 +2,8 @@
 // the editor's rule list for the page it watches. The tab's top-frame bridge (src/app/bridge/)
 // counts its traffic log and answers the popup with the counts alone, none of the log's URLs or
 // bodies, so the popup opens as quickly however long the log is.
-import type { LogEntry } from './log-entry.ts';
-import type { PageCounts, RuleCount, RuntimeMessage } from './messages.ts';
+import type { LogEntry } from '../domain/log-entry.ts';
+import type { CountsMessage, PageCounts, RuleCount } from '../contract.ts';
 
 // What a rule did, in words: "2 mocked", "1 modified · 1 failed"; '' when it hasn't answered.
 export function countWords(count: RuleCount | undefined) {
@@ -35,7 +35,7 @@ export async function askPageCounts(tabId: number): Promise<PageCounts | null> {
   try {
     const counts: unknown = await chrome.tabs.sendMessage(
       tabId,
-      { type: 'ghostfetch:counts' } satisfies RuntimeMessage,
+      { type: 'ghostfetch:counts' } satisfies CountsMessage,
       { frameId: 0 },
     );
     return isPageCounts(counts) ? counts : null;

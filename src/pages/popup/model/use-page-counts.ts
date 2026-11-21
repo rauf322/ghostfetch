@@ -2,8 +2,8 @@
 // while it's open, so a rule that answers meanwhile shows up. undefined until the page's first
 // answer, which takes a few milliseconds; null while Ghostfetch isn't running on the page.
 import { useEffect, useState } from 'react';
-import { askPageCounts } from '../../../shared/api/index.ts';
-import type { PageCounts } from '../../../shared/api/index.ts';
+import { askPageCounts } from '../../../traffic/index.ts';
+import type { PageCounts } from '../../../traffic/index.ts';
 
 export function usePageCounts(tabId: number | undefined, runsHere: boolean) {
   const [counts, setCounts] = useState<PageCounts | null>();

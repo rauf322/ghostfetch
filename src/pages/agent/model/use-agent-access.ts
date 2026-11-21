@@ -1,7 +1,7 @@
 // Agent access for as long as the editor is open: the connection to ghostfetch-mcp, while it's on,
 // doing what the agent's tools ask with the editor's log of the page it watches.
 import { useEffect } from 'react';
-import type { TrafficLog } from '../../../shared/api/index.ts';
+import type { TrafficLog } from '../../../traffic/index.ts';
 import { startAgentAccess } from './agent-connection.ts';
 import { createAgentTools, runAgentTool } from './agent-tools.ts';
 

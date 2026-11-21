@@ -15,7 +15,7 @@ import {
   ruleRevision,
   ruleStore,
 } from '../../../shared/api/index.ts';
-import type { TrafficLog } from '../../../shared/api/index.ts';
+import type { TrafficLog } from '../../../traffic/index.ts';
 import { useStore } from '../../../ui/use-store.ts';
 import { foldStore, isFolded, setFolded } from '../../../shared/ui/group-folds.ts';
 import { Button } from '../../../ui/kit/button.tsx';

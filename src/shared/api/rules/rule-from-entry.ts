@@ -2,7 +2,7 @@
 // matches the request's method and path (for GraphQL, its path and operation) and returns its
 // status and body.
 import { formatJson, splitUrl } from '../../../lib/index.ts';
-import type { LogEntry } from '../log-entry.ts';
+import type { LogEntry } from '../../../traffic/index.ts';
 import { METHODS } from './catalog.ts';
 import { bodyOperation } from './request-match.ts';
 import { createRule } from './rule.ts';

@@ -11,8 +11,6 @@
 import {
   addGroup,
   addRule,
-  countRule,
-  countWords,
   createGroup,
   createRule,
   duplicateGroup,
@@ -45,14 +43,10 @@ import {
   turnGroup,
   wouldAnswer,
 } from '../../../shared/api/index.ts';
-import type {
-  Group,
-  LogEntry,
-  Place,
-  Rule,
-  TrafficLog,
-} from '../../../shared/api/index.ts';
+import type { Group, Place, Rule } from '../../../shared/api/index.ts';
 import { isBuiltInHost, siteOf } from '../../../sites/index.ts';
+import { countRule, countWords } from '../../../traffic/index.ts';
+import type { LogEntry, TrafficLog } from '../../../traffic/index.ts';
 import { notify } from '../../../ui/kit/toast.tsx';
 import { ruleProblems, ruleSummary } from '../lib/rule-report.ts';
 import { noteActivity } from './agent-connection.ts';

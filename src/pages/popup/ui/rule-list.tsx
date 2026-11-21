@@ -11,13 +11,14 @@
 // place under "Answering here", so the same spot turns it on again, until the page loads anew.
 import { useState } from 'react';
 import {
-  countWords,
   groupOf,
   isAnswering,
   ruleTitle,
   wouldAnswer,
 } from '../../../shared/api/index.ts';
-import type { Entry, Group, Rule, RuleCount } from '../../../shared/api/index.ts';
+import type { Entry, Group, Rule } from '../../../shared/api/index.ts';
+import { countWords } from '../../../traffic/index.ts';
+import type { RuleCount } from '../../../traffic/index.ts';
 import { openRuleInEditor } from '../../../platform/index.ts';
 import { useStore } from '../../../ui/use-store.ts';
 import { cn } from '../../../ui/cn.ts';

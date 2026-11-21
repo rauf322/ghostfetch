@@ -9,7 +9,7 @@ export type EntryKind = 'fetch' | 'xhr';
 export type EntryAction = '' | 'mocked' | 'modified' | 'error';
 
 // One request in a tab's traffic log, as the bridge rebuilds it from what the page reported
-// (see clean() in app/bridge).
+// (see clean() in infrastructure/tab-log.ts).
 export interface LogEntry {
   id: string;
   // When the page sent it (ms since 1970).

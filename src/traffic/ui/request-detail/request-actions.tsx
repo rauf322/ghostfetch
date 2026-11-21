@@ -1,15 +1,16 @@
 // What to do with an open request: Mock this response, the one big button, with the group the rule
 // goes into under it once there's a group, and a row of quieter ones: copy the URL, the request as
 // a cURL command, and the response's body.
-import { ruleFromEntry, ruleStore } from '../../../../shared/api/index.ts';
-import type { LogEntry, Rule } from '../../../../shared/api/index.ts';
-import { curlCommand } from '../../../../lib/index.ts';
-import { useStore } from '../../../../ui/use-store.ts';
-import { GroupPicker } from '../../../../shared/ui/group-picker.tsx';
-import { Button } from '../../../../ui/kit/button.tsx';
-import { Icon } from '../../../../ui/kit/icon.tsx';
-import type { IconName } from '../../../../ui/kit/icon.tsx';
-import { notify } from '../../../../ui/kit/toast.tsx';
+import { ruleFromEntry, ruleStore } from '../../../shared/api/index.ts';
+import type { Rule } from '../../../shared/api/index.ts';
+import type { LogEntry } from '../../index.ts';
+import { curlCommand } from '../../../lib/index.ts';
+import { useStore } from '../../../ui/use-store.ts';
+import { GroupPicker } from '../../../shared/ui/group-picker.tsx';
+import { Button } from '../../../ui/kit/button.tsx';
+import { Icon } from '../../../ui/kit/icon.tsx';
+import type { IconName } from '../../../ui/kit/icon.tsx';
+import { notify } from '../../../ui/kit/toast.tsx';
 
 export function RequestActions({
   entry,

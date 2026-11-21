@@ -3,10 +3,10 @@
 // it isn't running in the tab yet (with one that reloads the page), or that recording is off (the
 // toolbar popup starts it again).
 import type { ReactNode } from 'react';
-import { isSiteEnabled, normalizeSite, siteOf, turnOnFor } from '../../../sites/index.ts';
-import { Alert } from '../../../ui/kit/alert.tsx';
-import { Button } from '../../../ui/kit/button.tsx';
-import type { TrafficSnapshot } from '../../../shared/api/index.ts';
+import { isSiteEnabled, normalizeSite, siteOf, turnOnFor } from '../../sites/index.ts';
+import { Alert } from '../../ui/kit/alert.tsx';
+import { Button } from '../../ui/kit/button.tsx';
+import type { TrafficSnapshot } from '../index.ts';
 
 export function TrafficNotice({
   traffic,

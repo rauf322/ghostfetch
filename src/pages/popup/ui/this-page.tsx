@@ -2,7 +2,8 @@
 // Where Ghostfetch isn't on, the one thing to do there instead: turn it on, which reloads the page.
 import type { ReactNode } from 'react';
 import { turnOnFor } from '../../../sites/index.ts';
-import type { Entry, PageCounts, Rule } from '../../../shared/api/index.ts';
+import type { Entry, Rule } from '../../../shared/api/index.ts';
+import type { PageCounts } from '../../../traffic/index.ts';
 import { Button } from '../../../ui/kit/button.tsx';
 import { RuleList } from './rule-list.tsx';
 

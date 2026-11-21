@@ -1,11 +1,11 @@
 // The top of an open request: its method and path (the full URL as its title), and under them
 // its status with its name, how long it took and what made it, as chips; the × closes it.
-import type { LogEntry } from '../../../../shared/api/index.ts';
-import { formatDuration, splitUrl, statusName } from '../../../../lib/index.ts';
-import { StatusCode } from '../../../../ui/kit/badge.tsx';
-import { Button } from '../../../../ui/kit/button.tsx';
-import { Icon } from '../../../../ui/kit/icon.tsx';
-import { KIND_LABELS } from '../../lib/entry-labels.ts';
+import type { LogEntry } from '../../index.ts';
+import { formatDuration, splitUrl, statusName } from '../../../lib/index.ts';
+import { StatusCode } from '../../../ui/kit/badge.tsx';
+import { Button } from '../../../ui/kit/button.tsx';
+import { Icon } from '../../../ui/kit/icon.tsx';
+import { KIND_LABELS } from '../entry-labels.ts';
 
 const CHIP =
   'inline-flex h-7 items-center gap-1.5 rounded-full bg-pressed px-2.5 font-mono text-label text-t80';

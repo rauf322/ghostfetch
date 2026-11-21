@@ -4,7 +4,8 @@
 // of the two shows).
 import { useEffect, useRef, useState } from 'react';
 import { findRule, ruleStore } from '../../../shared/api/index.ts';
-import type { LogEntry, Rule, TrafficLog } from '../../../shared/api/index.ts';
+import type { Rule } from '../../../shared/api/index.ts';
+import type { LogEntry, TrafficLog } from '../../../traffic/index.ts';
 import { useStore } from '../../../ui/use-store.ts';
 import { DetailPane } from '../../../ui/list-detail.tsx';
 import { FieldSuggestions } from './field-suggestions.tsx';

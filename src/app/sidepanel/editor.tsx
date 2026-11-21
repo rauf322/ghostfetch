@@ -10,7 +10,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAgentAccess } from '../../pages/agent/index.ts';
 import { RulesPage } from '../../pages/rules/index.ts';
-import { TrafficPage } from '../../pages/traffic/index.ts';
+import { TrafficPage, useTrafficLog } from '../../traffic/ui/index.ts';
 import {
   addRule,
   createResponseCapture,
@@ -22,10 +22,10 @@ import {
   ruleStore,
   settingsStore,
 } from '../../shared/api/index.ts';
-import type { LogEntry, Rule } from '../../shared/api/index.ts';
+import type { Rule } from '../../shared/api/index.ts';
+import type { LogEntry } from '../../traffic/index.ts';
 import { watchRuleRequests } from '../../platform/index.ts';
 import { useStore } from '../../ui/use-store.ts';
-import { useTrafficLog } from '../../shared/react/index.ts';
 import { cn } from '../../ui/cn.ts';
 import { diffPreferred, rememberDiff } from '../../body-editor/index.ts';
 import { Alert } from '../../ui/kit/alert.tsx';

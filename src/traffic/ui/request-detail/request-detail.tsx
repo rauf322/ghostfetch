@@ -4,10 +4,11 @@
 // Beside the list it's 44% of the view, between 360 and 600 px. Memoized on the entry, which
 // never changes: a long body is only formatted once.
 import { memo, useMemo } from 'react';
-import type { LogEntry, Rule } from '../../../../shared/api/index.ts';
-import { formatJson } from '../../../../lib/index.ts';
-import { Alert } from '../../../../ui/kit/alert.tsx';
-import { PaneScroll } from '../../../../ui/list-detail.tsx';
+import type { Rule } from '../../../shared/api/index.ts';
+import type { LogEntry } from '../../index.ts';
+import { formatJson } from '../../../lib/index.ts';
+import { Alert } from '../../../ui/kit/alert.tsx';
+import { PaneScroll } from '../../../ui/list-detail.tsx';
 import { RequestActions } from './request-actions.tsx';
 import { RequestBodies } from './request-bodies.tsx';
 import { RequestFacts } from './request-facts.tsx';

@@ -2,10 +2,10 @@
 // Content-Type, and the rule that acted on it, with its group if it was in one (and a link to open
 // it), or that none did.
 import type { ReactNode } from 'react';
-import type { LogEntry } from '../../../../shared/api/index.ts';
-import { cn } from '../../../../ui/cn.ts';
-import { Button } from '../../../../ui/kit/button.tsx';
-import { CARD } from '../../../../ui/kit/card.tsx';
+import type { LogEntry } from '../../index.ts';
+import { cn } from '../../../ui/cn.ts';
+import { Button } from '../../../ui/kit/button.tsx';
+import { CARD } from '../../../ui/kit/card.tsx';
 import { ActionBadge } from '../action-badge.tsx';
 
 export function RequestFacts({

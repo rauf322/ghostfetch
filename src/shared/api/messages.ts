@@ -1,7 +1,7 @@
-// The messages the extension's own parts send each other: the background, the bridge in each page,
-// the interceptor in its page world, and the Traffic view, which reads a tab's log over a port.
-// Types, and the name of that port: nothing else of this file ends up in the built extension.
-import type { LogEntry } from './log-entry.ts';
+// What the bridge in each page sends the interceptor in its page world: the rules that answer,
+// with the two switches. Types only: nothing of this file ends up in the built extension. Every
+// other message is its context's own: Traffic's are in src/traffic/contract.ts, and Sites' in
+// src/sites/contract.ts.
 import type { Rule } from './rules/types.ts';
 
 // A rule as the page gets it: with the name of its group, if it's in one, which the traffic log
@@ -14,49 +14,4 @@ export interface PageState {
   enabled: boolean;
   record: boolean;
   rules: PageRule[];
-}
-
-// The interceptor to the bridge: a request it saw. The page can forge these, so the bridge
-// rebuilds the entry field by field.
-export interface PageLog {
-  type: 'log';
-  entry: unknown;
-}
-
-// chrome.runtime and chrome.tabs messages.
-export type RuntimeMessage =
-  // The popup or editor to the background: re-register the content scripts now.
-  | { type: 'ghostfetch:sync' }
-  // An iframe's bridge to the background, which passes it on to the tab's top frame.
-  | { type: 'ghostfetch:frameEntry'; entry: LogEntry }
-  // The popup to a tab's top-frame bridge, which answers with PageCounts.
-  | { type: 'ghostfetch:counts' };
-
-// A tab's bridge to the popup: how often each rule has answered on the page, by what it did, as
-// the tab's traffic log has it (so while recording, since the page loaded or Traffic's Clear).
-// Counts only: none of the log's URLs or bodies.
-export interface PageCounts {
-  record: boolean;
-  rules: Record<string, RuleCount>;
-}
-export interface RuleCount {
-  mocked: number;
-  modified: number;
-  failed: number;
-}
-
-// The "ghostfetch-log" port: the Traffic view connects to a tab's top-frame bridge over it, gets the
-// log so far, then each request as it happens, and can ask the tab to clear its log.
-export const LOG_PORT = 'ghostfetch-log';
-
-// The tab's bridge to the Traffic view: the log so far (a long one in parts: the snapshot, then
-// the rest of it in order as "more", since Chrome passes a message of at most 64 MiB), then each
-// request as it happens.
-export type LogPortMessage =
-  | { type: 'snapshot'; entries: LogEntry[]; url: string }
-  | { type: 'more'; entries: LogEntry[] }
-  | { type: 'entry'; entry: LogEntry };
-// The Traffic view to the tab's bridge.
-export interface LogViewerMessage {
-  type: 'clear';
 }

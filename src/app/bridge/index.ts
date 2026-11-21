@@ -2,7 +2,8 @@
 // the ones that answer (on, and in no group or a group that's on) to the interceptor (the
 // page-world half) over a private MessageChannel, whose port is offered exactly once, before any
 // page script runs. The top frame also keeps the tab's traffic log, so the editor can show
-// requests made before it was opened, and counts it for the popup.
+// requests made before it was opened, and counts it for the popup: that log is Traffic's
+// (src/traffic/infrastructure/tab-log.ts), started here and given what the page reports.
 // Built as bridge.js: WXT's wrapper runs this function at once and adds no globals of its own.
 import { defineUnlistedScript } from 'wxt/utils/define-unlisted-script';
 import {
@@ -11,17 +12,8 @@ import {
   normalizeGroups,
   wouldAnswer,
 } from '../../shared/api/index.ts';
-import type {
-  LogEntry,
-  LogPortMessage,
-  LogViewerMessage,
-  PageCounts,
-  PageState,
-  Rule,
-  RuleCount,
-  RuntimeMessage,
-} from '../../shared/api/index.ts';
-import type { Untrusted } from '../../lib/index.ts';
+import type { PageState, Rule } from '../../shared/api/index.ts';
+import { createTabLog } from '../../traffic/index.ts';
 
 export default defineUnlistedScript(() => {
   // Same two guards as the interceptor. The flag lives in the extension's isolated world, which
@@ -31,28 +23,15 @@ export default defineUnlistedScript(() => {
   if ((globalThis as { ghostfetchBridge?: boolean }).ghostfetchBridge) return;
   (globalThis as { ghostfetchBridge?: boolean }).ghostfetchBridge = true;
 
-  const MAX_LOG = 300;
-  // Chrome passes a message of at most 64 MiB, as JSON, and each request in the log can hold a
-  // 1 MB body: the log so far goes to a Traffic view in parts of at most this many characters of
-  // URLs and bodies, which as JSON stay under that even if every character took six bytes
-  // (\u0001), with room for the rest of each entry.
-  const PART = 8_000_000;
-  const KINDS = new Set<unknown>(['fetch', 'xhr']);
-  const ACTIONS = new Set<unknown>(['', 'mocked', 'modified', 'error']);
   const isTop = window === window.top;
-  const log: LogEntry[] = [];
-  const viewers = new Set<chrome.runtime.Port>();
-  // To one Traffic view. A chrome.runtime.Port takes no target origin, unlike window.postMessage().
-  const send = (viewer: chrome.runtime.Port, message: LogPortMessage) =>
-    // oxlint-disable-next-line unicorn/require-post-message-target-origin
-    viewer.postMessage(message);
-  let recording = true;
-  let sequence = 0;
+  // Traffic's log of the tab's requests: what the page reports goes to it (record()), and in the
+  // top frame, whose log is the tab's, it's what the popup and the Traffic view ask (listen()).
+  const tabLog = createTabLog({ isTop });
 
   const channel = new MessageChannel();
   const port = channel.port1;
   port.addEventListener('message', ({ data }) => {
-    if (data?.type === 'log') record(data.entry);
+    if (data?.type === 'log') tabLog.record(data.entry);
   });
   // Setting onmessage starts a port; with addEventListener, start() does.
   port.start();
@@ -67,7 +46,7 @@ export default defineUnlistedScript(() => {
         rules: [],
         groups: [],
       })) as { enabled: boolean; record: boolean; rules: unknown; groups: unknown };
-      recording = stored.record;
+      tabLog.setRecording(stored.record);
       // The groups as the editor has them, and the rules in the order it shows (order.ts):
       // each group's rules together, in the group's place.
       const groups = normalizeGroups(stored.groups);
@@ -101,72 +80,6 @@ export default defineUnlistedScript(() => {
     }
   }
 
-  // Entries come from the page's own world (or from another frame's), which the page controls.
-  // Rebuild each one from known fields and types so nothing unexpected reaches the editor.
-  function clean(raw: Untrusted): LogEntry | null {
-    // The interceptor only ever reports a fetch() or an XMLHttpRequest.
-    if (!raw || typeof raw !== 'object' || !KINDS.has(raw.kind)) return null;
-    const text = (value: unknown, max: number) =>
-      typeof value === 'string' ? value.slice(0, max) : '';
-    const method = text(raw.method, 32).toUpperCase();
-    return {
-      id: `${Date.now().toString(36)}-${(sequence++).toString(36)}`,
-      time: Number.isFinite(raw.time) ? raw.time : Date.now(),
-      kind: raw.kind,
-      method: /^[A-Z][A-Z0-9_-]*$/.test(method) ? method : 'INVALID',
-      url: text(raw.url, 8192),
-      frame: text(raw.frame, 512),
-      requestBody: text(raw.requestBody, 100_000),
-      duration: Number.isFinite(raw.duration)
-        ? Math.max(0, Math.round(raw.duration))
-        : null,
-      status:
-        Number.isInteger(raw.status) && raw.status > 0 && raw.status < 1000
-          ? raw.status
-          : null,
-      contentType: text(raw.contentType, 256),
-      responseBody: text(raw.responseBody, 1_000_000),
-      truncated: raw.truncated === true,
-      ruleId: text(raw.ruleId, 64) || null,
-      ruleName: text(raw.ruleName, 300),
-      groupName: text(raw.groupName, 300),
-      action: ACTIONS.has(raw.action) ? raw.action : '',
-      error: text(raw.error, 1000),
-    };
-  }
-
-  function record(raw: Untrusted) {
-    const entry = recording ? clean(raw) : null;
-    if (!entry) return;
-    if (!isTop) {
-      // Frames can't reach the top frame's log directly, so the service worker relays.
-      chrome.runtime
-        .sendMessage({ type: 'ghostfetch:frameEntry', entry } satisfies RuntimeMessage)
-        .catch(() => {});
-      return;
-    }
-    log.push(entry);
-    if (log.length > MAX_LOG) log.splice(0, log.length - MAX_LOG);
-    for (const viewer of viewers) send(viewer, { type: 'entry', entry });
-  }
-
-  // The log so far in parts of up to PART characters, oldest first, each with one entry at least.
-  function inParts(entries: LogEntry[]) {
-    const parts: LogEntry[][] = [[]];
-    let size = 0;
-    for (const entry of entries) {
-      const length =
-        entry.url.length + entry.requestBody.length + entry.responseBody.length;
-      if (size + length > PART && parts.at(-1)!.length) {
-        parts.push([]);
-        size = 0;
-      }
-      parts.at(-1)!.push(entry);
-      size += length;
-    }
-    return parts;
-  }
-
   chrome.storage.onChanged.addListener((changes, area) => {
     if (
       area === 'local' &&
@@ -177,41 +90,7 @@ export default defineUnlistedScript(() => {
 
   if (!isTop) return;
 
-  // A request an iframe logged, which the background passes on; and the popup, asking how often
-  // each rule has answered here. Only the extension's own parts can send these.
-  chrome.runtime.onMessage.addListener(
-    (
-      message: RuntimeMessage | undefined,
-      _sender: chrome.runtime.MessageSender,
-      respond: (counts: PageCounts) => void,
-    ) => {
-      if (message?.type === 'ghostfetch:frameEntry') record(message.entry);
-      if (message?.type === 'ghostfetch:counts') respond(counts());
-    },
-  );
-
-  // The log, counted by rule and by what the rule did. A request the page gave up on before its
-  // rule answered (action '') is none of them, as in the rule editor's count.
-  function counts(): PageCounts {
-    const rules: Record<string, RuleCount> = {};
-    for (const { ruleId, action } of log) {
-      if (!ruleId || !action) continue;
-      const count = (rules[ruleId] ??= { mocked: 0, modified: 0, failed: 0 });
-      count[action === 'error' ? 'failed' : action] += 1;
-    }
-    return { record: recording, rules };
-  }
-
-  // The editor's Traffic view connects here to get the log so far plus live updates.
-  chrome.runtime.onConnect.addListener((viewer) => {
-    if (viewer.name !== 'ghostfetch-log') return;
-    viewers.add(viewer);
-    viewer.onDisconnect.addListener(() => viewers.delete(viewer));
-    viewer.onMessage.addListener((message: LogViewerMessage | undefined) => {
-      if (message?.type === 'clear') log.length = 0;
-    });
-    const [first, ...rest] = inParts(log);
-    send(viewer, { type: 'snapshot', entries: first!, url: location.href });
-    for (const entries of rest) send(viewer, { type: 'more', entries });
-  });
+  // The tab's log is the top frame's: it hears an iframe's entries, which the background passes
+  // on, the popup's question of what each rule did here, and the Traffic view's connection.
+  tabLog.listen();
 });

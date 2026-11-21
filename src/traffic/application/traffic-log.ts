@@ -4,8 +4,8 @@
 // there, and New rule offers what the page just asked for. No DOM: a view draws snapshot() and
 // draws again when subscribe() says it changed, at most once a frame, however many requests
 // arrive.
-import type { LogEntry } from './log-entry.ts';
-import type { LogPortMessage, LogViewerMessage } from './messages.ts';
+import type { LogEntry } from '../domain/log-entry.ts';
+import type { LogPortMessage, LogViewerMessage } from '../contract.ts';
 
 const MAX_ENTRIES = 500;
 
@@ -110,7 +110,7 @@ export function createTrafficLog({ followActiveTab, preserve }: TrafficLogOption
         if (!preserve()) entries = new Map();
         for (const entry of message.entries) entries.set(entry.id, entry);
       } else if (message.type === 'more') {
-        // The rest of a long log so far, in order (messages.ts), unless Clear came first.
+        // The rest of a long log so far, in order (contract.ts), unless Clear came first.
         if (cleared) return;
         for (const entry of message.entries) entries.set(entry.id, entry);
       } else if (message.type === 'entry') {

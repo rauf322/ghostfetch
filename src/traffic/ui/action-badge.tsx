@@ -1,9 +1,9 @@
 // What a rule did to a request: the green dot and a word, or an inverted "Rule error".
-import type { EntryAction, LogEntry } from '../../../shared/api/index.ts';
-import { Badge } from '../../../ui/kit/badge.tsx';
+import type { EntryAction, LogEntry } from '../index.ts';
+import { Badge } from '../../ui/kit/badge.tsx';
 
 // Every action, so a new one can't go without its words. The bridge lets no other value into the
-// log (clean() in app/bridge).
+// log (clean() in infrastructure/tab-log.ts).
 const ACTION_LABELS: Record<Exclude<EntryAction, ''>, string> = {
   mocked: 'Mocked',
   modified: 'Modified',

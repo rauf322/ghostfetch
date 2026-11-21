@@ -3,15 +3,15 @@
 // minutes ago").
 import { useState, useSyncExternalStore } from 'react';
 import type { ReactNode } from 'react';
-import { siteStore } from '../../../sites/index.ts';
-import type { TrafficSnapshot } from '../../../shared/api/index.ts';
-import { cn } from '../../../ui/cn.ts';
-import { ItemList } from '../../../ui/kit/item.tsx';
-import { PaneSection } from '../../../ui/list-detail.tsx';
-import { countEntries, filterEntries } from '../lib/filter-entries.ts';
-import type { TrafficFilter } from '../lib/filter-entries.ts';
-import { groupByTime } from '../lib/time-groups.ts';
-import { useNow } from '../model/use-now.ts';
+import { siteStore } from '../../sites/index.ts';
+import type { TrafficSnapshot } from '../index.ts';
+import { cn } from '../../ui/cn.ts';
+import { ItemList } from '../../ui/kit/item.tsx';
+import { PaneSection } from '../../ui/list-detail.tsx';
+import { countEntries, filterEntries } from '../domain/filter-entries.ts';
+import type { TrafficFilter } from '../domain/filter-entries.ts';
+import { groupByTime } from '../domain/time-groups.ts';
+import { useNow } from './use-now.ts';
 import { RequestRow } from './request-row.tsx';
 import { TrafficFilters } from './traffic-filters.tsx';
 import { TrafficNotice } from './traffic-notice.tsx';

@@ -7,7 +7,7 @@
 // each window, a tab) keeps responses as it sees them, and one writing them all at once would undo
 // what another just kept. Only the editor reads them.
 import { createStore, formatJson } from '../../../lib/index.ts';
-import type { LogEntry } from '../log-entry.ts';
+import type { LogEntry } from '../../../traffic/index.ts';
 import { requestTester } from './request-match.ts';
 import type { RuleRequest } from './request-match.ts';
 import { ruleStore } from './store.ts';

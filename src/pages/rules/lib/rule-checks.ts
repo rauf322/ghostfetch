@@ -1,20 +1,11 @@
-// What the rule editor says about what you typed: a regex that doesn't compile, whether a URL
-// matches the pattern, and whether a body is valid JSON (and if not, where it goes wrong).
-import { urlTester } from '../../../shared/api/index.ts';
+// What the rule editor says about what you typed: whether a URL matches the pattern, and whether a
+// body is valid JSON (and if not, where it goes wrong). What's wrong with a rule is shared/api's
+// to say (regexError, hasJsonBody), as the agent's tools ask it too; this puts it in the editor's
+// words.
+import { hasJsonBody, urlTester } from '../../../shared/api/index.ts';
 import type { Rule } from '../../../shared/api/index.ts';
 import { checkJson } from '../../../shared/lib/index.ts';
 import type { JsonProblem } from '../../../shared/lib/index.ts';
-
-// A regex that doesn't compile, in the browser's words.
-export function regexError({ match }: Rule) {
-  if (match.mode !== 'regex' || !match.url.trim()) return '';
-  try {
-    RegExp(match.url.trim()); // throws a SyntaxError if the pattern doesn't compile
-    return '';
-  } catch (error) {
-    return (error as Error).message;
-  }
-}
 
 // Whether `url` matches the rule's pattern, as the page decides it (urlTester), or why the pattern
 // can't be tried.
@@ -45,8 +36,9 @@ export interface CodeStatus {
 }
 
 // Nothing for a rule that keeps the server's body, or one whose Content-Type isn't JSON.
-export function codeStatus({ response }: Rule): CodeStatus | null {
-  if (response.bodyMode !== 'replace' || !/json/i.test(response.contentType)) return null;
+export function codeStatus(rule: Rule): CodeStatus | null {
+  if (!hasJsonBody(rule)) return null;
+  const { response } = rule;
   const problem = checkJson(response.body);
   // An empty body is a mistake with no place to mark.
   if (problem && problem.to <= problem.from)

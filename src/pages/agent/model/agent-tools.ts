@@ -26,6 +26,8 @@ import {
   groupName,
   groupOf,
   groupPosition,
+  inOffGroup,
+  isAnswering,
   isBuiltInHost,
   keepServerResponse,
   moveGroupTo,
@@ -43,6 +45,7 @@ import {
   ruleTitle,
   settingsStore,
   siteOf,
+  wouldAnswer,
 } from '../../../shared/api/index.ts';
 import type {
   Group,
@@ -174,7 +177,7 @@ export function createAgentTools({ log, place }: { log: TrafficLog; place: strin
   // Whether a rule answers the requests it matches: it's on, its group is too, and Ghostfetch
   // isn't paused.
   const answering = (rule: Rule) =>
-    rule.enabled && groupOf(rule)?.enabled !== false && settingsStore.state.enabled;
+    isAnswering(rule, !inOffGroup(rule), !settingsStore.state.enabled);
 
   // The page the editor watches, or null with none: for the editor's own use.
   function watched() {
@@ -531,9 +534,7 @@ export function createAgentTools({ log, place }: { log: TrafficLog; place: strin
         .map((rule, position) => ({ rule, position }))
         .filter(({ rule }) => entryTester(rule)(request));
       // The first that's on, in no group or a group that's on, as the page decides.
-      const answer = matching.find(
-        ({ rule }) => rule.enabled && groupOf(rule)?.enabled !== false,
-      );
+      const answer = matching.find(({ rule }) => wouldAnswer(rule, !inOffGroup(rule)));
       const brief = ({ rule, position }: { rule: Rule; position: number }) => {
         const group = groupOf(rule);
         return {

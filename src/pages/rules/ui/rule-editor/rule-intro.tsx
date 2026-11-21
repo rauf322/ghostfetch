@@ -1,7 +1,12 @@
 // The top of a rule: whether it's answering requests and how often it has on the page the editor
 // watches ("Mocking · fired 3× on Acme dashboard"), its name, which you edit in place, and one
 // sentence that says what it does.
-import { editRule, groupOf, settingsStore } from '../../../../shared/api/index.ts';
+import {
+  editRule,
+  groupOf,
+  isAnswering,
+  settingsStore,
+} from '../../../../shared/api/index.ts';
 import type { Rule, TrafficLog, TrafficSnapshot } from '../../../../shared/api/index.ts';
 import { useStore, useTrafficValue } from '../../../../shared/react/index.ts';
 import { cn } from '../../../../shared/ui/cn.ts';
@@ -56,7 +61,7 @@ function RuleState({ rule, log }: { rule: Rule; log: TrafficLog }) {
   const failures = useTrafficValue(log, (traffic) => times(traffic, rule.id, true));
   const page = useTrafficValue(log, (traffic) => traffic.target?.title ?? '');
   const group = groupOf(rule);
-  const live = rule.enabled && enabled && group?.enabled !== false;
+  const live = isAnswering(rule, group?.enabled !== false, !enabled);
   let words = 'Off';
   if (rule.enabled && !enabled) words = 'Paused while Ghostfetch is off';
   else if (rule.enabled && group?.enabled === false)

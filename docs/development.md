@@ -98,7 +98,7 @@ src/pages/                       what the screens show
   kit/                           the kit page: every kit component in its states
 src/shared/                      what more than one part of the extension uses
   api/                           what's kept in chrome.storage and what the parts send each other (index.ts)
-    rules/                       a rule: its fields and their names, making one, URL matching, and the screens' copy of the rules and their groups (store.ts: the order, kept as the rules, each naming its group, and the groups, each with its place); groups (group.ts), and a copy of one; apart from them, the server's responses their bodies' Diff compares with
+    rules/                       a rule: its fields and their names, making one, which requests it matches (url-match.ts and request-match.ts, the one test the page and the editor both ask), whether it's answering (answering.ts), what's wrong with it (problems.ts), and the screens' copy of the rules and their groups (store.ts: the order, kept as the rules, each naming its group, and the groups, each with its place); groups (group.ts), and a copy of one; apart from them, the server's responses their bodies' Diff compares with
     sites/                       the sites Ghostfetch runs on, the screens' copy of the ones you added, turning one on or off
     settings.ts                  Ghostfetch on or off, and recording, which only the popup changes
     log-entry.ts                 a request in a tab's traffic log
@@ -238,12 +238,16 @@ compile, and no pattern with or without a GraphQL operation), and that the rule 
 says the same for every case: both use one function, `urlTester`. And that the requests the
 editor keeps a rule's server's response from, for its Diff (`entryTester`), are the ones the page
 would answer with the rule, for every case crossed with methods and the ways a request names a
-GraphQL operation. Then the order: of two rules that match, the first answers; the order the
+GraphQL operation, one whose `operationName` isn't text among them: both ask one function here
+too, `requestTester`. Then the order: of two rules that match, the first answers; the order the
 editor and the page rebuild from what's stored (`layOut`), each group in its place with its rules
 in theirs, the ungrouped rules filling the rest, a rule whose group isn't there ungrouped; stored
 groups rebuilt (`normalizeGroups`: an id and a name no other has, on unless they say they're off);
-and the names a new group, a copy and an import get. It needs no browser either, and `npm test`
-runs it after `test/diff.mjs`.
+and the names a new group, a copy and an import get. Then when a rule is answering
+(`isAnswering`: it's on, its group is on and Ghostfetch isn't paused; `wouldAnswer` needs only
+the first two), and what's wrong with one (`regexError`, and `bodyProblem`, which looks only at a
+JSON body of the rule's own). It needs no browser either, and `npm test` runs it after
+`test/diff.mjs`.
 
 `test/curl.mjs` checks cURL commands both ways. Traffic's Copy as cURL: the command for a request,
 and that whatever the page put in it (quotes, `$(…)`, backticks, `;`, in the URL, the body or the

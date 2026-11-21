@@ -5,18 +5,24 @@
 // editor keeps a rule's server's response from, for its Diff (entryTester), are the ones the page
 // would answer with the rule: the same URLs, methods and GraphQL operations. Then which of two
 // rules answers, and the order with groups, as the editor and the page rebuild it from what's
-// stored (layOut, normalizeGroups), and the names a new group gets.
+// stored (layOut, normalizeGroups), and the names a new group gets; when a rule is answering
+// (isAnswering, wouldAnswer); and what's wrong with one (regexError, bodyProblem).
 //
 //   node test/matching.mjs      (npm test runs it after test/diff.mjs)
 import { compile, findRule } from '../src/app/interceptor/matching.ts';
 import { testResult } from '../src/pages/rules/lib/rule-checks.ts';
 import {
+  bodyProblem,
   createRule,
   entryTester,
   freeName,
+  hasJsonBody,
+  isAnswering,
   layOut,
   normalizeGroups,
   offGroups,
+  regexError,
+  wouldAnswer,
 } from '../src/shared/api/index.ts';
 import { check, expect, finish } from './fixtures.mjs';
 
@@ -121,6 +127,8 @@ await check(
       JSON.stringify({ query: 'query GetUser { me }' }),
       JSON.stringify([{ operationName: 'GetUser' }]),
       JSON.stringify({ operationName: 'Other', query: '' }),
+      // A name that isn't text is still the body's say: the URL's operationName isn't asked.
+      JSON.stringify({ operationName: 7, query: '' }),
       'not json',
     ];
     const disagree = [];
@@ -250,6 +258,53 @@ await check(
         freeName('PR-1', taken, 'brackets'),
       ],
       ['New group 3', 'PR-1 copy', 'PR-1 (2)'],
+    );
+  },
+);
+
+await check(
+  "a rule is answering while it's on, its group is on and Ghostfetch isn't paused; one that would answer needs only the first two",
+  () => {
+    const on = { enabled: true };
+    const off = { enabled: false };
+    expect(
+      [
+        isAnswering(on, true, false),
+        isAnswering(on, false, false),
+        isAnswering(on, true, true),
+        isAnswering(off, true, false),
+        wouldAnswer(on, true),
+        wouldAnswer(on, false),
+        wouldAnswer(off, true),
+      ],
+      [true, false, false, false, true, false, false],
+    );
+  },
+);
+
+await check(
+  "what's wrong with a rule: a regex that doesn't compile, and a mistake in a JSON body of its own, and in no other body",
+  () => {
+    const broken = rule('regex', '(', '');
+    broken.response.body = '{ "a": 1, }';
+    // Keeps the server's body: its own isn't sent, so it isn't checked.
+    const kept = rule('contains', '(', '');
+    kept.response.body = '{ "a": 1, }';
+    kept.response.bodyMode = 'original';
+    const text = rule('contains', '/api', '');
+    text.response.body = 'not json';
+    text.response.contentType = 'text/plain';
+    expect(
+      [
+        Boolean(regexError(broken)),
+        regexError(kept),
+        regexError(rule('regex', '   ', '')),
+        [hasJsonBody(broken), Boolean(bodyProblem(broken))],
+        [hasJsonBody(kept), Boolean(bodyProblem(kept))],
+        [hasJsonBody(text), Boolean(bodyProblem(text))],
+        Boolean(bodyProblem(rule('contains', '/api', ''))),
+      ],
+      [true, '', '', [true, true], [false, false], [false, false], false],
     );
   },
 );

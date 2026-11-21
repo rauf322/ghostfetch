@@ -35,6 +35,10 @@ export { duplicateGroup } from './rules/duplicate-group.ts';
 export { graphqlOperation, ruleFromEntry } from './rules/rule-from-entry.ts';
 export { headerProblem } from './rules/header-check.ts';
 export { urlTester } from './rules/url-match.ts';
+export { requestTester } from './rules/request-match.ts';
+export type { RuleRequest } from './rules/request-match.ts';
+export { isAnswering, wouldAnswer } from './rules/answering.ts';
+export { bodyProblem, hasJsonBody, regexError } from './rules/problems.ts';
 export {
   copyServerResponse,
   createResponseCapture,

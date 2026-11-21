@@ -5,7 +5,12 @@
 // requests made before it was opened, and counts it for the popup.
 // Built as bridge.js: WXT's wrapper runs this function at once and adds no globals of its own.
 import { defineUnlistedScript } from 'wxt/utils/define-unlisted-script';
-import { isResponseRule, layOut, normalizeGroups } from '../../shared/api/index.ts';
+import {
+  isResponseRule,
+  layOut,
+  normalizeGroups,
+  wouldAnswer,
+} from '../../shared/api/index.ts';
 import type {
   LogEntry,
   LogPortMessage,
@@ -86,7 +91,7 @@ export default defineUnlistedScript(() => {
         // block rule from before 0.9.0 until the rules are next saved: the ones on, in no group
         // or a group that's on, each in a group with the group's name, for the traffic log.
         rules: ordered
-          .filter((rule) => rule.enabled && !off.has(rule.group))
+          .filter((rule) => wouldAnswer(rule, !off.has(rule.group)))
           .map((rule) =>
             names.has(rule.group) ? { ...rule, groupName: names.get(rule.group) } : rule,
           ),

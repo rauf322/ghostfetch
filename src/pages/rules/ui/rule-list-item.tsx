@@ -12,6 +12,7 @@ import {
   countWords,
   ruleTitle,
   settingsStore,
+  wouldAnswer,
 } from '../../../shared/api/index.ts';
 import type { Rule, TrafficLog } from '../../../shared/api/index.ts';
 import { useStore, useTrafficValue } from '../../../shared/react/index.ts';
@@ -85,7 +86,7 @@ export const RuleListItem = memo(function RuleListItem({
       data-url={rule.match.url}
       data-group-off={groupOff ? '' : undefined}
       selected={selected}
-      off={!rule.enabled || Boolean(groupOff)}
+      off={!wouldAnswer(rule, !groupOff)}
       draggable
       data-drop={drag.drop}
       // Set in under its group's header: its dot under the group's name, and a line where a drop

@@ -1,13 +1,9 @@
 // What the interceptor's parts pass each other: a request as the rules see it, what a matched rule
 // gives the page, the rules as the bridge sent them, and what it keeps on an XMLHttpRequest.
-import type { EntryAction, PageRule } from '../../shared/api/index.ts';
+import type { EntryAction, PageRule, RuleRequest } from '../../shared/api/index.ts';
 
-// A request as the rules see it.
-export interface PageRequest {
-  url: string;
-  method: string;
-  body: string;
-}
+// A request as the rules see it: its method, its full URL and its body as text.
+export type PageRequest = RuleRequest;
 
 // What a matched rule gives the page, and what it did: mocked it (Replace) or changed the real
 // response (Server's body).
@@ -27,10 +23,10 @@ export interface RuleResult {
   action: Extract<EntryAction, 'mocked' | 'modified'>;
 }
 
-// A response rule, with its URL pattern made into a test.
+// A response rule, made into a test of the requests it matches.
 export interface Compiled {
   rule: PageRule;
-  test: (url: string) => boolean;
+  test: (request: PageRequest) => boolean;
 }
 
 // The response rules as the bridge last sent them, compiled, and the two switches. `needsBody`:

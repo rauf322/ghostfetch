@@ -13,8 +13,10 @@ import { useState } from 'react';
 import {
   countWords,
   groupOf,
+  isAnswering,
   openRuleInEditor,
   ruleTitle,
+  wouldAnswer,
 } from '../../../shared/api/index.ts';
 import type { Entry, Group, Rule, RuleCount } from '../../../shared/api/index.ts';
 import { useStore } from '../../../shared/react/index.ts';
@@ -175,7 +177,7 @@ function RuleRow({
   windowId: number;
 }) {
   const groupOff = group?.enabled === false ? group.name : '';
-  const answering = rule.enabled && enabled && !groupOff;
+  const answering = isAnswering(rule, !groupOff, !enabled);
   // What it did on the page: green while it's still answering there, grey once it, its group or
   // Ghostfetch is off.
   const did = countWords(count);
@@ -203,7 +205,7 @@ function RuleRow({
             onClick={() => openRuleInEditor(rule.id, windowId)}
             className={cn(
               'min-w-0 truncate text-left text-title hover:underline hover:decoration-t40 hover:underline-offset-3',
-              rule.enabled && !groupOff ? 'text-foreground' : 'text-t40',
+              wouldAnswer(rule, !groupOff) ? 'text-foreground' : 'text-t40',
             )}
           >
             {ruleTitle(rule)}

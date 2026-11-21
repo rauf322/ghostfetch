@@ -1,8 +1,13 @@
 // What the agent's tools say about a rule: a line for list_rules, and what's wrong with it (as the
-// rule editor would point it out), so an agent can put right what it saved.
-import { BODY_MODES, headerProblem, ruleTitle } from '../../../shared/api/index.ts';
+// rule editor would point it out: both ask shared/api), so an agent can put right what it saved.
+import {
+  BODY_MODES,
+  bodyProblem,
+  headerProblem,
+  regexError,
+  ruleTitle,
+} from '../../../shared/api/index.ts';
 import type { Group, Rule } from '../../../shared/api/index.ts';
-import { checkJson } from '../../../shared/lib/index.ts';
 
 // A rule in list_rules: where it's tried in the order, its group, whether it's on and whether it
 // answers (it's on, its group is too, and Ghostfetch isn't paused), what it matches, what it
@@ -50,28 +55,20 @@ export function ruleSummary(
 
 // What's wrong with a rule, in words: what the rule editor marks (a regex that doesn't compile, a
 // JSON body that doesn't parse, a header row the page won't get), and a rule that matches nothing.
-export function ruleProblems({ match, response }: Rule): string[] {
+export function ruleProblems(rule: Rule): string[] {
+  const { match, response } = rule;
   const problems: string[] = [];
   if (!match.url.trim() && !match.graphqlOperation.trim())
     problems.push('It matches no request: it has no URL pattern or GraphQL operation.');
-  if (match.mode === 'regex' && match.url.trim()) {
-    try {
-      RegExp(match.url.trim()); // throws a SyntaxError if the pattern doesn't compile
-    } catch (error) {
-      problems.push(
-        `Its regex doesn't compile, so it matches nothing: ${(error as Error).message}`,
-      );
-    }
-  }
-  if (response.bodyMode === 'replace' && /json/i.test(response.contentType)) {
-    const problem = checkJson(response.body);
-    if (problem)
-      problems.push(
-        problem.to <= problem.from
-          ? `Its body isn't valid JSON: ${problem.message}`
-          : `Its body isn't valid JSON, at line ${problem.line}, column ${problem.column}: ${problem.message}`,
-      );
-  }
+  const regex = regexError(rule);
+  if (regex) problems.push(`Its regex doesn't compile, so it matches nothing: ${regex}`);
+  const problem = bodyProblem(rule);
+  if (problem)
+    problems.push(
+      problem.to <= problem.from
+        ? `Its body isn't valid JSON: ${problem.message}`
+        : `Its body isn't valid JSON, at line ${problem.line}, column ${problem.column}: ${problem.message}`,
+    );
   for (const row of response.headers) {
     const why = headerProblem(row);
     if (why) problems.push(`Its header row “${row.name}”: ${why}`);

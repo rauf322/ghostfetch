@@ -8,10 +8,10 @@
 // what another just kept. Only the editor reads them.
 import { createStore, formatJson } from '../../lib/index.ts';
 import type { LogEntry } from '../log-entry.ts';
-import { graphqlOperation } from './rule-from-entry.ts';
+import { requestTester } from './request-match.ts';
+import type { RuleRequest } from './request-match.ts';
 import { ruleStore } from './store.ts';
 import type { Rule } from './types.ts';
-import { urlTester } from './url-match.ts';
 
 export interface ServerResponse {
   // As the rule's body starts out from it: pretty-printed if it's JSON, Format's way.
@@ -95,33 +95,22 @@ export function responseFromEntry(entry: LogEntry): ServerResponse {
   };
 }
 
-// Whether a logged request is one `rule` matches, as the page decides
-// (app/interceptor/matching.ts): its method, its URL by the rule's pattern (urlTester), and for
-// GraphQL its operation, named in the body or else the URL's operationName. Made into a test once
-// per rule. A pattern that doesn't compile matches nothing, as in the page.
+// Whether a logged request is one `rule` matches, as the page decides: by the test the page's
+// interceptor answers requests with (requestTester), made once per rule. A pattern that doesn't
+// compile matches nothing, as in the page.
 export function entryTester(rule: Rule) {
-  const { method, graphqlOperation: wanted } = rule.match;
-  const operation = wanted.trim();
-  let url: (candidate: string) => boolean;
+  let matches: (request: RuleRequest) => boolean;
   try {
-    url = urlTester(rule.match);
+    matches = requestTester(rule.match);
   } catch {
     return () => false;
   }
-  return (entry: Pick<LogEntry, 'method' | 'url' | 'requestBody'>) =>
-    (method === 'ANY' || method === entry.method) &&
-    url(entry.url) &&
-    (!operation || operationOf(entry) === operation);
-}
-
-function operationOf({ url, requestBody }: Pick<LogEntry, 'url' | 'requestBody'>) {
-  const named = requestBody ? graphqlOperation(requestBody) : '';
-  if (named) return named;
-  try {
-    return new URL(url).searchParams.get('operationName') || '';
-  } catch {
-    return '';
-  }
+  return ({
+    method,
+    url,
+    requestBody,
+  }: Pick<LogEntry, 'method' | 'url' | 'requestBody'>) =>
+    matches({ method, url, body: requestBody });
 }
 
 // Fills in, for each rule that has no server's response yet, the newest request in the log it

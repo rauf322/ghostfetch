@@ -4,6 +4,7 @@
 import { formatJson, splitUrl } from '../../lib/index.ts';
 import type { LogEntry } from '../log-entry.ts';
 import { METHODS } from './catalog.ts';
+import { bodyOperation } from './request-match.ts';
 import { createRule } from './rule.ts';
 import type { Method } from './types.ts';
 
@@ -24,18 +25,10 @@ export function ruleFromEntry(entry: LogEntry) {
   return rule;
 }
 
-// The operation a GraphQL request body names: its operationName, or else the name after query,
-// mutation or subscription; '' when there's none. New rule reads a pasted cURL command's body
-// with it too.
+// The operation a GraphQL request body names (bodyOperation), as the text a rule matches by: ''
+// when it names none, or what it has there isn't text. New rule reads a pasted cURL command's
+// body with it too.
 export function graphqlOperation(body: string): string {
-  try {
-    const parsed = JSON.parse(body);
-    const first = Array.isArray(parsed) ? parsed[0] : parsed;
-    const name =
-      first?.operationName ||
-      /^\s*(?:query|mutation|subscription)\s+(\w+)/.exec(first?.query || '')?.[1];
-    return typeof name === 'string' ? name : '';
-  } catch {
-    return '';
-  }
+  const name = bodyOperation(body);
+  return typeof name === 'string' ? name : '';
 }

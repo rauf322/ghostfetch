@@ -1,9 +1,13 @@
 // What a rule says it does: the line under its name in the list (ruleSummary), the sentence under
 // its name in the editor (describeRule), and the value each setting shows on its row.
-import { BODY_MODES, MATCH_MODES, headerProblem } from '../../../shared/api/index.ts';
+import {
+  BODY_MODES,
+  MATCH_MODES,
+  headerProblem,
+  regexError,
+} from '../../../shared/api/index.ts';
 import type { Rule } from '../../../shared/api/index.ts';
 import { formatDuration, statusLabel } from '../../../shared/lib/index.ts';
-import { regexError } from './rule-checks.ts';
 
 export function ruleSummary(rule: Rule) {
   const { bodyMode, status, delay } = rule.response;

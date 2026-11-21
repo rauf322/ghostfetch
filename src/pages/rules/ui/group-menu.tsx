@@ -5,8 +5,8 @@ import {
   removeGroup,
   restoreGroup,
   ungroup,
-} from '../../../shared/api/index.ts';
-import type { Group } from '../../../shared/api/index.ts';
+} from '../../../rules/index.ts';
+import type { Group } from '../../../rules/index.ts';
 import { Button } from '../../../ui/kit/button.tsx';
 import {
   DropdownMenu,

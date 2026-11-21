@@ -20,9 +20,9 @@ import {
   normalizeRule,
   responseFromEntry,
   ruleStore,
-  settingsStore,
-} from '../../shared/api/index.ts';
-import type { Rule } from '../../shared/api/index.ts';
+} from '../../rules/index.ts';
+import type { Rule } from '../../rules/index.ts';
+import { settingsStore } from '../../shared/api/index.ts';
 import type { LogEntry } from '../../traffic/index.ts';
 import { watchRuleRequests } from '../../platform/index.ts';
 import { useStore } from '../../ui/use-store.ts';

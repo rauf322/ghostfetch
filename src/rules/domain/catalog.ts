@@ -1,6 +1,6 @@
 // The methods, URL match modes and body modes, with the words the screens show for them, and the
 // longest delay a rule keeps.
-import type { BodyMode, MatchMode, Method } from '../../../kernel/index.ts';
+import type { BodyMode, MatchMode, Method } from '../../kernel/index.ts';
 
 // The longest a rule holds a response back, in ms: 10 minutes. A rule is kept with no longer one
 // (normalizeRule), and the editor's field takes no longer one either.

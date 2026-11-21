@@ -1,13 +1,9 @@
 // The top of a rule: whether it's answering requests and how often it has on the page the editor
 // watches ("Mocking · fired 3× on Acme dashboard"), its name, which you edit in place, and one
 // sentence that says what it does.
-import {
-  editRule,
-  groupOf,
-  isAnswering,
-  settingsStore,
-} from '../../../../shared/api/index.ts';
-import type { Rule } from '../../../../shared/api/index.ts';
+import { editRule, groupOf, isAnswering } from '../../../../rules/index.ts';
+import type { Rule } from '../../../../rules/index.ts';
+import { settingsStore } from '../../../../shared/api/index.ts';
 import type { TrafficLog, TrafficSnapshot } from '../../../../traffic/index.ts';
 import { useStore } from '../../../../ui/use-store.ts';
 import { useTrafficValue } from '../../../../traffic/ui/index.ts';

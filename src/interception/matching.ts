@@ -2,7 +2,7 @@
 // and (for GraphQL) its operation name. Each rule is made into a test once, as the rules arrive,
 // by requestTester, which the editor tries a request with too.
 import { requestTester } from '../kernel/index.ts';
-import type { PageRule } from '../shared/api/index.ts';
+import type { PageRule } from '../rules/index.ts';
 import type { Compiled, PageRequest, PageRules } from './types.ts';
 
 export function compile(rules: PageRule[]) {

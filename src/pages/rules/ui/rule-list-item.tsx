@@ -7,8 +7,9 @@
 // whole in a tooltip.
 import { memo } from 'react';
 import type { PointerEvent } from 'react';
-import { ruleTitle, settingsStore, wouldAnswer } from '../../../shared/api/index.ts';
-import type { Rule } from '../../../shared/api/index.ts';
+import { ruleTitle, wouldAnswer } from '../../../rules/index.ts';
+import type { Rule } from '../../../rules/index.ts';
+import { settingsStore } from '../../../shared/api/index.ts';
 import { countRule, countWords } from '../../../traffic/index.ts';
 import type { TrafficLog } from '../../../traffic/index.ts';
 import { useStore } from '../../../ui/use-store.ts';

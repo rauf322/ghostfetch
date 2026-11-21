@@ -5,14 +5,15 @@ import {
   addGroup,
   addRule,
   createGroup,
+  duplicateRule,
   freeName,
   moveRule,
   placeOf,
   removeRule,
   ruleStore,
   ruleTitle,
-} from '../../../../shared/api/index.ts';
-import type { Rule } from '../../../../shared/api/index.ts';
+} from '../../../../rules/index.ts';
+import type { Rule } from '../../../../rules/index.ts';
 import { useStore } from '../../../../ui/use-store.ts';
 import { Button } from '../../../../ui/kit/button.tsx';
 import {
@@ -30,7 +31,6 @@ import {
 import { Icon } from '../../../../ui/kit/icon.tsx';
 import { notify } from '../../../../ui/kit/toast.tsx';
 import { exportRule } from '../../../../shared/ui/rules-file.tsx';
-import { duplicateRule } from '../../model/duplicate-rule.ts';
 import { setRenaming } from '../../model/renaming.ts';
 
 // No group, as the radio group's value: not an id a group can have.

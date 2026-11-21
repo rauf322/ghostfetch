@@ -4,7 +4,7 @@
 // too; Shift+Enter starts a new line.
 import type { RefObject } from 'react';
 import type { MatchMode, Method } from '../../../../kernel/index.ts';
-import { MATCH_MODES, METHODS } from '../../../../shared/api/index.ts';
+import { MATCH_MODES, METHODS } from '../../../../rules/index.ts';
 import { formatDuration, statusLabel } from '../../../../lib/index.ts';
 import { GroupPicker } from '../../../../shared/ui/group-picker.tsx';
 import { Button } from '../../../../ui/kit/button.tsx';

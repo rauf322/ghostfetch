@@ -6,7 +6,8 @@
 // would answer with the rule: the same URLs, methods and GraphQL operations. Then which of two
 // rules answers, and the order with groups, as the editor and the page rebuild it from what's
 // stored (layOut, normalizeGroups), and the names a new group gets; when a rule is answering
-// (isAnswering, wouldAnswer); and what's wrong with one (regexError, bodyProblem).
+// (isAnswering, wouldAnswer); what's wrong with one (regexError, bodyProblem); and what the page
+// is given of what's stored (pageState): the rules that answer, in their order, and the switches.
 //
 //   node test/matching.mjs      (npm test runs it after test/diff.mjs)
 import { compile, findRule } from '../src/interception/matching.ts';
@@ -21,9 +22,10 @@ import {
   layOut,
   normalizeGroups,
   offGroups,
+  pageState,
   regexError,
   wouldAnswer,
-} from '../src/shared/api/index.ts';
+} from '../src/rules/index.ts';
 import { check, expect, finish } from './fixtures.mjs';
 
 const API = 'https://api.example.test';
@@ -305,6 +307,62 @@ await check(
         Boolean(bodyProblem(rule('contains', '/api', ''))),
       ],
       [true, '', '', [true, true], [false, false], [false, false], false],
+    );
+  },
+);
+
+console.log('what the page is given');
+
+await check(
+  "the page is given the rules that are on, in no group or a group that's on, in the order, each in a group with the group's name and the others as they're stored, but no rule of a type 0.9.0 took out (a redirect or a block rule) and nothing that isn't a rule; and the two switches as they were stored",
+  () => {
+    const plain = member('a');
+    const stored = {
+      enabled: false,
+      record: true,
+      rules: [
+        plain,
+        member('b', 'g1'),
+        { ...member('c', 'g1'), enabled: false },
+        member('d'),
+        member('e', 'g2'),
+        // As 0.8 stored them: a redirect and a block rule, and a response rule.
+        { ...member('f'), type: 'redirect' },
+        { ...member('h'), type: 'block' },
+        { ...member('i'), type: 'response' },
+        member('s', 'gone'),
+        null,
+        'junk',
+      ],
+      groups: [
+        { id: 'g1', name: 'PR-1', at: 1 },
+        { id: 'g2', name: 'PR-2', at: 3, enabled: false },
+      ],
+    };
+    const state = pageState(stored);
+    const other = pageState({
+      enabled: true,
+      record: false,
+      rules: 'junk',
+      groups: null,
+    });
+    expect(
+      [
+        state.type,
+        [state.enabled, state.record],
+        state.rules.map((each) =>
+          'groupName' in each ? `${each.id} in ${each.groupName}` : each.id,
+        ),
+        state.rules[0] === plain,
+        [other.type, other.enabled, other.record, other.rules],
+      ],
+      [
+        'state',
+        [false, true],
+        ['a', 'b in PR-1', 'd', 'i', 's'],
+        true,
+        ['state', true, false, []],
+      ],
     );
   },
 );

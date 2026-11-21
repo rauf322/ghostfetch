@@ -1,8 +1,8 @@
 // What a rule says it does: the line under its name in the list (ruleSummary), the sentence under
 // its name in the editor (describeRule), and the value each setting shows on its row.
 import { headerProblem } from '../../../kernel/index.ts';
-import { BODY_MODES, MATCH_MODES, regexError } from '../../../shared/api/index.ts';
-import type { Rule } from '../../../shared/api/index.ts';
+import { BODY_MODES, MATCH_MODES, regexError } from '../../../rules/index.ts';
+import type { Rule } from '../../../rules/index.ts';
 import { formatDuration, statusLabel } from '../../../lib/index.ts';
 
 export function ruleSummary(rule: Rule) {

@@ -10,18 +10,18 @@ import {
   NEW_GROUP,
   addGroup,
   createGroup,
+  filterEntries,
   findRule,
   freeName,
   ruleRevision,
   ruleStore,
-} from '../../../shared/api/index.ts';
+} from '../../../rules/index.ts';
 import type { TrafficLog } from '../../../traffic/index.ts';
 import { useStore } from '../../../ui/use-store.ts';
 import { foldStore, isFolded, setFolded } from '../../../shared/ui/group-folds.ts';
 import { Button } from '../../../ui/kit/button.tsx';
 import { Icon } from '../../../ui/kit/icon.tsx';
 import { ListEmpty } from '../../../ui/list-detail.tsx';
-import { filterEntries } from '../lib/filter-rules.ts';
 import { renamingStore, setRenaming } from '../model/renaming.ts';
 import { useRuleDrag } from '../model/use-rule-drag.ts';
 import { GroupBlock } from './group-block.tsx';

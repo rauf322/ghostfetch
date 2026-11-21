@@ -1,5 +1,5 @@
 // What the agent's tools (mcp/ghostfetch-mcp.mjs) do, here in the editor, with the editor's own
-// code: the rules and their groups as shared/api keeps them (which saves them, sends them to open
+// code: the rules and their groups as src/rules/ keeps them (which saves them, sends them to open
 // pages and redraws the screens), and the log of the page the editor watches. What a tool is given
 // is checked here again, and a rule is rebuilt by normalizeRule before it's kept, as an imported
 // one is. The agent sees requests only from a page on a dev host (localhost, *.localhost,
@@ -39,11 +39,11 @@ import {
   ruleFromEntry,
   ruleStore,
   ruleTitle,
-  settingsStore,
   turnGroup,
   wouldAnswer,
-} from '../../../shared/api/index.ts';
-import type { Group, Place, Rule } from '../../../shared/api/index.ts';
+} from '../../../rules/index.ts';
+import type { Group, Place, Rule } from '../../../rules/index.ts';
+import { settingsStore } from '../../../shared/api/index.ts';
 import { isBuiltInHost, siteOf } from '../../../sites/index.ts';
 import { countRule, countWords } from '../../../traffic/index.ts';
 import type { LogEntry, TrafficLog } from '../../../traffic/index.ts';

@@ -1,7 +1,7 @@
 // The Delay row's editor: how long a rule holds the response back, in whole milliseconds up to 10
 // minutes, typed or picked from a few common ones.
-import { MAX_DELAY, editRule } from '../../../../shared/api/index.ts';
-import type { Rule } from '../../../../shared/api/index.ts';
+import { MAX_DELAY, editRule } from '../../../../rules/index.ts';
+import type { Rule } from '../../../../rules/index.ts';
 import { formatDuration } from '../../../../lib/index.ts';
 import { CardHint } from '../../../../ui/kit/card.tsx';
 import { Input } from '../../../../ui/kit/input.tsx';

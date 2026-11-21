@@ -4,7 +4,8 @@ import { StrictMode } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import { PopupPage } from '../../pages/popup/index.ts';
-import { initRules, initSettings } from '../../shared/api/index.ts';
+import { initRules } from '../../rules/index.ts';
+import { initSettings } from '../../shared/api/index.ts';
 import { initSites } from '../../sites/index.ts';
 import '../styles/kit.css';
 

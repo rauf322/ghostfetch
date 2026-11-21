@@ -1,8 +1,8 @@
 // "Or mock something Acme dashboard just asked for": the page's latest requests that no rule
 // answered, each with Mock, which makes a rule of it as Traffic's Mock this response does, and
 // a link to Traffic for the rest. Nothing shows until the page has asked for something.
-import { ruleFromEntry } from '../../../../shared/api/index.ts';
-import type { Rule } from '../../../../shared/api/index.ts';
+import { recentRequests, ruleFromEntry } from '../../../../rules/index.ts';
+import type { Rule } from '../../../../rules/index.ts';
 import type { LogEntry, TrafficLog } from '../../../../traffic/index.ts';
 import { formatDuration, splitUrl } from '../../../../lib/index.ts';
 import { useTraffic } from '../../../../traffic/ui/index.ts';
@@ -11,7 +11,6 @@ import { Button } from '../../../../ui/kit/button.tsx';
 import { Icon } from '../../../../ui/kit/icon.tsx';
 import { ItemList } from '../../../../ui/kit/item.tsx';
 import { Method, PaneSection } from '../../../../ui/list-detail.tsx';
-import { recentRequests } from '../../lib/recent-requests.ts';
 
 export function RecentRequests({
   log,

@@ -2,11 +2,10 @@
 // the sidebar, with the rule's group if it's in one), Duplicate (where there's room for the word)
 // and its ⋯ menu. The rule's switch is its dot in the list and in the popup, and Ghostfetch's own
 // switch is the popup's.
-import { groupOf, ruleTitle } from '../../../../shared/api/index.ts';
-import type { Rule } from '../../../../shared/api/index.ts';
+import { duplicateRule, groupOf, ruleTitle } from '../../../../rules/index.ts';
+import type { Rule } from '../../../../rules/index.ts';
 import { Button } from '../../../../ui/kit/button.tsx';
 import { Icon } from '../../../../ui/kit/icon.tsx';
-import { duplicateRule } from '../../model/duplicate-rule.ts';
 import { RulesHead } from '../rules-head.tsx';
 import { RuleMenu } from './rule-menu.tsx';
 

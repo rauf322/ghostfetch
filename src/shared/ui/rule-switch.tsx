@@ -3,8 +3,9 @@
 // doesn't answer; and grey while the rule is off. Clicking it always turns the rule itself on or
 // off, its group as it was. Its title says which.
 import type { ComponentProps } from 'react';
-import { editRule, ruleTitle, settingsStore } from '../api/index.ts';
-import type { Rule } from '../api/index.ts';
+import { editRule, ruleTitle } from '../../rules/index.ts';
+import type { Rule } from '../../rules/index.ts';
+import { settingsStore } from '../api/index.ts';
 import { useStore } from '../../ui/use-store.ts';
 import { SignalSwitch } from '../../ui/kit/signal-switch.tsx';
 

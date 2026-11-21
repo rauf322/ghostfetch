@@ -1,4 +1,4 @@
-// The order, without a browser: every operation of src/shared/api/rules/order.ts, on an order of
+// The order, without a browser: every operation of src/rules/domain/order.ts, on an order of
 // ungrouped rules and groups. What's kept of an order, and the order laid out from that again;
 // where a rule is, and the place for one to be tried nth; rules put, taken out and moved, down
 // their own list, into a group, out of one and between two; groups added, deleted and put back,
@@ -8,7 +8,7 @@
 // the object it was, which is what the screens tell it by.
 //
 //   node test/order.mjs      (npm test runs it after test/matching.mjs)
-import { createGroup, createRule } from '../src/shared/api/index.ts';
+import { createGroup, createRule } from '../src/rules/index.ts';
 import {
   addEntries,
   addGroup,
@@ -29,7 +29,7 @@ import {
   take,
   turnGroup,
   ungroup,
-} from '../src/shared/api/rules/order.ts';
+} from '../src/rules/domain/order.ts';
 import { check, expect, finish } from './fixtures.mjs';
 
 // A rule with an id, in a group or none.

@@ -4,7 +4,7 @@
 // Beside the list it's 44% of the view, between 360 and 600 px. Memoized on the entry, which
 // never changes: a long body is only formatted once.
 import { memo, useMemo } from 'react';
-import type { Rule } from '../../../shared/api/index.ts';
+import type { Rule } from '../../../rules/index.ts';
 import type { LogEntry } from '../../index.ts';
 import { formatJson } from '../../../lib/index.ts';
 import { Alert } from '../../../ui/kit/alert.tsx';

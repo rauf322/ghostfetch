@@ -1,7 +1,7 @@
 // The Status row's editor: the status code a rule sends (typed, with its name beside it, or picked
 // from the common ones, grouped by class), and what an empty one means for the body mode.
-import { editRule } from '../../../../shared/api/index.ts';
-import type { Rule } from '../../../../shared/api/index.ts';
+import { editRule } from '../../../../rules/index.ts';
+import type { Rule } from '../../../../rules/index.ts';
 import { CardHint } from '../../../../ui/kit/card.tsx';
 import { Input } from '../../../../ui/kit/input.tsx';
 import { FieldLabel } from '../../../../ui/kit/label.tsx';

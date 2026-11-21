@@ -1,18 +1,13 @@
 // Isolated-world half of the content script. Reads rules from extension storage and hands
 // the ones that answer (on, and in no group or a group that's on) to the interceptor (the
 // page-world half) over a private MessageChannel, whose port is offered exactly once, before any
-// page script runs. The top frame also keeps the tab's traffic log, so the editor can show
-// requests made before it was opened, and counts it for the popup: that log is Traffic's
-// (src/traffic/infrastructure/tab-log.ts), started here and given what the page reports.
+// page script runs. Rules makes what it hands over from what it read
+// (src/rules/application/page-state.ts). The top frame also keeps the tab's traffic log, so the
+// editor can show requests made before it was opened, and counts it for the popup: that log is
+// Traffic's (src/traffic/infrastructure/tab-log.ts), started here and given what the page reports.
 // Built as bridge.js: WXT's wrapper runs this function at once and adds no globals of its own.
 import { defineUnlistedScript } from 'wxt/utils/define-unlisted-script';
-import {
-  isResponseRule,
-  layOut,
-  normalizeGroups,
-  wouldAnswer,
-} from '../../shared/api/index.ts';
-import type { PageState, Rule } from '../../shared/api/index.ts';
+import { pageState } from '../../rules/index.ts';
 import { createTabLog } from '../../traffic/index.ts';
 
 export default defineUnlistedScript(() => {
@@ -47,34 +42,7 @@ export default defineUnlistedScript(() => {
         groups: [],
       })) as { enabled: boolean; record: boolean; rules: unknown; groups: unknown };
       tabLog.setRecording(stored.record);
-      // The groups as the editor has them, and the rules in the order it shows (order.ts):
-      // each group's rules together, in the group's place.
-      const groups = normalizeGroups(stored.groups);
-      const names = new Map(groups.map((group) => [group.id, group.name]));
-      const off = new Set(
-        groups.filter((group) => !group.enabled).map((group) => group.id),
-      );
-      const kept = Array.isArray(stored.rules)
-        ? (stored.rules.filter(
-            (rule) => rule && typeof rule === 'object' && isResponseRule(rule),
-          ) as Rule[])
-        : [];
-      const ordered = layOut(kept, groups).flatMap((entry) =>
-        entry.kind === 'rule' ? [entry.rule] : entry.rules,
-      );
-      port.postMessage({
-        type: 'state',
-        enabled: stored.enabled,
-        record: stored.record,
-        // As they're stored but for their order, which can still include a redirect, header or
-        // block rule from before 0.9.0 until the rules are next saved: the ones on, in no group
-        // or a group that's on, each in a group with the group's name, for the traffic log.
-        rules: ordered
-          .filter((rule) => wouldAnswer(rule, !off.has(rule.group)))
-          .map((rule) =>
-            names.has(rule.group) ? { ...rule, groupName: names.get(rule.group) } : rule,
-          ),
-      } satisfies PageState);
+      port.postMessage(pageState(stored));
     } catch {
       // The extension was reloaded or removed; this copy of the script is orphaned.
     }

@@ -1,6 +1,6 @@
 // Brings the browser in line with what's stored: the content scripts for the sites you added
-// (src/sites/content-scripts.ts) and the toolbar badge (badge.ts).
-import { updateBadge } from './badge.ts';
+// (src/sites/content-scripts.ts) and the toolbar badge (src/rules/infrastructure/badge.ts).
+import { updateBadge } from '../../rules/index.ts';
 import { syncContentScripts } from '../../sites/index.ts';
 import { loadState } from './stored-state.ts';
 

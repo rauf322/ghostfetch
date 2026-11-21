@@ -1,10 +1,10 @@
 // What the rule editor says about what you typed: whether a URL matches the pattern, and whether a
-// body is valid JSON (and if not, where it goes wrong). What's wrong with a rule is shared/api's
+// body is valid JSON (and if not, where it goes wrong). What's wrong with a rule is src/rules/'s
 // to say (regexError, hasJsonBody), as the agent's tools ask it too; this puts it in the editor's
 // words.
 import { urlTester } from '../../../kernel/index.ts';
-import { hasJsonBody } from '../../../shared/api/index.ts';
-import type { Rule } from '../../../shared/api/index.ts';
+import { hasJsonBody } from '../../../rules/index.ts';
+import type { Rule } from '../../../rules/index.ts';
 import { checkJson } from '../../../lib/index.ts';
 import type { JsonProblem } from '../../../lib/index.ts';
 

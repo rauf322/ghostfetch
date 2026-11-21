@@ -1,7 +1,7 @@
 // The title over the server's response in the body's Diff: "Server's response", and when it came
 // and its status ("Nov 6, 16:42 · 200"); one cut short adds "the first 1 MB". In a narrow card,
 // the time for today's or else the day ("16:42 · 200"), the rest on hover.
-import type { ServerResponse } from '../../../../shared/api/index.ts';
+import type { ServerResponse } from '../../../../rules/index.ts';
 
 export function ResponseTitle({
   server,

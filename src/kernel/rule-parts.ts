@@ -1,8 +1,8 @@
 // What a rule's match and its answer are made of, which Rules and Interception must mean the same
 // thing by: the methods a rule can match, the ways of comparing a URL, the body modes and a header
 // row, and the two halves of a rule themselves, what it matches (RuleMatch) and what it answers
-// with (RuleResponse). A rule is built from them in shared/api/rules/types.ts. Types only: nothing
-// of this file ends up in the built extension.
+// with (RuleResponse). A rule is built from them in rules/domain/types.ts. Types only: nothing of
+// this file ends up in the built extension.
 
 export type Method =
   | 'ANY'

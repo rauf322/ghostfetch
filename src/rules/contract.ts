@@ -2,7 +2,7 @@
 // with the two switches. Types only: nothing of this file ends up in the built extension. Every
 // other message is its context's own: Traffic's are in src/traffic/contract.ts, and Sites' in
 // src/sites/contract.ts.
-import type { Rule } from './rules/types.ts';
+import type { Rule } from './domain/types.ts';
 
 // A rule as the page gets it: with the name of its group, if it's in one, which the traffic log
 // keeps beside the rule's own.

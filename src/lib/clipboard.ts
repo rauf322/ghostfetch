@@ -1,5 +1,5 @@
 // The system clipboard as the body editor's vim reads it for p: the shape only. The Rules page
-// reads it through its systemClipboard (pages/rules/model/clipboard.ts, with the permission it
+// reads it through its systemClipboard (rules/infrastructure/clipboard.ts, with the permission it
 // takes); the editor's engine, which knows nothing of the extension, gets it from the page.
 
 // What p read: the clipboard's text, or why there's none: `declined` (the browser was told not to

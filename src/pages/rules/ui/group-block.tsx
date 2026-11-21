@@ -1,7 +1,7 @@
 // A group in the rule list, as one block: its header, and under it (unless it's folded) its rules
 // in their order, set in, or a line saying it has none yet, which a rule can be dropped on.
-import { ruleRevision } from '../../../shared/api/index.ts';
-import type { GroupEntry, Rule } from '../../../shared/api/index.ts';
+import { ruleRevision } from '../../../rules/index.ts';
+import type { GroupEntry, Rule } from '../../../rules/index.ts';
 import type { TrafficLog } from '../../../traffic/index.ts';
 import { cn } from '../../../ui/cn.ts';
 import type { ListDrag } from '../model/use-rule-drag.ts';

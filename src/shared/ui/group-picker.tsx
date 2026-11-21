@@ -2,7 +2,7 @@
 // pill like New rule's other pickers, offering No group and each group, in their order. One that's
 // off says so, as a rule made in it doesn't answer until it's on. Nothing shows until there's a
 // group, so the screens stay as they were for anyone who doesn't make one.
-import { ruleStore } from '../api/index.ts';
+import { ruleStore } from '../../rules/index.ts';
 import { useStore } from '../../ui/use-store.ts';
 import { cn } from '../../ui/cn.ts';
 import { Icon } from '../../ui/kit/icon.tsx';

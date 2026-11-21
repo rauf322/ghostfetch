@@ -6,8 +6,8 @@
 // list; in a narrower one (a side panel, or beside a wide sidebar) it takes the view, bar and
 // all, with a button to close it.
 import { memo, useCallback, useState, useSyncExternalStore } from 'react';
+import type { Rule } from '../../rules/index.ts';
 import { settingsStore } from '../../shared/api/index.ts';
-import type { Rule } from '../../shared/api/index.ts';
 import { isPreserved, rememberPreserve } from '../index.ts';
 import type { LogEntry, TrafficLog } from '../index.ts';
 import { useTraffic } from './use-traffic-log.ts';

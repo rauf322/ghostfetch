@@ -1,13 +1,8 @@
 // "When a request matches": the requests a rule answers. A row each for the URL (how it's compared
 // and the pattern), the method and a GraphQL operation; a click opens the row's editor.
 import type { MatchMode, Method } from '../../../../kernel/index.ts';
-import {
-  MATCH_MODES,
-  METHODS,
-  editRule,
-  regexError,
-} from '../../../../shared/api/index.ts';
-import type { Rule } from '../../../../shared/api/index.ts';
+import { MATCH_MODES, METHODS, editRule, regexError } from '../../../../rules/index.ts';
+import type { Rule } from '../../../../rules/index.ts';
 import { CardHint } from '../../../../ui/kit/card.tsx';
 import { Input } from '../../../../ui/kit/input.tsx';
 import { Segmented, SegmentedItem } from '../../../../ui/kit/segmented.tsx';

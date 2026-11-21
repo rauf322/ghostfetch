@@ -1,7 +1,7 @@
 // A segmented control (one answer always) and a toggle group of chips that clear, both live.
 import { useState } from 'react';
 import type { BodyMode } from '../../../../kernel/index.ts';
-import { BODY_MODES } from '../../../../shared/api/index.ts';
+import { BODY_MODES } from '../../../../rules/index.ts';
 import { Segmented, SegmentedItem } from '../../../../ui/kit/segmented.tsx';
 import { ToggleGroup, ToggleGroupItem } from '../../../../ui/kit/toggle-group.tsx';
 import { Cell, Output, Row } from '../cell.tsx';

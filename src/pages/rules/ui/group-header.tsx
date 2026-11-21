@@ -3,8 +3,8 @@
 // its rules are on, + for a new rule at its top, and its ⋯ menu. Drag it to move the group with its
 // rules. A group that's off fades, as its rules do.
 import { useEffect, useRef, useState } from 'react';
-import { groupName, renameGroup } from '../../../shared/api/index.ts';
-import type { Group, Rule } from '../../../shared/api/index.ts';
+import { groupName, renameGroup } from '../../../rules/index.ts';
+import type { Group, Rule } from '../../../rules/index.ts';
 import { cn } from '../../../ui/cn.ts';
 import { GroupSwitch } from '../../../shared/ui/group-switch.tsx';
 import { Button } from '../../../ui/kit/button.tsx';

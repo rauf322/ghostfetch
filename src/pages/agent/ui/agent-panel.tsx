@@ -2,7 +2,7 @@
 // you (ghostfetch-mcp's), it says whether an agent is connected, and which; and what the agent did
 // while this editor was open, each change opening its rule.
 import { useState } from 'react';
-import { findRule, ruleStore } from '../../../shared/api/index.ts';
+import { findRule, ruleStore } from '../../../rules/index.ts';
 import { useStore } from '../../../ui/use-store.ts';
 import { cn } from '../../../ui/cn.ts';
 import { Button } from '../../../ui/kit/button.tsx';

@@ -3,8 +3,9 @@
 // Turned off, its rules stop answering, each keeping its own switch for when it's turned on again.
 // Saved at once: the popup can close at any moment.
 import type { ComponentProps } from 'react';
-import { settingsStore, turnGroup } from '../api/index.ts';
-import type { Group } from '../api/index.ts';
+import { turnGroup } from '../../rules/index.ts';
+import type { Group } from '../../rules/index.ts';
+import { settingsStore } from '../api/index.ts';
 import { useStore } from '../../ui/use-store.ts';
 import { SignalSwitch } from '../../ui/kit/signal-switch.tsx';
 

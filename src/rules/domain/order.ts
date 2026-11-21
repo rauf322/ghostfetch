@@ -3,8 +3,9 @@
 // its top-level entries, and each operation on it is a function of them: it changes the order it's
 // given, and the rules and groups in it, in place, and touches nothing else. A rule or a group
 // stays the same object through every one of them, as the screens tell a rule by that and by its
-// revision (store.ts). Keeping the order is order-storage.ts's and telling the screens of a change
-// store.ts's; the page's bridge lays the stored rules out with layOut() as the screens do, and
+// revision (application/store.ts). Keeping the order is infrastructure/order-storage.ts's and
+// telling the screens of a change application/store.ts's; the page's state
+// (application/page-state.ts) lays the stored rules out with layOut() as the screens do, and
 // test/order.mjs runs every operation with no browser.
 //
 // The order keeps its own rule, that no two groups share a name, ignoring case: it refuses a

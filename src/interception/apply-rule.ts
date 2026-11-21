@@ -7,7 +7,7 @@
 // page as they're stored, and one saved with Merge or Script (both taken out in 0.8.0) called the
 // server too.
 import { headerProblem } from '../kernel/index.ts';
-import type { Rule } from '../shared/api/index.ts';
+import type { Rule } from '../rules/index.ts';
 import type { PageRequest, RuleResult } from './types.ts';
 
 const NULL_BODY_STATUS = new Set([101, 103, 204, 205, 304]);

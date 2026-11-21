@@ -13,7 +13,7 @@ import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
 import { headerProblem } from '../src/kernel/index.ts';
-import { createRule } from '../src/shared/api/index.ts';
+import { createRule } from '../src/rules/index.ts';
 import { isSiteEnabled, normalizeSites, siteMatchPatterns } from '../src/sites/index.ts';
 import { diffLines, formatJson } from '../src/lib/index.ts';
 import {

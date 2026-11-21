@@ -7,13 +7,18 @@
 // The order (docs/glossary/rules.md, docs/adr/0001) is one list of ungrouped rules and groups,
 // each group's rules together in its place: `entries` is its top level, which the screens draw;
 // `rules` every rule in it from the top, the order the page tries them in; `groups` every group
-// in it. A change to it is one of the order's own operations (order.ts) on `entries`, which this
-// file then saves and draws; how the order is kept, and heard of from another view, is
-// order-storage.ts's. The order's operations go by the names this file's own have, so each is
-// imported here with `order` before its name.
-import { createStore } from '../../../lib/index.ts';
-import type { StoredGroup } from './group.ts';
-import { readOrder, saveOrder, saveOrderNow, watchOrder } from './order-storage.ts';
+// in it. A change to it is one of the order's own operations (domain/order.ts) on `entries`,
+// which this file then saves and draws; how the order is kept, and heard of from another view, is
+// infrastructure/order-storage.ts's. The order's operations go by the names this file's own have,
+// so each is imported here with `order` before its name.
+import { createStore } from '../../lib/index.ts';
+import type { StoredGroup } from '../domain/group.ts';
+import {
+  readOrder,
+  saveOrder,
+  saveOrderNow,
+  watchOrder,
+} from '../infrastructure/order-storage.ts';
 import {
   addEntries as orderAddEntries,
   addGroup as orderAddGroup,
@@ -33,9 +38,9 @@ import {
   take,
   turnGroup as orderTurnGroup,
   ungroup as orderUngroup,
-} from './order.ts';
-import type { Entry, Place } from './order.ts';
-import type { Group, Rule } from './types.ts';
+} from '../domain/order.ts';
+import type { Entry, Place } from '../domain/order.ts';
+import type { Group, Rule } from '../domain/types.ts';
 
 interface RuleState {
   entries: Entry[];
@@ -217,8 +222,8 @@ export function moveGroup(id: string, index: number) {
 
 // Renames a group, saved at once: the popup can close at any moment. The order refuses a name
 // with nothing in it and one another group has, and leaves a group that has the name already as
-// it is: what comes back says which (Renamed, order.ts), for whoever asked to say so in their own
-// words.
+// it is: what comes back says which (Renamed, domain/order.ts), for whoever asked to say so in
+// their own words.
 export function renameGroup(id: string, name: string) {
   const renamed = orderRenameGroup(state.entries, id, name);
   if (renamed === 'renamed') {

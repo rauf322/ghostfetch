@@ -1,8 +1,8 @@
 // What to do with an open request: Mock this response, the one big button, with the group the rule
 // goes into under it once there's a group, and a row of quieter ones: copy the URL, the request as
 // a cURL command, and the response's body.
-import { ruleFromEntry, ruleStore } from '../../../shared/api/index.ts';
-import type { Rule } from '../../../shared/api/index.ts';
+import { ruleFromEntry, ruleStore } from '../../../rules/index.ts';
+import type { Rule } from '../../../rules/index.ts';
 import type { LogEntry } from '../../index.ts';
 import { curlCommand } from '../../../lib/index.ts';
 import { useStore } from '../../../ui/use-store.ts';

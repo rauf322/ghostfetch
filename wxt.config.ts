@@ -120,8 +120,8 @@ export default defineConfig({
     // Firefox alike: if it ever comes back, remove them first (updateDynamicRules with every
     // getDynamicRules() id), or the old rules apply again.
     permissions: ['storage', 'unlimitedStorage', 'sidePanel', 'scripting'],
-    // Asked for only when vim's p first pastes the clipboard (pages/rules/model/clipboard.ts), so
-    // it adds nothing to what installing or updating asks. Chrome 121 has the permission but
+    // Asked for only when vim's p first pastes the clipboard (rules/infrastructure/clipboard.ts),
+    // so it adds nothing to what installing or updating asks. Chrome 121 has the permission but
     // doesn't let a page read with it yet (122 does): p puts what was yanked there instead, and
     // says it couldn't read the clipboard.
     optional_permissions: ['clipboardRead'],

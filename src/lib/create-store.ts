@@ -1,4 +1,4 @@
-// A store for a module that keeps some state of its own, such as shared/api's copies of what's in
+// A store for a module that keeps some state of its own, such as the rules' copies of what's in
 // storage: the state, which the module changes in place, then emit()s; subscribe() for listeners;
 // and version(), which moves on every change, for React's useSyncExternalStore (ui/use-store.ts).
 // The state is changed in place, so a component can't tell a changed rule from the one it drew; the

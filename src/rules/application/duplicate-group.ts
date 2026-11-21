@@ -3,11 +3,11 @@
 // of the list, with a copy of each of the group's rules, their names and switches as they are, each
 // body compared with the same server's response as its rule's. At the top, the copy answers in the
 // group's place as soon as it's changed. Returns the copy.
-import { createGroup, freeName } from './group.ts';
-import { normalizeRule } from './rule.ts';
+import { createGroup, freeName } from '../domain/group.ts';
+import { normalizeRule } from '../domain/rule.ts';
 import { copyServerResponse } from './server-responses.ts';
 import { addGroup, ruleStore } from './store.ts';
-import type { Group } from './types.ts';
+import type { Group } from '../domain/types.ts';
 
 export function duplicateGroup(group: Group, name = `${group.name} copy`) {
   const entry = ruleStore.state.entries.find(

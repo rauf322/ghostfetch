@@ -6,12 +6,12 @@
 // under a key of its own, `serverResponse:` and the rule's id: every open editor (a side panel in
 // each window, a tab) keeps responses as it sees them, and one writing them all at once would undo
 // what another just kept. Only the editor reads them.
-import { createStore, formatJson } from '../../../lib/index.ts';
-import type { LogEntry } from '../../../traffic/index.ts';
-import { requestTester } from '../../../kernel/index.ts';
-import type { RuleRequest } from '../../../kernel/index.ts';
+import { createStore, formatJson } from '../../lib/index.ts';
+import type { LogEntry } from '../../traffic/index.ts';
+import { requestTester } from '../../kernel/index.ts';
+import type { RuleRequest } from '../../kernel/index.ts';
 import { ruleStore } from './store.ts';
-import type { Rule } from './types.ts';
+import type { Rule } from '../domain/types.ts';
 
 export interface ServerResponse {
   // As the rule's body starts out from it: pretty-printed if it's JSON, Format's way.

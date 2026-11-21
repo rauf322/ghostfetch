@@ -1,12 +1,12 @@
 // "Mock this response" (Traffic) and Mock (New rule): a rule made from a request in the log. It
 // matches the request's method and path (for GraphQL, its path and operation) and returns its
 // status and body.
-import { formatJson, splitUrl } from '../../../lib/index.ts';
-import type { LogEntry } from '../../../traffic/index.ts';
-import { METHODS } from './catalog.ts';
-import { bodyOperation } from '../../../kernel/index.ts';
-import { createRule } from './rule.ts';
-import type { Method } from '../../../kernel/index.ts';
+import { formatJson, splitUrl } from '../../lib/index.ts';
+import type { LogEntry } from '../../traffic/index.ts';
+import { METHODS } from '../domain/catalog.ts';
+import { bodyOperation } from '../../kernel/index.ts';
+import { createRule } from '../domain/rule.ts';
+import type { Method } from '../../kernel/index.ts';
 
 export function ruleFromEntry(entry: LogEntry) {
   const rule = createRule();

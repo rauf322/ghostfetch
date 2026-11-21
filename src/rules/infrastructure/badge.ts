@@ -1,8 +1,8 @@
 // The toolbar badge: how many rules are answering (on, and in no group or a group that's on), in
 // Ghostfetch's green (its one colour, which means "on") with near-black text, which reads on it
 // where white wouldn't; or "off" in grey while Ghostfetch is paused.
-import { isAnswering } from '../../shared/api/index.ts';
-import type { Rule } from '../../shared/api/index.ts';
+import { isAnswering } from '../domain/answering.ts';
+import type { Rule } from '../domain/types.ts';
 
 const GREEN = '#34d399';
 const INK = '#0b0b0c';

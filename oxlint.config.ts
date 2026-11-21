@@ -11,12 +11,13 @@ const rootPath = fileURLToPath(new URL('.', import.meta.url));
 // under them what has left the layers for the layout by bounded context (docs/adr/0002): the
 // folders that know no domain (lib, platform, ui and body-editor), the kernel (kernel: what Rules
 // and Interception must agree on), and the contexts with a folder of their own, Interception
-// (interception), Sites (sites) and Traffic (traffic, whose ui/ is a type of its own, traffic-ui:
-// its React is all there). A page is used through its index.ts. shared has segments instead of
-// slices: api and ui. api is used through its index.ts, as lib, platform, the kernel,
-// interception, sites and the body editor (body-editor/) are, and Traffic through its two,
-// traffic/index.ts and traffic/ui/index.ts; ui and shared/ui have a public file per component or
-// hook, so a screen bundles only what it shows. The editor's engine/ and vim/ are plain
+// (interception), Rules (rules, whose domain/ is a type of its own, rules-domain: it imports only
+// lib and the kernel), Sites (sites) and Traffic (traffic, whose ui/ is a type of its own,
+// traffic-ui: its React is all there). A page is used through its index.ts. shared has segments
+// instead of slices: api and ui. api is used through its index.ts, as lib, platform, the kernel,
+// interception, the rules, sites and the body editor (body-editor/) are, and Traffic through its
+// two, traffic/index.ts and traffic/ui/index.ts; ui and shared/ui have a public file per component
+// or hook, so a screen bundles only what it shows. The editor's engine/ and vim/ are plain
 // TypeScript the Zen test serves straight from src/: they import only .ts files by relative path,
 // and no npm package. The first descriptor a file matches is its type.
 const elements = [
@@ -34,6 +35,8 @@ const elements = [
   { type: 'sites', pattern: 'src/sites', partialMatch: false },
   { type: 'traffic-ui', pattern: 'src/traffic/ui', partialMatch: false },
   { type: 'traffic', pattern: 'src/traffic', partialMatch: false },
+  { type: 'rules-domain', pattern: 'src/rules/domain', partialMatch: false },
+  { type: 'rules', pattern: 'src/rules', partialMatch: false },
   { type: 'shared', pattern: 'src/shared/*', capture: ['segment'], partialMatch: false },
   { type: 'pages', pattern: 'src/pages/*', capture: ['slice'], partialMatch: false },
   { type: 'app', pattern: 'src/app/*', capture: ['part'], partialMatch: false },
@@ -58,16 +61,16 @@ const interceptor = { element: { type: 'app', captured: { part: ['interceptor'] 
 
 // Processed in order; the last policy matching an import decides.
 const policies = [
-  // The layers: app imports anything; a page its own folder, shared, the kernel, sites, traffic
-  // by either of its doors and the folders that know no domain, never another page; shared only
-  // shared, the kernel and those folders, and shared/ui sites too.
+  // The layers: app imports anything; a page its own folder, shared, the kernel, the rules, sites,
+  // traffic by either of its doors and the folders that know no domain, never another page; shared
+  // only shared, the kernel and those folders, and shared/ui the rules and sites too.
   { from: type('app'), allow: { to: [type('*'), packages] } },
   {
     from: type('pages'),
     allow: {
       to: [
         samePage,
-        type('shared', 'kernel', 'sites', 'traffic', 'traffic-ui', ...noDomain),
+        type('shared', 'kernel', 'rules', 'sites', 'traffic', 'traffic-ui', ...noDomain),
         packages,
       ],
     },
@@ -76,54 +79,74 @@ const policies = [
     from: type('shared'),
     allow: { to: [type('shared', 'kernel', ...noDomain), packages] },
   },
-  { from: segment('ui'), allow: { to: type('sites') } },
+  { from: segment('ui'), allow: { to: type('rules', 'sites') } },
   // The folders that know no domain import nothing of the layers: ui only lib and platform, and
   // the body editor only lib and ui, each with npm packages.
   { from: type('ui'), allow: { to: [type('lib', 'platform'), packages] } },
   { from: type('body-editor'), allow: { to: [type('lib', 'ui'), packages] } },
-  // Traffic's ui/, where its React is: sites, shared/api, what is left of shared/ui, the folders
-  // that know no domain and npm packages (and the rest of traffic, further down).
+  // Traffic's ui/, where its React is: the rules, sites, shared/api (the two switches), what is
+  // left of shared/ui, the folders that know no domain and npm packages (and the rest of traffic,
+  // further down).
   {
     from: type('traffic-ui'),
-    allow: { to: [type('sites', ...noDomain), segment('api', 'ui'), packages] },
+    allow: { to: [type('rules', 'sites', ...noDomain), segment('api', 'ui'), packages] },
   },
   // lib imports nothing else; platform and the kernel only lib; sites only lib and platform;
-  // traffic outside its ui/ those two, sites and, until the rules leave it, shared/api, which
-  // imports lib, the kernel and traffic in its turn (the rules read an entry); and interception
-  // only the kernel, lib, traffic and, until then, shared/api: no React, no UI and no npm package,
-  // so what the background and the page scripts reach through any of them is free of all three.
+  // traffic outside its ui/ only those two and sites; shared/api only lib; the rules outside their
+  // domain/ only lib, platform, the kernel and traffic (a rule is made from an entry), and their
+  // domain/ only lib and the kernel; and interception only the kernel, lib, traffic and the
+  // rules' types: no React, no UI and no npm package, so what the background and the page scripts
+  // reach through any of them is free of all three.
   {
     from: [
-      type('lib', 'platform', 'kernel', 'interception', 'sites', 'traffic'),
+      type(
+        'lib',
+        'platform',
+        'kernel',
+        'interception',
+        'sites',
+        'traffic',
+        'rules',
+        'rules-domain',
+      ),
       segment('api'),
     ],
     disallow: { to: [type('*'), packages] },
     message:
-      'lib, platform, the kernel, interception, sites, shared/api and traffic outside its ui/ are plain TypeScript: no npm package, and no folder of src/ but the ones each may import (oxlint.config.ts).',
+      'lib, platform, the kernel, interception, sites, shared/api, the rules and traffic outside its ui/ are plain TypeScript: no npm package, and no folder of src/ but the ones each may import (oxlint.config.ts).',
   },
   {
     from: [
-      type('platform', 'kernel', 'interception', 'sites', 'traffic'),
+      type(
+        'platform',
+        'kernel',
+        'interception',
+        'sites',
+        'traffic',
+        'rules',
+        'rules-domain',
+      ),
       segment('api'),
     ],
     allow: { to: type('lib') },
   },
-  { from: type('sites', 'traffic'), allow: { to: type('platform') } },
-  { from: type('traffic'), allow: { to: [type('sites'), segment('api')] } },
-  { from: segment('api'), allow: { to: type('kernel', 'traffic') } },
+  { from: type('sites', 'traffic', 'rules'), allow: { to: type('platform') } },
+  { from: type('traffic'), allow: { to: type('sites') } },
+  { from: type('rules', 'rules-domain'), allow: { to: type('kernel') } },
+  { from: type('rules'), allow: { to: type('traffic') } },
+  { from: type('interception'), allow: { to: type('kernel', 'traffic') } },
   {
     from: type('interception'),
-    allow: { to: [type('kernel', 'traffic'), segment('api')] },
+    allow: { to: type('rules'), dependency: { kind: 'type' } },
   },
-  // The background and the page scripts: shared/api, the kernel, sites, traffic but for its ui/,
+  // The background and the page scripts: the rules, the kernel, sites, traffic but for its ui/,
   // lib and WXT's helpers; and the interceptor Interception, which nothing else imports.
   { from: notUi, disallow: { to: [type('*'), packages] } },
   {
     from: notUi,
     allow: {
       to: [
-        segment('api'),
-        type('kernel', 'lib', 'sites', 'traffic'),
+        type('rules', 'kernel', 'lib', 'sites', 'traffic'),
         { module: { origin: 'external', source: 'wxt' } },
       ],
     },
@@ -158,6 +181,7 @@ const policies = [
             'platform',
             'kernel',
             'interception',
+            'rules',
             'sites',
             'traffic',
             'traffic-ui',
@@ -165,11 +189,14 @@ const policies = [
           fileInternalPath: '!index.ts',
         },
       },
+      type('rules-domain'),
     ],
     disallow: { from: type('*') },
     message:
-      'shared/api, lib, platform, the kernel, interception, sites, traffic and traffic/ui are used through their index.ts.',
+      'shared/api, lib, platform, the kernel, interception, the rules, sites, traffic and traffic/ui are used through their index.ts.',
   },
+  // The rules' own files outside their domain/, their door among them, reach into it.
+  { from: type('rules'), allow: { to: type('rules-domain') } },
   // Traffic's own ui/ may reach past traffic/index.ts, for what is the Traffic view's alone (its
   // filters and time groups), which that door doesn't offer.
   { from: type('traffic-ui'), allow: { to: type('traffic') } },

@@ -1,15 +1,16 @@
-// Where the order is kept, for the screens' copy of it (store.ts, which alone calls this): read
-// from chrome.storage.local as a view opens (the editor, the popup), written back at once or after
-// a short pause, and read again whenever another view (the popup, another window) writes it.
+// Where the order is kept, for the screens' copy of it (application/store.ts, which alone calls
+// this): read from chrome.storage.local as a view opens (the editor, the popup), written back at
+// once or after a short pause, and read again whenever another view (the popup, another window)
+// writes it.
 //
-// The order (order.ts) is kept as two lists: `rules` as it always has been, each rule saying which
-// group it's in, which is what the page reads (the bridge) and what an older version would read;
-// and `groups`, each with its place among the top-level entries (`at`), which is also where a
-// group with no rules stands.
-import { normalizeGroups } from './group.ts';
-import { layOut, rulesIn, storedGroups } from './order.ts';
-import type { Entry } from './order.ts';
-import { normalizeRules } from './rule.ts';
+// The order (domain/order.ts) is kept as two lists: `rules` as it always has been, each rule
+// saying which group it's in, which is what the page reads (the bridge) and what an older version
+// would read; and `groups`, each with its place among the top-level entries (`at`), which is also
+// where a group with no rules stands.
+import { normalizeGroups } from '../domain/group.ts';
+import { layOut, rulesIn, storedGroups } from '../domain/order.ts';
+import type { Entry } from '../domain/order.ts';
+import { normalizeRules } from '../domain/rule.ts';
 
 // Every write is tagged with this view's id, so the change event it triggers can be told
 // apart from edits made elsewhere. (Comparing contents doesn't work: Chrome returns
@@ -63,8 +64,9 @@ function read(rules: unknown, groups: unknown) {
   return layOut(normalizeRules(rules), normalizeGroups(groups));
 }
 
-// Writes the rules and the groups to storage, at once or after a short pause. For store.ts alone:
-// every change goes through its functions, which also tell the screens to redraw.
+// Writes the rules and the groups to storage, at once or after a short pause. For
+// application/store.ts alone: every change goes through its functions, which also tell the
+// screens to redraw.
 export function saveOrder({ immediate = false } = {}) {
   clearTimeout(saveTimer!);
   const write = () => {

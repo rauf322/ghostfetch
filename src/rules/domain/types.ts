@@ -3,7 +3,7 @@
 // block rules, which 0.9.0 took out, are left out when the rules are read (normalizeRules). What
 // its match and its answer are made of is the kernel's (src/kernel/rule-parts.ts), which the page
 // reads them by too.
-import type { RuleMatch, RuleResponse } from '../../../kernel/index.ts';
+import type { RuleMatch, RuleResponse } from '../../kernel/index.ts';
 
 export interface Rule {
   id: string;
@@ -21,7 +21,7 @@ export interface Rule {
 // Its rules stand together in the order, in its place, and answer only while it's on as well as
 // they; turned off, it leaves their own switches as they were. One level only: a group holds
 // rules, never another group. Where it stands in the order is kept with the rules
-// (order-storage.ts).
+// (infrastructure/order-storage.ts).
 export interface Group {
   id: string;
   name: string;

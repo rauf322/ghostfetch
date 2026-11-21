@@ -10,13 +10,8 @@
 // is where what it did on the page puts it, not where its switch does: turned off, it stays in its
 // place under "Answering here", so the same spot turns it on again, until the page loads anew.
 import { useState } from 'react';
-import {
-  groupOf,
-  isAnswering,
-  ruleTitle,
-  wouldAnswer,
-} from '../../../shared/api/index.ts';
-import type { Entry, Group, Rule } from '../../../shared/api/index.ts';
+import { groupOf, isAnswering, ruleTitle, wouldAnswer } from '../../../rules/index.ts';
+import type { Entry, Group, Rule } from '../../../rules/index.ts';
 import { countWords } from '../../../traffic/index.ts';
 import type { RuleCount } from '../../../traffic/index.ts';
 import { openRuleInEditor } from '../../../platform/index.ts';

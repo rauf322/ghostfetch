@@ -25,8 +25,9 @@ import {
   responseStore,
   saveRulesNow,
   serverResponse,
-} from '../../../../shared/api/index.ts';
-import type { Rule } from '../../../../shared/api/index.ts';
+  systemClipboard,
+} from '../../../../rules/index.ts';
+import type { Rule } from '../../../../rules/index.ts';
 import { formatJson } from '../../../../lib/index.ts';
 import { useStore } from '../../../../ui/use-store.ts';
 import { cn } from '../../../../ui/cn.ts';
@@ -49,7 +50,6 @@ import { Segmented, SegmentedItem } from '../../../../ui/kit/segmented.tsx';
 import { notify } from '../../../../ui/kit/toast.tsx';
 import { Toggle } from '../../../../ui/kit/toggle.tsx';
 import type { CodeStatus } from '../../lib/rule-checks.ts';
-import { systemClipboard } from '../../model/clipboard.ts';
 import { useWide } from '../../model/use-wide.ts';
 import { ResponseTitle } from './response-title.tsx';
 import { Verdict } from './verdict.tsx';

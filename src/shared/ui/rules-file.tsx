@@ -15,8 +15,8 @@ import {
   ruleStore,
   ruleTitle,
   storedGroups,
-} from '../api/index.ts';
-import type { Group, GroupEntry, Rule } from '../api/index.ts';
+} from '../../rules/index.ts';
+import type { Group, GroupEntry, Rule } from '../../rules/index.ts';
 import { download, slug } from '../../lib/index.ts';
 import { notify } from '../../ui/kit/toast.tsx';
 

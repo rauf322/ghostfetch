@@ -9,7 +9,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { AgentButton, AgentPanel } from '../../pages/agent/index.ts';
 import { RuleList } from '../../pages/rules/index.ts';
-import { ruleStore } from '../../shared/api/index.ts';
+import { ruleStore } from '../../rules/index.ts';
 import type { TrafficLog } from '../../traffic/index.ts';
 import { useStore } from '../../ui/use-store.ts';
 import { useTrafficValue } from '../../traffic/ui/index.ts';

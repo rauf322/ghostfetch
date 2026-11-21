@@ -14,8 +14,8 @@
 // Anywhere else nothing lands, and no mark says it would: over the list's label, or out of it.
 import { useLayoutEffect, useRef, useState } from 'react';
 import type { DragEvent } from 'react';
-import { moveGroup, moveRule, placeOf, ruleStore } from '../../../shared/api/index.ts';
-import type { Entry, Group, Rule } from '../../../shared/api/index.ts';
+import { moveGroup, moveRule, placeOf, ruleStore } from '../../../rules/index.ts';
+import type { Entry, Group, Rule } from '../../../rules/index.ts';
 
 interface Dragged {
   kind: 'rule' | 'group';

@@ -2,8 +2,8 @@
 // here with nothing sent anywhere, and what the pickers and starters say to answer with. The rule
 // is made from both when you press Enter.
 import type { BodyMode, MatchMode, Method } from '../../../kernel/index.ts';
-import { METHODS, createRule, graphqlOperation } from '../../../shared/api/index.ts';
-import type { Rule } from '../../../shared/api/index.ts';
+import { METHODS, createRule, graphqlOperation } from '../../../rules/index.ts';
+import type { Rule } from '../../../rules/index.ts';
 import { parseCurl } from '../../../lib/index.ts';
 import type { IconName } from '../../../lib/index.ts';
 

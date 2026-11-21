@@ -1,7 +1,7 @@
 // Ghostfetch on the tab's page, in one line: the page's host, whether Ghostfetch is on there, and
 // on the right why it is (a built-in host always is) or the button that turns it off there (a
 // site you added). A tab that isn't on a website gets a few words for that.
-import { isBuiltInHost, turnOffFor } from '../../../shared/api/index.ts';
+import { isBuiltInHost, turnOffFor } from '../../../sites/index.ts';
 import { cn } from '../../../ui/cn.ts';
 
 export function SiteLine({

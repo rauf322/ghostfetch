@@ -27,7 +27,6 @@ import {
   groupPosition,
   inOffGroup,
   isAnswering,
-  isBuiltInHost,
   keepServerResponse,
   moveGroupTo,
   moveRule,
@@ -43,7 +42,6 @@ import {
   ruleStore,
   ruleTitle,
   settingsStore,
-  siteOf,
   turnGroup,
   wouldAnswer,
 } from '../../../shared/api/index.ts';
@@ -54,6 +52,7 @@ import type {
   Rule,
   TrafficLog,
 } from '../../../shared/api/index.ts';
+import { isBuiltInHost, siteOf } from '../../../sites/index.ts';
 import { notify } from '../../../ui/kit/toast.tsx';
 import { ruleProblems, ruleSummary } from '../lib/rule-report.ts';
 import { noteActivity } from './agent-connection.ts';

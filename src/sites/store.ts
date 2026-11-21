@@ -1,8 +1,8 @@
 // The editor's and the popup's copy of the sites you added, and the changes made to it. Changes
 // made in another view arrive through chrome.storage.onChanged; the screens redraw through
 // useStore(siteStore).
-import { createStore } from '../../../lib/index.ts';
-import type { RuntimeMessage } from '../messages.ts';
+import { createStore } from '../lib/index.ts';
+import type { SyncMessage } from './contract.ts';
 import { normalizeSites, siteCovers, siteOf } from './site.ts';
 
 const state = { sites: [] as string[] };
@@ -23,7 +23,7 @@ export async function initSites() {
 export async function setSites(sites: string[]) {
   state.sites = normalizeSites(sites);
   await chrome.storage.local.set({ sites: state.sites });
-  await chrome.runtime.sendMessage({ type: 'ghostfetch:sync' } satisfies RuntimeMessage);
+  await chrome.runtime.sendMessage({ type: 'ghostfetch:sync' } satisfies SyncMessage);
   siteStore.emit();
 }
 

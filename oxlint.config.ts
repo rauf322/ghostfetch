@@ -8,14 +8,14 @@ import { defineConfig } from 'oxlint';
 const rootPath = fileURLToPath(new URL('.', import.meta.url));
 
 // The layers, from the top: app, pages, shared (Feature-Sliced Design's "pages first"), and
-// under them the folders that know no domain, the first to leave the layers for the layout by
-// bounded context (docs/adr/0002): lib, platform, ui and body-editor. A page is used through
-// its index.ts. shared has segments instead of slices: api, react and ui. api and react are
-// each used through their index.ts, as lib, platform and the body editor (body-editor/) are;
-// ui and shared/ui have a public file per component or hook, so a screen bundles only what it
-// shows. The editor's engine/ and vim/ are plain TypeScript the Zen test serves straight from
-// src/: they import only .ts files by relative path, and no npm package. The first descriptor
-// a file matches is its type.
+// under them what has left the layers for the layout by bounded context (docs/adr/0002): the
+// folders that know no domain (lib, platform, ui and body-editor), and Sites, the first context
+// with a folder of its own (sites). A page is used through its index.ts. shared has segments
+// instead of slices: api, react and ui. api and react are each used through their index.ts, as
+// lib, platform, sites and the body editor (body-editor/) are; ui and shared/ui have a public
+// file per component or hook, so a screen bundles only what it shows. The editor's engine/ and
+// vim/ are plain TypeScript the Zen test serves straight from src/: they import only .ts files
+// by relative path, and no npm package. The first descriptor a file matches is its type.
 const elements = [
   {
     type: 'editor-engine',
@@ -26,6 +26,7 @@ const elements = [
   { type: 'lib', pattern: 'src/lib', partialMatch: false },
   { type: 'platform', pattern: 'src/platform', partialMatch: false },
   { type: 'ui', pattern: 'src/ui', partialMatch: false },
+  { type: 'sites', pattern: 'src/sites', partialMatch: false },
   { type: 'shared', pattern: 'src/shared/*', capture: ['segment'], partialMatch: false },
   { type: 'pages', pattern: 'src/pages/*', capture: ['slice'], partialMatch: false },
   { type: 'app', pattern: 'src/app/*', capture: ['part'], partialMatch: false },
@@ -48,36 +49,39 @@ const notUi = {
 
 // Processed in order; the last policy matching an import decides.
 const policies = [
-  // The layers: app imports anything; a page its own folder, shared and the folders that know
-  // no domain, never another page; shared only shared and those folders.
+  // The layers: app imports anything; a page its own folder, shared, sites and the folders that
+  // know no domain, never another page; shared only shared and those folders, and shared/ui
+  // sites too.
   { from: type('app'), allow: { to: [type('*'), packages] } },
   {
     from: type('pages'),
-    allow: { to: [samePage, type('shared', ...noDomain), packages] },
+    allow: { to: [samePage, type('shared', 'sites', ...noDomain), packages] },
   },
   { from: type('shared'), allow: { to: [type('shared', ...noDomain), packages] } },
+  { from: segment('ui'), allow: { to: type('sites') } },
   // The folders that know no domain import nothing of the layers: ui only lib and platform, and
   // the body editor only lib and ui, each with npm packages.
   { from: type('ui'), allow: { to: [type('lib', 'platform'), packages] } },
   { from: type('body-editor'), allow: { to: [type('lib', 'ui'), packages] } },
-  // lib imports nothing else, and platform and shared/api only lib: no React, no UI and no npm
-  // package, so what the background and the page scripts reach through shared/api and lib is
-  // free of all three.
+  // lib imports nothing else, platform and shared/api only lib, and sites only lib and platform:
+  // no React, no UI and no npm package, so what the background and the page scripts reach
+  // through shared/api, sites and lib is free of all three.
   {
-    from: [type('lib', 'platform'), segment('api')],
+    from: [type('lib', 'platform', 'sites'), segment('api')],
     disallow: { to: [type('*'), packages] },
     message:
-      'lib, platform and shared/api are plain TypeScript: platform and shared/api import lib only.',
+      'lib, platform, sites and shared/api are plain TypeScript: they import lib only, and sites platform too.',
   },
-  { from: [type('platform'), segment('api')], allow: { to: type('lib') } },
-  // The background and the page scripts: shared/api, lib and WXT's helpers.
+  { from: [type('platform', 'sites'), segment('api')], allow: { to: type('lib') } },
+  { from: type('sites'), allow: { to: type('platform') } },
+  // The background and the page scripts: shared/api, sites, lib and WXT's helpers.
   { from: notUi, disallow: { to: [type('*'), packages] } },
   {
     from: notUi,
     allow: {
       to: [
         segment('api'),
-        type('lib'),
+        type('lib', 'sites'),
         { module: { origin: 'external', source: 'wxt' } },
       ],
     },
@@ -98,11 +102,11 @@ const policies = [
           fileInternalPath: '!index.ts',
         },
       },
-      { element: { type: ['lib', 'platform'], fileInternalPath: '!index.ts' } },
+      { element: { type: ['lib', 'platform', 'sites'], fileInternalPath: '!index.ts' } },
     ],
     disallow: { from: type('*') },
     message:
-      'shared/api, shared/react, lib and platform are used through their index.ts.',
+      'shared/api, shared/react, lib, platform and sites are used through their index.ts.',
   },
   {
     to: { element: { type: 'body-editor', fileInternalPath: '!index.ts' } },

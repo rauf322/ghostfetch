@@ -1,12 +1,11 @@
 // The sites you added get their content scripts registered at runtime, so they only ever run
 // on those sites; every other site never sees Ghostfetch. The files are the same two the
 // manifest declares for the built-in hosts.
-import { siteMatchPatterns } from '../../shared/api/index.ts';
-import type { StoredState } from './stored-state.ts';
+import { siteMatchPatterns } from './site.ts';
 
 const SCRIPT_IDS = ['ghostfetch-interceptor', 'ghostfetch-bridge'];
 
-export async function syncContentScripts({ sites }: StoredState) {
+export async function syncContentScripts({ sites }: { sites: string[] }) {
   // Every script registered so far, whatever its id: up to 0.6.0 they were "mocktail-interceptor"
   // and "mocktail-bridge", which would otherwise outlive the update and keep running on sites
   // you've since turned off.

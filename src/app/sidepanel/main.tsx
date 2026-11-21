@@ -3,12 +3,8 @@ import { CSPProvider } from '@base-ui/react/csp-provider';
 import { StrictMode } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
-import {
-  initRules,
-  initServerResponses,
-  initSettings,
-  initSites,
-} from '../../shared/api/index.ts';
+import { initRules, initServerResponses, initSettings } from '../../shared/api/index.ts';
+import { initSites } from '../../sites/index.ts';
 import { Toaster } from '../../ui/kit/toast.tsx';
 import { Editor } from './editor.tsx';
 import { moveLegacySettings } from './legacy-settings.ts';

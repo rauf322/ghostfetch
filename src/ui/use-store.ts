@@ -1,5 +1,5 @@
-// The one place a store (lib/create-store.ts) meets React, so shared/api, which keeps the
-// stores, stays free of it: the background and the page scripts import it too.
+// The one place a store (lib/create-store.ts) meets React, so shared/api and sites, which keep
+// the stores, stay free of it: the background imports both, and the page scripts shared/api.
 import { useSyncExternalStore } from 'react';
 
 // A store as a screen sees it: its state, and its change notifications.

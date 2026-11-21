@@ -68,20 +68,25 @@ Agent access and the Body editor, whose words are in [`docs/glossary/`](glossary
 relate in the [Glossary Map](../GLOSSARY-MAP.md). What follows is where the code is now. The
 first to leave the layers is what knows nothing of rules, sites or requests: `lib`, `platform`,
 `ui` and `body-editor`, each a folder of `src/` of its own. What's left in the layers imports
-them, and they import nothing of the layers.
+them, and they import nothing of the layers. Sites is the first context with a folder of its
+own, `sites`: where Ghostfetch runs, from the hosts it's built for to the content scripts the
+background registers for the sites you added. The pages, the extension's parts in `app` and
+`shared/ui` may import it; `shared/api` may not.
 
 `shared` has no slices, only segments, one for each kind of code: `api` for what Ghostfetch
-keeps in `chrome.storage` and what its parts send each other, `react` for where that meets
-React, and `ui` for the components that show a rule or a group. `api` and `react` are each used
-through their `index.ts`, and so are `lib` (small libraries of Ghostfetch's own), `platform`
-(what differs between the browsers, and opening the editor) and `body-editor`. `ui` and
-`shared/ui` have a public file per component or hook instead, as FSD advises, so a screen that
-shows a button doesn't load the rest of the kit with it. `lib`, `platform` and `shared/api` are
-plain TypeScript, with no React and no npm package: `lib` imports nothing else, and `platform`
-and `shared/api` only `lib`, which is what keeps the background and the page scripts, which use
-`shared/api` and `lib`, free of the screens' libraries. `ui` imports only `lib` and `platform`
-besides npm packages, and `body-editor` only `lib` and `ui`. `npm run lint` checks all this with
-eslint-plugin-boundaries, whose policies are in `oxlint.config.ts`.
+keeps in `chrome.storage` and what its parts send each other (but for the sites you added, which
+are `sites`'), `react` for where that meets React, and `ui` for the components that show a rule
+or a group. `api` and `react` are each used through their `index.ts`, and so are `lib` (small
+libraries of Ghostfetch's own), `platform` (what differs between the browsers, and opening the
+editor), `sites` and `body-editor`. `ui` and `shared/ui` have a public file per component or hook
+instead, as FSD advises, so a screen that shows a button doesn't load the rest of the kit with
+it. `lib`, `platform`, `sites` and `shared/api` are plain TypeScript, with no React and no npm
+package: `lib` imports nothing else, `platform` and `shared/api` only `lib`, and `sites` only
+`lib` and `platform`, which is what keeps the background, which uses `shared/api`, `sites` and
+`lib`, and the page scripts, which use `shared/api` and `lib`, free of the screens' libraries.
+`ui` imports only `lib` and `platform` besides npm packages, and `body-editor` only `lib` and
+`ui`. `npm run lint` checks all this with eslint-plugin-boundaries, whose policies are in
+`oxlint.config.ts`.
 
 Inside a page the files are grouped by what they're for: `ui/` holds its components, `model/` its
 state and what changes it, and `lib/` plain functions. A page composes components of its own,
@@ -104,7 +109,6 @@ src/pages/                       what the screens show
 src/shared/                      what more than one part of the extension uses
   api/                           what's kept in chrome.storage and what the parts send each other (index.ts)
     rules/                       a rule: its fields and their names, making one, which requests it matches (url-match.ts and request-match.ts, the one test the page and the editor both ask), whether it's answering (answering.ts), what's wrong with it (problems.ts); the order and every operation on it, which keeps two groups from sharing a name (order.ts), how it's kept, as the rules, each naming its group, and the groups, each with its place (order-storage.ts), and the screens' copy of it, which saves and redraws after each operation (store.ts); groups (group.ts), and a copy of one; apart from them, the server's responses their bodies' Diff compares with
-    sites/                       the sites Ghostfetch runs on, the screens' copy of the ones you added, turning one on or off
     settings.ts                  Ghostfetch on or off, and recording, which only the popup changes
     log-entry.ts                 a request in a tab's traffic log
     traffic-log.ts               the editor's live log of the tab it watches (Traffic, how often a rule fired, New rule's recent requests)
@@ -117,6 +121,11 @@ src/shared/                      what more than one part of the extension uses
     rule-switch.tsx              a rule's switch, the green dot (the kit's SignalSwitch), in the editor's rule list and the popup; group-switch.tsx, a group's
     group-folds.ts               which groups are folded, in the editor's list and the popup alike
     group-picker.tsx             the group a new rule goes into, where New rule and Mock this response make one; new-rule-group.ts, the one it starts on
+src/sites/                       Sites, where Ghostfetch runs (index.ts); its words are in glossary/sites.md
+  site.ts                        the sites Ghostfetch runs on: the built-in hosts and the ones you added, which hosts a site covers, and whether Ghostfetch runs on a URL
+  store.ts                       the screens' copy of the sites you added, and turning Ghostfetch on or off for one
+  content-scripts.ts             registering the content scripts for the sites you added, which the background calls
+  contract.ts                    the message that asks the background to register them again
 src/body-editor/                 the body editor (plain DOM code, its find bar and vim keys) and its React component, and the body's Diff (CodeDiff) (index.ts)
 src/platform/                    what differs between the browsers, and opening the editor (index.ts)
   side-panel.ts                  Chrome's side panel or Firefox's sidebar, whichever the browser has; firefox.d.ts, what @types/chrome doesn't describe of Firefox

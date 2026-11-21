@@ -3,7 +3,7 @@
 // minutes ago").
 import { useState, useSyncExternalStore } from 'react';
 import type { ReactNode } from 'react';
-import { siteStore } from '../../../shared/api/index.ts';
+import { siteStore } from '../../../sites/index.ts';
 import type { TrafficSnapshot } from '../../../shared/api/index.ts';
 import { cn } from '../../../ui/cn.ts';
 import { ItemList } from '../../../ui/kit/item.tsx';

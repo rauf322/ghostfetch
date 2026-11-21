@@ -5,11 +5,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { groupName, renameGroup } from '../../../shared/api/index.ts';
 import type { Group, Rule } from '../../../shared/api/index.ts';
-import { cn } from '../../../shared/ui/cn.ts';
+import { cn } from '../../../ui/cn.ts';
 import { GroupSwitch } from '../../../shared/ui/group-switch.tsx';
-import { Button } from '../../../shared/ui/kit/button.tsx';
-import { Icon } from '../../../shared/ui/kit/icon.tsx';
-import { notify } from '../../../shared/ui/kit/toast.tsx';
+import { Button } from '../../../ui/kit/button.tsx';
+import { Icon } from '../../../ui/kit/icon.tsx';
+import { notify } from '../../../ui/kit/toast.tsx';
 import type { HeaderDrag } from '../model/use-rule-drag.ts';
 import { DROP_MARK, INTO_MARK } from './drop-marks.ts';
 import { GroupMenu } from './group-menu.tsx';

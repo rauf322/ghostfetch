@@ -11,7 +11,7 @@
 // file then saves and draws; how the order is kept, and heard of from another view, is
 // order-storage.ts's. The order's operations go by the names this file's own have, so each is
 // imported here with `order` before its name.
-import { createStore } from '../../lib/index.ts';
+import { createStore } from '../../../lib/index.ts';
 import type { StoredGroup } from './group.ts';
 import { readOrder, saveOrder, saveOrderNow, watchOrder } from './order-storage.ts';
 import {

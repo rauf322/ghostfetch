@@ -1,5 +1,5 @@
 // Making rules: a new one, one rebuilt from data that can't be trusted, and the name a rule goes by.
-import type { Untrusted } from '../../lib/index.ts';
+import type { Untrusted } from '../../../lib/index.ts';
 import { BODY_MODES, MATCH_MODES, MAX_DELAY, METHODS } from './catalog.ts';
 import type { BodyMode, HeaderRow, Method, Rule } from './types.ts';
 

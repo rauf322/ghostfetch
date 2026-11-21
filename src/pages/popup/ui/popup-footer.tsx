@@ -1,8 +1,8 @@
 // The popup's footer: the editor, in the side panel (Firefox: the sidebar), and beside it a small
 // button for the editor in a tab of its own.
-import { openInSidePanel, openInTab } from '../../../shared/api/index.ts';
-import { Button } from '../../../shared/ui/kit/button.tsx';
-import { Icon } from '../../../shared/ui/kit/icon.tsx';
+import { openInSidePanel, openInTab } from '../../../platform/index.ts';
+import { Button } from '../../../ui/kit/button.tsx';
+import { Icon } from '../../../ui/kit/icon.tsx';
 
 // `quiet`: another button on the popup is the one to press (Turn on for …), so this one steps back.
 export function PopupFooter({ windowId, quiet }: { windowId: number; quiet: boolean }) {

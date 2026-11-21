@@ -1,7 +1,7 @@
 // The editor's and the popup's copy of the sites you added, and the changes made to it. Changes
 // made in another view arrive through chrome.storage.onChanged; the screens redraw through
 // useStore(siteStore).
-import { createStore } from '../../lib/index.ts';
+import { createStore } from '../../../lib/index.ts';
 import type { RuntimeMessage } from '../messages.ts';
 import { normalizeSites, siteCovers, siteOf } from './site.ts';
 

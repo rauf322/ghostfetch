@@ -1,7 +1,7 @@
 // The Sites tab: where Ghostfetch runs. The built-in hosts, always on, then the sites you added,
 // each with Remove, which turns Ghostfetch off there (the tab reloads if it shows that site).
 import { removeSite } from '../../../shared/api/index.ts';
-import { Icon } from '../../../shared/ui/kit/icon.tsx';
+import { Icon } from '../../../ui/kit/icon.tsx';
 
 // As the manifest's content scripts have them (wxt.config.ts); localhost covers *.localhost too.
 export const BUILT_IN_HOSTS = ['localhost', '127.0.0.1', 'local.*'];

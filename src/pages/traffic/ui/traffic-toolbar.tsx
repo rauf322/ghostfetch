@@ -4,12 +4,12 @@
 // reloads) and Clear. Where the view is narrower than 560 px (a side panel), Keep on reload and
 // Clear drop their words for their icons.
 import type { TrafficSnapshot } from '../../../shared/api/index.ts';
-import { cn } from '../../../shared/ui/cn.ts';
-import { Button } from '../../../shared/ui/kit/button.tsx';
-import { Icon } from '../../../shared/ui/kit/icon.tsx';
-import { SignalDot } from '../../../shared/ui/kit/signal-dot.tsx';
-import { Toggle } from '../../../shared/ui/kit/toggle.tsx';
-import { SidebarToggle } from '../../../shared/ui/sidebar.tsx';
+import { cn } from '../../../ui/cn.ts';
+import { Button } from '../../../ui/kit/button.tsx';
+import { Icon } from '../../../ui/kit/icon.tsx';
+import { SignalDot } from '../../../ui/kit/signal-dot.tsx';
+import { Toggle } from '../../../ui/kit/toggle.tsx';
+import { SidebarToggle } from '../../../ui/sidebar.tsx';
 import { TabPicker } from './tab-picker.tsx';
 
 // Words that only show from 560 px; a screen reader always has them.

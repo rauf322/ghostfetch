@@ -2,7 +2,7 @@
 // in it), the two views, Rules and Traffic, with their counts, the rules in their order
 // (pages/rules' RuleList: how many are on, and + for a new one), and along the bottom the ⋯ menu,
 // Import and Export. From 760px wide it stands beside the open view, as wide as its edge was
-// dragged, or hidden (shared/ui/sidebar.tsx); in a narrow side panel it's the Rules view's own
+// dragged, or hidden (ui/sidebar.tsx); in a narrow side panel it's the Rules view's own
 // screen, under the top bar, which then has the name and the two views. A rule's dot turns it on
 // or off; Ghostfetch's own switch and recording's are in the toolbar popup. The footer's Agent
 // opens Agent access over it (pages/agent).
@@ -11,13 +11,14 @@ import { AgentButton, AgentPanel } from '../../pages/agent/index.ts';
 import { RuleList } from '../../pages/rules/index.ts';
 import { ruleStore } from '../../shared/api/index.ts';
 import type { TrafficLog } from '../../shared/api/index.ts';
-import { useStore, useTrafficValue } from '../../shared/react/index.ts';
-import { cn } from '../../shared/ui/cn.ts';
-import { Button } from '../../shared/ui/kit/button.tsx';
-import { Icon } from '../../shared/ui/kit/icon.tsx';
-import type { IconName } from '../../shared/ui/kit/icon.tsx';
-import { ListPane, PaneFooter, SearchField } from '../../shared/ui/list-detail.tsx';
-import { useSidebarHidden } from '../../shared/ui/sidebar.tsx';
+import { useStore } from '../../ui/use-store.ts';
+import { useTrafficValue } from '../../shared/react/index.ts';
+import { cn } from '../../ui/cn.ts';
+import { Button } from '../../ui/kit/button.tsx';
+import { Icon } from '../../ui/kit/icon.tsx';
+import type { IconName } from '../../ui/kit/icon.tsx';
+import { ListPane, PaneFooter, SearchField } from '../../ui/list-detail.tsx';
+import { useSidebarHidden } from '../../ui/sidebar.tsx';
 import { EditorMenu } from './editor-menu.tsx';
 
 export type View = 'rules' | 'traffic';

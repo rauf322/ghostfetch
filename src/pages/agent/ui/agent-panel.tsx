@@ -3,13 +3,13 @@
 // while this editor was open, each change opening its rule.
 import { useState } from 'react';
 import { findRule, ruleStore } from '../../../shared/api/index.ts';
-import { useStore } from '../../../shared/react/index.ts';
-import { cn } from '../../../shared/ui/cn.ts';
-import { Button } from '../../../shared/ui/kit/button.tsx';
-import { Card } from '../../../shared/ui/kit/card.tsx';
-import { Icon } from '../../../shared/ui/kit/icon.tsx';
-import { Input } from '../../../shared/ui/kit/input.tsx';
-import { SignalDot } from '../../../shared/ui/kit/signal-dot.tsx';
+import { useStore } from '../../../ui/use-store.ts';
+import { cn } from '../../../ui/cn.ts';
+import { Button } from '../../../ui/kit/button.tsx';
+import { Card } from '../../../ui/kit/card.tsx';
+import { Icon } from '../../../ui/kit/icon.tsx';
+import { Input } from '../../../ui/kit/input.tsx';
+import { SignalDot } from '../../../ui/kit/signal-dot.tsx';
 import { parsePairingCode } from '../lib/pairing-code.ts';
 import {
   ASKS_CONSENT,

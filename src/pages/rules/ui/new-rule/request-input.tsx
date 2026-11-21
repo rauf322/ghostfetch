@@ -5,10 +5,10 @@
 import type { RefObject } from 'react';
 import { MATCH_MODES, METHODS } from '../../../../shared/api/index.ts';
 import type { MatchMode, Method } from '../../../../shared/api/index.ts';
-import { formatDuration, statusLabel } from '../../../../shared/lib/index.ts';
+import { formatDuration, statusLabel } from '../../../../lib/index.ts';
 import { GroupPicker } from '../../../../shared/ui/group-picker.tsx';
-import { Button } from '../../../../shared/ui/kit/button.tsx';
-import { Icon } from '../../../../shared/ui/kit/icon.tsx';
+import { Button } from '../../../../ui/kit/button.tsx';
+import { Icon } from '../../../../ui/kit/icon.tsx';
 import { SERVER_RESPONSE, chooseStatus, statusChoice } from '../../lib/rule-draft.ts';
 import type { Draft } from '../../lib/rule-draft.ts';
 import { STATUS_GROUPS } from '../../lib/status-codes.ts';

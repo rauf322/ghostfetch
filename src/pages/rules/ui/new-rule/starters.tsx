@@ -1,9 +1,9 @@
 // The starters under New rule's input: the answers people mock most (an empty list, a 500, a 404,
 // a slow response, a 401). One sets the status, delay and body the rule starts with; clicking it
 // again goes back to a plain 200. The URL still comes from the input.
-import { cn } from '../../../../shared/ui/cn.ts';
-import { Button } from '../../../../shared/ui/kit/button.tsx';
-import { Icon } from '../../../../shared/ui/kit/icon.tsx';
+import { cn } from '../../../../ui/cn.ts';
+import { Button } from '../../../../ui/kit/button.tsx';
+import { Icon } from '../../../../ui/kit/icon.tsx';
 import { STARTERS } from '../../lib/rule-draft.ts';
 import type { StarterId } from '../../lib/rule-draft.ts';
 

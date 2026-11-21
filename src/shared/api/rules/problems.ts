@@ -2,7 +2,7 @@
 // JSON body. The rule editor marks them and says them in its words (pages/rules), the agent's
 // tools in theirs (pages/agent), and both ask here, so neither can call a rule sound that the
 // other calls broken. (A header row the page won't get is headerProblem, header-check.ts.)
-import { checkJson } from '../../lib/index.ts';
+import { checkJson } from '../../../lib/index.ts';
 import type { Rule } from './types.ts';
 
 // A URL regex that doesn't compile, in the browser's words; '' for one that does, and for a

@@ -65,17 +65,23 @@ its `index.ts`.
 This layout is being changed, a stage at a time, to one cut by bounded context
 ([ADR 0002](adr/0002-the-code-is-cut-by-bounded-context.md)): Rules, Interception, Traffic, Sites,
 Agent access and the Body editor, whose words are in [`docs/glossary/`](glossary/) and how they
-relate in the [Glossary Map](../GLOSSARY-MAP.md). What follows is where the code is now.
+relate in the [Glossary Map](../GLOSSARY-MAP.md). What follows is where the code is now. The
+first to leave the layers is what knows nothing of rules, sites or requests: `lib`, `platform`,
+`ui` and `body-editor`, each a folder of `src/` of its own. What's left in the layers imports
+them, and they import nothing of the layers.
 
 `shared` has no slices, only segments, one for each kind of code: `api` for what Ghostfetch
-keeps in `chrome.storage` and what its parts send each other, `lib` for small libraries of its
-own, `react` for where those meet React, and `ui` for components. `api`, `lib` and `react` are
-each used through their `index.ts`. `shared/ui` has a public file per component instead, as FSD
-advises, so a screen that shows a button doesn't load the body editor with it. `api` and `lib`
-are plain TypeScript, with no React and no npm package: `lib` imports nothing else and `api`
-only `lib`, which is what keeps the background and the page scripts, which use both, free of
-the screens' libraries. `npm run lint` checks all this with eslint-plugin-boundaries, whose
-policies are in `oxlint.config.ts`.
+keeps in `chrome.storage` and what its parts send each other, `react` for where that meets
+React, and `ui` for the components that show a rule or a group. `api` and `react` are each used
+through their `index.ts`, and so are `lib` (small libraries of Ghostfetch's own), `platform`
+(what differs between the browsers, and opening the editor) and `body-editor`. `ui` and
+`shared/ui` have a public file per component or hook instead, as FSD advises, so a screen that
+shows a button doesn't load the rest of the kit with it. `lib`, `platform` and `shared/api` are
+plain TypeScript, with no React and no npm package: `lib` imports nothing else, and `platform`
+and `shared/api` only `lib`, which is what keeps the background and the page scripts, which use
+`shared/api` and `lib`, free of the screens' libraries. `ui` imports only `lib` and `platform`
+besides npm packages, and `body-editor` only `lib` and `ui`. `npm run lint` checks all this with
+eslint-plugin-boundaries, whose policies are in `oxlint.config.ts`.
 
 Inside a page the files are grouped by what they're for: `ui/` holds its components, `model/` its
 state and what changes it, and `lib/` plain functions. A page composes components of its own,
@@ -88,14 +94,13 @@ src/app/                         the extension's parts, one folder each, which W
   bridge/                        isolated world: passes rules in, collects the traffic log and counts it for the popup
   popup/                         the toolbar popup's page
   sidepanel/                     the editor (Chrome's side panel, Firefox's sidebar, or a tab): its sidebar, the top bar of a narrow panel, and its menus
-  kit/                           the kit page; for npm run dev and the kit test, never in the extension
+  kit/                           the kit page, every kit component in its states (ui/); for npm run dev and the kit test, never in the extension
   styles/                        theme.css, the look's values (colours, the two fonts); themes.css, the other themes' colours; and kit.css: those as Tailwind's theme (type sizes, corners)
 src/pages/                       what the screens show
   rules/                         the Rules view: the sidebar's rule list, New rule (ui/new-rule/), the rule editor (ui/rule-editor/, a component per part), and the clipboard its body editor's vim keys paste from, with the permission that takes (model/clipboard.ts)
   traffic/                       the Traffic view: a tab's live log grouped by time, a request's drawer (ui/request-detail/), Mock this response
   popup/                         the toolbar popup: its header, the tab's site, and its tabs (This page, All rules, Sites)
   agent/                         Agent access, in the editor: the connection to ghostfetch-mcp, what each of the agent's tools does, and its panel and button (see agent-access.md)
-  kit/                           the kit page: every kit component in its states
 src/shared/                      what more than one part of the extension uses
   api/                           what's kept in chrome.storage and what the parts send each other (index.ts)
     rules/                       a rule: its fields and their names, making one, which requests it matches (url-match.ts and request-match.ts, the one test the page and the editor both ask), whether it's answering (answering.ts), what's wrong with it (problems.ts); the order and every operation on it, which keeps two groups from sharing a name (order.ts), how it's kept, as the rules, each naming its group, and the groups, each with its place (order-storage.ts), and the screens' copy of it, which saves and redraws after each operation (store.ts); groups (group.ts), and a copy of one; apart from them, the server's responses their bodies' Diff compares with
@@ -105,23 +110,27 @@ src/shared/                      what more than one part of the extension uses
     traffic-log.ts               the editor's live log of the tab it watches (Traffic, how often a rule fired, New rule's recent requests)
     preserve.ts                  Keep on reload: whether that log keeps what it has when the page reloads
     messages.ts                  the messages between the background, the bridge, the interceptor, the Traffic tab and the popup
-    open-editor.ts               the editor in the side panel or a tab, and on a rule the popup picked
     page-counts.ts               what each rule did on a tab's page, as the page's bridge counts it, for the popup's This page; and in words, as the popup and the editor's rule list say it
-  lib/                           small libraries, a file each (index.ts): JSON, HTML, URLs, durations, status names, cURL
-                                 commands, icons, file names, a download, the side panel, the stores' base, untrusted data, a line diff,
-                                 and the shape of the clipboard the body editor's vim keys read
-  react/                         useStore(), which redraws a screen when a store changes, and the traffic log's hooks (index.ts)
-  ui/                            components, a public file each
-    kit/                         the UI kit: React components on Base UI, styled with Tailwind (see UI kit)
-    code-editor/                 the body editor (plain DOM code, its find bar and vim keys) and its React component, and the body's Diff (CodeDiff) (index.ts)
-    list-detail.tsx              the editor's layout: the sidebar, as wide as its edge was dragged, and what's open beside it, in a row (a flexbox: Firefox lays a grid's items out again from scratch)
-    sidebar.tsx                  the sidebar's width and whether it's hidden, the edge that resizes it (and what keeps its width meanwhile), and the button (and ⌘B) that hides it
-    theme.ts                     the themes, and the one in use; theme-menu.tsx, the ⋯ menus' Theme row
+  react/                         the traffic log's hooks (index.ts)
+  ui/                            the components that show a rule or a group, a public file each
     rules-file.tsx               rules files: export every rule, a group or one rule, import one (its rules and groups arrive turned off)
     rule-switch.tsx              a rule's switch, the green dot (the kit's SignalSwitch), in the editor's rule list and the popup; group-switch.tsx, a group's
     group-folds.ts               which groups are folded, in the editor's list and the popup alike
     group-picker.tsx             the group a new rule goes into, where New rule and Mock this response make one; new-rule-group.ts, the one it starts on
-    cn.ts                        cn(), which joins the kit's class names
+src/body-editor/                 the body editor (plain DOM code, its find bar and vim keys) and its React component, and the body's Diff (CodeDiff) (index.ts)
+src/platform/                    what differs between the browsers, and opening the editor (index.ts)
+  side-panel.ts                  Chrome's side panel or Firefox's sidebar, whichever the browser has; firefox.d.ts, what @types/chrome doesn't describe of Firefox
+  open-editor.ts                 the editor in the side panel or a tab, and on a rule the popup picked
+src/ui/                          the components that know nothing of rules, sites or requests, a public file each
+  kit/                           the UI kit: React components on Base UI, styled with Tailwind (see UI kit)
+  list-detail.tsx                the editor's layout: the sidebar, as wide as its edge was dragged, and what's open beside it, in a row (a flexbox: Firefox lays a grid's items out again from scratch)
+  sidebar.tsx                    the sidebar's width and whether it's hidden, the edge that resizes it (and what keeps its width meanwhile), and the button (and ⌘B) that hides it
+  theme.ts                       the themes, and the one in use; theme-menu.tsx, the ⋯ menus' Theme row
+  use-store.ts                   useStore(), which redraws a screen when a store changes
+  cn.ts                          cn(), which joins the kit's class names
+src/lib/                         small libraries, a file each (index.ts): JSON, HTML, URLs, durations, status names, cURL
+                                 commands, icons, file names, a download, the stores' base, untrusted data, a line diff,
+                                 and the shape of the clipboard the body editor's vim keys read
 wxt.config.ts                    the manifest (permissions, content scripts, CSP, Firefox ID) and the build settings
 components.json                  settings for shadcn's CLI, for adding a kit component
 oxlint.config.ts                 the linter's settings (npm run lint), and the layers' rules for eslint-plugin-boundaries
@@ -155,7 +164,7 @@ web-ext-artifacts/               what npm run zip makes: the packages for each b
 
 ## UI kit
 
-`src/shared/ui/kit/` is the UI kit the popup and the editor are built from: React components on
+`src/ui/kit/` is the UI kit the popup and the editor are built from: React components on
 [Base UI](https://base-ui.com), styled with Tailwind to the look (near-black cards, soft
 corners, Geist and Commit Mono, the green dot). `src/app/styles/kit.css` switches off
 Tailwind's own colours, fonts, type sizes, letter spacings, radii and shadows and gives it only
@@ -175,16 +184,16 @@ error, which fails `npm test` on the popup and the editor and `npm run test:kit`
 ### Adding a UI component
 
 From [shadcn/ui](https://ui.shadcn.com), whose CLI `components.json` is set up for (Base UI, style
-base-lyra): `npx shadcn@4.22.1 add <name>` writes `src/shared/ui/kit/<name>.tsx`. Then:
+base-lyra): `npx shadcn@4.22.1 add <name>` writes `src/ui/kit/<name>.tsx`. Then:
 
 - Change its `cn` import to `import { cn } from '../cn.ts'`, uninstall the
   `cn` package the CLI installs if it did, and read the `package.json` diff for anything else it
   added.
 - Write its other imports as relative paths with extensions, like the other components.
-- Swap its icons for the kit's `<Icon>` (`src/shared/ui/kit/icon.tsx`); if the CLI installed
+- Swap its icons for the kit's `<Icon>` (`src/ui/kit/icon.tsx`); if the CLI installed
   `lucide-react` for them, uninstall it.
 - Restyle it with the kit's values, like the other components.
-- Put it on the kit page (`src/pages/kit/`). `npm run test:kit` fails while a component file has
+- Put it on the kit page (`src/app/kit/ui/`). `npm run test:kit` fails while a component file has
   nothing on the page.
 
 A component from [21st.dev](https://21st.dev) or anywhere else also has to pass four checks:
@@ -195,7 +204,7 @@ A component from [21st.dev](https://21st.dev) or anywhere else also has to pass 
    kit's toast is Base UI's. `npm run test:kit` catches them.
 4. Restyled to the kit's values, with nothing left of its own palette, fonts or radii.
 
-The kit's components started as shadcn/ui's (MIT licence: `src/shared/ui/kit/LICENSE-shadcn.md`).
+The kit's components started as shadcn/ui's (MIT licence: `src/ui/kit/LICENSE-shadcn.md`).
 
 ## Tests
 
@@ -424,7 +433,7 @@ Zen (served with the CSP as a response header there, since Firefox's automation 
 extension pages). It fails on any CSP violation, uncaught error or console error, drives every
 live component with the keyboard and the mouse (the menu's Theme row too, which recolours the
 kit page: open it to see every component in every theme), and checks that the kit's icons draw the same as
-`src/shared/lib/icons.ts`. Two self-checks make sure it can fail: a `<style>` tag added on purpose has
+`src/lib/icons.ts`. Two self-checks make sure it can fail: a `<style>` tag added on purpose has
 to be caught, and so does Base UI's own when `CSPProvider`'s setting is off.
 
 ```sh

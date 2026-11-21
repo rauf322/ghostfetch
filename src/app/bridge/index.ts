@@ -21,7 +21,7 @@ import type {
   RuleCount,
   RuntimeMessage,
 } from '../../shared/api/index.ts';
-import type { Untrusted } from '../../shared/lib/index.ts';
+import type { Untrusted } from '../../lib/index.ts';
 
 export default defineUnlistedScript(() => {
   // Same two guards as the interceptor. The flag lives in the extension's isolated world, which

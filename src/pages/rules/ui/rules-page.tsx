@@ -5,8 +5,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { findRule, ruleStore } from '../../../shared/api/index.ts';
 import type { LogEntry, Rule, TrafficLog } from '../../../shared/api/index.ts';
-import { useStore } from '../../../shared/react/index.ts';
-import { DetailPane } from '../../../shared/ui/list-detail.tsx';
+import { useStore } from '../../../ui/use-store.ts';
+import { DetailPane } from '../../../ui/list-detail.tsx';
 import { FieldSuggestions } from './field-suggestions.tsx';
 import { NewRule } from './new-rule/new-rule.tsx';
 import { RuleEditor } from './rule-editor/rule-editor.tsx';

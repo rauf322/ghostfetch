@@ -7,7 +7,7 @@ import {
   regexError,
 } from '../../../shared/api/index.ts';
 import type { Rule } from '../../../shared/api/index.ts';
-import { formatDuration, statusLabel } from '../../../shared/lib/index.ts';
+import { formatDuration, statusLabel } from '../../../lib/index.ts';
 
 export function ruleSummary(rule: Rule) {
   const { bodyMode, status, delay } = rule.response;

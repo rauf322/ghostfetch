@@ -10,7 +10,7 @@ import {
   readTyped,
   ruleFromDraft,
 } from '../src/pages/rules/lib/rule-draft.ts';
-import { curlCommand, parseCurl } from '../src/shared/lib/curl.ts';
+import { curlCommand, parseCurl } from '../src/lib/curl.ts';
 import { check, expect, finish } from './fixtures.mjs';
 
 const URL = 'https://api.example.test/api/users?page=2';

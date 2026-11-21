@@ -1,14 +1,14 @@
 // The page whose requests the log shows, picked from every web page open: its initial (rather than
 // its favicon, which would load from the web), its title and its host.
 import type { TrafficTab } from '../../../shared/api/index.ts';
-import { splitUrl } from '../../../shared/lib/index.ts';
+import { splitUrl } from '../../../lib/index.ts';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '../../../shared/ui/kit/select.tsx';
+} from '../../../ui/kit/select.tsx';
 
 export function TabPicker({
   tabs,

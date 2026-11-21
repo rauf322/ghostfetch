@@ -1,4 +1,4 @@
-// The body editor's Diff, without a browser: diffLines() and diffWords() (src/shared/lib/diff.ts).
+// The body editor's Diff, without a browser: diffLines() and diffWords() (src/lib/diff.ts).
 // diffLines, on random pairs of bodies: its lines make up each text again, in order, the lines it
 // keeps are alike, a change's removed lines come before its added ones, and it keeps as many lines
 // as the two have in common (the longest common run of lines, worked out the slow way). Then the
@@ -6,7 +6,7 @@
 // what it marks in two lines is exactly what they don't share.
 //
 //   node test/diff.mjs      (npm test runs it after test/json.mjs)
-import { diffLines, diffWords } from '../src/shared/lib/index.ts';
+import { diffLines, diffWords } from '../src/lib/index.ts';
 import { check, expect, finish } from './fixtures.mjs';
 
 // Seeded, so a failure always reproduces.

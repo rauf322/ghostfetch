@@ -19,7 +19,7 @@ import {
   normalizeSites,
   siteMatchPatterns,
 } from '../src/shared/api/index.ts';
-import { diffLines, formatJson } from '../src/shared/lib/index.ts';
+import { diffLines, formatJson } from '../src/lib/index.ts';
 import {
   CHROME_BUILD,
   VIM_START,

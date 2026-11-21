@@ -21,19 +21,20 @@ import {
   responseFromEntry,
   ruleStore,
   settingsStore,
-  watchRuleRequests,
 } from '../../shared/api/index.ts';
 import type { LogEntry, Rule } from '../../shared/api/index.ts';
-import { useStore, useTrafficLog } from '../../shared/react/index.ts';
-import { cn } from '../../shared/ui/cn.ts';
-import { diffPreferred, rememberDiff } from '../../shared/ui/code-editor/index.ts';
-import { Alert } from '../../shared/ui/kit/alert.tsx';
-import { Tabs, TabsContent } from '../../shared/ui/kit/tabs.tsx';
-import { notify } from '../../shared/ui/kit/toast.tsx';
-import { Split } from '../../shared/ui/list-detail.tsx';
+import { watchRuleRequests } from '../../platform/index.ts';
+import { useStore } from '../../ui/use-store.ts';
+import { useTrafficLog } from '../../shared/react/index.ts';
+import { cn } from '../../ui/cn.ts';
+import { diffPreferred, rememberDiff } from '../../body-editor/index.ts';
+import { Alert } from '../../ui/kit/alert.tsx';
+import { Tabs, TabsContent } from '../../ui/kit/tabs.tsx';
+import { notify } from '../../ui/kit/toast.tsx';
+import { Split } from '../../ui/list-detail.tsx';
 import { lastRuleGroup, rememberRuleGroup } from '../../shared/ui/new-rule-group.ts';
 import { ImportRulesInput, exportRules } from '../../shared/ui/rules-file.tsx';
-import { SidebarHandle } from '../../shared/ui/sidebar.tsx';
+import { SidebarHandle } from '../../ui/sidebar.tsx';
 import { Sidebar } from './sidebar.tsx';
 import type { View } from './sidebar.tsx';
 import { TopBar } from './top-bar.tsx';

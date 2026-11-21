@@ -5,10 +5,10 @@
 // everything in them is shown as text, never as HTML.
 import { memo } from 'react';
 import type { LogEntry } from '../../../shared/api/index.ts';
-import { formatDuration, splitUrl } from '../../../shared/lib/index.ts';
-import { StatusCode } from '../../../shared/ui/kit/badge.tsx';
-import { Item } from '../../../shared/ui/kit/item.tsx';
-import { Method } from '../../../shared/ui/list-detail.tsx';
+import { formatDuration, splitUrl } from '../../../lib/index.ts';
+import { StatusCode } from '../../../ui/kit/badge.tsx';
+import { Item } from '../../../ui/kit/item.tsx';
+import { Method } from '../../../ui/list-detail.tsx';
 import { KIND_LABELS } from '../lib/entry-labels.ts';
 import { ActionBadge } from './action-badge.tsx';
 

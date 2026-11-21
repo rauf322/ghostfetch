@@ -7,9 +7,9 @@
 //
 // A browser only lets a page ask for a permission while it handles a key press or a click, and
 // Firefox not even after an await, so read() and ask() ask first, before anything else, while vim
-// handles the key. The shape (SystemClipboard, ClipboardRead) is shared/lib's, which the editor's
+// handles the key. The shape (SystemClipboard, ClipboardRead) is src/lib's, which the editor's
 // engine knows; this is the Rules page's, as only a rule's body editor reads the clipboard.
-import type { ClipboardRead, SystemClipboard } from '../../../shared/lib/index.ts';
+import type { ClipboardRead, SystemClipboard } from '../../../lib/index.ts';
 
 const PERMISSION: chrome.permissions.Permissions = { permissions: ['clipboardRead'] };
 // Set once the permission was turned down (or given back), so p doesn't ask every time.

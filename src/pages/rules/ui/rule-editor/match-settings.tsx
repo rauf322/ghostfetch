@@ -7,9 +7,9 @@ import {
   regexError,
 } from '../../../../shared/api/index.ts';
 import type { MatchMode, Method, Rule } from '../../../../shared/api/index.ts';
-import { CardHint } from '../../../../shared/ui/kit/card.tsx';
-import { Input } from '../../../../shared/ui/kit/input.tsx';
-import { Segmented, SegmentedItem } from '../../../../shared/ui/kit/segmented.tsx';
+import { CardHint } from '../../../../ui/kit/card.tsx';
+import { Input } from '../../../../ui/kit/input.tsx';
+import { Segmented, SegmentedItem } from '../../../../ui/kit/segmented.tsx';
 import { SettingRow, SettingsCard } from './settings-card.tsx';
 
 export function MatchSettings({

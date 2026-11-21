@@ -3,15 +3,15 @@
 // kit's accordion). The rule editor gives its two cards one `open` row between them, so one
 // editor is open at a time.
 import type { ReactNode } from 'react';
-import { cn } from '../../../../shared/ui/cn.ts';
+import { cn } from '../../../../ui/cn.ts';
 import {
   Accordion,
   AccordionItem,
   AccordionPanel,
   AccordionTrigger,
-} from '../../../../shared/ui/kit/accordion.tsx';
-import { Icon } from '../../../../shared/ui/kit/icon.tsx';
-import type { IconName } from '../../../../shared/ui/kit/icon.tsx';
+} from '../../../../ui/kit/accordion.tsx';
+import { Icon } from '../../../../ui/kit/icon.tsx';
+import type { IconName } from '../../../../ui/kit/icon.tsx';
 
 export function SettingsCard({
   open,

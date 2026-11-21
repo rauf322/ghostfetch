@@ -1,6 +1,6 @@
 // What the rule list says when there are no rules yet, in a narrow panel, where New rule isn't
 // beside it to say it.
-import { ListEmpty } from '../../../shared/ui/list-detail.tsx';
+import { ListEmpty } from '../../../ui/list-detail.tsx';
 
 export function NoRulesYet() {
   return (

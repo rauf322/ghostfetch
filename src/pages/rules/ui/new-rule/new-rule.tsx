@@ -6,7 +6,7 @@
 // button back to it.
 import { useEffect, useRef, useState } from 'react';
 import type { LogEntry, Method, Rule, TrafficLog } from '../../../../shared/api/index.ts';
-import { PaneScroll } from '../../../../shared/ui/list-detail.tsx';
+import { PaneScroll } from '../../../../ui/list-detail.tsx';
 import {
   NEW_DRAFT,
   PLAIN_ANSWER,

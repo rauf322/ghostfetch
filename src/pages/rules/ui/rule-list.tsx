@@ -16,11 +16,11 @@ import {
   ruleStore,
 } from '../../../shared/api/index.ts';
 import type { TrafficLog } from '../../../shared/api/index.ts';
-import { useStore } from '../../../shared/react/index.ts';
+import { useStore } from '../../../ui/use-store.ts';
 import { foldStore, isFolded, setFolded } from '../../../shared/ui/group-folds.ts';
-import { Button } from '../../../shared/ui/kit/button.tsx';
-import { Icon } from '../../../shared/ui/kit/icon.tsx';
-import { ListEmpty } from '../../../shared/ui/list-detail.tsx';
+import { Button } from '../../../ui/kit/button.tsx';
+import { Icon } from '../../../ui/kit/icon.tsx';
+import { ListEmpty } from '../../../ui/list-detail.tsx';
 import { filterEntries } from '../lib/filter-rules.ts';
 import { renamingStore, setRenaming } from '../model/renaming.ts';
 import { useRuleDrag } from '../model/use-rule-drag.ts';

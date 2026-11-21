@@ -4,8 +4,8 @@
 // words.
 import { hasJsonBody, urlTester } from '../../../shared/api/index.ts';
 import type { Rule } from '../../../shared/api/index.ts';
-import { checkJson } from '../../../shared/lib/index.ts';
-import type { JsonProblem } from '../../../shared/lib/index.ts';
+import { checkJson } from '../../../lib/index.ts';
+import type { JsonProblem } from '../../../lib/index.ts';
 
 // Whether `url` matches the rule's pattern, as the page decides it (urlTester), or why the pattern
 // can't be tried.

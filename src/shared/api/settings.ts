@@ -1,7 +1,7 @@
 // Ghostfetch's two switches, as the editor and the popup show them: on or off (enabled), and
 // whether requests are recorded for Traffic. Changes made in another view arrive through
 // chrome.storage.onChanged; the screens redraw through useStore(settingsStore).
-import { createStore } from '../lib/index.ts';
+import { createStore } from '../../lib/index.ts';
 
 export interface Settings {
   enabled: boolean;

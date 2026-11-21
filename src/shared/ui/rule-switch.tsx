@@ -5,8 +5,8 @@
 import type { ComponentProps } from 'react';
 import { editRule, ruleTitle, settingsStore } from '../api/index.ts';
 import type { Rule } from '../api/index.ts';
-import { useStore } from '../react/index.ts';
-import { SignalSwitch } from './kit/signal-switch.tsx';
+import { useStore } from '../../ui/use-store.ts';
+import { SignalSwitch } from '../../ui/kit/signal-switch.tsx';
 
 export function RuleSwitch({
   rule,

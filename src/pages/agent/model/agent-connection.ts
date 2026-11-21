@@ -13,7 +13,7 @@
 // await, so it's asked first, in the click. It's looked at again before connecting and before each
 // tool, so consent withdrawn in Firefox's add-on settings turns Agent access off. Chrome has no such
 // consent to ask for.
-import { createStore } from '../../../shared/lib/index.ts';
+import { createStore } from '../../../lib/index.ts';
 import { pairingCode, parsePairingCode } from '../lib/pairing-code.ts';
 
 export type AgentStatus = 'off' | 'waiting' | 'connected' | 'refused';

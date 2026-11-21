@@ -11,7 +11,7 @@
 // editor is where you left it (its placeKey).
 import { useRef, useState } from 'react';
 import type { Rule, TrafficLog } from '../../../../shared/api/index.ts';
-import { PaneScroll, PaneSection } from '../../../../shared/ui/list-detail.tsx';
+import { PaneScroll, PaneSection } from '../../../../ui/list-detail.tsx';
 import { codeStatus } from '../../lib/rule-checks.ts';
 import { useKeptScroll } from '../../model/use-kept-scroll.ts';
 import { useSettledStatus } from '../../model/use-settled-status.ts';

@@ -2,7 +2,7 @@
 // in their order, set in, or a line saying it has none yet, which a rule can be dropped on.
 import { ruleRevision } from '../../../shared/api/index.ts';
 import type { GroupEntry, Rule, TrafficLog } from '../../../shared/api/index.ts';
-import { cn } from '../../../shared/ui/cn.ts';
+import { cn } from '../../../ui/cn.ts';
 import type { ListDrag } from '../model/use-rule-drag.ts';
 import { BLOCK_MARK } from './drop-marks.ts';
 import { GroupHeader } from './group-header.tsx';

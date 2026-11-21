@@ -3,8 +3,8 @@
 // is made from both when you press Enter.
 import { METHODS, createRule, graphqlOperation } from '../../../shared/api/index.ts';
 import type { BodyMode, MatchMode, Method, Rule } from '../../../shared/api/index.ts';
-import { parseCurl } from '../../../shared/lib/index.ts';
-import type { IconName } from '../../../shared/lib/index.ts';
+import { parseCurl } from '../../../lib/index.ts';
+import type { IconName } from '../../../lib/index.ts';
 
 export interface Draft {
   method: Method;

@@ -1,7 +1,7 @@
 // Making groups: a new one, the stored ones rebuilt from data that can't be trusted, a name no
 // other group has, and which groups are off, for the page and the badge, which read the rules as
 // they're stored.
-import type { Untrusted } from '../../lib/index.ts';
+import type { Untrusted } from '../../../lib/index.ts';
 import { isId } from './rule.ts';
 import type { Group } from './types.ts';
 

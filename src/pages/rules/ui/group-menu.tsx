@@ -7,15 +7,15 @@ import {
   ungroup,
 } from '../../../shared/api/index.ts';
 import type { Group } from '../../../shared/api/index.ts';
-import { Button } from '../../../shared/ui/kit/button.tsx';
+import { Button } from '../../../ui/kit/button.tsx';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '../../../shared/ui/kit/dropdown-menu.tsx';
-import { Icon } from '../../../shared/ui/kit/icon.tsx';
-import { notify } from '../../../shared/ui/kit/toast.tsx';
+} from '../../../ui/kit/dropdown-menu.tsx';
+import { Icon } from '../../../ui/kit/icon.tsx';
+import { notify } from '../../../ui/kit/toast.tsx';
 import { exportGroup } from '../../../shared/ui/rules-file.tsx';
 
 export function GroupMenu({

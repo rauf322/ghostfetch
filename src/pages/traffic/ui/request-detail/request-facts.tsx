@@ -3,9 +3,9 @@
 // it), or that none did.
 import type { ReactNode } from 'react';
 import type { LogEntry } from '../../../../shared/api/index.ts';
-import { cn } from '../../../../shared/ui/cn.ts';
-import { Button } from '../../../../shared/ui/kit/button.tsx';
-import { CARD } from '../../../../shared/ui/kit/card.tsx';
+import { cn } from '../../../../ui/cn.ts';
+import { Button } from '../../../../ui/kit/button.tsx';
+import { CARD } from '../../../../ui/kit/card.tsx';
 import { ActionBadge } from '../action-badge.tsx';
 
 export function RequestFacts({

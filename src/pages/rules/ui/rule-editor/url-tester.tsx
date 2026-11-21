@@ -1,8 +1,8 @@
 // "Try a URL": paste a URL and see whether this rule would answer it, decided as the page decides
 // it (testResult). The URL stays as you open and close the settings.
 import type { Rule } from '../../../../shared/api/index.ts';
-import { Card, CardHint } from '../../../../shared/ui/kit/card.tsx';
-import { Input } from '../../../../shared/ui/kit/input.tsx';
+import { Card, CardHint } from '../../../../ui/kit/card.tsx';
+import { Input } from '../../../../ui/kit/input.tsx';
 import { testResult } from '../../lib/rule-checks.ts';
 import { Verdict } from './verdict.tsx';
 

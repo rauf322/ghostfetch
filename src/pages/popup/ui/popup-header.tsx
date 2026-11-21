@@ -2,8 +2,8 @@
 // Recording: whether requests are recorded, for Traffic and for what each rule did on a page.
 // Pause: Ghostfetch off as a whole, every rule with it, until Resume; the one place to do that.
 import { setFlag } from '../../../shared/api/index.ts';
-import { cn } from '../../../shared/ui/cn.ts';
-import { Icon } from '../../../shared/ui/kit/icon.tsx';
+import { cn } from '../../../ui/cn.ts';
+import { Icon } from '../../../ui/kit/icon.tsx';
 
 export function PopupHeader({ enabled, record }: { enabled: boolean; record: boolean }) {
   return (

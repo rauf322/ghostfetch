@@ -2,11 +2,11 @@
 // minutes, typed or picked from a few common ones.
 import { MAX_DELAY, editRule } from '../../../../shared/api/index.ts';
 import type { Rule } from '../../../../shared/api/index.ts';
-import { formatDuration } from '../../../../shared/lib/index.ts';
-import { CardHint } from '../../../../shared/ui/kit/card.tsx';
-import { Input } from '../../../../shared/ui/kit/input.tsx';
-import { FieldLabel } from '../../../../shared/ui/kit/label.tsx';
-import { ToggleGroup, ToggleGroupItem } from '../../../../shared/ui/kit/toggle-group.tsx';
+import { formatDuration } from '../../../../lib/index.ts';
+import { CardHint } from '../../../../ui/kit/card.tsx';
+import { Input } from '../../../../ui/kit/input.tsx';
+import { FieldLabel } from '../../../../ui/kit/label.tsx';
+import { ToggleGroup, ToggleGroupItem } from '../../../../ui/kit/toggle-group.tsx';
 
 const PRESETS = [0, 250, 500, 1000, 2000, 5000];
 

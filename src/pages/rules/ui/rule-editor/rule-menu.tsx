@@ -13,8 +13,8 @@ import {
   ruleTitle,
 } from '../../../../shared/api/index.ts';
 import type { Rule } from '../../../../shared/api/index.ts';
-import { useStore } from '../../../../shared/react/index.ts';
-import { Button } from '../../../../shared/ui/kit/button.tsx';
+import { useStore } from '../../../../ui/use-store.ts';
+import { Button } from '../../../../ui/kit/button.tsx';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,9 +26,9 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-} from '../../../../shared/ui/kit/dropdown-menu.tsx';
-import { Icon } from '../../../../shared/ui/kit/icon.tsx';
-import { notify } from '../../../../shared/ui/kit/toast.tsx';
+} from '../../../../ui/kit/dropdown-menu.tsx';
+import { Icon } from '../../../../ui/kit/icon.tsx';
+import { notify } from '../../../../ui/kit/toast.tsx';
 import { exportRule } from '../../../../shared/ui/rules-file.tsx';
 import { duplicateRule } from '../../model/duplicate-rule.ts';
 import { setRenaming } from '../../model/renaming.ts';

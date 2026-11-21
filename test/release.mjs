@@ -260,8 +260,7 @@ for (const browser of ['chrome', 'firefox']) {
       // up by its path.
       expect(
         all.filter(
-          (file) =>
-            file.endsWith('.js') && /src\/(app|pages)\/kit\//.test(read(browser, file)),
+          (file) => file.endsWith('.js') && /src\/app\/kit\//.test(read(browser, file)),
         ),
         [],
         'the kit page',

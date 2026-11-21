@@ -1,8 +1,8 @@
 // Which requests the list shows: All, Matched (a rule matched them) or Errors, each with how many
 // there are, and a search by URL, status or rule. One filter is always chosen, so they're a radio
 // group: the arrow keys move between them.
-import { SearchField } from '../../../shared/ui/list-detail.tsx';
-import { Segmented, SegmentedItem } from '../../../shared/ui/kit/segmented.tsx';
+import { SearchField } from '../../../ui/list-detail.tsx';
+import { Segmented, SegmentedItem } from '../../../ui/kit/segmented.tsx';
 import type { TrafficFilter } from '../lib/filter-entries.ts';
 
 const FILTER_LABELS: Record<TrafficFilter, string> = {

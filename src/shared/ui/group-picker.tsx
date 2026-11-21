@@ -3,16 +3,16 @@
 // off says so, as a rule made in it doesn't answer until it's on. Nothing shows until there's a
 // group, so the screens stay as they were for anyone who doesn't make one.
 import { ruleStore } from '../api/index.ts';
-import { useStore } from '../react/index.ts';
-import { cn } from './cn.ts';
-import { Icon } from './kit/icon.tsx';
+import { useStore } from '../../ui/use-store.ts';
+import { cn } from '../../ui/cn.ts';
+import { Icon } from '../../ui/kit/icon.tsx';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from './kit/select.tsx';
+} from '../../ui/kit/select.tsx';
 
 // No group, as the select's value: not an id a group can have.
 const NONE = '*none';

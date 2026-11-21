@@ -17,8 +17,8 @@ import {
   storedGroups,
 } from '../api/index.ts';
 import type { Group, GroupEntry, Rule } from '../api/index.ts';
-import { download, slug } from '../lib/index.ts';
-import { notify } from './kit/toast.tsx';
+import { download, slug } from '../../lib/index.ts';
+import { notify } from '../../ui/kit/toast.tsx';
 
 const FORMAT = 2;
 

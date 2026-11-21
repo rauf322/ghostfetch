@@ -6,18 +6,18 @@ import { useRef } from 'react';
 import { flushSync } from 'react-dom';
 import { editRule, headerProblem } from '../../../../shared/api/index.ts';
 import type { HeaderRow, Rule } from '../../../../shared/api/index.ts';
-import { cn } from '../../../../shared/ui/cn.ts';
-import { Button } from '../../../../shared/ui/kit/button.tsx';
-import { CardHint } from '../../../../shared/ui/kit/card.tsx';
-import { Icon } from '../../../../shared/ui/kit/icon.tsx';
-import { Input } from '../../../../shared/ui/kit/input.tsx';
+import { cn } from '../../../../ui/cn.ts';
+import { Button } from '../../../../ui/kit/button.tsx';
+import { CardHint } from '../../../../ui/kit/card.tsx';
+import { Icon } from '../../../../ui/kit/icon.tsx';
+import { Input } from '../../../../ui/kit/input.tsx';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '../../../../shared/ui/kit/select.tsx';
+} from '../../../../ui/kit/select.tsx';
 
 const OP_ITEMS = [
   { value: 'set', label: 'Set' },

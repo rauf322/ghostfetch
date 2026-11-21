@@ -14,16 +14,16 @@ import {
   countWords,
   groupOf,
   isAnswering,
-  openRuleInEditor,
   ruleTitle,
   wouldAnswer,
 } from '../../../shared/api/index.ts';
 import type { Entry, Group, Rule, RuleCount } from '../../../shared/api/index.ts';
-import { useStore } from '../../../shared/react/index.ts';
-import { cn } from '../../../shared/ui/cn.ts';
+import { openRuleInEditor } from '../../../platform/index.ts';
+import { useStore } from '../../../ui/use-store.ts';
+import { cn } from '../../../ui/cn.ts';
 import { foldStore, isFolded, setFolded } from '../../../shared/ui/group-folds.ts';
 import { GroupSwitch } from '../../../shared/ui/group-switch.tsx';
-import { Icon } from '../../../shared/ui/kit/icon.tsx';
+import { Icon } from '../../../ui/kit/icon.tsx';
 import { RuleSwitch } from '../../../shared/ui/rule-switch.tsx';
 import { matchLine } from '../lib/rule-words.ts';
 

@@ -8,9 +8,10 @@ import {
   settingsStore,
 } from '../../../../shared/api/index.ts';
 import type { Rule, TrafficLog, TrafficSnapshot } from '../../../../shared/api/index.ts';
-import { useStore, useTrafficValue } from '../../../../shared/react/index.ts';
-import { cn } from '../../../../shared/ui/cn.ts';
-import { Input } from '../../../../shared/ui/kit/input.tsx';
+import { useStore } from '../../../../ui/use-store.ts';
+import { useTrafficValue } from '../../../../shared/react/index.ts';
+import { cn } from '../../../../ui/cn.ts';
+import { Input } from '../../../../ui/kit/input.tsx';
 import { describeRule } from '../../lib/rule-summary.ts';
 
 export function RuleIntro({ rule, log }: { rule: Rule; log: TrafficLog }) {

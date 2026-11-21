@@ -3,13 +3,13 @@
 // a cURL command, and the response's body.
 import { ruleFromEntry, ruleStore } from '../../../../shared/api/index.ts';
 import type { LogEntry, Rule } from '../../../../shared/api/index.ts';
-import { curlCommand } from '../../../../shared/lib/index.ts';
-import { useStore } from '../../../../shared/react/index.ts';
+import { curlCommand } from '../../../../lib/index.ts';
+import { useStore } from '../../../../ui/use-store.ts';
 import { GroupPicker } from '../../../../shared/ui/group-picker.tsx';
-import { Button } from '../../../../shared/ui/kit/button.tsx';
-import { Icon } from '../../../../shared/ui/kit/icon.tsx';
-import type { IconName } from '../../../../shared/ui/kit/icon.tsx';
-import { notify } from '../../../../shared/ui/kit/toast.tsx';
+import { Button } from '../../../../ui/kit/button.tsx';
+import { Icon } from '../../../../ui/kit/icon.tsx';
+import type { IconName } from '../../../../ui/kit/icon.tsx';
+import { notify } from '../../../../ui/kit/toast.tsx';
 
 export function RequestActions({
   entry,

@@ -3,7 +3,7 @@
 // rule that would go into the group, at its top. A line as wide as the list's rows lands among the
 // list's top-level entries, out of any group; one in a group is set in as the group's rules are,
 // so the end of a group and the place after it, which are at the same height, don't look alike.
-import { cn } from '../../../shared/ui/cn.ts';
+import { cn } from '../../../ui/cn.ts';
 
 export const DROP_MARK = cn(
   "data-[drop=before]:before:absolute data-[drop=before]:before:inset-x-0 data-[drop=before]:before:-top-px data-[drop=before]:before:h-0.5 data-[drop=before]:before:bg-foreground data-[drop=before]:before:content-['']",

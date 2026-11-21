@@ -4,8 +4,8 @@
 // switch is the popup's.
 import { groupOf, ruleTitle } from '../../../../shared/api/index.ts';
 import type { Rule } from '../../../../shared/api/index.ts';
-import { Button } from '../../../../shared/ui/kit/button.tsx';
-import { Icon } from '../../../../shared/ui/kit/icon.tsx';
+import { Button } from '../../../../ui/kit/button.tsx';
+import { Icon } from '../../../../ui/kit/icon.tsx';
 import { duplicateRule } from '../../model/duplicate-rule.ts';
 import { RulesHead } from '../rules-head.tsx';
 import { RuleMenu } from './rule-menu.tsx';

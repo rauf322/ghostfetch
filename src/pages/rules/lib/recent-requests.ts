@@ -1,7 +1,7 @@
 // What New rule offers to mock: the page's latest requests that no rule answered, one for each
 // method and path, newest first, at most five. `entries` come oldest first, as the log keeps them.
 import type { LogEntry } from '../../../shared/api/index.ts';
-import { splitUrl } from '../../../shared/lib/index.ts';
+import { splitUrl } from '../../../lib/index.ts';
 
 const LIMIT = 5;
 

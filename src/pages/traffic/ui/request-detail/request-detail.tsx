@@ -5,9 +5,9 @@
 // never changes: a long body is only formatted once.
 import { memo, useMemo } from 'react';
 import type { LogEntry, Rule } from '../../../../shared/api/index.ts';
-import { formatJson } from '../../../../shared/lib/index.ts';
-import { Alert } from '../../../../shared/ui/kit/alert.tsx';
-import { PaneScroll } from '../../../../shared/ui/list-detail.tsx';
+import { formatJson } from '../../../../lib/index.ts';
+import { Alert } from '../../../../ui/kit/alert.tsx';
+import { PaneScroll } from '../../../../ui/list-detail.tsx';
 import { RequestActions } from './request-actions.tsx';
 import { RequestBodies } from './request-bodies.tsx';
 import { RequestFacts } from './request-facts.tsx';

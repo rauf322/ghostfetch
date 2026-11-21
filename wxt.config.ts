@@ -75,7 +75,7 @@ export default defineConfig({
   // the popup, the side panel, the kit page), which is what WXT builds. WXT takes every app/<name>/index.* as an
   // entrypoint, so the folder for anything else in app/ (styles/) has no index file.
   entrypointsDir: 'app',
-  // React for the .tsx files: the UI kit (src/shared/ui/kit/) and the pages built from it.
+  // React for the .tsx files: the UI kit (src/ui/kit/) and the pages built from it.
   modules: ['@wxt-dev/module-react'],
   // Every import is written out, so a reader can see where each name comes from.
   imports: false,
@@ -133,10 +133,10 @@ export default defineConfig({
     icons: ICONS,
   }),
   hooks: {
-    // The kit page (src/app/kit/, drawing src/pages/kit/) shows every UI kit component. It's built
-    // for `npm run dev` and for test/kit.mjs (`wxt build --mode kit`, into .output/*-kit), never
-    // into the extension you install. `npm run test:kit` sets NODE_ENV=production for that build:
-    // left unset, WXT makes it the mode's name, and React then builds its development version.
+    // The kit page (src/app/kit/) shows every UI kit component. It's built for `npm run dev` and
+    // for test/kit.mjs (`wxt build --mode kit`, into .output/*-kit), never into the extension you
+    // install. `npm run test:kit` sets NODE_ENV=production for that build: left unset, WXT makes
+    // it the mode's name, and React then builds its development version.
     'entrypoints:resolved': (wxt, entrypoints) => {
       if (wxt.config.command === 'serve' || wxt.config.mode === 'kit') return;
       const kit = entrypoints.findIndex((entrypoint) => entrypoint.name === 'kit');

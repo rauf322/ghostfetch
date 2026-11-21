@@ -1,8 +1,8 @@
 // "Respond with": what a rule changes about the response besides its body. A row each for the
 // status code, the delay and the headers; a click opens the row's editor.
 import type { Rule } from '../../../../shared/api/index.ts';
-import { formatDuration } from '../../../../shared/lib/index.ts';
-import { CardHint } from '../../../../shared/ui/kit/card.tsx';
+import { formatDuration } from '../../../../lib/index.ts';
+import { CardHint } from '../../../../ui/kit/card.tsx';
 import { headersValue, statusValue } from '../../lib/rule-summary.ts';
 import { DelayPanel } from './delay-panel.tsx';
 import { HeaderRows } from './header-rows.tsx';

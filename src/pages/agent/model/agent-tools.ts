@@ -54,7 +54,7 @@ import type {
   Rule,
   TrafficLog,
 } from '../../../shared/api/index.ts';
-import { notify } from '../../../shared/ui/kit/toast.tsx';
+import { notify } from '../../../ui/kit/toast.tsx';
 import { ruleProblems, ruleSummary } from '../lib/rule-report.ts';
 import { noteActivity } from './agent-connection.ts';
 

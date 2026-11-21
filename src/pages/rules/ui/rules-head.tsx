@@ -3,10 +3,10 @@
 // user", "Rules / PR-1 / Users list" for a rule in a group, "Rules / New rule"); and whatever goes
 // at the right end (a rule's menu and switch).
 import type { ReactNode } from 'react';
-import { Button } from '../../../shared/ui/kit/button.tsx';
-import { Icon } from '../../../shared/ui/kit/icon.tsx';
-import { PaneHead } from '../../../shared/ui/list-detail.tsx';
-import { SidebarToggle } from '../../../shared/ui/sidebar.tsx';
+import { Button } from '../../../ui/kit/button.tsx';
+import { Icon } from '../../../ui/kit/icon.tsx';
+import { PaneHead } from '../../../ui/list-detail.tsx';
+import { SidebarToggle } from '../../../ui/sidebar.tsx';
 
 export function RulesHead({
   title,

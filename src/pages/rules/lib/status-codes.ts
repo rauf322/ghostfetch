@@ -1,6 +1,6 @@
 // The status codes the Status row offers, grouped by class, and the names on them (statusName,
-// shared/lib, names any code you type).
-import { statusName } from '../../../shared/lib/index.ts';
+// src/lib, names any code you type).
+import { statusName } from '../../../lib/index.ts';
 
 export const STATUS_GROUPS = [
   { label: '2xx — Success', codes: [200, 201, 204] },

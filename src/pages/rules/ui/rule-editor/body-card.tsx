@@ -26,9 +26,9 @@ import {
   serverResponse,
 } from '../../../../shared/api/index.ts';
 import type { BodyMode, Rule } from '../../../../shared/api/index.ts';
-import { formatJson } from '../../../../shared/lib/index.ts';
-import { useStore } from '../../../../shared/react/index.ts';
-import { cn } from '../../../../shared/ui/cn.ts';
+import { formatJson } from '../../../../lib/index.ts';
+import { useStore } from '../../../../ui/use-store.ts';
+import { cn } from '../../../../ui/cn.ts';
 import {
   CodeDiff,
   CodeEditor,
@@ -38,18 +38,15 @@ import {
   rememberDiffLayout,
   vimPreferred,
   wrapPreferred,
-} from '../../../../shared/ui/code-editor/index.ts';
-import type {
-  CodeEditorHandle,
-  DiffLayout,
-} from '../../../../shared/ui/code-editor/index.ts';
-import { Button } from '../../../../shared/ui/kit/button.tsx';
-import { Card } from '../../../../shared/ui/kit/card.tsx';
-import { Icon } from '../../../../shared/ui/kit/icon.tsx';
-import { Input } from '../../../../shared/ui/kit/input.tsx';
-import { Segmented, SegmentedItem } from '../../../../shared/ui/kit/segmented.tsx';
-import { notify } from '../../../../shared/ui/kit/toast.tsx';
-import { Toggle } from '../../../../shared/ui/kit/toggle.tsx';
+} from '../../../../body-editor/index.ts';
+import type { CodeEditorHandle, DiffLayout } from '../../../../body-editor/index.ts';
+import { Button } from '../../../../ui/kit/button.tsx';
+import { Card } from '../../../../ui/kit/card.tsx';
+import { Icon } from '../../../../ui/kit/icon.tsx';
+import { Input } from '../../../../ui/kit/input.tsx';
+import { Segmented, SegmentedItem } from '../../../../ui/kit/segmented.tsx';
+import { notify } from '../../../../ui/kit/toast.tsx';
+import { Toggle } from '../../../../ui/kit/toggle.tsx';
 import type { CodeStatus } from '../../lib/rule-checks.ts';
 import { systemClipboard } from '../../model/clipboard.ts';
 import { useWide } from '../../model/use-wide.ts';

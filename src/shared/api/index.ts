@@ -2,9 +2,9 @@
 // (and apart from them, the server's responses their bodies are compared with) and the
 // sites you added (each with the screens' copy of them), the two switches, a
 // request in a tab's traffic log and the editor's live copy of that log (with its Keep on
-// reload setting), the popup's count of what each rule did on a page, the messages between the
-// background, the page scripts and the screens, and opening the editor. No React and no npm package: the background and the page
-// scripts import from here too, and keep only what they use.
+// reload setting), the popup's count of what each rule did on a page, and the messages between
+// the background, the page scripts and the screens. No React and no npm package: the background
+// and the page scripts import from here too, and keep only what they use.
 export type {
   BodyMode,
   Group,
@@ -120,9 +120,3 @@ export type {
   RuntimeMessage,
 } from './messages.ts';
 export { askPageCounts, countRule, countWords } from './page-counts.ts';
-export {
-  openInSidePanel,
-  openInTab,
-  openRuleInEditor,
-  watchRuleRequests,
-} from './open-editor.ts';

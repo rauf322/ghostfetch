@@ -3,13 +3,13 @@
 // a link to Traffic for the rest. Nothing shows until the page has asked for something.
 import { ruleFromEntry } from '../../../../shared/api/index.ts';
 import type { LogEntry, Rule, TrafficLog } from '../../../../shared/api/index.ts';
-import { formatDuration, splitUrl } from '../../../../shared/lib/index.ts';
+import { formatDuration, splitUrl } from '../../../../lib/index.ts';
 import { useTraffic } from '../../../../shared/react/index.ts';
-import { StatusCode } from '../../../../shared/ui/kit/badge.tsx';
-import { Button } from '../../../../shared/ui/kit/button.tsx';
-import { Icon } from '../../../../shared/ui/kit/icon.tsx';
-import { ItemList } from '../../../../shared/ui/kit/item.tsx';
-import { Method, PaneSection } from '../../../../shared/ui/list-detail.tsx';
+import { StatusCode } from '../../../../ui/kit/badge.tsx';
+import { Button } from '../../../../ui/kit/button.tsx';
+import { Icon } from '../../../../ui/kit/icon.tsx';
+import { ItemList } from '../../../../ui/kit/item.tsx';
+import { Method, PaneSection } from '../../../../ui/list-detail.tsx';
 import { recentRequests } from '../../lib/recent-requests.ts';
 
 export function RecentRequests({

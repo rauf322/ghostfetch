@@ -11,8 +11,8 @@ import {
   siteOf,
   siteStore,
 } from '../../../shared/api/index.ts';
-import { useStore } from '../../../shared/react/index.ts';
-import { Segmented, SegmentedItem } from '../../../shared/ui/kit/segmented.tsx';
+import { useStore } from '../../../ui/use-store.ts';
+import { Segmented, SegmentedItem } from '../../../ui/kit/segmented.tsx';
 import { usePageCounts } from '../model/use-page-counts.ts';
 import { PopupFooter } from './popup-footer.tsx';
 import { PopupHeader } from './popup-header.tsx';

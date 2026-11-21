@@ -1,14 +1,14 @@
 // One of New rule's pickers under the input, as a small filled pill with its icon: the method,
 // how the URL is compared, the status and the delay. A select: Base UI does the keyboard.
-import type { IconName } from '../../../../shared/ui/kit/icon.tsx';
-import { Icon } from '../../../../shared/ui/kit/icon.tsx';
+import type { IconName } from '../../../../ui/kit/icon.tsx';
+import { Icon } from '../../../../ui/kit/icon.tsx';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '../../../../shared/ui/kit/select.tsx';
+} from '../../../../ui/kit/select.tsx';
 
 export function Picker({
   icon,

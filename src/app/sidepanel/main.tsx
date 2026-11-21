@@ -9,7 +9,7 @@ import {
   initSettings,
   initSites,
 } from '../../shared/api/index.ts';
-import { Toaster } from '../../shared/ui/kit/toast.tsx';
+import { Toaster } from '../../ui/kit/toast.tsx';
 import { Editor } from './editor.tsx';
 import { moveLegacySettings } from './legacy-settings.ts';
 import '../styles/kit.css';

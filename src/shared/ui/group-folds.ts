@@ -1,7 +1,7 @@
 // Which groups are folded, in the editor's rule list and the popup's All rules alike: kept in this
 // browser, by the groups' ids, and followed by every open editor and the popup when another changes
 // it. Read the first time it's asked, so a page that never shows a group never reads it.
-import { createStore } from '../lib/index.ts';
+import { createStore } from '../../lib/index.ts';
 
 const KEY = 'ghostfetch.folded';
 

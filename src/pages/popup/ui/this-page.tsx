@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react';
 import { turnOnFor } from '../../../shared/api/index.ts';
 import type { Entry, PageCounts, Rule } from '../../../shared/api/index.ts';
-import { Button } from '../../../shared/ui/kit/button.tsx';
+import { Button } from '../../../ui/kit/button.tsx';
 import { RuleList } from './rule-list.tsx';
 
 export function ThisPage({

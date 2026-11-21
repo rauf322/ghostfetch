@@ -252,10 +252,10 @@ export async function startServer() {
         // The body editor with the Vim switch on, on a plain page, for the Firefox test: Firefox's
         // automation can't open extension pages, but it can load the same code from /src/.
         res.writeHead(200, { 'content-type': 'text/html' });
-        res.end(`<!doctype html><title>editor</title><link rel="stylesheet" href="/src/app/styles/theme.css"><link rel="stylesheet" href="/src/shared/ui/code-editor/code-editor.css"><div style="width:640px"></div>
+        res.end(`<!doctype html><title>editor</title><link rel="stylesheet" href="/src/app/styles/theme.css"><link rel="stylesheet" href="/src/body-editor/code-editor.css"><div style="width:640px"></div>
           <script type="module">
-            import { createCodeEditor } from '/src/shared/ui/code-editor/engine/code-editor.ts';
-            import { checkJson, formatJson } from '/src/shared/lib/json.ts';
+            import { createCodeEditor } from '/src/body-editor/engine/code-editor.ts';
+            import { checkJson, formatJson } from '/src/lib/json.ts';
             localStorage.setItem('ghostfetch.vim', '1');
             window.createCodeEditor = createCodeEditor;
             window.checkJson = checkJson;

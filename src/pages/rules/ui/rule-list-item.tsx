@@ -15,14 +15,10 @@ import {
   wouldAnswer,
 } from '../../../shared/api/index.ts';
 import type { Rule, TrafficLog } from '../../../shared/api/index.ts';
-import { useStore, useTrafficValue } from '../../../shared/react/index.ts';
-import { cn } from '../../../shared/ui/cn.ts';
-import {
-  Item,
-  ItemContent,
-  ItemDescription,
-  ItemTitle,
-} from '../../../shared/ui/kit/item.tsx';
+import { useStore } from '../../../ui/use-store.ts';
+import { useTrafficValue } from '../../../shared/react/index.ts';
+import { cn } from '../../../ui/cn.ts';
+import { Item, ItemContent, ItemDescription, ItemTitle } from '../../../ui/kit/item.tsx';
 import { RuleSwitch } from '../../../shared/ui/rule-switch.tsx';
 import { ruleSummary } from '../lib/rule-summary.ts';
 import type { RowDrag } from '../model/use-rule-drag.ts';

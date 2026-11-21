@@ -2,11 +2,11 @@
 // from the common ones, grouped by class), and what an empty one means for the body mode.
 import { editRule } from '../../../../shared/api/index.ts';
 import type { Rule } from '../../../../shared/api/index.ts';
-import { CardHint } from '../../../../shared/ui/kit/card.tsx';
-import { Input } from '../../../../shared/ui/kit/input.tsx';
-import { FieldLabel } from '../../../../shared/ui/kit/label.tsx';
-import { ToggleGroup, ToggleGroupItem } from '../../../../shared/ui/kit/toggle-group.tsx';
-import { statusLabel, statusName } from '../../../../shared/lib/index.ts';
+import { CardHint } from '../../../../ui/kit/card.tsx';
+import { Input } from '../../../../ui/kit/input.tsx';
+import { FieldLabel } from '../../../../ui/kit/label.tsx';
+import { ToggleGroup, ToggleGroupItem } from '../../../../ui/kit/toggle-group.tsx';
+import { statusLabel, statusName } from '../../../../lib/index.ts';
 import { STATUS_GROUPS, presetName } from '../../lib/status-codes.ts';
 
 export function StatusPanel({ rule }: { rule: Rule }) {

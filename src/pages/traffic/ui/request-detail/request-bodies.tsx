@@ -1,9 +1,9 @@
 // An open request's bodies in the body editor's colours: the response (or why there isn't one),
 // and the request's own if it sent one, each under a grey label.
 import type { LogEntry } from '../../../../shared/api/index.ts';
-import { CodeView } from '../../../../shared/ui/code-editor/index.ts';
-import { CardHint } from '../../../../shared/ui/kit/card.tsx';
-import { PaneSection } from '../../../../shared/ui/list-detail.tsx';
+import { CodeView } from '../../../../body-editor/index.ts';
+import { CardHint } from '../../../../ui/kit/card.tsx';
+import { PaneSection } from '../../../../ui/list-detail.tsx';
 
 export function RequestBodies({
   entry,

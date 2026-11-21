@@ -6,7 +6,7 @@
 // under a key of its own, `serverResponse:` and the rule's id: every open editor (a side panel in
 // each window, a tab) keeps responses as it sees them, and one writing them all at once would undo
 // what another just kept. Only the editor reads them.
-import { createStore, formatJson } from '../../lib/index.ts';
+import { createStore, formatJson } from '../../../lib/index.ts';
 import type { LogEntry } from '../log-entry.ts';
 import { requestTester } from './request-match.ts';
 import type { RuleRequest } from './request-match.ts';

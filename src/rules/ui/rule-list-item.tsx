@@ -7,10 +7,9 @@
 // whole in a tooltip.
 import { memo } from 'react';
 import type { PointerEvent } from 'react';
-import { ruleTitle, wouldAnswer } from '../index.ts';
+import { pausedStore, ruleTitle, wouldAnswer } from '../index.ts';
 import type { Rule } from '../index.ts';
-import { settingsStore } from '../../shared/api/index.ts';
-import { countRule, countWords } from '../../traffic/index.ts';
+import { countRule, countWords, recordingStore } from '../../traffic/index.ts';
 import type { TrafficLog } from '../../traffic/index.ts';
 import { useStore } from '../../ui/use-store.ts';
 import { useTrafficValue } from '../../traffic/ui/index.ts';
@@ -152,15 +151,16 @@ function tipWhenCut(event: PointerEvent<HTMLElement>) {
 // hasn't answered there, or is off (its dot says so). It draws again by itself when Ghostfetch or
 // recording is turned on or off and when the rule answers on the page, so the row doesn't have to.
 function RuleDid({ rule, log }: { rule: Rule; log: TrafficLog }) {
-  const { enabled, record } = useStore(settingsStore);
+  const { paused } = useStore(pausedStore);
+  const { recording } = useStore(recordingStore);
   const did = useTrafficValue(log, (traffic) =>
     countWords(countRule(traffic.entries, rule.id)),
   );
-  if (!rule.enabled || !record || !did) return null;
+  if (!rule.enabled || !recording || !did) return null;
   return (
     <span
       data-testid="rule-signal"
-      className={cn('ml-auto flex-none text-label', enabled ? 'text-signal' : 'text-t50')}
+      className={cn('ml-auto flex-none text-label', !paused ? 'text-signal' : 'text-t50')}
     >
       {did}
     </span>

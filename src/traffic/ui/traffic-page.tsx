@@ -7,8 +7,7 @@
 // all, with a button to close it.
 import { memo, useCallback, useState, useSyncExternalStore } from 'react';
 import type { Rule } from '../../rules/index.ts';
-import { settingsStore } from '../../shared/api/index.ts';
-import { isPreserved, rememberPreserve } from '../index.ts';
+import { isPreserved, recordingStore, rememberPreserve } from '../index.ts';
 import type { LogEntry, TrafficLog } from '../index.ts';
 import { useTraffic } from './use-traffic-log.ts';
 import { RequestDetail } from './request-detail/request-detail.tsx';
@@ -37,9 +36,9 @@ export const TrafficPage = memo(function TrafficPage({
 }: TrafficPageProps) {
   const traffic = useTraffic(log);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const record = useSyncExternalStore(
-    settingsStore.subscribe,
-    () => settingsStore.state.record,
+  const recording = useSyncExternalStore(
+    recordingStore.subscribe,
+    () => recordingStore.state.recording,
   );
   const [preserve, setPreserve] = useState(isPreserved);
   const { entries } = traffic;
@@ -52,7 +51,7 @@ export const TrafficPage = memo(function TrafficPage({
     <div className="@container/traffic flex h-full min-h-0 flex-col">
       <TrafficToolbar
         traffic={traffic}
-        record={record}
+        record={recording}
         preserve={preserve}
         onPick={(tabId) => {
           setSelectedId(null);
@@ -71,7 +70,7 @@ export const TrafficPage = memo(function TrafficPage({
       <div className="flex min-h-0 flex-1">
         <TrafficList
           traffic={traffic}
-          record={record}
+          record={recording}
           selectedId={selectedId}
           onSelect={setSelectedId}
           className={yielding}

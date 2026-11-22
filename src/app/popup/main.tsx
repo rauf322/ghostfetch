@@ -4,15 +4,15 @@ import { StrictMode } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import { PopupPage } from './ui/popup-page.tsx';
-import { initRules } from '../../rules/index.ts';
-import { initSettings } from '../../shared/api/index.ts';
+import { initPaused, initRules } from '../../rules/index.ts';
 import { initSites } from '../../sites/index.ts';
+import { initRecording } from '../../traffic/index.ts';
 import '../styles/kit.css';
 
 // The side panel must be opened synchronously inside the click, so look the window up first.
 const { id: windowId } = await chrome.windows.getCurrent();
 const [activeTab] = await chrome.tabs.query({ active: true, windowId });
-await Promise.all([initSettings(), initSites(), initRules()]);
+await Promise.all([initPaused(), initRecording(), initSites(), initRules()]);
 
 // Drawn at once, so the popup opens at its full size.
 const root = createRoot(document.getElementById('root')!);

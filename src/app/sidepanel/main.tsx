@@ -3,16 +3,16 @@ import { CSPProvider } from '@base-ui/react/csp-provider';
 import { StrictMode } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
-import { initRules, initServerResponses } from '../../rules/index.ts';
-import { initSettings } from '../../shared/api/index.ts';
+import { initPaused, initRules, initServerResponses } from '../../rules/index.ts';
 import { initSites } from '../../sites/index.ts';
+import { initRecording } from '../../traffic/index.ts';
 import { Toaster } from '../../ui/kit/toast.tsx';
 import { Editor } from './editor.tsx';
 import { moveLegacySettings } from './legacy-settings.ts';
 import '../styles/kit.css';
 
 moveLegacySettings();
-await Promise.all([initSettings(), initSites(), initRules()]);
+await Promise.all([initPaused(), initRecording(), initSites(), initRules()]);
 // After the rules: it drops the responses of rules that are gone.
 await initServerResponses();
 const inTab = Boolean(await chrome.tabs.getCurrent());

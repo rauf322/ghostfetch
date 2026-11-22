@@ -7,17 +7,16 @@ import { defineConfig } from 'oxlint';
 
 const rootPath = fileURLToPath(new URL('.', import.meta.url));
 
-// The layers, from the top: app and shared (what is left of Feature-Sliced Design's), and under
-// them what has left the layers for the layout by bounded context (docs/adr/0002): the folders
-// that know no domain (lib, platform, ui and body-editor), the kernel (kernel: what Rules and
-// Interception must agree on), and the contexts with a folder of their own, Interception
-// (interception), Rules (rules, whose domain/ is a type of its own, rules-domain: it imports only
-// lib and the kernel; and so is its ui/, rules-ui: its React is all there), Sites (sites), Traffic
-// (traffic, whose ui/ is a type of its own, traffic-ui, for the same reason) and Agent access
-// (agent-access, whose domain/ and ui/ are types of their own as the rules' are:
-// agent-access-domain, which imports only lib, and agent-access-ui). shared has segments instead
-// of slices, and one is left: api. api is used through its index.ts, as lib, platform, the
-// kernel, interception, sites and the body editor (body-editor/) are; Traffic through its two,
+// The layers, from the top: app, all that is left of Feature-Sliced Design's, and under it what
+// has left the layers for the layout by bounded context (docs/adr/0002): the folders that know no
+// domain (lib, platform, ui and body-editor), the kernel (kernel: what Rules and Interception must
+// agree on), and the contexts with a folder of their own, Interception (interception), Rules
+// (rules, whose domain/ is a type of its own, rules-domain: it imports only lib and the kernel;
+// and so is its ui/, rules-ui: its React is all there), Sites (sites), Traffic (traffic, whose ui/
+// is a type of its own, traffic-ui, for the same reason) and Agent access (agent-access, whose
+// domain/ and ui/ are types of their own as the rules' are: agent-access-domain, which imports
+// only lib, and agent-access-ui). lib, platform, the kernel, interception, sites and the body
+// editor (body-editor/) are used through their index.ts; Traffic through its two,
 // traffic/index.ts and traffic/ui/index.ts; Rules through rules/index.ts and rules/ui/index.ts,
 // and the widgets other screens show, a public file each in rules/ui/; and Agent access through
 // agent-access/ui/index.ts, by the editor alone. ui has a public file per component or hook, so a
@@ -49,14 +48,10 @@ const elements = [
     partialMatch: false,
   },
   { type: 'agent-access', pattern: 'src/agent-access', partialMatch: false },
-  { type: 'shared', pattern: 'src/shared/*', capture: ['segment'], partialMatch: false },
   { type: 'app', pattern: 'src/app/*', capture: ['part'], partialMatch: false },
 ];
 
 const type = (...types: string[]) => ({ element: { type: types } });
-const segment = (...segments: string[]) => ({
-  element: { type: 'shared', captured: { segment: segments } },
-});
 const packages = { module: { origin: ['external', 'core'] } };
 // The folders that know no domain.
 const noDomain = ['lib', 'platform', 'ui', 'body-editor'];
@@ -82,94 +77,71 @@ const rulesWidgets = [
 
 // Processed in order; the last policy matching an import decides.
 const policies = [
-  // The layers: app imports anything; shared only shared, the kernel and the folders that know no
-  // domain.
+  // The layers: app imports anything.
   { from: type('app'), allow: { to: [type('*'), packages] } },
-  {
-    from: type('shared'),
-    allow: { to: [type('shared', 'kernel', ...noDomain), packages] },
-  },
   // The folders that know no domain import nothing of the layers: ui only lib and platform, and
   // the body editor only lib and ui, each with npm packages.
   { from: type('ui'), allow: { to: [type('lib', 'platform'), packages] } },
   { from: type('body-editor'), allow: { to: [type('lib', 'ui'), packages] } },
-  // Traffic's ui/, where its React is: the rules and their widgets, sites, shared/api (the two
-  // switches), the folders that know no domain and npm packages (and the rest of traffic, further
-  // down).
+  // Traffic's ui/, where its React is: the rules and their widgets, sites, the folders that know no
+  // domain and npm packages (and the rest of traffic, further down).
   {
     from: type('traffic-ui'),
-    allow: {
-      to: [type('rules', 'rules-ui', 'sites', ...noDomain), segment('api'), packages],
-    },
+    allow: { to: [type('rules', 'rules-ui', 'sites', ...noDomain), packages] },
   },
-  // The rules' ui/, where their React is: the kernel, sites, traffic by either of its doors,
-  // shared/api (the two switches), the folders that know no domain and npm packages (and the rest
-  // of the rules, further down).
+  // The rules' ui/, where their React is: the kernel, sites, traffic by either of its doors, the
+  // folders that know no domain and npm packages (and the rest of the rules, further down).
   {
     from: type('rules-ui'),
     allow: {
       to: [
         type('rules', 'kernel', 'sites', 'traffic', 'traffic-ui', ...noDomain),
-        segment('api'),
         packages,
       ],
     },
   },
   // Agent access's ui/, where its React is: the rules, traffic and sites by their doors, the
-  // kernel, shared/api (the two switches), lib, ui and npm packages (and the rest of Agent access,
-  // further down).
+  // kernel, lib, ui and npm packages (and the rest of Agent access, further down).
   {
     from: type('agent-access-ui'),
-    allow: {
-      to: [
-        type('rules', 'traffic', 'sites', 'kernel', 'lib', 'ui'),
-        segment('api'),
-        packages,
-      ],
-    },
+    allow: { to: [type('rules', 'traffic', 'sites', 'kernel', 'lib', 'ui'), packages] },
   },
   // lib imports nothing else; platform and the kernel only lib; sites only lib and platform;
-  // traffic outside its ui/ only those two and sites; shared/api only lib; the rules outside their
-  // domain/ and ui/ only lib, platform, the kernel and traffic (a rule is made from an entry), and
-  // their domain/ only lib and the kernel; interception only the kernel, lib, traffic and the
-  // rules' types; and Agent access outside its domain/ and ui/ only lib, the kernel, the rules,
-  // traffic, sites and shared/api, and its domain/ only lib: no React, no UI and no npm package,
-  // so what the background and the page scripts reach through any of them is free of all three.
+  // traffic outside its ui/ only those two and sites; the rules outside their domain/ and ui/ only
+  // lib, platform, the kernel and traffic (a rule is made from an entry), and their domain/ only
+  // lib and the kernel; interception only the kernel, lib, traffic and the rules' types; and Agent
+  // access outside its domain/ and ui/ only lib, the kernel, the rules, traffic and sites, and its
+  // domain/ only lib: no React, no UI and no npm package, so what the background and the page
+  // scripts reach through any of them is free of all three.
   {
-    from: [
-      type(
-        'lib',
-        'platform',
-        'kernel',
-        'interception',
-        'sites',
-        'traffic',
-        'rules',
-        'rules-domain',
-        'agent-access',
-        'agent-access-domain',
-      ),
-      segment('api'),
-    ],
+    from: type(
+      'lib',
+      'platform',
+      'kernel',
+      'interception',
+      'sites',
+      'traffic',
+      'rules',
+      'rules-domain',
+      'agent-access',
+      'agent-access-domain',
+    ),
     disallow: { to: [type('*'), packages] },
     message:
-      'lib, platform, the kernel, interception, sites, shared/api, and the rules, traffic and Agent access outside their ui/ are plain TypeScript: no npm package, and no folder of src/ but the ones each may import (oxlint.config.ts).',
+      'lib, platform, the kernel, interception, sites, and the rules, traffic and Agent access outside their ui/ are plain TypeScript: no npm package, and no folder of src/ but the ones each may import (oxlint.config.ts).',
   },
   {
-    from: [
-      type(
-        'platform',
-        'kernel',
-        'interception',
-        'sites',
-        'traffic',
-        'rules',
-        'rules-domain',
-        'agent-access',
-        'agent-access-domain',
-      ),
-      segment('api'),
-    ],
+    from: type(
+      'platform',
+      'kernel',
+      'interception',
+      'sites',
+      'traffic',
+      'rules',
+      'rules-domain',
+      'agent-access',
+      'agent-access-domain',
+    ),
     allow: { to: type('lib') },
   },
   { from: type('sites', 'traffic', 'rules'), allow: { to: type('platform') } },
@@ -178,7 +150,7 @@ const policies = [
   { from: type('rules'), allow: { to: type('traffic') } },
   {
     from: type('agent-access'),
-    allow: { to: [type('rules', 'traffic', 'sites', 'kernel'), segment('api')] },
+    allow: { to: type('rules', 'traffic', 'sites', 'kernel') },
   },
   { from: type('interception'), allow: { to: type('kernel', 'traffic') } },
   {
@@ -228,13 +200,6 @@ const policies = [
     to: [
       {
         element: {
-          type: 'shared',
-          captured: { segment: ['api'] },
-          fileInternalPath: '!index.ts',
-        },
-      },
-      {
-        element: {
           type: [
             'lib',
             'platform',
@@ -252,7 +217,7 @@ const policies = [
     ],
     disallow: { from: type('*') },
     message:
-      'shared/api, lib, platform, the kernel, interception, the rules, sites, traffic and traffic/ui are used through their index.ts.',
+      'lib, platform, the kernel, interception, the rules, sites, traffic and traffic/ui are used through their index.ts.',
   },
   // The rules' screens: the Rules view through rules/ui/index.ts, and each widget other screens
   // show through its own file, so the popup doesn't load the Rules view with its switches.

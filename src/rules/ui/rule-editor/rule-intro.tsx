@@ -1,9 +1,9 @@
 // The top of a rule: whether it's answering requests and how often it has on the page the editor
 // watches ("Mocking · fired 3× on Acme dashboard"), its name, which you edit in place, and one
 // sentence that says what it does.
-import { editRule, groupOf, isAnswering } from '../../index.ts';
+import { editRule, groupOf, isAnswering, pausedStore } from '../../index.ts';
 import type { Rule } from '../../index.ts';
-import { settingsStore } from '../../../shared/api/index.ts';
+import { recordingStore } from '../../../traffic/index.ts';
 import type { TrafficLog, TrafficSnapshot } from '../../../traffic/index.ts';
 import { useStore } from '../../../ui/use-store.ts';
 import { useTrafficValue } from '../../../traffic/ui/index.ts';
@@ -54,14 +54,15 @@ const times = (traffic: TrafficSnapshot, id: string, failed: boolean) =>
 // what the log has seen: it starts over with Clear and, unless Keep on reload is on, with a page
 // load, so a count of none goes unsaid.
 function RuleState({ rule, log }: { rule: Rule; log: TrafficLog }) {
-  const { enabled, record } = useStore(settingsStore);
+  const { paused } = useStore(pausedStore);
+  const { recording } = useStore(recordingStore);
   const hits = useTrafficValue(log, (traffic) => times(traffic, rule.id, false));
   const failures = useTrafficValue(log, (traffic) => times(traffic, rule.id, true));
   const page = useTrafficValue(log, (traffic) => traffic.target?.title ?? '');
   const group = groupOf(rule);
-  const live = isAnswering(rule, group?.enabled !== false, !enabled);
+  const live = isAnswering(rule, group?.enabled !== false, paused);
   let words = 'Off';
-  if (rule.enabled && !enabled) words = 'Paused while Ghostfetch is off';
+  if (rule.enabled && paused) words = 'Paused while Ghostfetch is off';
   else if (rule.enabled && group?.enabled === false)
     words = `Paused while ${group.name} is off`;
   else if (live) {
@@ -69,7 +70,7 @@ function RuleState({ rule, log }: { rule: Rule; log: TrafficLog }) {
     const fired = [hits && `fired ${hits}×`, failures && `failed ${failures}×`]
       .filter(Boolean)
       .join(', ');
-    if (record && fired) words += ` · ${fired} on ${page || 'this page'}`;
+    if (recording && fired) words += ` · ${fired} on ${page || 'this page'}`;
   }
   return (
     <span

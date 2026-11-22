@@ -3,9 +3,8 @@
 // Turned off, its rules stop answering, each keeping its own switch for when it's turned on again.
 // Saved at once: the popup can close at any moment.
 import type { ComponentProps } from 'react';
-import { turnGroup } from '../index.ts';
+import { pausedStore, turnGroup } from '../index.ts';
 import type { Group } from '../index.ts';
-import { settingsStore } from '../../shared/api/index.ts';
 import { useStore } from '../../ui/use-store.ts';
 import { SignalSwitch } from '../../ui/kit/signal-switch.tsx';
 
@@ -15,16 +14,16 @@ export function GroupSwitch({
 }: Omit<ComponentProps<typeof SignalSwitch>, 'checked' | 'onCheckedChange' | 'paused'> & {
   group: Group;
 }) {
-  const { enabled } = useStore(settingsStore);
+  const { paused } = useStore(pausedStore);
   return (
     <SignalSwitch
       checked={group.enabled}
-      paused={!enabled}
+      paused={paused}
       aria-label={`Turn the group “${group.name}” on or off`}
       title={
         !group.enabled
           ? `Off: its rules don't answer. Click to turn ${group.name} on`
-          : enabled
+          : !paused
             ? `On. Click to turn ${group.name} off, and its rules with it`
             : `On, but Ghostfetch is off. Click to turn ${group.name} off`
       }

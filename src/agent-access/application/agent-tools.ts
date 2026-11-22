@@ -30,6 +30,7 @@ import {
   moveRule,
   moveRuleTo,
   normalizeRule,
+  pausedStore,
   placeAt,
   removeGroup,
   removeRule,
@@ -43,9 +44,8 @@ import {
   wouldAnswer,
 } from '../../rules/index.ts';
 import type { Group, Place, Rule } from '../../rules/index.ts';
-import { settingsStore } from '../../shared/api/index.ts';
 import { siteOf } from '../../sites/index.ts';
-import { countRule, countWords } from '../../traffic/index.ts';
+import { countRule, countWords, recordingStore } from '../../traffic/index.ts';
 import type { LogEntry, TrafficLog } from '../../traffic/index.ts';
 import { isDevHost } from '../domain/dev-host.ts';
 import { ruleProblems, ruleSummary } from './rule-report.ts';
@@ -185,7 +185,7 @@ export function createAgentTools({
   // Whether a rule answers the requests it matches: it's on, its group is too, and Ghostfetch
   // isn't paused.
   const answering = (rule: Rule) =>
-    isAnswering(rule, !inOffGroup(rule), !settingsStore.state.enabled);
+    isAnswering(rule, !inOffGroup(rule), pausedStore.state.paused);
 
   // The page the editor watches, or null with none: for the editor's own use.
   function watched() {
@@ -279,7 +279,7 @@ export function createAgentTools({
       problems.push(
         "It's off, so none of its rules answer until it's turned on (save_group with enabled: true).",
       );
-    if (!settingsStore.state.enabled)
+    if (pausedStore.state.paused)
       problems.push(
         "Ghostfetch is paused (its toolbar popup), so no rule answers until it's resumed.",
       );
@@ -296,7 +296,7 @@ export function createAgentTools({
       problems.push(
         `Its group “${group.name}” is off, so it answers nothing until the group is turned on (save_group with enabled: true).`,
       );
-    if (!settingsStore.state.enabled)
+    if (pausedStore.state.paused)
       problems.push(
         "Ghostfetch is paused (its toolbar popup), so no rule answers until it's resumed.",
       );
@@ -313,13 +313,14 @@ export function createAgentTools({
 
   return {
     status() {
-      const { enabled, record } = settingsStore.state;
+      const { paused } = pausedStore.state;
+      const { recording } = recordingStore.state;
       const { groups } = ruleStore.state;
       return {
         ghostfetch: {
           version: chrome.runtime.getManifest().version,
-          on: enabled,
-          recording: record,
+          on: !paused,
+          recording,
         },
         editor: place,
         page: page(),
@@ -552,7 +553,7 @@ export function createAgentTools({
         url: full,
         answeredBy: answer ? brief(answer) : null,
         alsoMatching: matching.filter((each) => each !== answer).map(brief),
-        note: settingsStore.state.enabled
+        note: !pausedStore.state.paused
           ? undefined
           : "Ghostfetch is paused (its toolbar popup), so nothing answers until it's resumed.",
       };
@@ -561,7 +562,7 @@ export function createAgentTools({
     recent_requests({ limit, url, action }: Params) {
       const dev = devPage();
       const count = Math.min(Math.max(Math.trunc(Number(limit)) || 30, 1), 200);
-      const { record } = settingsStore.state;
+      const { recording } = recordingStore.state;
       const requests = log
         .snapshot()
         .entries.toReversed()
@@ -573,8 +574,8 @@ export function createAgentTools({
         .slice(0, count);
       return {
         page: { url: dev.url, title: dev.title },
-        recording: record,
-        note: record
+        recording,
+        note: recording
           ? undefined
           : "Recording is off (the toolbar popup's Recording), so new requests aren't logged.",
         requests: requests.map(requestSummary),

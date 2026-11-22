@@ -6,8 +6,8 @@
 // Agent access while the editor is open (ui/). The only way into this folder, for the editor alone
 // (src/app/sidepanel/): the popup, the background and the page scripts take nothing from here.
 // Outside ui/ the folder is plain TypeScript with no npm package and no React; of Ghostfetch's own
-// code it may import only the rules, traffic and sites by their doors, the kernel, lib and
-// shared/api, and its domain/ only lib.
+// code it may import only the rules, traffic and sites by their doors, the kernel and lib, and its
+// domain/ only lib.
 export { AgentButton } from './agent-button.tsx';
 export { AgentPanel } from './agent-panel.tsx';
 export { useAgentAccess } from './use-agent-access.ts';

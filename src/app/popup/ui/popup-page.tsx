@@ -3,10 +3,9 @@
 // line, then three tabs: what each rule did on this page, every rule, and the sites Ghostfetch
 // runs on.
 import { useState } from 'react';
-import { ruleStore } from '../../../rules/index.ts';
-import { settingsStore } from '../../../shared/api/index.ts';
+import { pausedStore, ruleStore } from '../../../rules/index.ts';
 import { isSiteEnabled, siteOf, siteStore } from '../../../sites/index.ts';
-import { countWords } from '../../../traffic/index.ts';
+import { countWords, recordingStore } from '../../../traffic/index.ts';
 import { useStore } from '../../../ui/use-store.ts';
 import { Segmented, SegmentedItem } from '../../../ui/kit/segmented.tsx';
 import { usePageCounts } from '../model/use-page-counts.ts';
@@ -26,7 +25,8 @@ export function PopupPage({
   windowId: number;
   activeTab: chrome.tabs.Tab | undefined;
 }) {
-  const { enabled, record } = useStore(settingsStore);
+  const { paused } = useStore(pausedStore);
+  const { recording } = useStore(recordingStore);
   const { rules, entries } = useStore(ruleStore);
   const { sites } = useStore(siteStore);
   const host = siteOf(activeTab?.url);
@@ -42,8 +42,8 @@ export function PopupPage({
 
   return (
     <div className="flex flex-col gap-2.5 p-3.5">
-      <PopupHeader enabled={enabled} record={record} />
-      <SiteLine tab={activeTab} host={host} runsHere={runsHere} enabled={enabled} />
+      <PopupHeader enabled={!paused} record={recording} />
+      <SiteLine tab={activeTab} host={host} runsHere={runsHere} enabled={!paused} />
       <Segmented
         aria-label="Show"
         value={view}
@@ -67,7 +67,7 @@ export function PopupPage({
           tab={activeTab}
           host={host}
           runsHere={runsHere}
-          enabled={enabled}
+          enabled={!paused}
           rules={rules}
           entries={entries}
           counts={counts}
@@ -81,7 +81,7 @@ export function PopupPage({
             entries={entries}
             counts={counts?.record ? counts.rules : undefined}
             split={false}
-            enabled={enabled}
+            enabled={!paused}
             windowId={windowId}
             title="All rules"
           />

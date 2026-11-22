@@ -3,9 +3,8 @@
 // doesn't answer; and grey while the rule is off. Clicking it always turns the rule itself on or
 // off, its group as it was. Its title says which.
 import type { ComponentProps } from 'react';
-import { editRule, ruleTitle } from '../index.ts';
+import { editRule, pausedStore, ruleTitle } from '../index.ts';
 import type { Rule } from '../index.ts';
-import { settingsStore } from '../../shared/api/index.ts';
 import { useStore } from '../../ui/use-store.ts';
 import { SignalSwitch } from '../../ui/kit/signal-switch.tsx';
 
@@ -22,16 +21,16 @@ export function RuleSwitch({
   // Save at once rather than after the editor's short pause: the popup can close at any moment.
   immediate?: boolean;
 }) {
-  const { enabled } = useStore(settingsStore);
+  const { paused } = useStore(pausedStore);
   return (
     <SignalSwitch
       checked={rule.enabled}
-      paused={!enabled || Boolean(groupOff)}
+      paused={paused || Boolean(groupOff)}
       aria-label={`Turn “${ruleTitle(rule)}” on or off`}
       title={
         !rule.enabled
           ? 'Off. Click to turn this rule on'
-          : !enabled
+          : paused
             ? 'On, but Ghostfetch is off. Click to turn this rule off'
             : groupOff
               ? `On, but ${groupOff} is off. Click to turn this rule off`

@@ -18,11 +18,11 @@ import {
   fromServer,
   keepServerResponse,
   normalizeRule,
+  pausedStore,
   responseFromEntry,
   ruleStore,
 } from '../../rules/index.ts';
 import type { Rule } from '../../rules/index.ts';
-import { settingsStore } from '../../shared/api/index.ts';
 import type { LogEntry } from '../../traffic/index.ts';
 import { watchRuleRequests } from '../../platform/index.ts';
 import { useStore } from '../../ui/use-store.ts';
@@ -43,7 +43,7 @@ import { TopBar } from './top-bar.tsx';
 const VIEW = 'ghostfetch.view';
 
 export function Editor({ inTab, windowId }: { inTab: boolean; windowId: number }) {
-  const { enabled } = useStore(settingsStore);
+  const { paused } = useStore(pausedStore);
   // Draws again when the rules change: whether the open rule is still there decides what a narrow
   // panel shows.
   useStore(ruleStore);
@@ -178,7 +178,7 @@ export function Editor({ inTab, windowId }: { inTab: boolean; windowId: number }
       className="h-screen flex-col overflow-hidden"
     >
       <TopBar log={log} inTab={inTab} windowId={windowId} onImport={chooseFile} />
-      {!enabled && (
+      {paused && (
         <Alert variant="paused" className="flex-none">
           Ghostfetch is off. Rules aren't applied until you turn it on from its toolbar
           icon.

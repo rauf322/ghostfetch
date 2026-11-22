@@ -55,99 +55,78 @@ that are signed. `npm run zip` packs the add-on into `web-ext-artifacts/`: a
 
 ## Files
 
-The code in `src/` was laid out in [Feature-Sliced Design](https://feature-sliced.design)'s
-layers, the way FSD 2.1 starts a project, with pages first: from the top, `app` → `pages` →
-`shared`, a file importing only from its own layer's folder or the layers below it. One is left:
-`app`, a folder for each part of the extension, which may import what's below it.
+The code in `src/` is cut by bounded context
+([ADR 0002](adr/0002-the-code-is-cut-by-bounded-context.md)), a folder each: Rules (`rules`) and
+Interception (`interception`), the core; Traffic (`traffic`), Sites (`sites`) and Agent access
+(`agent-access`), which support them; and the Body editor (`body-editor`), which is generic. Their
+words are in [`docs/glossary/`](glossary/), and how they relate in the
+[Glossary Map](../GLOSSARY-MAP.md). Beside them are `app`, a folder for each part of the extension
+that WXT builds, which only puts the rest together; the kernel, `kernel`, what Rules and
+Interception must agree on, so that the editor can't say what the page wouldn't do; and three
+folders that know nothing of rules, sites or requests: `lib` (small libraries of Ghostfetch's
+own), `platform` (what differs between the browsers, and opening the editor) and `ui` (the UI
+kit, the themes and the editor's layout).
 
-This layout is being changed, a stage at a time, to one cut by bounded context
-([ADR 0002](adr/0002-the-code-is-cut-by-bounded-context.md)): Rules, Interception, Traffic, Sites,
-Agent access and the Body editor, whose words are in [`docs/glossary/`](glossary/) and how they
-relate in the [Glossary Map](../GLOSSARY-MAP.md). What follows is where the code is now. The
-first to leave the layers is what knows nothing of rules, sites or requests: `lib`, `platform`,
-`ui` and `body-editor`, each a folder of `src/` of its own. What's left in the layers imports
-them, and they import nothing of the layers. Sites is the first context with a folder of its
-own, `sites`: where Ghostfetch runs, from the hosts it's built for to the content scripts the
-background registers for the sites you added. The extension's parts in `app`, `traffic`, the
-screens of `rules` (`rules/ui`) and `agent-access` may import it.
+A context has the layers it needs, Domain-Driven Design's: `domain` says what its model is, in
+plain TypeScript (no `chrome`, no `window`, no timers, no React); `infrastructure` talks to the
+browser (storage, messages, ports, tabs); `application` joins the two for a use, and has the
+stores the screens read; and `ui` has its React components and hooks, and the words its screens
+show. A file that does more than one of these is in the layer of its main job. Rules, Traffic and Agent access have
+layers; Sites and Interception are flat; and the Body editor has its plain DOM engine (`engine`,
+`vim`) beside its React components. Inside a context, a file may import any of its context's
+files, inward: `ui` the rest of the context, the rest its `domain`, and `domain` only itself.
 
-Traffic is the second, `traffic`: what the page asked for and what each rule did, from the log
-each tab's page keeps to the Traffic view. It's the first with layers inside: `domain` says what
-a request in a log is, and which of them the view lists; `application` has the editor's live copy
-of a log, a page's counts, and the screens' copy of Recording, whether requests are added to the
-logs at all, which only the popup changes; `infrastructure` the tab's own log, which the bridge
-starts in each page; and `ui` the Traffic view and the log's hooks. The messages its parts send
-each other are in `contract.ts`. It has two doors and no other way in: `traffic/index.ts`, with no
-React, which every part in `app` (the background and the page scripts too), `rules` (a rule is
-made from a request) and `agent-access` may import; and `traffic/ui/index.ts`, which only the
-extension's own pages in `app` and the screens of `rules` (`rules/ui`) may. Traffic's own `ui`
-takes what the first door offers from it too.
+From outside, a folder is entered only through its doors. Rules and Traffic have two:
+`index.ts`, with no React, which the background and the page scripts may import too, and
+`ui/index.ts`, their screens. Sites, Interception and the Body editor have `index.ts`, and Agent
+access `ui/index.ts`. A context's `contract.ts` has the types of what crosses to another part of
+the extension as a message, and its `index.ts` offers them. Rules' `ui` also has a public file for
+each widget other screens show (`rule-switch.tsx`, `group-switch.tsx`, `group-folds.ts`,
+`group-picker.tsx`, `new-rule-group.ts`, `rules-file.tsx`), so the popup, which shows a rule's and
+a group's switch, doesn't load the Rules view with them. Rules' own screens take New rule's draft
+and the few other things only they use by path: `rules/index.ts` doesn't offer them, as offering
+the draft would bring it into the popup (`rules/index.ts` says why). `lib`, `platform` and the
+kernel have one door, `index.ts`; `ui` has a public file per component or hook, so a screen that
+shows a button doesn't load the rest of the kit with it.
 
-Interception is the third, `interception`: what runs in the page's own world, where it wraps
-`fetch` and `XMLHttpRequest` and answers a request with the rule that matches it. Its one door,
-`interception/index.ts`, is for the interceptor alone: `app/interceptor`, the part WXT builds
-into `interceptor.js`, keeps only the entry, which decides whether it runs on the page and starts
-it. What Interception and the rules must agree on, so that the editor can't say what the page
-wouldn't do, is the kernel, `kernel`: what a rule's match and its answer are made of, which
-requests a rule matches, and which of its header rows the page gets. The kernel is used through
-its `index.ts`, and `rules` (its `ui` too), `agent-access`, every part in `app` and
-`interception` may import it.
+Who may import what is one table, in `oxlint.config.ts`, which `npm run lint` checks with
+eslint-plugin-boundaries. By what is imported, with "every part" for every folder of `app` but
+`styles`, and "the pages" for `popup`, `sidepanel` and `kit`:
 
-Rules is the fourth, `rules`: what Ghostfetch should answer, and which rule wins. Its `domain`
-says what a rule and a group are, what the order is and every operation on it, whether a rule is
-answering and what's wrong with one, and imports nothing but the kernel and `lib`; `application`
-has the screens' copy of the order, which saves it and redraws after each operation, and of
-whether Ghostfetch is paused, which only the popup changes, what's made from something else (a
-copy of a group or a rule, a rule made from a request or from what's typed in New rule), rules
-files, the server's responses a body's Diff compares with, and what the page is given of what's
-stored, which the bridge posts; `infrastructure` how the order is kept, the toolbar badge and the
-clipboard a rule's body editor pastes from; and `ui` the Rules view and the widgets other screens
-show. What the bridge sends the interceptor is in `contract.ts`. It has two doors, as Traffic has:
-`rules/index.ts`, with no React, which every part in `app` (the background and the page scripts
-too), `traffic/ui`, `agent-access` and, for its types, `interception` may import; and
-`rules/ui/index.ts`, the Rules view, for the editor. The widgets other screens show are a public
-file each in `rules/ui` instead, so the popup, which shows a rule's and a group's switch, doesn't
-load the Rules view with them. The extension's own pages in `app` and `traffic/ui` may import the
-second door and the widgets' files. Rules' own `ui` takes what the first door offers from it too,
-and what only the screens use (New rule's draft, the search, a copy of a rule, the requests New
-rule offers, the clipboard, rules files) by path: the door doesn't offer it, and offering New
-rule's draft would bring it into the popup (`rules/index.ts` says why).
+| Folder | Its doors | Who may import it |
+| --- | --- | --- |
+| `lib` | `index.ts` | every folder (the body editor's engine, any of its `.ts` files) |
+| `platform` | `index.ts` | `ui`, Sites, Rules and Traffic but for their `domain`, and the pages |
+| `ui` | every file | the `ui` of Rules, Traffic and Agent access, the body editor, and the pages |
+| `body-editor` | `index.ts` | the `ui` of Rules and Traffic, and the pages |
+| `kernel` | `index.ts` | Rules, Interception, Agent access but for its `domain`, and every part |
+| `sites` | `index.ts` | Traffic and Agent access but for their `domain`, and every part |
+| `interception` | `index.ts` | the interceptor (`app/interceptor`) alone |
+| `traffic` | `index.ts` | Rules and Agent access but for their `domain`, every part, and Interception its types |
+| | `ui/index.ts` | Rules' `ui`, and the pages |
+| `rules` | `index.ts` | Traffic's `ui`, Agent access but for its `domain`, every part, and Interception its types |
+| | `ui/index.ts` and the widgets' files | Traffic's `ui`, and the pages |
+| `agent-access` | `ui/index.ts` | the editor (`app/sidepanel`) alone |
+| `app/<part>` | none | none: a part imports no other part's files |
+| `app/styles` | every file | the pages, whose stylesheets it holds |
 
-Agent access is the fifth, `agent-access`: a coding agent working with the rules, through the
-editor ([agent-access.md](agent-access.md)). Its `domain` says what a pairing code is, and what a
-dev host is, whose pages' requests an agent may see: a list of its own, the same hosts today as
-Sites' built-in hosts and free to differ from them. It imports nothing but `lib`. `application`
-has what each of the agent's tools does, and what the tools say of a rule; `infrastructure` the
-connection to ghostfetch-mcp; and `ui` the **Agent** button, its panel, and the hook that runs
-Agent access while the editor is open, which gives the tools the kit's toast for the Undo of what
-the agent deletes. Its one door, `agent-access/ui/index.ts`, is for the editor alone
-(`app/sidepanel`).
-
-`lib` (small libraries of Ghostfetch's own), `platform` (what differs between the browsers, and
-opening the editor), the kernel, `interception`, `sites` and `body-editor` are used through their
-`index.ts`. `ui` has a public file per component or hook instead, as FSD advises, so a screen that
-shows a button doesn't load the rest of the kit with it. `lib`, `platform`, the kernel,
-`interception`, `sites`, and `rules`, `traffic` and `agent-access` outside their `ui` are plain
-TypeScript, with no React and no npm package. `lib` imports nothing else; `platform` and the
-kernel only `lib`; `sites` only `lib` and `platform`; `traffic` only `lib`, `platform` and
-`sites`; `rules` only `lib`, `platform`, the kernel and `traffic`, and its `domain` only `lib` and
-the kernel; `interception` only the kernel, `lib`, `traffic` and the types of `rules`; and
-`agent-access` only `lib`, the kernel, `rules`, `traffic` and `sites`, and its `domain` only
-`lib`. That is what keeps the background, which uses `rules`, `sites`, `traffic` and `lib`, and
-the page scripts, the bridge with `rules`, `traffic` and `lib` and the interceptor with
-`interception`, free of the screens' libraries. Besides npm packages, `ui` imports only `lib` and
-`platform`, `body-editor` only `lib` and `ui`, `traffic/ui` only `lib`, `platform`, `ui`,
-`body-editor`, `rules` and its widgets, `sites` and the rest of `traffic`, `rules/ui` only `lib`,
-`platform`, `ui`, `body-editor`, the kernel, `sites`, `traffic` by either of its doors and the
-rest of `rules`, and `agent-access/ui` only `lib`, `ui`, the kernel, `rules`, `traffic`, `sites`
-and the rest of `agent-access`. `npm run lint` checks all this with eslint-plugin-boundaries,
-whose policies are in `oxlint.config.ts`.
+The table keeps a few rules. The contexts import each other only along the Glossary Map's
+arrows: Rules and Traffic import each other, though only Traffic's `ui` imports Rules (an entry
+keeps a rule's name, not the rule); Traffic imports Sites; Interception only the kernel and
+Rules' and Traffic's types; Agent access Rules, Traffic and Sites; and Sites and the Body editor
+no context. A `domain` imports only its own files, the kernel and `lib` (Traffic's and Agent
+access's only `lib`). React, `ui` and npm packages are only for a `ui` layer (`ui` itself, or a
+context's `ui`), the body editor, whose door offers React components, and the pages; the rest is
+plain TypeScript. The background and the page scripts import only Rules, Traffic, Sites,
+the kernel and `lib`, by their doors, and WXT's helpers, and the interceptor Interception too,
+which keeps them free of the screens' libraries. The body editor's engine, which the Zen test
+serves straight from `src/`, imports only `.ts` files: its own and `lib`'s.
 
 In the popup's folder, `app/popup`, the files are grouped by what they're for: `ui/` holds its
 components, `model/` its state and what changes it, and `lib/` plain functions. The popup
 composes components of its own, one per part of the screen, so each file is about one thing.
-Beside `index.html`, `main.tsx` draws `ui/popup-page.tsx`: WXT would build an `index.ts` there
-as a page of its own.
+Beside `index.html`, `main.tsx` draws `ui/popup-page.tsx`: a part has one index file, the one WXT
+builds (beside an `index.html` it leaves an `index.ts` out), and `npm run lint` says so.
 
 ```
 src/app/                         the extension's parts, one folder each, which WXT builds (wxt.config.ts)
@@ -189,7 +168,10 @@ src/agent-access/                Agent access, a coding agent working with the r
   application/                   what each of the agent's tools does, with the editor's own code (agent-tools.ts), and what they say of a rule (rule-report.ts)
   infrastructure/                the connection to ghostfetch-mcp: pairing, Firefox's consent, trying again while it isn't there, one setting for every editor (agent-connection.ts)
   ui/                            the Agent button and its panel, and the hook that runs Agent access while the editor is open, giving the tools the kit's toast (use-agent-access.ts)
-src/body-editor/                 the body editor (plain DOM code, its find bar and vim keys) and its React component, and the body's Diff (CodeDiff) (index.ts)
+src/body-editor/                 the Body editor, editing, checking and comparing a body of text (index.ts); its words are in glossary/body-editor.md
+  code-editor.tsx                the body editor as a React component, and CodeView, the same colours for a body that's only read; code-diff.tsx, the body's Diff against the server's response (CodeDiff)
+  engine/                        the editor itself, plain DOM code: a textarea over the coloured text (code-editor.ts, highlight.ts), its find bar (find-bar.ts), and where Format leaves the cursor (keep-offset.ts)
+  vim/                           its vim keys (vim.ts): the keys read as commands, motions, words and text objects
 src/kernel/                      what Rules and Interception must agree on, so that the editor can't say what the page wouldn't do (index.ts)
   rule-parts.ts                  what a rule's match and its answer are made of: the methods, the ways of comparing a URL, the body modes, a header row, and the two halves themselves
   url-match.ts                   how a rule's URL pattern matches, which Try a URL asks too; request-match.ts, which requests a rule matches, which the Diff keeps the server's responses by and the agent's try_url tries
@@ -209,13 +191,13 @@ src/lib/                         small libraries, a file each (index.ts): JSON, 
                                  and the shape of the clipboard the body editor's vim keys read
 wxt.config.ts                    the manifest (permissions, content scripts, CSP, Firefox ID) and the build settings
 components.json                  settings for shadcn's CLI, for adding a kit component
-oxlint.config.ts                 the linter's settings (npm run lint), and the layers' rules for eslint-plugin-boundaries
+oxlint.config.ts                 the linter's settings (npm run lint), and the table of which folders of src/ may import which, for eslint-plugin-boundaries
 .oxfmtrc.json                    the formatter's settings (npm run format): single quotes, 90 columns
 public/fonts/                    Geist by Vercel and Commit Mono by Eigil Nikolajsen (SIL Open Font License, see Geist-OFL.txt and CommitMono-OFL.txt)
 public/icons/                    the Thorn Glass mark, generated by scripts/make-icons.mjs
 public/theme.js                  puts the theme you picked on each page before it first draws
 scripts/check-sources.mjs        rebuilds the sources zip in a clean folder and compares it with the build
-scripts/oxlint-rules.mjs         two lint rules of its own (npm run lint): no export *, and the folders of src/app/ are the extension's parts
+scripts/oxlint-rules.mjs         two lint rules of its own (npm run lint): no export *, and the folders of src/app/ are the extension's parts, with one index file each
 mcp/                             ghostfetch-mcp, the MCP server a coding agent runs for Agent access, with packages of its own (npm install --prefix mcp)
 test/json.mjs                    the body editor's JSON check against JSON.parse, the pieces it colours a long body in, after edits too, Format, and where it puts the cursor
 test/diff.mjs                    the body's Diff without a browser: the lines kept, removed and added (the fewest), and the parts of a changed line
@@ -286,7 +268,9 @@ The kit's components started as shadcn/ui's (MIT licence: `src/ui/kit/LICENSE-sh
 
 `npm run check` type-checks everything with TypeScript. `npm run lint` checks the code with
 [oxlint](https://oxc.rs) and fails on warnings too (`npm run lint:fix` fixes what it can),
-including that every import keeps to the layers (see [Files](#files)).
+including that every import keeps to the table of which folders may import which (see
+[Files](#files)), and that each folder of `src/app/` is one of the extension's parts, with one
+index file.
 `npm run format` checks that every file is formatted with oxfmt, and `npm run format:fix` formats
 them.
 

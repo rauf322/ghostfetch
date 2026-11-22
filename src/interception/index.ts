@@ -8,7 +8,7 @@
 // (docs/security-model.md), and wrap nothing until the interceptor calls what this offers. The
 // only way into this folder, and only the interceptor (src/app/interceptor/index.ts, the part WXT
 // builds) comes in by it. Plain TypeScript with no npm package and no React; of Ghostfetch's own
-// code it may import only the kernel, lib, traffic/index.ts and the types of rules/index.ts.
+// code it may import only the kernel, lib, and the types of rules/index.ts and traffic/index.ts.
 export { wrapFetch } from './fetch.ts';
 export { openChannel } from './page-channel.ts';
 export { wrapXhr } from './xhr.ts';

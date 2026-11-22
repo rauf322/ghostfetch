@@ -7,8 +7,8 @@
 // into this folder, the other being ui/index.ts, which has the Traffic view and the hooks;
 // Traffic's own ui/ takes what's offered here from here as well. This one is plain TypeScript with
 // no npm package and no React; of Ghostfetch's own code it may import only lib, platform and
-// sites. The background, the bridge and the interceptor import from here too, and keep only what
-// they use.
+// sites, and its domain/ only lib. The background, the bridge and the interceptor import from here
+// too, and keep only what they use.
 export type { EntryAction, EntryKind, LogEntry } from './domain/log-entry.ts';
 export { createTrafficLog } from './application/traffic-log.ts';
 export type {

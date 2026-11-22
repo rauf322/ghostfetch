@@ -1,72 +1,52 @@
-// The linter (oxlint, `npm run lint`). The imports between the layers of src/
-// (docs/development.md, "Files") are checked by eslint-plugin-boundaries, which oxlint loads
-// as a JS plugin, and the two checks that are about WXT and the public APIs' shape by the
-// rules in scripts/oxlint-rules.mjs.
+// The linter (oxlint, `npm run lint`). Which folders of src/ may import which (docs/development.md,
+// "Files") is the table below, which eslint-plugin-boundaries checks, loaded by oxlint as a JS
+// plugin; the two checks about WXT's parts and what a door offers are the rules in
+// scripts/oxlint-rules.mjs.
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'oxlint';
 
 const rootPath = fileURLToPath(new URL('.', import.meta.url));
 
-// The layers, from the top: app, all that is left of Feature-Sliced Design's, and under it what
-// has left the layers for the layout by bounded context (docs/adr/0002): the folders that know no
-// domain (lib, platform, ui and body-editor), the kernel (kernel: what Rules and Interception must
-// agree on), and the contexts with a folder of their own, Interception (interception), Rules
-// (rules, whose domain/ is a type of its own, rules-domain: it imports only lib and the kernel;
-// and so is its ui/, rules-ui: its React is all there), Sites (sites), Traffic (traffic, whose ui/
-// is a type of its own, traffic-ui, for the same reason) and Agent access (agent-access, whose
-// domain/ and ui/ are types of their own as the rules' are: agent-access-domain, which imports
-// only lib, and agent-access-ui). lib, platform, the kernel, interception, sites and the body
-// editor (body-editor/) are used through their index.ts; Traffic through its two,
-// traffic/index.ts and traffic/ui/index.ts; Rules through rules/index.ts and rules/ui/index.ts,
-// and the widgets other screens show, a public file each in rules/ui/; and Agent access through
-// agent-access/ui/index.ts, by the editor alone. ui has a public file per component or hook, so a
-// screen bundles only what it shows. The editor's engine/ and vim/ are plain TypeScript the Zen
-// test serves straight from src/: they import only .ts files by relative path, and no npm
-// package. The first descriptor a file matches is its type.
-const elements = [
-  {
-    type: 'editor-engine',
-    pattern: ['src/body-editor/engine', 'src/body-editor/vim'],
-    partialMatch: false,
-  },
-  { type: 'body-editor', pattern: 'src/body-editor', partialMatch: false },
-  { type: 'lib', pattern: 'src/lib', partialMatch: false },
-  { type: 'platform', pattern: 'src/platform', partialMatch: false },
-  { type: 'ui', pattern: 'src/ui', partialMatch: false },
-  { type: 'kernel', pattern: 'src/kernel', partialMatch: false },
-  { type: 'interception', pattern: 'src/interception', partialMatch: false },
-  { type: 'sites', pattern: 'src/sites', partialMatch: false },
-  { type: 'traffic-ui', pattern: 'src/traffic/ui', partialMatch: false },
-  { type: 'traffic', pattern: 'src/traffic', partialMatch: false },
-  { type: 'rules-ui', pattern: 'src/rules/ui', partialMatch: false },
-  { type: 'rules-domain', pattern: 'src/rules/domain', partialMatch: false },
-  { type: 'rules', pattern: 'src/rules', partialMatch: false },
-  { type: 'agent-access-ui', pattern: 'src/agent-access/ui', partialMatch: false },
-  {
-    type: 'agent-access-domain',
-    pattern: 'src/agent-access/domain',
-    partialMatch: false,
-  },
-  { type: 'agent-access', pattern: 'src/agent-access', partialMatch: false },
-  { type: 'app', pattern: 'src/app/*', capture: ['part'], partialMatch: false },
-];
-
-const type = (...types: string[]) => ({ element: { type: types } });
-const packages = { module: { origin: ['external', 'core'] } };
-// The folders that know no domain.
-const noDomain = ['lib', 'platform', 'ui', 'body-editor'];
-// What runs outside the extension's pages: no React, no UI, no npm package but WXT's helpers.
-const notUi = {
-  element: { type: 'app', captured: { part: ['background', 'interceptor', 'bridge'] } },
+// The kinds of file, a folder each (the body editor's engine two), the first a file is in being
+// its kind: what knows no domain (lib, platform, ui, the body editor and its engine), the kernel
+// (what Rules and Interception must agree on) and the contexts (GLOSSARY-MAP.md). Sites and
+// Interception are flat; Traffic, Rules and Agent access have a kind for their domain/, one for
+// their ui/, and one for the rest of them (application/, infrastructure/, contract.ts and the
+// door, index.ts). The folders of src/app/ come after the table.
+const KINDS: Record<string, string[]> = {
+  'editor-engine': ['src/body-editor/engine', 'src/body-editor/vim'],
+  'body-editor': ['src/body-editor'],
+  lib: ['src/lib'],
+  platform: ['src/platform'],
+  ui: ['src/ui'],
+  kernel: ['src/kernel'],
+  sites: ['src/sites'],
+  interception: ['src/interception'],
+  'traffic-domain': ['src/traffic/domain'],
+  'traffic-ui': ['src/traffic/ui'],
+  traffic: ['src/traffic'],
+  'rules-domain': ['src/rules/domain'],
+  'rules-ui': ['src/rules/ui'],
+  rules: ['src/rules'],
+  'agent-access-domain': ['src/agent-access/domain'],
+  'agent-access-ui': ['src/agent-access/ui'],
+  'agent-access': ['src/agent-access'],
 };
-// The part WXT builds of Interception: interceptor.js.
-const interceptor = { element: { type: 'app', captured: { part: ['interceptor'] } } };
-// The editor (sidepanel.html), where Agent access runs.
-const sidepanel = { element: { type: 'app', captured: { part: ['sidepanel'] } } };
-// The widgets of the rules' ui/ that other screens show, a public file each: a rule's and a
-// group's switch and the folds (the popup's too), the group picker (Traffic's Mock this response
-// too), the group a new rule starts in, and rules files.
-const rulesWidgets = [
+// The kinds that are one context with another kind: inside a context, a file reaches any file.
+const CONTEXT: Record<string, string> = {
+  'editor-engine': 'body-editor',
+  'traffic-domain': 'traffic',
+  'traffic-ui': 'traffic',
+  'rules-domain': 'rules',
+  'rules-ui': 'rules',
+  'agent-access-domain': 'agent-access',
+  'agent-access-ui': 'agent-access',
+};
+
+// The widgets of Rules' ui/ that other screens show, a public file each: a rule's and a group's
+// switch and the folds (the popup's too), the group picker (Traffic's Mock this response too), the
+// group a new rule starts in, and rules files.
+const RULES_WIDGETS = [
   'rule-switch.tsx',
   'group-switch.tsx',
   'group-folds.ts',
@@ -74,187 +54,242 @@ const rulesWidgets = [
   'new-rule-group.ts',
   'rules-file.tsx',
 ];
+// The doors: a kind's files that the rest of src/ may import, its own context any of them. ui has a
+// public file per component or hook, so a screen bundles only what it shows; Rules' ui/ has the
+// Rules view's door and the widgets' files, so the popup doesn't load the Rules view with its
+// switches. A kind with no door (a context's domain/, the rest of Agent access, the body editor's
+// engine) is reached only from inside its context.
+const DOORS: Record<string, string[] | 'every file'> = {
+  lib: ['index.ts'],
+  platform: ['index.ts'],
+  ui: 'every file',
+  'body-editor': ['index.ts'],
+  kernel: ['index.ts'],
+  sites: ['index.ts'],
+  interception: ['index.ts'],
+  traffic: ['index.ts'],
+  'traffic-ui': ['index.ts'],
+  rules: ['index.ts'],
+  'rules-ui': ['index.ts', ...RULES_WIDGETS],
+  'agent-access-ui': ['index.ts'],
+};
 
-// Processed in order; the last policy matching an import decides.
+// What a row may import that isn't a kind, named for the linter's messages.
+const LABEL = new Map<object, string>();
+const named = <T extends object>(label: string, selector: T) => {
+  LABEL.set(selector, label);
+  return selector;
+};
+// npm packages (and Node's own modules): any; any but React's (React, React DOM, Base UI); and
+// wxt's helpers alone.
+const NPM = named('npm packages', { module: { origin: ['external', 'core'] } });
+const NOT_REACT = named("npm packages but React's", {
+  module: { origin: ['external', 'core'], source: '!{react,react-dom,@base-ui/react}' },
+});
+const WXT = named("wxt's helpers", { module: { origin: 'external', source: 'wxt' } });
+// A kind's types alone; and any .ts file of a kind, past its doors.
+const types = (kind: string) => `types of ${kind}`;
+const anyTsFile = (kind: string) =>
+  named(`${folder(kind)}'s .ts files`, {
+    element: { type: kind },
+    file: { path: '**/*.ts' },
+  });
+
+// Who may import whom: each kind, and all it may import besides its own files. A kind of another
+// context is imported through its doors, one of its own context by any file. The rows keep four
+// rules: a context is entered only through its doors; a domain/ imports only its own, the kernel
+// and lib; React and ui are only for a ui/ layer (ui itself, and a context's ui/), the body
+// editor's two components and the pages of src/app/; and the contexts import each other only
+// along GLOSSARY-MAP.md's arrows. The parts of src/app/, after it, keep a fifth: a part imports
+// no other part's files.
+const MAY_IMPORT: Record<string, (string | object)[]> = {
+  // What knows no domain imports no context. lib imports nothing; platform, what differs between
+  // the browsers, lib; ui, the kit, the themes and the editor's layout, lib, platform and npm
+  // packages; the body editor, whose door offers React components (the editor, CodeView and the
+  // Diff), its engine, lib, ui and npm packages; and its engine (engine/, vim/), plain TypeScript
+  // the Zen test serves straight from src/, only .ts files: its own and lib's, any of them.
+  lib: [],
+  platform: ['lib'],
+  ui: ['lib', 'platform', NPM],
+  'body-editor': ['editor-engine', 'lib', 'ui', NPM],
+  'editor-engine': [anyTsFile('editor-engine'), anyTsFile('lib')],
+  // The kernel imports lib alone.
+  kernel: ['lib'],
+  // Sites and the Body editor import no context, and Interception, in the page, only the kernel
+  // and Rules' and Traffic's types. Traffic imports Sites, and only its ui/ imports Rules, which
+  // imports Traffic (a rule is made from an entry); the ui/ of both shows bodies with the Body
+  // editor; Agent access imports Rules, Traffic and Sites. A context's domain/ imports lib (Rules'
+  // the kernel too); outside its ui/, a context is plain TypeScript, with no npm package and no
+  // React, so what the background and the page scripts bundle of it is free of the screens'
+  // libraries.
+  sites: ['lib', 'platform'],
+  interception: ['kernel', 'lib', types('rules'), types('traffic')],
+  'traffic-domain': ['lib'],
+  traffic: ['traffic-domain', 'sites', 'lib', 'platform'],
+  'traffic-ui': [
+    'traffic',
+    'traffic-domain',
+    'rules',
+    'rules-ui',
+    'sites',
+    'body-editor',
+    'lib',
+    'platform',
+    'ui',
+    NPM,
+  ],
+  'rules-domain': ['kernel', 'lib'],
+  rules: ['rules-domain', 'traffic', 'kernel', 'lib', 'platform'],
+  'rules-ui': [
+    'rules',
+    'rules-domain',
+    'traffic',
+    'traffic-ui',
+    'body-editor',
+    'kernel',
+    'lib',
+    'platform',
+    'ui',
+    NPM,
+  ],
+  'agent-access-domain': ['lib'],
+  'agent-access': ['agent-access-domain', 'rules', 'traffic', 'sites', 'kernel', 'lib'],
+  'agent-access-ui': [
+    'agent-access',
+    'agent-access-domain',
+    'rules',
+    'traffic',
+    'sites',
+    'kernel',
+    'lib',
+    'ui',
+    NPM,
+  ],
+};
+
+// The parts of src/app/, a folder each, which WXT builds (wxt.config.ts; scripts/oxlint-rules.mjs
+// names them too). A part puts the rest together, and imports no other part's files. The
+// background and the two page scripts run outside the extension's pages: no React, no ui and no
+// npm package but wxt's helpers. Interception is the interceptor's alone, and Agent access the
+// editor's (sidepanel). The pages take every other context by its doors, what knows no domain, npm
+// packages, and the stylesheets in styles/.
+const PARTS = ['background', 'bridge', 'interceptor', 'popup', 'sidepanel', 'kit'];
+const part = (...names: string[]) => ({
+  element: { type: 'app', captured: { part: names } },
+});
+// A folder of src/app/ that isn't a part, as styles/ (the pages' stylesheets).
+const NOT_A_PART = named('app/ but its parts (styles/)', {
+  element: { type: 'app', captured: { part: `!{${PARTS.join(',')}}` } },
+});
+const SCRIPT = ['rules', 'traffic', 'sites', 'kernel', 'lib', WXT];
+const PAGE = [
+  'rules',
+  'rules-ui',
+  'traffic',
+  'traffic-ui',
+  'sites',
+  'body-editor',
+  'kernel',
+  'lib',
+  'platform',
+  'ui',
+  NOT_A_PART,
+  NPM,
+];
+const PART_MAY_IMPORT: Record<string, (string | object)[]> = {
+  background: SCRIPT,
+  bridge: SCRIPT,
+  interceptor: ['interception', ...SCRIPT],
+  popup: PAGE,
+  sidepanel: ['agent-access-ui', ...PAGE],
+  kit: PAGE,
+};
+// A folder of src/app/ that isn't a part has no code (styles/ has the stylesheets), and the parts'
+// rule doesn't bind it: it may import what a page may and any folder of src/app/, but React and
+// ui, which are for the pages.
+const NOT_A_PART_MAY_IMPORT = [
+  'rules',
+  'rules-ui',
+  'traffic',
+  'traffic-ui',
+  'sites',
+  'body-editor',
+  'kernel',
+  'lib',
+  'platform',
+  named('app/', { element: { type: 'app' } }),
+  NOT_REACT,
+];
+
+// The table as eslint-plugin-boundaries reads it. Each row is two policies, and as the last policy
+// that matches an import decides, a row's own decides for its files: one refusing everything, with
+// the row's message, then one allowing what the row gives.
+function folder(kind: string) {
+  const paths = KINDS[kind].map((path) => path.replace(/^src\//, ''));
+  if (paths.length === 1) return `${paths[0]}/`;
+  // Two folders in one (the engine's): body-editor/{engine,vim}/.
+  const parent = paths[0].slice(0, paths[0].lastIndexOf('/') + 1);
+  return `${parent}{${paths.map((path) => path.slice(parent.length)).join(',')}}/`;
+}
+const contextOf = (kind: string) => CONTEXT[kind] ?? kind;
+// What `item` names, for an import from a file of `from` (null: a folder of src/app/): the
+// plugin's selector, and the words for it.
+function target(from: string | null, item: string | object) {
+  if (typeof item !== 'string')
+    return { selector: { to: item }, label: LABEL.get(item)! };
+  const typesOnly = item.startsWith('types of ');
+  const kind = typesOnly ? item.slice('types of '.length) : item;
+  if (!KINDS[kind]) throw new Error(`oxlint.config.ts: no kind ${kind}`);
+  const doors =
+    from !== null && contextOf(from) === contextOf(kind) ? 'every file' : DOORS[kind];
+  if (!doors)
+    throw new Error(`oxlint.config.ts: ${kind} has no door for ${from ?? 'app'}`);
+  const element =
+    doors === 'every file' ? { type: kind } : { type: kind, fileInternalPath: doors };
+  let label = folder(kind);
+  if (doors !== 'every file')
+    label += doors.length === 1 ? doors[0] : `{${doors.join(',')}}`;
+  return typesOnly
+    ? {
+        selector: { to: { element }, dependency: { kind: 'type' } },
+        label: `the types of ${label}`,
+      }
+    : { selector: { to: { element } }, label };
+}
+function row(from: object, who: string, kind: string | null, items: (string | object)[]) {
+  const targets = items.map((item) => target(kind, item));
+  const labels = targets.map((each) => each.label);
+  const listed =
+    labels.length > 1
+      ? `${labels.slice(0, -1).join(', ')} and ${labels.at(-1)}`
+      : labels[0];
+  const refuse = {
+    from,
+    disallow: { to: [{ element: { type: '*' } }, NPM] },
+    message: listed
+      ? `${who} may import only ${listed} (oxlint.config.ts).`
+      : `${who} imports nothing: no other folder of src/ and no npm package (oxlint.config.ts).`,
+  };
+  if (!targets.length) return [refuse];
+  return [refuse, { from, allow: targets.map((each) => each.selector) }];
+}
+
+const elements = [
+  ...Object.entries(KINDS).map(([type, pattern]) => ({
+    type,
+    pattern,
+    partialMatch: false,
+  })),
+  { type: 'app', pattern: 'src/app/*', capture: ['part'], partialMatch: false },
+];
 const policies = [
-  // The layers: app imports anything.
-  { from: type('app'), allow: { to: [type('*'), packages] } },
-  // The folders that know no domain import nothing of the layers: ui only lib and platform, and
-  // the body editor only lib and ui, each with npm packages.
-  { from: type('ui'), allow: { to: [type('lib', 'platform'), packages] } },
-  { from: type('body-editor'), allow: { to: [type('lib', 'ui'), packages] } },
-  // Traffic's ui/, where its React is: the rules and their widgets, sites, the folders that know no
-  // domain and npm packages (and the rest of traffic, further down).
-  {
-    from: type('traffic-ui'),
-    allow: { to: [type('rules', 'rules-ui', 'sites', ...noDomain), packages] },
-  },
-  // The rules' ui/, where their React is: the kernel, sites, traffic by either of its doors, the
-  // folders that know no domain and npm packages (and the rest of the rules, further down).
-  {
-    from: type('rules-ui'),
-    allow: {
-      to: [
-        type('rules', 'kernel', 'sites', 'traffic', 'traffic-ui', ...noDomain),
-        packages,
-      ],
-    },
-  },
-  // Agent access's ui/, where its React is: the rules, traffic and sites by their doors, the
-  // kernel, lib, ui and npm packages (and the rest of Agent access, further down).
-  {
-    from: type('agent-access-ui'),
-    allow: { to: [type('rules', 'traffic', 'sites', 'kernel', 'lib', 'ui'), packages] },
-  },
-  // lib imports nothing else; platform and the kernel only lib; sites only lib and platform;
-  // traffic outside its ui/ only those two and sites; the rules outside their domain/ and ui/ only
-  // lib, platform, the kernel and traffic (a rule is made from an entry), and their domain/ only
-  // lib and the kernel; interception only the kernel, lib, traffic and the rules' types; and Agent
-  // access outside its domain/ and ui/ only lib, the kernel, the rules, traffic and sites, and its
-  // domain/ only lib: no React, no UI and no npm package, so what the background and the page
-  // scripts reach through any of them is free of all three.
-  {
-    from: type(
-      'lib',
-      'platform',
-      'kernel',
-      'interception',
-      'sites',
-      'traffic',
-      'rules',
-      'rules-domain',
-      'agent-access',
-      'agent-access-domain',
-    ),
-    disallow: { to: [type('*'), packages] },
-    message:
-      'lib, platform, the kernel, interception, sites, and the rules, traffic and Agent access outside their ui/ are plain TypeScript: no npm package, and no folder of src/ but the ones each may import (oxlint.config.ts).',
-  },
-  {
-    from: type(
-      'platform',
-      'kernel',
-      'interception',
-      'sites',
-      'traffic',
-      'rules',
-      'rules-domain',
-      'agent-access',
-      'agent-access-domain',
-    ),
-    allow: { to: type('lib') },
-  },
-  { from: type('sites', 'traffic', 'rules'), allow: { to: type('platform') } },
-  { from: type('traffic'), allow: { to: type('sites') } },
-  { from: type('rules', 'rules-domain'), allow: { to: type('kernel') } },
-  { from: type('rules'), allow: { to: type('traffic') } },
-  {
-    from: type('agent-access'),
-    allow: { to: type('rules', 'traffic', 'sites', 'kernel') },
-  },
-  { from: type('interception'), allow: { to: type('kernel', 'traffic') } },
-  {
-    from: type('interception'),
-    allow: { to: type('rules'), dependency: { kind: 'type' } },
-  },
-  // The background and the page scripts: the rules and traffic but for their ui/, the kernel,
-  // sites, lib and WXT's helpers; and the interceptor Interception, which nothing else imports.
-  { from: notUi, disallow: { to: [type('*'), packages] } },
-  {
-    from: notUi,
-    allow: {
-      to: [
-        type('rules', 'kernel', 'lib', 'sites', 'traffic'),
-        { module: { origin: 'external', source: 'wxt' } },
-      ],
-    },
-  },
-  {
-    to: type('interception'),
-    disallow: { from: type('*') },
-    message:
-      'Interception is imported by the interceptor alone (src/app/interceptor/index.ts).',
-  },
-  { from: interceptor, allow: { to: type('interception') } },
-  // Agent access is used through agent-access/ui/index.ts, by the editor alone; inside, its ui/
-  // reaches the rest of it, and the rest its domain/.
-  {
-    to: type('agent-access', 'agent-access-domain', 'agent-access-ui'),
-    disallow: { from: type('*') },
-    message:
-      'Agent access is used through agent-access/ui/index.ts, by the editor alone (src/app/sidepanel/).',
-  },
-  {
-    from: sidepanel,
-    allow: { to: { element: { type: 'agent-access-ui', fileInternalPath: 'index.ts' } } },
-  },
-  {
-    from: type('agent-access-ui'),
-    allow: { to: type('agent-access', 'agent-access-domain') },
-  },
-  { from: type('agent-access'), allow: { to: type('agent-access-domain') } },
-  // The public APIs. (A pattern like `!(index.ts|rule-switch.tsx)` would miss the files in a
-  // folder's own folders, as an extglob doesn't match across a slash; a brace pattern, as the
-  // rules' screens have below, negates the whole.)
-  {
-    to: [
-      {
-        element: {
-          type: [
-            'lib',
-            'platform',
-            'kernel',
-            'interception',
-            'rules',
-            'sites',
-            'traffic',
-            'traffic-ui',
-          ],
-          fileInternalPath: '!index.ts',
-        },
-      },
-      type('rules-domain'),
-    ],
-    disallow: { from: type('*') },
-    message:
-      'lib, platform, the kernel, interception, the rules, sites, traffic and traffic/ui are used through their index.ts.',
-  },
-  // The rules' screens: the Rules view through rules/ui/index.ts, and each widget other screens
-  // show through its own file, so the popup doesn't load the Rules view with its switches.
-  {
-    to: {
-      element: {
-        type: 'rules-ui',
-        fileInternalPath: `!{index.ts,${rulesWidgets.join(',')}}`,
-      },
-    },
-    disallow: { from: type('*') },
-    message: `The rules' screens are used through rules/ui/index.ts, and the widgets other screens show through their own files: ${rulesWidgets.join(', ')}.`,
-  },
-  // The rules' own files outside their domain/, their door among them, reach into it; and their
-  // ui/ reaches past rules/index.ts too, for what only the screens use (New rule's draft, the
-  // search, a copy of a rule, the requests New rule offers, the clipboard, rules files), which
-  // that door doesn't offer.
-  { from: type('rules'), allow: { to: type('rules-domain') } },
-  { from: type('rules-ui'), allow: { to: type('rules', 'rules-domain') } },
-  // Traffic's own ui/ may reach past traffic/index.ts, for what is the Traffic view's alone (its
-  // filters and time groups), which that door doesn't offer.
-  { from: type('traffic-ui'), allow: { to: type('traffic') } },
-  {
-    to: { element: { type: 'body-editor', fileInternalPath: '!index.ts' } },
-    disallow: { from: type('*') },
-    message: 'The body editor is used through body-editor/index.ts.',
-  },
-  // The body editor's engine: only the editor reaches it, and it imports its own .ts files and
-  // lib.
-  { to: type('editor-engine'), disallow: { from: type('*') } },
-  { from: type('body-editor', 'editor-engine'), allow: { to: type('editor-engine') } },
-  { from: type('editor-engine'), allow: { to: type('lib') } },
-  {
-    from: type('editor-engine'),
-    disallow: { to: { module: { origin: 'local' }, file: { path: '!**/*.ts' } } },
-    message: "The body editor's engine imports only .ts files.",
-  },
+  ...Object.entries(MAY_IMPORT).flatMap(([kind, items]) =>
+    row({ element: { type: kind } }, folder(kind), kind, items),
+  ),
+  ...row(NOT_A_PART, "A folder of app/ that isn't a part", null, NOT_A_PART_MAY_IMPORT),
+  ...Object.entries(PART_MAY_IMPORT).flatMap(([name, items]) =>
+    row(part(name), `app/${name}/`, null, items),
+  ),
 ];
 
 export default defineConfig({
@@ -304,7 +339,7 @@ export default defineConfig({
       'error',
       { checkAllOrigins: true, checkUnknownLocals: true, default: 'disallow', policies },
     ],
-    // A file of src/ outside the layers; an import of a file that isn't there.
+    // A file of src/ in no kind of the table; an import of a file that isn't there.
     'boundaries/no-unknown-files': 'error',
     'boundaries/no-unknown-dependencies': 'error',
     'ghostfetch/no-export-all': 'error',

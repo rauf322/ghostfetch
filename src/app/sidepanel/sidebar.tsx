@@ -5,9 +5,9 @@
 // dragged, or hidden (ui/sidebar.tsx); in a narrow side panel it's the Rules view's own
 // screen, under the top bar, which then has the name and the two views. A rule's dot turns it on
 // or off; Ghostfetch's own switch and recording's are in the toolbar popup. The footer's Agent
-// opens Agent access over it (pages/agent).
+// opens Agent access over it (agent-access/).
 import { useEffect, useRef, useState } from 'react';
-import { AgentButton, AgentPanel } from '../../pages/agent/index.ts';
+import { AgentButton, AgentPanel } from '../../agent-access/ui/index.ts';
 import { RuleList } from '../../rules/ui/index.ts';
 import { ruleStore } from '../../rules/index.ts';
 import type { TrafficLog } from '../../traffic/index.ts';

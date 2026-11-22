@@ -3,7 +3,7 @@ import { CSPProvider } from '@base-ui/react/csp-provider';
 import { StrictMode } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
-import { PopupPage } from '../../pages/popup/index.ts';
+import { PopupPage } from './ui/popup-page.tsx';
 import { initRules } from '../../rules/index.ts';
 import { initSettings } from '../../shared/api/index.ts';
 import { initSites } from '../../sites/index.ts';

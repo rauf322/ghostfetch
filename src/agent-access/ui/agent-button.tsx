@@ -3,11 +3,11 @@
 // waits for one or its code was turned down. Its name shows where the footer has room for it (the
 // footer is a container): beside ⋯, Import and Export, the sidebar at its default width hasn't, and
 // there it's an icon, as square as ⋯.
-import { useStore } from '../../../ui/use-store.ts';
-import { Button } from '../../../ui/kit/button.tsx';
-import { Icon } from '../../../ui/kit/icon.tsx';
-import { SignalDot } from '../../../ui/kit/signal-dot.tsx';
-import { agentStore } from '../model/agent-connection.ts';
+import { useStore } from '../../ui/use-store.ts';
+import { Button } from '../../ui/kit/button.tsx';
+import { Icon } from '../../ui/kit/icon.tsx';
+import { SignalDot } from '../../ui/kit/signal-dot.tsx';
+import { agentStore } from '../infrastructure/agent-connection.ts';
 
 export function AgentButton({ open, onToggle }: { open: boolean; onToggle: () => void }) {
   const { status } = useStore(agentStore);

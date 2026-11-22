@@ -7,21 +7,23 @@ import { defineConfig } from 'oxlint';
 
 const rootPath = fileURLToPath(new URL('.', import.meta.url));
 
-// The layers, from the top: app, pages, shared (Feature-Sliced Design's "pages first"), and
-// under them what has left the layers for the layout by bounded context (docs/adr/0002): the
-// folders that know no domain (lib, platform, ui and body-editor), the kernel (kernel: what Rules
-// and Interception must agree on), and the contexts with a folder of their own, Interception
+// The layers, from the top: app and shared (what is left of Feature-Sliced Design's), and under
+// them what has left the layers for the layout by bounded context (docs/adr/0002): the folders
+// that know no domain (lib, platform, ui and body-editor), the kernel (kernel: what Rules and
+// Interception must agree on), and the contexts with a folder of their own, Interception
 // (interception), Rules (rules, whose domain/ is a type of its own, rules-domain: it imports only
-// lib and the kernel; and so is its ui/, rules-ui: its React is all there), Sites (sites) and
-// Traffic (traffic, whose ui/ is a type of its own, traffic-ui, for the same reason). A page is
-// used through its index.ts. shared has segments instead of slices, and one is left: api. api is
-// used through its index.ts, as lib, platform, the kernel, interception, sites and the body
-// editor (body-editor/) are; Traffic through its two, traffic/index.ts and traffic/ui/index.ts;
-// and Rules through rules/index.ts and rules/ui/index.ts, and the widgets other screens show, a
-// public file each in rules/ui/. ui has a public file per component or hook, so a screen bundles
-// only what it shows. The editor's engine/ and vim/ are plain TypeScript the Zen test serves
-// straight from src/: they import only .ts files by relative path, and no npm package. The first
-// descriptor a file matches is its type.
+// lib and the kernel; and so is its ui/, rules-ui: its React is all there), Sites (sites), Traffic
+// (traffic, whose ui/ is a type of its own, traffic-ui, for the same reason) and Agent access
+// (agent-access, whose domain/ and ui/ are types of their own as the rules' are:
+// agent-access-domain, which imports only lib, and agent-access-ui). shared has segments instead
+// of slices, and one is left: api. api is used through its index.ts, as lib, platform, the
+// kernel, interception, sites and the body editor (body-editor/) are; Traffic through its two,
+// traffic/index.ts and traffic/ui/index.ts; Rules through rules/index.ts and rules/ui/index.ts,
+// and the widgets other screens show, a public file each in rules/ui/; and Agent access through
+// agent-access/ui/index.ts, by the editor alone. ui has a public file per component or hook, so a
+// screen bundles only what it shows. The editor's engine/ and vim/ are plain TypeScript the Zen
+// test serves straight from src/: they import only .ts files by relative path, and no npm
+// package. The first descriptor a file matches is its type.
 const elements = [
   {
     type: 'editor-engine',
@@ -40,8 +42,14 @@ const elements = [
   { type: 'rules-ui', pattern: 'src/rules/ui', partialMatch: false },
   { type: 'rules-domain', pattern: 'src/rules/domain', partialMatch: false },
   { type: 'rules', pattern: 'src/rules', partialMatch: false },
+  { type: 'agent-access-ui', pattern: 'src/agent-access/ui', partialMatch: false },
+  {
+    type: 'agent-access-domain',
+    pattern: 'src/agent-access/domain',
+    partialMatch: false,
+  },
+  { type: 'agent-access', pattern: 'src/agent-access', partialMatch: false },
   { type: 'shared', pattern: 'src/shared/*', capture: ['segment'], partialMatch: false },
-  { type: 'pages', pattern: 'src/pages/*', capture: ['slice'], partialMatch: false },
   { type: 'app', pattern: 'src/app/*', capture: ['part'], partialMatch: false },
 ];
 
@@ -49,9 +57,6 @@ const type = (...types: string[]) => ({ element: { type: types } });
 const segment = (...segments: string[]) => ({
   element: { type: 'shared', captured: { segment: segments } },
 });
-const samePage = {
-  element: { type: 'pages', captured: { slice: '{{ from.element.captured.slice }}' } },
-};
 const packages = { module: { origin: ['external', 'core'] } };
 // The folders that know no domain.
 const noDomain = ['lib', 'platform', 'ui', 'body-editor'];
@@ -61,6 +66,8 @@ const notUi = {
 };
 // The part WXT builds of Interception: interceptor.js.
 const interceptor = { element: { type: 'app', captured: { part: ['interceptor'] } } };
+// The editor (sidepanel.html), where Agent access runs.
+const sidepanel = { element: { type: 'app', captured: { part: ['sidepanel'] } } };
 // The widgets of the rules' ui/ that other screens show, a public file each: a rule's and a
 // group's switch and the folds (the popup's too), the group picker (Traffic's Mock this response
 // too), the group a new rule starts in, and rules files.
@@ -75,29 +82,9 @@ const rulesWidgets = [
 
 // Processed in order; the last policy matching an import decides.
 const policies = [
-  // The layers: app imports anything; a page its own folder, shared, the kernel, the rules and
-  // traffic by either of their doors (and the rules' widgets), sites and the folders that know no
-  // domain, never another page; shared only shared, the kernel and those folders.
+  // The layers: app imports anything; shared only shared, the kernel and the folders that know no
+  // domain.
   { from: type('app'), allow: { to: [type('*'), packages] } },
-  {
-    from: type('pages'),
-    allow: {
-      to: [
-        samePage,
-        type(
-          'shared',
-          'kernel',
-          'rules',
-          'rules-ui',
-          'sites',
-          'traffic',
-          'traffic-ui',
-          ...noDomain,
-        ),
-        packages,
-      ],
-    },
-  },
   {
     from: type('shared'),
     allow: { to: [type('shared', 'kernel', ...noDomain), packages] },
@@ -128,12 +115,26 @@ const policies = [
       ],
     },
   },
+  // Agent access's ui/, where its React is: the rules, traffic and sites by their doors, the
+  // kernel, shared/api (the two switches), lib, ui and npm packages (and the rest of Agent access,
+  // further down).
+  {
+    from: type('agent-access-ui'),
+    allow: {
+      to: [
+        type('rules', 'traffic', 'sites', 'kernel', 'lib', 'ui'),
+        segment('api'),
+        packages,
+      ],
+    },
+  },
   // lib imports nothing else; platform and the kernel only lib; sites only lib and platform;
   // traffic outside its ui/ only those two and sites; shared/api only lib; the rules outside their
   // domain/ and ui/ only lib, platform, the kernel and traffic (a rule is made from an entry), and
-  // their domain/ only lib and the kernel; and interception only the kernel, lib, traffic and the
-  // rules' types: no React, no UI and no npm package, so what the background and the page scripts
-  // reach through any of them is free of all three.
+  // their domain/ only lib and the kernel; interception only the kernel, lib, traffic and the
+  // rules' types; and Agent access outside its domain/ and ui/ only lib, the kernel, the rules,
+  // traffic, sites and shared/api, and its domain/ only lib: no React, no UI and no npm package,
+  // so what the background and the page scripts reach through any of them is free of all three.
   {
     from: [
       type(
@@ -145,12 +146,14 @@ const policies = [
         'traffic',
         'rules',
         'rules-domain',
+        'agent-access',
+        'agent-access-domain',
       ),
       segment('api'),
     ],
     disallow: { to: [type('*'), packages] },
     message:
-      'lib, platform, the kernel, interception, sites, shared/api, and the rules and traffic outside their ui/ are plain TypeScript: no npm package, and no folder of src/ but the ones each may import (oxlint.config.ts).',
+      'lib, platform, the kernel, interception, sites, shared/api, and the rules, traffic and Agent access outside their ui/ are plain TypeScript: no npm package, and no folder of src/ but the ones each may import (oxlint.config.ts).',
   },
   {
     from: [
@@ -162,6 +165,8 @@ const policies = [
         'traffic',
         'rules',
         'rules-domain',
+        'agent-access',
+        'agent-access-domain',
       ),
       segment('api'),
     ],
@@ -171,6 +176,10 @@ const policies = [
   { from: type('traffic'), allow: { to: type('sites') } },
   { from: type('rules', 'rules-domain'), allow: { to: type('kernel') } },
   { from: type('rules'), allow: { to: type('traffic') } },
+  {
+    from: type('agent-access'),
+    allow: { to: [type('rules', 'traffic', 'sites', 'kernel'), segment('api')] },
+  },
   { from: type('interception'), allow: { to: type('kernel', 'traffic') } },
   {
     from: type('interception'),
@@ -195,13 +204,26 @@ const policies = [
       'Interception is imported by the interceptor alone (src/app/interceptor/index.ts).',
   },
   { from: interceptor, allow: { to: type('interception') } },
-  // The public APIs. (A pattern like `!(index.ts|index.tsx)` would miss the files in a page's
-  // folders, as an extglob doesn't match across a slash; `!index.{ts,tsx}` negates the whole.)
+  // Agent access is used through agent-access/ui/index.ts, by the editor alone; inside, its ui/
+  // reaches the rest of it, and the rest its domain/.
   {
-    to: { element: { type: 'pages', fileInternalPath: '!index.{ts,tsx}' } },
+    to: type('agent-access', 'agent-access-domain', 'agent-access-ui'),
     disallow: { from: type('*') },
-    message: 'A page is used through its index.ts.',
+    message:
+      'Agent access is used through agent-access/ui/index.ts, by the editor alone (src/app/sidepanel/).',
   },
+  {
+    from: sidepanel,
+    allow: { to: { element: { type: 'agent-access-ui', fileInternalPath: 'index.ts' } } },
+  },
+  {
+    from: type('agent-access-ui'),
+    allow: { to: type('agent-access', 'agent-access-domain') },
+  },
+  { from: type('agent-access'), allow: { to: type('agent-access-domain') } },
+  // The public APIs. (A pattern like `!(index.ts|rule-switch.tsx)` would miss the files in a
+  // folder's own folders, as an extglob doesn't match across a slash; a brace pattern, as the
+  // rules' screens have below, negates the whole.)
   {
     to: [
       {

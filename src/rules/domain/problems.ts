@@ -1,6 +1,6 @@
 // What's wrong with a rule, as facts: a URL regex that doesn't compile, and the first mistake in a
 // JSON body. The rule editor marks them and says them in its words (rules/ui), the agent's
-// tools in theirs (pages/agent), and both ask here, so neither can call a rule sound that the
+// tools in theirs (agent-access/), and both ask here, so neither can call a rule sound that the
 // other calls broken. (A header row the page won't get is headerProblem, kernel/header-check.ts.)
 import { checkJson } from '../../lib/index.ts';
 import type { Rule } from './types.ts';

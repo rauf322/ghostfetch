@@ -1,9 +1,9 @@
 // What the agent's tools say about a rule: a line for list_rules, and what's wrong with it (as the
 // rule editor would point it out: both ask src/rules/ and the kernel), so an agent can put right
 // what it saved.
-import { headerProblem } from '../../../kernel/index.ts';
-import { BODY_MODES, bodyProblem, regexError, ruleTitle } from '../../../rules/index.ts';
-import type { Group, Rule } from '../../../rules/index.ts';
+import { headerProblem } from '../../kernel/index.ts';
+import { BODY_MODES, bodyProblem, regexError, ruleTitle } from '../../rules/index.ts';
+import type { Group, Rule } from '../../rules/index.ts';
 
 // A rule in list_rules: where it's tried in the order, its group, whether it's on and whether it
 // answers (it's on, its group is too, and Ghostfetch isn't paused), what it matches, what it

@@ -1,12 +1,14 @@
 // End-to-end test of Agent access (docs/agent-access.md), in Chromium: ghostfetch-mcp started as an
 // agent starts it, with a real MCP client calling its tools, and Ghostfetch's editor paired with it
-// through its own panel, doing what each tool asks on a real page of the test server.
+// through its own panel, doing what each tool asks on a real page of the test server. First, with
+// no browser, which hosts are dev hosts, whose pages' requests the agent may see (isDevHost).
 //
 //   npm run test:agent      builds, then runs this (`npm install --prefix mcp` first, once)
 import { createRequire } from 'node:module';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { isDevHost } from '../src/agent-access/domain/dev-host.ts';
 import {
   AGENT_READY,
   CHROME_BUILD,
@@ -28,6 +30,37 @@ if (!AGENT_READY) {
   console.error('ghostfetch-mcp has no packages yet: run npm install --prefix mcp');
   process.exit(1);
 }
+
+// Before anything starts: the hosts whose pages' requests the agent may see, and some that only
+// look like them.
+await check(
+  'a dev host is localhost, a name under .localhost, 127.0.0.1 or a local. name, and not a lookalike, another site or an IPv6 address',
+  async () => {
+    const hosts = [
+      'localhost',
+      'app.localhost',
+      '127.0.0.1',
+      'local.myapp.com',
+      'localhost.example.com',
+      'local-app.test',
+      'example.com',
+      '[::1]',
+    ];
+    expect(
+      hosts.map((host) => [host, isDevHost(host)]),
+      [
+        ['localhost', true],
+        ['app.localhost', true],
+        ['127.0.0.1', true],
+        ['local.myapp.com', true],
+        ['localhost.example.com', false],
+        ['local-app.test', false],
+        ['example.com', false],
+        ['[::1]', false],
+      ],
+    );
+  },
+);
 
 // ghostfetch-mcp on a port nothing listens on, with a token file of the test's own.
 const PORT = await freePort();

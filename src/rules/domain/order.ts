@@ -111,7 +111,7 @@ export function placeOf(order: Entry[], id: string): Place | null {
 
 // The place for a rule to be tried `position`th (0 is first), in a group or none: in a group, as
 // near to that as the group's block allows; ungrouped, before the top-level entry it falls in, so
-// never inside a group. What the agent's position means (pages/agent).
+// never inside a group. What the agent's position means (agent-access/).
 export function placeAt(order: Entry[], position: number, group = ''): Place {
   const block = group ? blockOf(order, group) : undefined;
   let before = 0;

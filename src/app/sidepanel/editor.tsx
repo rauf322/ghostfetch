@@ -6,9 +6,9 @@
 // Traffic, one made by New rule or from a captured response, the first of an import, and one the
 // popup asks for. A rule it makes goes into the group New rule and Mock this response offer, at its
 // top: the one the last rule made went into, or the group whose + was clicked. While Agent access
-// is on, it does what a coding agent's tools ask (pages/agent).
+// is on, it does what a coding agent's tools ask (agent-access/).
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useAgentAccess } from '../../pages/agent/index.ts';
+import { useAgentAccess } from '../../agent-access/ui/index.ts';
 import { RulesPage } from '../../rules/ui/index.ts';
 import { TrafficPage, useTrafficLog } from '../../traffic/ui/index.ts';
 import {

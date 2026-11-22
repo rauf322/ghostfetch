@@ -55,12 +55,11 @@ that are signed. `npm run zip` packs the add-on into `web-ext-artifacts/`: a
 
 ## Files
 
-The code in `src/` is laid out in [Feature-Sliced Design](https://feature-sliced.design)'s
+The code in `src/` was laid out in [Feature-Sliced Design](https://feature-sliced.design)'s
 layers, the way FSD 2.1 starts a project, with pages first: from the top, `app` → `pages` →
-`shared`, and a file only imports from its own layer's folder or the layers below it. A page
-keeps what only it uses, and anything that more than one part of the extension needs is in
-`shared`, so the pages can't tangle with each other. A page is used from outside only through
-its `index.ts`.
+`shared`, a file importing only from its own layer's folder or the layers below it. Two are left:
+`app`, a folder for each part of the extension, which may import what's below it, and `shared`,
+for what more than one part of the extension needs.
 
 This layout is being changed, a stage at a time, to one cut by bounded context
 ([ADR 0002](adr/0002-the-code-is-cut-by-bounded-context.md)): Rules, Interception, Traffic, Sites,
@@ -70,8 +69,8 @@ first to leave the layers is what knows nothing of rules, sites or requests: `li
 `ui` and `body-editor`, each a folder of `src/` of its own. What's left in the layers imports
 them, and they import nothing of the layers. Sites is the first context with a folder of its
 own, `sites`: where Ghostfetch runs, from the hosts it's built for to the content scripts the
-background registers for the sites you added. The pages, the extension's parts in `app`,
-`traffic` and the screens of `rules` (`rules/ui`) may import it; `shared/api` may not.
+background registers for the sites you added. The extension's parts in `app`, `traffic`, the
+screens of `rules` (`rules/ui`) and `agent-access` may import it; `shared/api` may not.
 
 Traffic is the second, `traffic`: what the page asked for and what each rule did, from the log
 each tab's page keeps to the Traffic view. It's the first with layers inside: `domain` says what
@@ -79,9 +78,9 @@ a request in a log is, and which of them the view lists; `application` has the e
 of a log and a page's counts; `infrastructure` the tab's own log, which the bridge starts in each
 page; and `ui` the Traffic view and the log's hooks. The messages its parts send each other are
 in `contract.ts`. It has two doors and no other way in: `traffic/index.ts`, with no React, which
-the pages, every part in `app` (the background and the page scripts too) and `rules` (a rule is
-made from a request) may import; and `traffic/ui/index.ts`, which only the pages, the extension's
-own pages in `app` and the screens of `rules` (`rules/ui`) may. Traffic's own `ui` takes what the
+every part in `app` (the background and the page scripts too), `rules` (a rule is made from a
+request) and `agent-access` may import; and `traffic/ui/index.ts`, which only the extension's own
+pages in `app` and the screens of `rules` (`rules/ui`) may. Traffic's own `ui` takes what the
 first door offers from it too.
 
 Interception is the third, `interception`: what runs in the page's own world, where it wraps
@@ -91,8 +90,8 @@ into `interceptor.js`, keeps only the entry, which decides whether it runs on th
 it. What Interception and the rules must agree on, so that the editor can't say what the page
 wouldn't do, is the kernel, `kernel`: what a rule's match and its answer are made of, which
 requests a rule matches, and which of its header rows the page gets. The kernel is used through
-its `index.ts`, and `rules` (its `ui` too), the pages, every part in `app` and `interception` may
-import it.
+its `index.ts`, and `rules` (its `ui` too), `agent-access`, every part in `app` and
+`interception` may import it.
 
 Rules is the fourth, `rules`: what Ghostfetch should answer, and which rule wins. Its `domain`
 says what a rule and a group are, what the order is and every operation on it, whether a rule is
@@ -103,16 +102,26 @@ in New rule), rules files, the server's responses a body's Diff compares with, a
 is given of what's stored, which the bridge posts; `infrastructure` how the order is kept, the
 toolbar badge and the clipboard a rule's body editor pastes from; and `ui` the Rules view and the
 widgets other screens show. What the bridge sends the interceptor is in `contract.ts`. It has two
-doors, as Traffic has: `rules/index.ts`, with no React, which the pages, every part in `app` (the
-background and the page scripts too), `traffic/ui` and, for its types, `interception` may import,
-and `shared/api` may not; and `rules/ui/index.ts`, the Rules view, for the editor. The widgets
-other screens show are a public file each in `rules/ui` instead, so the popup, which shows a
-rule's and a group's switch, doesn't load the Rules view with them. The pages, the extension's
-own pages in `app` and `traffic/ui` may import the second door and the widgets' files. Rules' own
+doors, as Traffic has: `rules/index.ts`, with no React, which every part in `app` (the background
+and the page scripts too), `traffic/ui`, `agent-access` and, for its types, `interception` may
+import, and `shared/api` may not; and `rules/ui/index.ts`, the Rules view, for the editor. The
+widgets other screens show are a public file each in `rules/ui` instead, so the popup, which
+shows a rule's and a group's switch, doesn't load the Rules view with them. The extension's own
+pages in `app` and `traffic/ui` may import the second door and the widgets' files. Rules' own
 `ui` takes what the first door offers from it too, and what only the screens use (New rule's
 draft, the search, a copy of a rule, the requests New rule offers, the clipboard, rules files) by
 path: the door doesn't offer it, and offering New rule's draft would bring it into the popup
 (`rules/index.ts` says why).
+
+Agent access is the fifth, `agent-access`: a coding agent working with the rules, through the
+editor ([agent-access.md](agent-access.md)). Its `domain` says what a pairing code is, and what a
+dev host is, whose pages' requests an agent may see: a list of its own, the same hosts today as
+Sites' built-in hosts and free to differ from them. It imports nothing but `lib`. `application`
+has what each of the agent's tools does, and what the tools say of a rule; `infrastructure` the
+connection to ghostfetch-mcp; and `ui` the **Agent** button, its panel, and the hook that runs
+Agent access while the editor is open, which gives the tools the kit's toast for the Undo of what
+the agent deletes. Its one door, `agent-access/ui/index.ts`, is for the editor alone
+(`app/sidepanel`).
 
 `shared` has no slices, only segments, one for each kind of code, and one is left: `api`, for
 Ghostfetch's two switches, on or off and recording. `api` is used through its `index.ts`, and so
@@ -120,36 +129,38 @@ are `lib` (small libraries of Ghostfetch's own), `platform` (what differs betwee
 and opening the editor), the kernel, `interception`, `sites` and `body-editor`. `ui` has a public
 file per component or hook instead, as FSD advises, so a screen that shows a button doesn't load
 the rest of the kit with it. `lib`, `platform`, the kernel, `interception`, `sites`, `shared/api`,
-and `rules` and `traffic` outside their `ui` are plain TypeScript, with no React and no npm
-package. `lib` imports nothing else; `platform` and the kernel only `lib`; `sites` only `lib` and
-`platform`; `traffic` only `lib`, `platform` and `sites`; `rules` only `lib`, `platform`, the
-kernel and `traffic`, and its `domain` only `lib` and the kernel; `interception` only the kernel,
-`lib`, `traffic` and the types of `rules`; and `shared/api` only `lib`. That is what keeps the
-background, which uses `rules`, `sites`, `traffic` and `lib`, and the page scripts, the bridge
-with `rules`, `traffic` and `lib` and the interceptor with `interception`, free of the screens'
-libraries. Besides npm packages, `ui` imports only `lib` and `platform`, `body-editor` only `lib`
-and `ui`, `traffic/ui` only `lib`, `platform`, `ui`, `body-editor`, `rules` and its widgets,
-`sites`, `shared/api` and the rest of `traffic`, and `rules/ui` only `lib`, `platform`, `ui`,
-`body-editor`, the kernel, `sites`, `traffic` by either of its doors, `shared/api` and the rest
-of `rules`. `npm run lint` checks all this with eslint-plugin-boundaries, whose policies are in
+and `rules`, `traffic` and `agent-access` outside their `ui` are plain TypeScript, with no React
+and no npm package. `lib` imports nothing else; `platform` and the kernel only `lib`; `sites`
+only `lib` and `platform`; `traffic` only `lib`, `platform` and `sites`; `rules` only `lib`,
+`platform`, the kernel and `traffic`, and its `domain` only `lib` and the kernel; `interception`
+only the kernel, `lib`, `traffic` and the types of `rules`; `agent-access` only `lib`, the
+kernel, `rules`, `traffic`, `sites` and `shared/api`, and its `domain` only `lib`; and
+`shared/api` only `lib`. That is what keeps the background, which uses `rules`, `sites`,
+`traffic` and `lib`, and the page scripts, the bridge with `rules`, `traffic` and `lib` and the
+interceptor with `interception`, free of the screens' libraries. Besides npm packages, `ui`
+imports only `lib` and `platform`, `body-editor` only `lib` and `ui`, `traffic/ui` only `lib`,
+`platform`, `ui`, `body-editor`, `rules` and its widgets, `sites`, `shared/api` and the rest of
+`traffic`, `rules/ui` only `lib`, `platform`, `ui`, `body-editor`, the kernel, `sites`, `traffic`
+by either of its doors, `shared/api` and the rest of `rules`, and `agent-access/ui` only `lib`,
+`ui`, the kernel, `rules`, `traffic`, `sites`, `shared/api` and the rest of `agent-access`.
+`npm run lint` checks all this with eslint-plugin-boundaries, whose policies are in
 `oxlint.config.ts`.
 
-Inside a page the files are grouped by what they're for: `ui/` holds its components, `model/` its
-state and what changes it, and `lib/` plain functions. A page composes components of its own,
-one per part of the screen, so each file is about one thing.
+In the popup's folder, `app/popup`, the files are grouped by what they're for: `ui/` holds its
+components, `model/` its state and what changes it, and `lib/` plain functions. The popup
+composes components of its own, one per part of the screen, so each file is about one thing.
+Beside `index.html`, `main.tsx` draws `ui/popup-page.tsx`: WXT would build an `index.ts` there
+as a page of its own.
 
 ```
 src/app/                         the extension's parts, one folder each, which WXT builds (wxt.config.ts)
   background/                    service worker (Chrome) or event page (Firefox): content scripts for added sites, badge
   interceptor/                   page world: the entry WXT builds, which decides whether to run on the page and starts Interception (src/interception/)
   bridge/                        isolated world: reads storage and passes in what Rules makes of it (src/rules/application/page-state.ts), and starts the tab's traffic log (src/traffic/infrastructure/tab-log.ts), which it gives what the page reports
-  popup/                         the toolbar popup's page
+  popup/                         the toolbar popup: its header, the tab's site, and its tabs, This page, All rules and Sites (ui/); what each rule did on the tab's page, asked every 2 s (model/); what it says a rule matches (lib/)
   sidepanel/                     the editor (Chrome's side panel, Firefox's sidebar, or a tab): its sidebar, the top bar of a narrow panel, and its menus
   kit/                           the kit page, every kit component in its states (ui/); for npm run dev and the kit test, never in the extension
   styles/                        theme.css, the look's values (colours, the two fonts); themes.css, the other themes' colours; and kit.css: those as Tailwind's theme (type sizes, corners)
-src/pages/                       what the screens show
-  popup/                         the toolbar popup: its header, the tab's site, and its tabs (This page, All rules, Sites)
-  agent/                         Agent access, in the editor: the connection to ghostfetch-mcp, what each of the agent's tools does, and its panel and button (see agent-access.md)
 src/shared/                      what more than one part of the extension uses
   api/                           Ghostfetch's two switches (index.ts)
     settings.ts                  Ghostfetch on or off, and recording, which only the popup changes
@@ -179,6 +190,11 @@ src/interception/                Interception, what runs in the page's own world
   fetch.ts                       window.fetch, wrapped; xhr.ts, XMLHttpRequest, wrapped; simulate-xhr.ts, an XMLHttpRequest a rule answers, its state and events played back in the order a real one fires them
   matching.ts                    which rule a request gets, the first that matches it; apply-rule.ts, what it gets: the rule's own body, or the server's under the rule's status, headers and delay
   log-entries.ts                 the page's requests as entries for the tab's traffic log; request.ts, a request as the page made it, read for the rules and the log; types.ts, what the parts pass each other
+src/agent-access/                Agent access, a coding agent working with the rules through the editor (ui/index.ts, for the editor alone); its words are in glossary/agent-access.md, how it works in agent-access.md
+  domain/                        the pairing code ghostfetch-mcp gives (pairing-code.ts); a dev host, whose pages' requests the agent may see (dev-host.ts)
+  application/                   what each of the agent's tools does, with the editor's own code (agent-tools.ts), and what they say of a rule (rule-report.ts)
+  infrastructure/                the connection to ghostfetch-mcp: pairing, Firefox's consent, trying again while it isn't there, one setting for every editor (agent-connection.ts)
+  ui/                            the Agent button and its panel, and the hook that runs Agent access while the editor is open, giving the tools the kit's toast (use-agent-access.ts)
 src/body-editor/                 the body editor (plain DOM code, its find bar and vim keys) and its React component, and the body's Diff (CodeDiff) (index.ts)
 src/kernel/                      what Rules and Interception must agree on, so that the editor can't say what the page wouldn't do (index.ts)
   rule-parts.ts                  what a rule's match and its answer are made of: the methods, the ways of comparing a URL, the body modes, a header row, and the two halves themselves
@@ -214,7 +230,7 @@ test/order.mjs                   the order without a browser: every operation on
 test/curl.mjs                    cURL commands both ways: Copy as cURL (nothing the page sent breaks out of its quotes), New rule's reading of one
 test/e2e.mjs                     end-to-end test in Chromium (Playwright)
 test/firefox.mjs                 end-to-end test in Zen or Firefox (puppeteer-core)
-test/agent.mjs                   Agent access end to end in Chromium: ghostfetch-mcp started as an agent starts it, and the editor paired with it
+test/agent.mjs                   Agent access end to end in Chromium: which hosts are dev hosts, then ghostfetch-mcp started as an agent starts it, and the editor paired with it
 test/kit.mjs                     the UI kit under the real CSP, in Chromium and Zen, driven with the keyboard and the mouse
 test/release.mjs                 checks the built manifests, files and zips before an upload
 test/fixtures.mjs                test server, hostile pages and rules shared by the tests
@@ -478,7 +494,10 @@ declares it required, given at install, as a prompt can't be answered by automat
 editor connects, that a rule the agent saves answers on the page at once, and that the agent
 sees the request.
 
-`test/agent.mjs` is [Agent access](agent-access.md) end to end in Chromium: it starts
+`test/agent.mjs` is [Agent access](agent-access.md) end to end in Chromium. Before it starts
+anything it checks which hosts are dev hosts, whose pages' requests the agent may see
+(`isDevHost`): `localhost`, a name under `.localhost`, `127.0.0.1` and a `local.` name, but no
+lookalike (`localhost.example.com`, `local-app.test`), other site or IPv6 address. Then it starts
 ghostfetch-mcp as an agent starts it, with the MCP SDK's own client, pairs the editor through its
 panel (a wrong code turned down first), and drives every tool against the test server's pages:
 a rule saved answers at once and shows in the editor's list and in the panel's list of what the

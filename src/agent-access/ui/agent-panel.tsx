@@ -2,22 +2,22 @@
 // you (ghostfetch-mcp's), it says whether an agent is connected, and which; and what the agent did
 // while this editor was open, each change opening its rule.
 import { useState } from 'react';
-import { findRule, ruleStore } from '../../../rules/index.ts';
-import { useStore } from '../../../ui/use-store.ts';
-import { cn } from '../../../ui/cn.ts';
-import { Button } from '../../../ui/kit/button.tsx';
-import { Card } from '../../../ui/kit/card.tsx';
-import { Icon } from '../../../ui/kit/icon.tsx';
-import { Input } from '../../../ui/kit/input.tsx';
-import { SignalDot } from '../../../ui/kit/signal-dot.tsx';
-import { parsePairingCode } from '../lib/pairing-code.ts';
+import { findRule, ruleStore } from '../../rules/index.ts';
+import { useStore } from '../../ui/use-store.ts';
+import { cn } from '../../ui/cn.ts';
+import { Button } from '../../ui/kit/button.tsx';
+import { Card } from '../../ui/kit/card.tsx';
+import { Icon } from '../../ui/kit/icon.tsx';
+import { Input } from '../../ui/kit/input.tsx';
+import { SignalDot } from '../../ui/kit/signal-dot.tsx';
+import { parsePairingCode } from '../domain/pairing-code.ts';
 import {
   ASKS_CONSENT,
   agentStore,
   turnOffAgent,
   turnOnAgent,
-} from '../model/agent-connection.ts';
-import type { AgentActivity, AgentStatus } from '../model/agent-connection.ts';
+} from '../infrastructure/agent-connection.ts';
+import type { AgentActivity, AgentStatus } from '../infrastructure/agent-connection.ts';
 
 // Setting up ghostfetch-mcp and an agent: docs/agent-access.md, on GitHub.
 const SETUP = 'https://github.com/rauf322/ghostfetch/blob/main/docs/agent-access.md';

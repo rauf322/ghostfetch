@@ -41,15 +41,15 @@ import {
   ruleTitle,
   turnGroup,
   wouldAnswer,
-} from '../../../rules/index.ts';
-import type { Group, Place, Rule } from '../../../rules/index.ts';
-import { settingsStore } from '../../../shared/api/index.ts';
-import { isBuiltInHost, siteOf } from '../../../sites/index.ts';
-import { countRule, countWords } from '../../../traffic/index.ts';
-import type { LogEntry, TrafficLog } from '../../../traffic/index.ts';
-import { notify } from '../../../ui/kit/toast.tsx';
-import { ruleProblems, ruleSummary } from '../lib/rule-report.ts';
-import { noteActivity } from './agent-connection.ts';
+} from '../../rules/index.ts';
+import type { Group, Place, Rule } from '../../rules/index.ts';
+import { settingsStore } from '../../shared/api/index.ts';
+import { siteOf } from '../../sites/index.ts';
+import { countRule, countWords } from '../../traffic/index.ts';
+import type { LogEntry, TrafficLog } from '../../traffic/index.ts';
+import { isDevHost } from '../domain/dev-host.ts';
+import { ruleProblems, ruleSummary } from './rule-report.ts';
+import { noteActivity } from '../infrastructure/agent-connection.ts';
 
 type Params = Record<string, unknown>;
 
@@ -164,7 +164,22 @@ function groupNamed({ id, name }: Params) {
   return found;
 }
 
-export function createAgentTools({ log, place }: { log: TrafficLog; place: string }) {
+// The editor's toast, the kit's notify, which use-agent-access.ts passes in: a rule or a group the
+// agent deletes comes back with its Undo.
+type Notify = (
+  title: string,
+  options: { icon: 'trash'; action: string; onAction: () => void },
+) => void;
+
+export function createAgentTools({
+  log,
+  place,
+  notify,
+}: {
+  log: TrafficLog;
+  place: string;
+  notify: Notify;
+}) {
   const rules = () => ruleStore.state.rules;
   const positionOf = (id: string) => rules().findIndex((rule) => rule.id === id);
   // Whether a rule answers the requests it matches: it's on, its group is too, and Ghostfetch
@@ -180,7 +195,7 @@ export function createAgentTools({ log, place }: { log: TrafficLog; place: strin
     return {
       url,
       title: target?.title ?? '',
-      devHost: isBuiltInHost(siteOf(url)),
+      devHost: isDevHost(siteOf(url)),
       connected,
     };
   }

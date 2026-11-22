@@ -22,8 +22,8 @@ const relativePaths = {
 const ARTIFACTS = fileURLToPath(new URL('web-ext-artifacts/', import.meta.url));
 
 // The extension pages' Content-Security-Policy. They connect to nothing but ghostfetch-mcp, Agent
-// access's companion, over a WebSocket on 127.0.0.1 (pages/agent): at any port, as the pairing code
-// names it. test/release.mjs checks both built manifests against it.
+// access's companion, over a WebSocket on 127.0.0.1 (agent-access/): at any port, as the pairing
+// code names it. test/release.mjs checks both built manifests against it.
 export const CSP =
   "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src ws://127.0.0.1:*; object-src 'none'; form-action 'none'; base-uri 'none'";
 
@@ -108,7 +108,7 @@ export default defineConfig({
         // Nothing unless the user turns on Agent access, which gives a coding agent on their
         // computer (through ghostfetch-mcp) the rules and a dev page's requests: Mozilla counts
         // that as data the extension transmits, so Firefox asks for consent to it then
-        // (pages/agent/model/agent-connection.ts).
+        // (agent-access/infrastructure/agent-connection.ts).
         data_collection_permissions: {
           required: ['none'],
           optional: ['browsingActivity', 'websiteContent'],

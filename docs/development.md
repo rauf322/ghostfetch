@@ -427,7 +427,15 @@ editor's selection lies over its text), the toolbar badge (green with the count,
 "off"), and the popup (each rule's dot, pulsing while it's on, which turns it off and on, saved
 at once, a long name cut short after it, This page keeping a rule where it is when its dot
 turns it off, so the same spot turns it back on, a rule picked in it opening in the editor,
-the sites you added with Remove, and
+the sites you added with Remove, its Pause, Resume and Recording clicked as a user does (paused:
+Resume offered, the badge's grey "off", the editor's bar saying Ghostfetch is off, an answering
+rule's chip saying it's paused and its dots still, the page getting the server's response, and
+`enabled` stored false; resumed: all of that as it was, and the rule answering again; not
+recording: the popup and Traffic saying so, a request made meanwhile not listed, though its rule
+answers it, the rule's row saying nothing of what it did, and `record` stored false; recording
+again: the next request listed; and a popup and an editor opened while Ghostfetch is paused, or
+while it isn't recording, showing it in the first thing they draw, as a popup opened while it's on
+and recording shows that, then following that popup's Resume and Recording), and
 what each rule did on a page, which the page counts by rule and by what the rule did, telling
 the popup nothing of the requests themselves), groups (a group's rules answering only while it's
 on, the higher of two groups' rules answering, the page following the order the editor shows,

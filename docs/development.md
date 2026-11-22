@@ -56,16 +56,17 @@ that are signed. `npm run zip` packs the add-on into `web-ext-artifacts/`: a
 ## Files
 
 The code in `src/` is cut by bounded context
-([ADR 0002](adr/0002-the-code-is-cut-by-bounded-context.md)), a folder each: Rules (`rules`) and
-Interception (`interception`), the core; Traffic (`traffic`), Sites (`sites`) and Agent access
-(`agent-access`), which support them; and the Body editor (`body-editor`), which is generic. Their
-words are in [`docs/glossary/`](glossary/), and how they relate in the
-[Glossary Map](../GLOSSARY-MAP.md). Beside them are `app`, a folder for each part of the extension
-that WXT builds, which only puts the rest together; the kernel, `kernel`, what Rules and
-Interception must agree on, so that the editor can't say what the page wouldn't do; and three
-folders that know nothing of rules, sites or requests: `lib` (small libraries of Ghostfetch's
-own), `platform` (what differs between the browsers, and opening the editor) and `ui` (the UI
-kit, the themes and the editor's layout).
+([ADR 0002](adr/0002-the-code-is-cut-by-bounded-context.md)). `bounded-contexts` holds the
+contexts, a folder each: Rules (`rules`) and Interception (`interception`), the core; Traffic
+(`traffic`), Sites (`sites`) and Agent access (`agent-access`), which support them; and the Body
+editor (`body-editor`), which is generic. Their words are in [`docs/glossary/`](glossary/), and
+how they relate in the [Glossary Map](../GLOSSARY-MAP.md). `shared-kernel` is the shared kernel:
+the part of the model that Rules and Interception share, and change only together, so that the
+editor can't say what the page wouldn't do. `app` is the composition root, a folder for each part
+of the extension that WXT builds, which only puts the rest together. And three folders know no
+domain, nothing of rules, sites or requests: `lib` (small libraries of Ghostfetch's own),
+`platform` (what differs between the browsers, and opening the editor) and `ui` (the UI kit, the
+themes and the editor's layout).
 
 A context has the layers it needs, Domain-Driven Design's: `domain` says what its model is, in
 plain TypeScript (no `chrome`, no `window`, no timers, no React); `infrastructure` talks to the
@@ -84,10 +85,10 @@ the extension as a message, and its `index.ts` offers them. Rules' `ui` also has
 each widget other screens show (`rule-switch.tsx`, `group-switch.tsx`, `group-folds.ts`,
 `group-picker.tsx`, `new-rule-group.ts`, `rules-file.tsx`), so the popup, which shows a rule's and
 a group's switch, doesn't load the Rules view with them. Rules' own screens take New rule's draft
-and the few other things only they use by path: `rules/index.ts` doesn't offer them, as offering
-the draft would bring it into the popup (`rules/index.ts` says why). `lib`, `platform` and the
-kernel have one door, `index.ts`; `ui` has a public file per component or hook, so a screen that
-shows a button doesn't load the rest of the kit with it.
+and the few other things only they use by path: `bounded-contexts/rules/index.ts` doesn't offer
+them, as offering the draft would bring it into the popup (its opening comment says why). `lib`,
+`platform` and the shared kernel have one door, `index.ts`; `ui` has a public file per component or
+hook, so a screen that shows a button doesn't load the rest of the kit with it.
 
 Who may import what is one table, in `oxlint.config.ts`, which `npm run lint` checks with
 eslint-plugin-boundaries. By what is imported, with "every part" for every folder of `app` but
@@ -98,29 +99,29 @@ eslint-plugin-boundaries. By what is imported, with "every part" for every folde
 | `lib` | `index.ts` | every folder (the body editor's engine, any of its `.ts` files) |
 | `platform` | `index.ts` | `ui`, Sites, Rules and Traffic but for their `domain`, and the pages |
 | `ui` | every file | the `ui` of Rules, Traffic and Agent access, the body editor, and the pages |
-| `body-editor` | `index.ts` | the `ui` of Rules and Traffic, and the pages |
-| `kernel` | `index.ts` | Rules, Interception, Agent access but for its `domain`, and every part |
-| `sites` | `index.ts` | Traffic and Agent access but for their `domain`, and every part |
-| `interception` | `index.ts` | the interceptor (`app/interceptor`) alone |
-| `traffic` | `index.ts` | Rules and Agent access but for their `domain`, every part, and Interception its types |
+| `bounded-contexts/body-editor` | `index.ts` | the `ui` of Rules and Traffic, and the pages |
+| `shared-kernel` | `index.ts` | Rules, Interception, Agent access but for its `domain`, and every part |
+| `bounded-contexts/sites` | `index.ts` | Traffic and Agent access but for their `domain`, and every part |
+| `bounded-contexts/interception` | `index.ts` | the interceptor (`app/interceptor`) alone |
+| `bounded-contexts/traffic` | `index.ts` | Rules and Agent access but for their `domain`, every part, and Interception its types |
 | | `ui/index.ts` | Rules' `ui`, and the pages |
-| `rules` | `index.ts` | Traffic's `ui`, Agent access but for its `domain`, every part, and Interception its types |
+| `bounded-contexts/rules` | `index.ts` | Traffic's `ui`, Agent access but for its `domain`, every part, and Interception its types |
 | | `ui/index.ts` and the widgets' files | Traffic's `ui`, and the pages |
-| `agent-access` | `ui/index.ts` | the editor (`app/sidepanel`) alone |
+| `bounded-contexts/agent-access` | `ui/index.ts` | the editor (`app/sidepanel`) alone |
 | `app/<part>` | none | none: a part imports no other part's files |
 | `app/styles` | every file | the pages, whose stylesheets it holds |
 
 The table keeps a few rules. The contexts import each other only along the Glossary Map's
 arrows: Rules and Traffic import each other, though only Traffic's `ui` imports Rules (an entry
-keeps a rule's name, not the rule); Traffic imports Sites; Interception only the kernel and
-Rules' and Traffic's types; Agent access Rules, Traffic and Sites; and Sites and the Body editor
-no context. A `domain` imports only its own files, the kernel and `lib` (Traffic's and Agent
-access's only `lib`). React, `ui` and npm packages are only for a `ui` layer (`ui` itself, or a
-context's `ui`), the body editor, whose door offers React components, and the pages; the rest is
-plain TypeScript. The background and the page scripts import only Rules, Traffic, Sites,
-the kernel and `lib`, by their doors, and WXT's helpers, and the interceptor Interception too,
-which keeps them free of the screens' libraries. The body editor's engine, which the Zen test
-serves straight from `src/`, imports only `.ts` files: its own and `lib`'s.
+keeps a rule's name, not the rule); Traffic imports Sites; Interception only the shared kernel
+and Rules' and Traffic's types; Agent access Rules, Traffic and Sites; and Sites and the Body
+editor no context. A `domain` imports only its own files, the shared kernel and `lib` (Traffic's
+and Agent access's only `lib`). React, `ui` and npm packages are only for a `ui` layer (`ui`
+itself, or a context's `ui`), the body editor, whose door offers React components, and the pages;
+the rest is plain TypeScript. The background and the page scripts import only Rules, Traffic,
+Sites, the shared kernel and `lib`, by their doors, and WXT's helpers, and the interceptor
+Interception too, which keeps them free of the screens' libraries. The body editor's engine,
+which the Zen test serves straight from `src/`, imports only `.ts` files: its own and `lib`'s.
 
 In the popup's folder, `app/popup`, the files are grouped by what they're for: `ui/` holds its
 components, `model/` its state and what changes it, and `lib/` plain functions. The popup
@@ -129,50 +130,51 @@ Beside `index.html`, `main.tsx` draws `ui/popup-page.tsx`: a part has one index 
 builds (beside an `index.html` it leaves an `index.ts` out), and `npm run lint` says so.
 
 ```
-src/app/                         the extension's parts, one folder each, which WXT builds (wxt.config.ts)
+src/app/                         the composition root: the extension's parts, one folder each, which WXT builds (wxt.config.ts)
   background/                    service worker (Chrome) or event page (Firefox): content scripts for added sites, badge
-  interceptor/                   page world: the entry WXT builds, which decides whether to run on the page and starts Interception (src/interception/)
-  bridge/                        isolated world: reads storage and passes in what Rules makes of it (src/rules/application/page-state.ts), and starts the tab's traffic log (src/traffic/infrastructure/tab-log.ts), which it gives what the page reports
+  interceptor/                   page world: the entry WXT builds, which decides whether to run on the page and starts Interception (src/bounded-contexts/interception/)
+  bridge/                        isolated world: reads storage and passes in what Rules makes of it (src/bounded-contexts/rules/application/page-state.ts), and starts the tab's traffic log (src/bounded-contexts/traffic/infrastructure/tab-log.ts), which it gives what the page reports
   popup/                         the toolbar popup: its header, the tab's site, and its tabs, This page, All rules and Sites (ui/); what each rule did on the tab's page, asked every 2 s (model/); what it says a rule matches (lib/)
   sidepanel/                     the editor (Chrome's side panel, Firefox's sidebar, or a tab): its sidebar, the top bar of a narrow panel, and its menus
   kit/                           the kit page, every kit component in its states (ui/); for npm run dev and the kit test, never in the extension
   styles/                        theme.css, the look's values (colours, the two fonts); themes.css, the other themes' colours; and kit.css: those as Tailwind's theme (type sizes, corners)
-src/rules/                       Rules, what Ghostfetch should answer and which rule wins (index.ts, with no React, and ui/index.ts); its words are in glossary/rules.md
-  domain/                        a rule: its fields (built from the kernel's parts, types.ts) and the words the screens show for them (catalog.ts), making one (rule.ts), whether it's answering (answering.ts), what's wrong with it (problems.ts); groups (group.ts); the order and every operation on it, which keeps two groups from sharing a name (order.ts), and what a search shows of it (filter-rules.ts)
-  application/                   the screens' copy of the order, which saves and redraws after each operation (store.ts), and of whether Ghostfetch is paused, which only the popup changes (paused.ts); a copy of a group or a rule (duplicate-group.ts, duplicate-rule.ts); a rule made from a request in the log (rule-from-entry.ts), the requests New rule offers to mock (recent-requests.ts), and New rule's draft, what's typed there read and the rule made from it (rule-draft.ts); rules files, writing one and reading one into the order, its rules and groups turned off (rules-file.ts); apart from the rules, the server's responses their bodies' Diff compares with (server-responses.ts); and what the page is given of what's stored, which the bridge posts (page-state.ts)
-  infrastructure/                how the order is kept, as the rules, each naming its group, and the groups, each with its place (order-storage.ts); the toolbar badge, which the background keeps in sync (badge.ts); and the clipboard a rule's body editor's vim keys paste from, with the permission that takes (clipboard.ts)
-  contract.ts                    what the bridge sends the interceptor: the rules that answer, with the two switches
-  ui/                            the Rules view (index.ts, for the editor): the sidebar's rule list, New rule (new-rule/) and the rule editor (rule-editor/, a component per part); and the widgets other screens show, a public file each
-    rule-switch.tsx              a rule's switch, the green dot (the kit's SignalSwitch), in the editor's rule list and the popup; group-switch.tsx, a group's
-    group-folds.ts               which groups are folded, in the editor's list and the popup alike
-    group-picker.tsx             the group a new rule goes into, where New rule and Mock this response make one; new-rule-group.ts, the one it starts on
-    rules-file.tsx               rules files on screen: Export (every rule, a group or one rule), the file picker behind Import rules…, and the toasts that say how an import went
-src/sites/                       Sites, where Ghostfetch runs (index.ts); its words are in glossary/sites.md
-  site.ts                        the sites Ghostfetch runs on: the built-in hosts and the ones you added, which hosts a site covers, and whether Ghostfetch runs on a URL
-  store.ts                       the screens' copy of the sites you added, and turning Ghostfetch on or off for one
-  content-scripts.ts             registering the content scripts for the sites you added, which the background calls
-  contract.ts                    the message that asks the background to register them again
-src/traffic/                     Traffic, what the page asked for and what each rule did (index.ts, with no React, and ui/index.ts); its words are in glossary/traffic.md
-  domain/                        a request in a tab's traffic log (log-entry.ts); which of them the Traffic view lists (filter-entries.ts), in groups by how long ago they were made (time-groups.ts)
-  application/                   the editor's live log of the tab it watches (traffic-log.ts: Traffic, how often a rule fired, New rule's recent requests); Keep on reload, whether that log keeps what it has when the page reloads (preserve.ts); the screens' copy of Recording, whether requests are added to the logs at all, which only the popup changes (recording.ts); what each rule did on a tab's page, as the page counts it for the popup's This page, and in words, as the popup and the editor's rule list say it (page-counts.ts)
-  infrastructure/                the tab's own log, which the bridge starts in each page (tab-log.ts): it rebuilds what the page reports and keeps it, an iframe's by way of the top frame, counts it for the popup, and gives it to the Traffic view over a port
-  contract.ts                    the messages Traffic's parts send each other: the interceptor's report of a request, an iframe's entry, the popup's question and the counts that answer it, and what goes over the log's port
-  ui/                            the Traffic view: a tab's live log grouped by time, a request's drawer (request-detail/), Mock this response; and the hooks that run the editor's live log and read it (use-traffic-log.ts)
-src/interception/                Interception, what runs in the page's own world (index.ts, for the interceptor alone); its words are in glossary/interception.md
-  page-channel.ts                the private channel to the bridge, which offers its port once, before any page script runs: the rules arrive over it, and the page's requests go back over it
-  fetch.ts                       window.fetch, wrapped; xhr.ts, XMLHttpRequest, wrapped; simulate-xhr.ts, an XMLHttpRequest a rule answers, its state and events played back in the order a real one fires them
-  matching.ts                    which rule a request gets, the first that matches it; apply-rule.ts, what it gets: the rule's own body, or the server's under the rule's status, headers and delay
-  log-entries.ts                 the page's requests as entries for the tab's traffic log; request.ts, a request as the page made it, read for the rules and the log; types.ts, what the parts pass each other
-src/agent-access/                Agent access, a coding agent working with the rules through the editor (ui/index.ts, for the editor alone); its words are in glossary/agent-access.md, how it works in agent-access.md
-  domain/                        the pairing code ghostfetch-mcp gives (pairing-code.ts); a dev host, whose pages' requests the agent may see (dev-host.ts)
-  application/                   what each of the agent's tools does, with the editor's own code (agent-tools.ts), and what they say of a rule (rule-report.ts)
-  infrastructure/                the connection to ghostfetch-mcp: pairing, Firefox's consent, trying again while it isn't there, one setting for every editor (agent-connection.ts)
-  ui/                            the Agent button and its panel, and the hook that runs Agent access while the editor is open, giving the tools the kit's toast (use-agent-access.ts)
-src/body-editor/                 the Body editor, editing, checking and comparing a body of text (index.ts); its words are in glossary/body-editor.md
-  code-editor.tsx                the body editor as a React component, and CodeView, the same colours for a body that's only read; code-diff.tsx, the body's Diff against the server's response (CodeDiff)
-  engine/                        the editor itself, plain DOM code: a textarea over the coloured text (code-editor.ts, highlight.ts), its find bar (find-bar.ts), and where Format leaves the cursor (keep-offset.ts)
-  vim/                           its vim keys (vim.ts): the keys read as commands, motions, words and text objects
-src/kernel/                      what Rules and Interception must agree on, so that the editor can't say what the page wouldn't do (index.ts)
+src/bounded-contexts/            the six bounded contexts of GLOSSARY-MAP.md, a folder each
+  rules/                         Rules, what Ghostfetch should answer and which rule wins (index.ts, with no React, and ui/index.ts); its words are in glossary/rules.md
+    domain/                      a rule: its fields (built from the shared kernel's parts, types.ts) and the words the screens show for them (catalog.ts), making one (rule.ts), whether it's answering (answering.ts), what's wrong with it (problems.ts); groups (group.ts); the order and every operation on it, which keeps two groups from sharing a name (order.ts), and what a search shows of it (filter-rules.ts)
+    application/                 the screens' copy of the order, which saves and redraws after each operation (store.ts), and of whether Ghostfetch is paused, which only the popup changes (paused.ts); a copy of a group or a rule (duplicate-group.ts, duplicate-rule.ts); a rule made from a request in the log (rule-from-entry.ts), the requests New rule offers to mock (recent-requests.ts), and New rule's draft, what's typed there read and the rule made from it (rule-draft.ts); rules files, writing one and reading one into the order, its rules and groups turned off (rules-file.ts); apart from the rules, the server's responses their bodies' Diff compares with (server-responses.ts); and what the page is given of what's stored, which the bridge posts (page-state.ts)
+    infrastructure/              how the order is kept, as the rules, each naming its group, and the groups, each with its place (order-storage.ts); the toolbar badge, which the background keeps in sync (badge.ts); and the clipboard a rule's body editor's vim keys paste from, with the permission that takes (clipboard.ts)
+    contract.ts                  what the bridge sends the interceptor: the rules that answer, with the two switches
+    ui/                          the Rules view (index.ts, for the editor): the sidebar's rule list, New rule (new-rule/) and the rule editor (rule-editor/, a component per part); and the widgets other screens show, a public file each
+      rule-switch.tsx            a rule's switch, the green dot (the kit's SignalSwitch), in the editor's rule list and the popup; group-switch.tsx, a group's
+      group-folds.ts             which groups are folded, in the editor's list and the popup alike
+      group-picker.tsx           the group a new rule goes into, where New rule and Mock this response make one; new-rule-group.ts, the one it starts on
+      rules-file.tsx             rules files on screen: Export (every rule, a group or one rule), the file picker behind Import rules…, and the toasts that say how an import went
+  sites/                         Sites, where Ghostfetch runs (index.ts); its words are in glossary/sites.md
+    site.ts                      the sites Ghostfetch runs on: the built-in hosts and the ones you added, which hosts a site covers, and whether Ghostfetch runs on a URL
+    store.ts                     the screens' copy of the sites you added, and turning Ghostfetch on or off for one
+    content-scripts.ts           registering the content scripts for the sites you added, which the background calls
+    contract.ts                  the message that asks the background to register them again
+  traffic/                       Traffic, what the page asked for and what each rule did (index.ts, with no React, and ui/index.ts); its words are in glossary/traffic.md
+    domain/                      a request in a tab's traffic log (log-entry.ts); which of them the Traffic view lists (filter-entries.ts), in groups by how long ago they were made (time-groups.ts)
+    application/                 the editor's live log of the tab it watches (traffic-log.ts: Traffic, how often a rule fired, New rule's recent requests); Keep on reload, whether that log keeps what it has when the page reloads (preserve.ts); the screens' copy of Recording, whether requests are added to the logs at all, which only the popup changes (recording.ts); what each rule did on a tab's page, as the page counts it for the popup's This page, and in words, as the popup and the editor's rule list say it (page-counts.ts)
+    infrastructure/              the tab's own log, which the bridge starts in each page (tab-log.ts): it rebuilds what the page reports and keeps it, an iframe's by way of the top frame, counts it for the popup, and gives it to the Traffic view over a port
+    contract.ts                  the messages Traffic's parts send each other: the interceptor's report of a request, an iframe's entry, the popup's question and the counts that answer it, and what goes over the log's port
+    ui/                          the Traffic view: a tab's live log grouped by time, a request's drawer (request-detail/), Mock this response; and the hooks that run the editor's live log and read it (use-traffic-log.ts)
+  interception/                  Interception, what runs in the page's own world (index.ts, for the interceptor alone); its words are in glossary/interception.md
+    page-channel.ts              the private channel to the bridge, which offers its port once, before any page script runs: the rules arrive over it, and the page's requests go back over it
+    fetch.ts                     window.fetch, wrapped; xhr.ts, XMLHttpRequest, wrapped; simulate-xhr.ts, an XMLHttpRequest a rule answers, its state and events played back in the order a real one fires them
+    matching.ts                  which rule a request gets, the first that matches it; apply-rule.ts, what it gets: the rule's own body, or the server's under the rule's status, headers and delay
+    log-entries.ts               the page's requests as entries for the tab's traffic log; request.ts, a request as the page made it, read for the rules and the log; types.ts, what the parts pass each other
+  agent-access/                  Agent access, a coding agent working with the rules through the editor (ui/index.ts, for the editor alone); its words are in glossary/agent-access.md, how it works in agent-access.md
+    domain/                      the pairing code ghostfetch-mcp gives (pairing-code.ts); a dev host, whose pages' requests the agent may see (dev-host.ts)
+    application/                 what each of the agent's tools does, with the editor's own code (agent-tools.ts), and what they say of a rule (rule-report.ts)
+    infrastructure/              the connection to ghostfetch-mcp: pairing, Firefox's consent, trying again while it isn't there, one setting for every editor (agent-connection.ts)
+    ui/                          the Agent button and its panel, and the hook that runs Agent access while the editor is open, giving the tools the kit's toast (use-agent-access.ts)
+  body-editor/                   the Body editor, editing, checking and comparing a body of text (index.ts); its words are in glossary/body-editor.md
+    code-editor.tsx              the body editor as a React component, and CodeView, the same colours for a body that's only read; code-diff.tsx, the body's Diff against the server's response (CodeDiff)
+    engine/                      the editor itself, plain DOM code: a textarea over the coloured text (code-editor.ts, highlight.ts), its find bar (find-bar.ts), and where Format leaves the cursor (keep-offset.ts)
+    vim/                         its vim keys (vim.ts): the keys read as commands, motions, words and text objects
+src/shared-kernel/               the shared kernel: the part of the model that Rules and Interception share, and change only together, so that the editor can't say what the page wouldn't do (index.ts)
   rule-parts.ts                  what a rule's match and its answer are made of: the methods, the ways of comparing a URL, the body modes, a header row, and the two halves themselves
   url-match.ts                   how a rule's URL pattern matches, which Try a URL asks too; request-match.ts, which requests a rule matches, which the Diff keeps the server's responses by and the agent's try_url tries
   header-check.ts                whether the page gets a rule's header row, as the browser decides it, which the rule editor marks its rows by
@@ -322,19 +324,19 @@ a group with the group's name and the others as they're stored, none of a type 0
 nothing that isn't a rule, and the two switches as they were stored. It needs no browser either,
 and `npm test` runs it after `test/diff.mjs`.
 
-`test/order.mjs` checks the order's own operations (`src/rules/domain/order.ts`), each on an
-order of ungrouped rules and groups: what's kept of an order (its rules from the top, each naming
-its group, and its groups, each with its place) and the order laid out from that again; where a
-rule is, and the place for one to be tried nth, never inside a group it isn't going into; rules
-put, taken out and moved, down their own list, into a group, out of one and between two, to a
+`test/order.mjs` checks the order's own operations (`src/bounded-contexts/rules/domain/order.ts`),
+each on an order of ungrouped rules and groups: what's kept of an order (its rules from the top,
+each naming its group, and its groups, each with its place) and the order laid out from that again;
+where a rule is, and the place for one to be tried nth, never inside a group it isn't going into;
+rules put, taken out and moved, down their own list, into a group, out of one and between two, to a
 place as a drag gives it (before what's there now) and as the agent does (to be tried nth); groups
-added, deleted and put back, moved both ways, turned off, which leaves their rules' own switches
-as they were, and taken away; and the order's own rule, that no two groups share a name: a rename
-to a name another group has, in any case, or to one with nothing in it is refused and says which
-(`renameGroup`), and a group that comes in under a taken name, added, put back or imported, gets
-the next free one in brackets. Last, that a rule and a group stay the objects they were through
-all of it, which is what the screens tell them by. It needs no browser, and `npm test` runs it
-after `test/matching.mjs`.
+added, deleted and put back, moved both ways, turned off, which leaves their rules' own switches as
+they were, and taken away; and the order's own rule, that no two groups share a name: a rename to a
+name another group has, in any case, or to one with nothing in it is refused and says which
+(`renameGroup`), and a group that comes in under a taken name, added, put back or imported, gets the
+next free one in brackets. Last, that a rule and a group stay the objects they were through all of
+it, which is what the screens tell them by. It needs no browser, and `npm test` runs it after
+`test/matching.mjs`.
 
 `test/curl.mjs` checks cURL commands both ways. Traffic's Copy as cURL: the command for a request,
 and that whatever the page put in it (quotes, `$(…)`, backticks, `;`, in the URL, the body or the

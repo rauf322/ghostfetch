@@ -1,6 +1,6 @@
 // What Firefox has and @types/chrome (Chrome's APIs) doesn't describe. Only what Ghostfetch calls:
 // opening the sidebar from a click, as Chrome's sidePanel.open() does; and the data collection
-// consent of Firefox 140 and later, which Agent access asks for (agent-access/).
+// consent of Firefox 140 and later, which Agent access asks for (bounded-contexts/agent-access/).
 // No imports or exports, so this file adds to the global `chrome` namespace as it stands.
 declare namespace chrome.sidebarAction {
   function open(): Promise<void>;

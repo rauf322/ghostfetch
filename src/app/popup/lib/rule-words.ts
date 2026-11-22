@@ -1,6 +1,6 @@
 // What the popup says about a rule: what it matches, on one line. (What it did on the tab's page,
 // in words, is Traffic's countWords, which the editor's rule list says too.)
-import type { Rule } from '../../../rules/index.ts';
+import type { Rule } from '../../../bounded-contexts/rules/index.ts';
 
 // "GET /api/me"; a GraphQL rule's operation after its URL; a rule for any method without one.
 export function matchLine({ match }: Rule) {

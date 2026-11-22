@@ -1,10 +1,11 @@
 // The messages the background answers: an iframe's traffic log entry, passed on to its tab's top
 // frame, and the popup's or the editor's request to sync at once. Each context says what its own
-// messages are (src/traffic/contract.ts, src/sites/contract.ts), and the union of the ones that
-// come here is put together here. (The popup asks a tab's top frame what each rule did there,
-// Traffic's CountsMessage, with chrome.tabs.sendMessage, which never reaches the background.)
-import type { SyncMessage } from '../../sites/index.ts';
-import type { FrameEntryMessage } from '../../traffic/index.ts';
+// messages are (src/bounded-contexts/traffic/contract.ts, src/bounded-contexts/sites/contract.ts),
+// and the union of the ones that come here is put together here. (The popup asks a tab's top frame
+// what each rule did there, Traffic's CountsMessage, with chrome.tabs.sendMessage, which never
+// reaches the background.)
+import type { SyncMessage } from '../../bounded-contexts/sites/index.ts';
+import type { FrameEntryMessage } from '../../bounded-contexts/traffic/index.ts';
 import { scheduleSync } from './schedule-sync.ts';
 
 // What the extension's own parts send the background with chrome.runtime.sendMessage.

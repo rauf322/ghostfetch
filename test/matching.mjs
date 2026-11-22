@@ -1,17 +1,18 @@
 // A rule's URL pattern, without a browser: which URLs the page's interceptor answers with it
-// (findRule, src/interception/matching.ts), for each way of comparing a URL, and that the
-// rule editor's URL tester (testResult, src/rules/ui/rule-checks.ts) says the same for
-// every one of them, so Try a URL in the rule editor tells the truth. And that the requests the
-// editor keeps a rule's server's response from, for its Diff (entryTester), are the ones the page
-// would answer with the rule: the same URLs, methods and GraphQL operations. Then which of two
-// rules answers, and the order with groups, as the editor and the page rebuild it from what's
-// stored (layOut, normalizeGroups), and the names a new group gets; when a rule is answering
-// (isAnswering, wouldAnswer); what's wrong with one (regexError, bodyProblem); and what the page
-// is given of what's stored (pageState): the rules that answer, in their order, and the switches.
+// (findRule, src/bounded-contexts/interception/matching.ts), for each way of comparing a URL, and
+// that the rule editor's URL tester (testResult, src/bounded-contexts/rules/ui/rule-checks.ts)
+// says the same for every one of them, so Try a URL in the rule editor tells the truth. And that
+// the requests the editor keeps a rule's server's response from, for its Diff (entryTester), are
+// the ones the page would answer with the rule: the same URLs, methods and GraphQL operations.
+// Then which of two rules answers, and the order with groups, as the editor and the page rebuild
+// it from what's stored (layOut, normalizeGroups), and the names a new group gets; when a rule is
+// answering (isAnswering, wouldAnswer); what's wrong with one (regexError, bodyProblem); and what
+// the page is given of what's stored (pageState): the rules that answer, in their order, and the
+// switches.
 //
 //   node test/matching.mjs      (npm test runs it after test/diff.mjs)
-import { compile, findRule } from '../src/interception/matching.ts';
-import { testResult } from '../src/rules/ui/rule-checks.ts';
+import { compile, findRule } from '../src/bounded-contexts/interception/matching.ts';
+import { testResult } from '../src/bounded-contexts/rules/ui/rule-checks.ts';
 import {
   bodyProblem,
   createRule,
@@ -25,7 +26,7 @@ import {
   pageState,
   regexError,
   wouldAnswer,
-} from '../src/rules/index.ts';
+} from '../src/bounded-contexts/rules/index.ts';
 import { check, expect, finish } from './fixtures.mjs';
 
 const API = 'https://api.example.test';

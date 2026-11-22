@@ -1,7 +1,8 @@
 // Brings the browser in line with what's stored: the content scripts for the sites you added
-// (src/sites/content-scripts.ts) and the toolbar badge (src/rules/infrastructure/badge.ts).
-import { updateBadge } from '../../rules/index.ts';
-import { syncContentScripts } from '../../sites/index.ts';
+// (src/bounded-contexts/sites/content-scripts.ts) and the toolbar badge
+// (src/bounded-contexts/rules/infrastructure/badge.ts).
+import { updateBadge } from '../../bounded-contexts/rules/index.ts';
+import { syncContentScripts } from '../../bounded-contexts/sites/index.ts';
 import { loadState } from './stored-state.ts';
 
 // Storage changes can arrive in bursts while typing; run syncs one at a time so

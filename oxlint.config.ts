@@ -8,29 +8,32 @@ import { defineConfig } from 'oxlint';
 const rootPath = fileURLToPath(new URL('.', import.meta.url));
 
 // The kinds of file, a folder each (the body editor's engine two), the first a file is in being
-// its kind: what knows no domain (lib, platform, ui, the body editor and its engine), the kernel
-// (what Rules and Interception must agree on) and the contexts (GLOSSARY-MAP.md). Sites and
+// its kind: what knows no domain (lib, platform, ui, the body editor and its engine), the shared
+// kernel (what Rules and Interception must agree on) and the contexts (GLOSSARY-MAP.md). Sites and
 // Interception are flat; Traffic, Rules and Agent access have a kind for their domain/, one for
 // their ui/, and one for the rest of them (application/, infrastructure/, contract.ts and the
 // door, index.ts). The folders of src/app/ come after the table.
 const KINDS: Record<string, string[]> = {
-  'editor-engine': ['src/body-editor/engine', 'src/body-editor/vim'],
-  'body-editor': ['src/body-editor'],
+  'editor-engine': [
+    'src/bounded-contexts/body-editor/engine',
+    'src/bounded-contexts/body-editor/vim',
+  ],
+  'body-editor': ['src/bounded-contexts/body-editor'],
   lib: ['src/lib'],
   platform: ['src/platform'],
   ui: ['src/ui'],
-  kernel: ['src/kernel'],
-  sites: ['src/sites'],
-  interception: ['src/interception'],
-  'traffic-domain': ['src/traffic/domain'],
-  'traffic-ui': ['src/traffic/ui'],
-  traffic: ['src/traffic'],
-  'rules-domain': ['src/rules/domain'],
-  'rules-ui': ['src/rules/ui'],
-  rules: ['src/rules'],
-  'agent-access-domain': ['src/agent-access/domain'],
-  'agent-access-ui': ['src/agent-access/ui'],
-  'agent-access': ['src/agent-access'],
+  'shared-kernel': ['src/shared-kernel'],
+  sites: ['src/bounded-contexts/sites'],
+  interception: ['src/bounded-contexts/interception'],
+  'traffic-domain': ['src/bounded-contexts/traffic/domain'],
+  'traffic-ui': ['src/bounded-contexts/traffic/ui'],
+  traffic: ['src/bounded-contexts/traffic'],
+  'rules-domain': ['src/bounded-contexts/rules/domain'],
+  'rules-ui': ['src/bounded-contexts/rules/ui'],
+  rules: ['src/bounded-contexts/rules'],
+  'agent-access-domain': ['src/bounded-contexts/agent-access/domain'],
+  'agent-access-ui': ['src/bounded-contexts/agent-access/ui'],
+  'agent-access': ['src/bounded-contexts/agent-access'],
 };
 // The kinds that are one context with another kind: inside a context, a file reaches any file.
 const CONTEXT: Record<string, string> = {
@@ -64,7 +67,7 @@ const DOORS: Record<string, string[] | 'every file'> = {
   platform: ['index.ts'],
   ui: 'every file',
   'body-editor': ['index.ts'],
-  kernel: ['index.ts'],
+  'shared-kernel': ['index.ts'],
   sites: ['index.ts'],
   interception: ['index.ts'],
   traffic: ['index.ts'],
@@ -97,8 +100,8 @@ const anyTsFile = (kind: string) =>
 
 // Who may import whom: each kind, and all it may import besides its own files. A kind of another
 // context is imported through its doors, one of its own context by any file. The rows keep four
-// rules: a context is entered only through its doors; a domain/ imports only its own, the kernel
-// and lib; React and ui are only for a ui/ layer (ui itself, and a context's ui/), the body
+// rules: a context is entered only through its doors; a domain/ imports only its own, the shared
+// kernel and lib; React and ui are only for a ui/ layer (ui itself, and a context's ui/), the body
 // editor's two components and the pages of src/app/; and the contexts import each other only
 // along GLOSSARY-MAP.md's arrows. The parts of src/app/, after it, keep a fifth: a part imports
 // no other part's files.
@@ -113,17 +116,17 @@ const MAY_IMPORT: Record<string, (string | object)[]> = {
   ui: ['lib', 'platform', NPM],
   'body-editor': ['editor-engine', 'lib', 'ui', NPM],
   'editor-engine': [anyTsFile('editor-engine'), anyTsFile('lib')],
-  // The kernel imports lib alone.
-  kernel: ['lib'],
-  // Sites and the Body editor import no context, and Interception, in the page, only the kernel
-  // and Rules' and Traffic's types. Traffic imports Sites, and only its ui/ imports Rules, which
-  // imports Traffic (a rule is made from an entry); the ui/ of both shows bodies with the Body
-  // editor; Agent access imports Rules, Traffic and Sites. A context's domain/ imports lib (Rules'
-  // the kernel too); outside its ui/, a context is plain TypeScript, with no npm package and no
-  // React, so what the background and the page scripts bundle of it is free of the screens'
-  // libraries.
+  // The shared kernel imports lib alone.
+  'shared-kernel': ['lib'],
+  // Sites and the Body editor import no context, and Interception, in the page, only the shared
+  // kernel and Rules' and Traffic's types. Traffic imports Sites, and only its ui/ imports Rules,
+  // which imports Traffic (a rule is made from an entry); the ui/ of both shows bodies with the
+  // Body editor; Agent access imports Rules, Traffic and Sites. A context's domain/ imports lib
+  // (Rules' the shared kernel too); outside its ui/, a context is plain TypeScript, with no npm
+  // package and no React, so what the background and the page scripts bundle of it is free of the
+  // screens' libraries.
   sites: ['lib', 'platform'],
-  interception: ['kernel', 'lib', types('rules'), types('traffic')],
+  interception: ['shared-kernel', 'lib', types('rules'), types('traffic')],
   'traffic-domain': ['lib'],
   traffic: ['traffic-domain', 'sites', 'lib', 'platform'],
   'traffic-ui': [
@@ -138,29 +141,36 @@ const MAY_IMPORT: Record<string, (string | object)[]> = {
     'ui',
     NPM,
   ],
-  'rules-domain': ['kernel', 'lib'],
-  rules: ['rules-domain', 'traffic', 'kernel', 'lib', 'platform'],
+  'rules-domain': ['shared-kernel', 'lib'],
+  rules: ['rules-domain', 'traffic', 'shared-kernel', 'lib', 'platform'],
   'rules-ui': [
     'rules',
     'rules-domain',
     'traffic',
     'traffic-ui',
     'body-editor',
-    'kernel',
+    'shared-kernel',
     'lib',
     'platform',
     'ui',
     NPM,
   ],
   'agent-access-domain': ['lib'],
-  'agent-access': ['agent-access-domain', 'rules', 'traffic', 'sites', 'kernel', 'lib'],
+  'agent-access': [
+    'agent-access-domain',
+    'rules',
+    'traffic',
+    'sites',
+    'shared-kernel',
+    'lib',
+  ],
   'agent-access-ui': [
     'agent-access',
     'agent-access-domain',
     'rules',
     'traffic',
     'sites',
-    'kernel',
+    'shared-kernel',
     'lib',
     'ui',
     NPM,
@@ -181,7 +191,7 @@ const part = (...names: string[]) => ({
 const NOT_A_PART = named('app/ but its parts (styles/)', {
   element: { type: 'app', captured: { part: `!{${PARTS.join(',')}}` } },
 });
-const SCRIPT = ['rules', 'traffic', 'sites', 'kernel', 'lib', WXT];
+const SCRIPT = ['rules', 'traffic', 'sites', 'shared-kernel', 'lib', WXT];
 const PAGE = [
   'rules',
   'rules-ui',
@@ -189,7 +199,7 @@ const PAGE = [
   'traffic-ui',
   'sites',
   'body-editor',
-  'kernel',
+  'shared-kernel',
   'lib',
   'platform',
   'ui',
@@ -214,7 +224,7 @@ const NOT_A_PART_MAY_IMPORT = [
   'traffic-ui',
   'sites',
   'body-editor',
-  'kernel',
+  'shared-kernel',
   'lib',
   'platform',
   named('app/', { element: { type: 'app' } }),
@@ -227,7 +237,7 @@ const NOT_A_PART_MAY_IMPORT = [
 function folder(kind: string) {
   const paths = KINDS[kind].map((path) => path.replace(/^src\//, ''));
   if (paths.length === 1) return `${paths[0]}/`;
-  // Two folders in one (the engine's): body-editor/{engine,vim}/.
+  // Two folders in one (the engine's): bounded-contexts/body-editor/{engine,vim}/.
   const parent = paths[0].slice(0, paths[0].lastIndexOf('/') + 1);
   return `${parent}{${paths.map((path) => path.slice(parent.length)).join(',')}}/`;
 }

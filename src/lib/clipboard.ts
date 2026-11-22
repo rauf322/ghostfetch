@@ -1,6 +1,7 @@
 // The system clipboard as the body editor's vim reads it for p: the shape only. Rules reads it
-// through its systemClipboard (rules/infrastructure/clipboard.ts, with the permission it takes);
-// the editor's engine, which knows nothing of the extension, gets it from the page.
+// through its systemClipboard (bounded-contexts/rules/infrastructure/clipboard.ts, with the
+// permission it takes); the editor's engine, which knows nothing of the extension, gets it from
+// the page.
 
 // What p read: the clipboard's text, or why there's none: `declined` (the browser was told not to
 // let Ghostfetch read it, just now), `unread` (the browser didn't give it: p puts the yank), `again`

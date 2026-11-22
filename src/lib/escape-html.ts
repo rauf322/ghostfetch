@@ -5,7 +5,7 @@ const ENTITIES: Record<string, string> = {
   '"': '&quot;',
   "'": '&#39;',
 };
-// For the body editor (body-editor/), which builds its highlighted text as HTML.
+// For the body editor (bounded-contexts/body-editor/), which builds its highlighted text as HTML.
 export function escapeHtml(value: unknown) {
   return String(value ?? '').replace(/[&<>"']/g, (char) => ENTITIES[char]!);
 }

@@ -1,5 +1,5 @@
 // Inline SVG icons (24x24, stroked with currentColor), as HTML for the body editor's find bar
-// (body-editor/). The screens draw the same shapes with <Icon> (ui/kit/icon.tsx).
+// (bounded-contexts/body-editor/). The screens draw the same shapes with <Icon> (ui/kit/icon.tsx).
 const PATHS = {
   back: '<path d="M15 18l-6-6 6-6"/>',
   more: '<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',

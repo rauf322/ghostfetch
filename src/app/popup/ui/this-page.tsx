@@ -1,9 +1,9 @@
 // The This page tab: what each rule did on the tab's page, as the page counts it (usePageCounts).
 // Where Ghostfetch isn't on, the one thing to do there instead: turn it on, which reloads the page.
 import type { ReactNode } from 'react';
-import { turnOnFor } from '../../../sites/index.ts';
-import type { Entry, Rule } from '../../../rules/index.ts';
-import type { PageCounts } from '../../../traffic/index.ts';
+import { turnOnFor } from '../../../bounded-contexts/sites/index.ts';
+import type { Entry, Rule } from '../../../bounded-contexts/rules/index.ts';
+import type { PageCounts } from '../../../bounded-contexts/traffic/index.ts';
 import { Button } from '../../../ui/kit/button.tsx';
 import { RuleList } from './rule-list.tsx';
 

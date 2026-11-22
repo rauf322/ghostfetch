@@ -1,18 +1,18 @@
 // The editor's sidebar, after T3 Code's: Ghostfetch's name, the search field ("/" puts the cursor
 // in it), the two views, Rules and Traffic, with their counts, the rules in their order
-// (rules/ui's RuleList: how many are on, and + for a new one), and along the bottom the ⋯ menu,
-// Import and Export. From 760px wide it stands beside the open view, as wide as its edge was
-// dragged, or hidden (ui/sidebar.tsx); in a narrow side panel it's the Rules view's own
-// screen, under the top bar, which then has the name and the two views. A rule's dot turns it on
-// or off; Ghostfetch's own switch and recording's are in the toolbar popup. The footer's Agent
-// opens Agent access over it (agent-access/).
+// (bounded-contexts/rules/ui's RuleList: how many are on, and + for a new one), and along the
+// bottom the ⋯ menu, Import and Export. From 760px wide it stands beside the open view, as wide as
+// its edge was dragged, or hidden (ui/sidebar.tsx); in a narrow side panel it's the Rules view's
+// own screen, under the top bar, which then has the name and the two views. A rule's dot turns it
+// on or off; Ghostfetch's own switch and recording's are in the toolbar popup. The footer's Agent
+// opens Agent access over it (bounded-contexts/agent-access/).
 import { useEffect, useRef, useState } from 'react';
-import { AgentButton, AgentPanel } from '../../agent-access/ui/index.ts';
-import { RuleList } from '../../rules/ui/index.ts';
-import { ruleStore } from '../../rules/index.ts';
-import type { TrafficLog } from '../../traffic/index.ts';
+import { AgentButton, AgentPanel } from '../../bounded-contexts/agent-access/ui/index.ts';
+import { RuleList } from '../../bounded-contexts/rules/ui/index.ts';
+import { ruleStore } from '../../bounded-contexts/rules/index.ts';
+import type { TrafficLog } from '../../bounded-contexts/traffic/index.ts';
 import { useStore } from '../../ui/use-store.ts';
-import { useTrafficValue } from '../../traffic/ui/index.ts';
+import { useTrafficValue } from '../../bounded-contexts/traffic/ui/index.ts';
 import { cn } from '../../ui/cn.ts';
 import { Button } from '../../ui/kit/button.tsx';
 import { Icon } from '../../ui/kit/icon.tsx';

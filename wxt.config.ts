@@ -22,8 +22,8 @@ const relativePaths = {
 const ARTIFACTS = fileURLToPath(new URL('web-ext-artifacts/', import.meta.url));
 
 // The extension pages' Content-Security-Policy. They connect to nothing but ghostfetch-mcp, Agent
-// access's companion, over a WebSocket on 127.0.0.1 (agent-access/): at any port, as the pairing
-// code names it. test/release.mjs checks both built manifests against it.
+// access's companion, over a WebSocket on 127.0.0.1 (src/bounded-contexts/agent-access/): at any
+// port, as the pairing code names it. test/release.mjs checks both built manifests against it.
 export const CSP =
   "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src ws://127.0.0.1:*; object-src 'none'; form-action 'none'; base-uri 'none'";
 
@@ -48,10 +48,10 @@ const ICONS = {
 };
 
 // Ghostfetch always runs on localhost, *.localhost, 127.0.0.1 and hosts starting with "local."
-// (see src/sites/); these are their content scripts. The sites you add get the same two
-// scripts registered at runtime by the background. Both are WXT "unlisted scripts" rather than
-// content script entrypoints, whose isolated-world wrapper announces itself to the page with a
-// postMessage and a DOM event.
+// (see src/bounded-contexts/sites/); these are their content scripts. The sites you add get the
+// same two scripts registered at runtime by the background. Both are WXT "unlisted scripts"
+// rather than content script entrypoints, whose isolated-world wrapper announces itself to the
+// page with a postMessage and a DOM event.
 const LOCALHOST = {
   matches: ['*://localhost/*', '*://*.localhost/*', '*://127.0.0.1/*'],
 };
@@ -109,7 +109,7 @@ export default defineConfig({
         // Nothing unless the user turns on Agent access, which gives a coding agent on their
         // computer (through ghostfetch-mcp) the rules and a dev page's requests: Mozilla counts
         // that as data the extension transmits, so Firefox asks for consent to it then
-        // (agent-access/infrastructure/agent-connection.ts).
+        // (src/bounded-contexts/agent-access/infrastructure/agent-connection.ts).
         data_collection_permissions: {
           required: ['none'],
           optional: ['browsingActivity', 'websiteContent'],
@@ -121,10 +121,11 @@ export default defineConfig({
     // Firefox alike: if it ever comes back, remove them first (updateDynamicRules with every
     // getDynamicRules() id), or the old rules apply again.
     permissions: ['storage', 'unlimitedStorage', 'sidePanel', 'scripting'],
-    // Asked for only when vim's p first pastes the clipboard (rules/infrastructure/clipboard.ts),
-    // so it adds nothing to what installing or updating asks. Chrome 121 has the permission but
-    // doesn't let a page read with it yet (122 does): p puts what was yanked there instead, and
-    // says it couldn't read the clipboard.
+    // Asked for only when vim's p first pastes the clipboard
+    // (src/bounded-contexts/rules/infrastructure/clipboard.ts), so it adds nothing to what
+    // installing or updating asks. Chrome 121 has the permission but doesn't let a page read with
+    // it yet (122 does): p puts what was yanked there instead, and says it couldn't read the
+    // clipboard.
     optional_permissions: ['clipboardRead'],
     host_permissions: ['<all_urls>'],
     content_security_policy: { extension_pages: command === 'serve' ? DEV_CSP : CSP },

@@ -3,9 +3,13 @@
 // line, then three tabs: what each rule did on this page, every rule, and the sites Ghostfetch
 // runs on.
 import { useState } from 'react';
-import { pausedStore, ruleStore } from '../../../rules/index.ts';
-import { isSiteEnabled, siteOf, siteStore } from '../../../sites/index.ts';
-import { countWords, recordingStore } from '../../../traffic/index.ts';
+import { pausedStore, ruleStore } from '../../../bounded-contexts/rules/index.ts';
+import {
+  isSiteEnabled,
+  siteOf,
+  siteStore,
+} from '../../../bounded-contexts/sites/index.ts';
+import { countWords, recordingStore } from '../../../bounded-contexts/traffic/index.ts';
 import { useStore } from '../../../ui/use-store.ts';
 import { Segmented, SegmentedItem } from '../../../ui/kit/segmented.tsx';
 import { usePageCounts } from '../model/use-page-counts.ts';

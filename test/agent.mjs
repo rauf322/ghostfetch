@@ -8,7 +8,7 @@ import { createRequire } from 'node:module';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { isDevHost } from '../src/agent-access/domain/dev-host.ts';
+import { isDevHost } from '../src/bounded-contexts/agent-access/domain/dev-host.ts';
 import {
   AGENT_READY,
   CHROME_BUILD,

@@ -2,13 +2,14 @@
 // the ones that answer (on, and in no group or a group that's on) to the interceptor (the
 // page-world half) over a private MessageChannel, whose port is offered exactly once, before any
 // page script runs. Rules makes what it hands over from what it read
-// (src/rules/application/page-state.ts). The top frame also keeps the tab's traffic log, so the
-// editor can show requests made before it was opened, and counts it for the popup: that log is
-// Traffic's (src/traffic/infrastructure/tab-log.ts), started here and given what the page reports.
+// (src/bounded-contexts/rules/application/page-state.ts). The top frame also keeps the tab's
+// traffic log, so the editor can show requests made before it was opened, and counts it for the
+// popup: that log is Traffic's (src/bounded-contexts/traffic/infrastructure/tab-log.ts), started
+// here and given what the page reports.
 // Built as bridge.js: WXT's wrapper runs this function at once and adds no globals of its own.
 import { defineUnlistedScript } from 'wxt/utils/define-unlisted-script';
-import { pageState } from '../../rules/index.ts';
-import { createTabLog } from '../../traffic/index.ts';
+import { pageState } from '../../bounded-contexts/rules/index.ts';
+import { createTabLog } from '../../bounded-contexts/traffic/index.ts';
 
 export default defineUnlistedScript(() => {
   // Same two guards as the interceptor. The flag lives in the extension's isolated world, which

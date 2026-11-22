@@ -6,11 +6,11 @@
 // Traffic, one made by New rule or from a captured response, the first of an import, and one the
 // popup asks for. A rule it makes goes into the group New rule and Mock this response offer, at its
 // top: the one the last rule made went into, or the group whose + was clicked. While Agent access
-// is on, it does what a coding agent's tools ask (agent-access/).
+// is on, it does what a coding agent's tools ask (bounded-contexts/agent-access/).
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useAgentAccess } from '../../agent-access/ui/index.ts';
-import { RulesPage } from '../../rules/ui/index.ts';
-import { TrafficPage, useTrafficLog } from '../../traffic/ui/index.ts';
+import { useAgentAccess } from '../../bounded-contexts/agent-access/ui/index.ts';
+import { RulesPage } from '../../bounded-contexts/rules/ui/index.ts';
+import { TrafficPage, useTrafficLog } from '../../bounded-contexts/traffic/ui/index.ts';
 import {
   addRule,
   createResponseCapture,
@@ -21,19 +21,25 @@ import {
   pausedStore,
   responseFromEntry,
   ruleStore,
-} from '../../rules/index.ts';
-import type { Rule } from '../../rules/index.ts';
-import type { LogEntry } from '../../traffic/index.ts';
+} from '../../bounded-contexts/rules/index.ts';
+import type { Rule } from '../../bounded-contexts/rules/index.ts';
+import type { LogEntry } from '../../bounded-contexts/traffic/index.ts';
 import { watchRuleRequests } from '../../platform/index.ts';
 import { useStore } from '../../ui/use-store.ts';
 import { cn } from '../../ui/cn.ts';
-import { diffPreferred, rememberDiff } from '../../body-editor/index.ts';
+import { diffPreferred, rememberDiff } from '../../bounded-contexts/body-editor/index.ts';
 import { Alert } from '../../ui/kit/alert.tsx';
 import { Tabs, TabsContent } from '../../ui/kit/tabs.tsx';
 import { notify } from '../../ui/kit/toast.tsx';
 import { Split } from '../../ui/list-detail.tsx';
-import { lastRuleGroup, rememberRuleGroup } from '../../rules/ui/new-rule-group.ts';
-import { ImportRulesInput, exportRules } from '../../rules/ui/rules-file.tsx';
+import {
+  lastRuleGroup,
+  rememberRuleGroup,
+} from '../../bounded-contexts/rules/ui/new-rule-group.ts';
+import {
+  ImportRulesInput,
+  exportRules,
+} from '../../bounded-contexts/rules/ui/rules-file.tsx';
 import { SidebarHandle } from '../../ui/sidebar.tsx';
 import { Sidebar } from './sidebar.tsx';
 import type { View } from './sidebar.tsx';

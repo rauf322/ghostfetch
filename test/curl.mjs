@@ -9,7 +9,7 @@ import {
   NEW_DRAFT,
   readTyped,
   ruleFromDraft,
-} from '../src/rules/application/rule-draft.ts';
+} from '../src/bounded-contexts/rules/application/rule-draft.ts';
 import { curlCommand, parseCurl } from '../src/lib/curl.ts';
 import { check, expect, finish } from './fixtures.mjs';
 

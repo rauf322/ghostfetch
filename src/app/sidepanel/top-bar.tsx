@@ -1,10 +1,10 @@
 // The editor's top bar, in a narrow side panel: Ghostfetch's name, the Rules and Traffic tabs
 // with their counts, and the ⋯ menu. From 760px wide the sidebar has all of these (sidebar.tsx),
 // and the bar is gone.
-import { ruleStore } from '../../rules/index.ts';
-import type { TrafficLog } from '../../traffic/index.ts';
+import { ruleStore } from '../../bounded-contexts/rules/index.ts';
+import type { TrafficLog } from '../../bounded-contexts/traffic/index.ts';
 import { useStore } from '../../ui/use-store.ts';
-import { useTrafficValue } from '../../traffic/ui/index.ts';
+import { useTrafficValue } from '../../bounded-contexts/traffic/ui/index.ts';
 import { TabsCount, TabsList, TabsTrigger } from '../../ui/kit/tabs.tsx';
 import { EditorMenu } from './editor-menu.tsx';
 

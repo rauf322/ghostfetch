@@ -12,9 +12,13 @@ import fs from 'node:fs';
 import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
-import { headerProblem } from '../src/kernel/index.ts';
-import { createRule } from '../src/rules/index.ts';
-import { isSiteEnabled, normalizeSites, siteMatchPatterns } from '../src/sites/index.ts';
+import { headerProblem } from '../src/shared-kernel/index.ts';
+import { createRule } from '../src/bounded-contexts/rules/index.ts';
+import {
+  isSiteEnabled,
+  normalizeSites,
+  siteMatchPatterns,
+} from '../src/bounded-contexts/sites/index.ts';
 import { diffLines, formatJson } from '../src/lib/index.ts';
 import {
   CHROME_BUILD,

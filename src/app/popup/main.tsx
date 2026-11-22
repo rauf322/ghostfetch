@@ -4,9 +4,9 @@ import { StrictMode } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import { PopupPage } from './ui/popup-page.tsx';
-import { initPaused, initRules } from '../../rules/index.ts';
-import { initSites } from '../../sites/index.ts';
-import { initRecording } from '../../traffic/index.ts';
+import { initPaused, initRules } from '../../bounded-contexts/rules/index.ts';
+import { initSites } from '../../bounded-contexts/sites/index.ts';
+import { initRecording } from '../../bounded-contexts/traffic/index.ts';
 import '../styles/kit.css';
 
 // The side panel must be opened synchronously inside the click, so look the window up first.

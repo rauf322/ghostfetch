@@ -1,8 +1,8 @@
 // The popup's header: Ghostfetch's mark and name, then two buttons that say what they're set to.
 // Recording: whether requests are recorded, for Traffic and for what each rule did on a page.
 // Pause: Ghostfetch off as a whole, every rule with it, until Resume; the one place to do that.
-import { setPaused } from '../../../rules/index.ts';
-import { setRecording } from '../../../traffic/index.ts';
+import { setPaused } from '../../../bounded-contexts/rules/index.ts';
+import { setRecording } from '../../../bounded-contexts/traffic/index.ts';
 import { cn } from '../../../ui/cn.ts';
 import { Icon } from '../../../ui/kit/icon.tsx';
 

@@ -153,10 +153,11 @@ The editor shows the agent that asked last.
 - `mcp/ghostfetch-mcp.mjs`: the MCP server, with its own `package.json` (the SDK, `ws` and
   `zod`), so none of them enters the extension's packages, its lockfile or the sources zip
   (which takes only what rebuilds the extension).
-- `src/agent-access/`: the editor's side. `infrastructure/agent-connection.ts` is the connection
-  (pairing, Firefox's consent, trying again while `ghostfetch-mcp` isn't there, one setting for
-  every editor), `application/agent-tools.ts` what each tool does, `domain/dev-host.ts` the hosts
-  whose pages' requests the agent may see, `ui/` the panel and the **Agent** button.
+- `src/bounded-contexts/agent-access/`: the editor's side. `infrastructure/agent-connection.ts`
+  is the connection (pairing, Firefox's consent, trying again while `ghostfetch-mcp` isn't there,
+  one setting for every editor), `application/agent-tools.ts` what each tool does,
+  `domain/dev-host.ts` the hosts whose pages' requests the agent may see, `ui/` the panel and the
+  **Agent** button.
 - Between them, JSON over the WebSocket: the editor says `{ type: 'hello', token }` and gets
   `welcome` (with the agent's name) or `refused` and a close with code 4001. Then
   `ghostfetch-mcp` sends `{ type: 'call', id, method, params }` and the editor answers

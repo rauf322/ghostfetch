@@ -9,8 +9,12 @@
 //
 //   node test/json.mjs      (npm test runs it first)
 import { checkJson, formatJson } from '../src/lib/index.ts';
-import { chunks, rechunk, tokens } from '../src/body-editor/engine/highlight.ts';
-import { keepOffset } from '../src/body-editor/engine/keep-offset.ts';
+import {
+  chunks,
+  rechunk,
+  tokens,
+} from '../src/bounded-contexts/body-editor/engine/highlight.ts';
+import { keepOffset } from '../src/bounded-contexts/body-editor/engine/keep-offset.ts';
 import { check, expect, finish } from './fixtures.mjs';
 
 const parses = (text) => {

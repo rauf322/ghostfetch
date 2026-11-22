@@ -1,9 +1,9 @@
 // What the background reads of what Ghostfetch keeps: chrome.storage.local holds
 // { enabled, record, sites, rules, groups }, and the content scripts and the badge need all but
 // record: of the groups, only which are off.
-import { normalizeRules, offGroups } from '../../rules/index.ts';
-import type { Rule } from '../../rules/index.ts';
-import { normalizeSites } from '../../sites/index.ts';
+import { normalizeRules, offGroups } from '../../bounded-contexts/rules/index.ts';
+import type { Rule } from '../../bounded-contexts/rules/index.ts';
+import { normalizeSites } from '../../bounded-contexts/sites/index.ts';
 
 export interface StoredState {
   enabled: boolean;

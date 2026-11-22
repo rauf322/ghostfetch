@@ -3,9 +3,13 @@ import { CSPProvider } from '@base-ui/react/csp-provider';
 import { StrictMode } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
-import { initPaused, initRules, initServerResponses } from '../../rules/index.ts';
-import { initSites } from '../../sites/index.ts';
-import { initRecording } from '../../traffic/index.ts';
+import {
+  initPaused,
+  initRules,
+  initServerResponses,
+} from '../../bounded-contexts/rules/index.ts';
+import { initSites } from '../../bounded-contexts/sites/index.ts';
+import { initRecording } from '../../bounded-contexts/traffic/index.ts';
 import { Toaster } from '../../ui/kit/toast.tsx';
 import { Editor } from './editor.tsx';
 import { moveLegacySettings } from './legacy-settings.ts';

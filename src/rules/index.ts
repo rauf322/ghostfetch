@@ -1,15 +1,18 @@
 // Rules: what Ghostfetch should answer, and which rule wins (its words are in
 // docs/glossary/rules.md). A rule and a group, what they're made of and the words the screens show
-// for them, making them, whether a rule is answering and what's wrong with one, the order and every
-// operation on it, and what a search shows of it (domain/); the screens' copy of the order, which
-// saves it and redraws after each operation, a copy of a group or of a rule, a rule made from a
-// request in the log, the requests New rule offers to mock, the
-// server's responses the bodies' Diff compares with, and what the page is given (application/);
-// where the order is kept, the toolbar badge, and the clipboard a rule's body editor pastes from
-// (infrastructure/); and what the bridge sends the interceptor (contract.ts). The only way into
-// this folder. Plain TypeScript with no npm package and no React; of Ghostfetch's own code it may
-// import only the kernel, lib, platform and traffic/index.ts, and its domain/ only the kernel and
-// lib. The background and the page scripts import from here too, and keep only what they use.
+// for them, making them, whether a rule is answering and what's wrong with one, and the order and
+// every operation on it (domain/); the screens' copy of the order, which saves it and redraws after
+// each operation, a copy of a group, a rule made from a request in the log, the server's responses
+// the bodies' Diff compares with, and what the page is given (application/); where the order is
+// kept and the toolbar badge (infrastructure/); and what the bridge sends the interceptor
+// (contract.ts). One of the folder's two doors, the one with no React; the screens (ui/) have the
+// other, ui/index.ts, and a file for each widget other screens show. New rule's draft, which the
+// screens take by path with the few other things only they use, isn't offered here: its NEW_DRAFT
+// is made with a spread, which the bundler counts as a side effect, so a door that offered it
+// would load it into the popup. Plain TypeScript with no npm package, as is all of the folder but
+// ui/; of Ghostfetch's own code it may import only the kernel, lib, platform and traffic/index.ts,
+// and its domain/ only the kernel and lib. The background and the page scripts import from here
+// too, and keep only what they use.
 export type { Group, Rule } from './domain/types.ts';
 export { BODY_MODES, MATCH_MODES, MAX_DELAY, METHODS } from './domain/catalog.ts';
 export {
@@ -82,7 +85,3 @@ export type { RuleChange } from './application/store.ts';
 export type { PageRule, PageState } from './contract.ts';
 export { pageState } from './application/page-state.ts';
 export { updateBadge } from './infrastructure/badge.ts';
-export { filterEntries } from './domain/filter-rules.ts';
-export { duplicateRule } from './application/duplicate-rule.ts';
-export { recentRequests } from './application/recent-requests.ts';
-export { systemClipboard } from './infrastructure/clipboard.ts';

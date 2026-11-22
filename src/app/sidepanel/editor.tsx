@@ -9,7 +9,7 @@
 // is on, it does what a coding agent's tools ask (pages/agent).
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAgentAccess } from '../../pages/agent/index.ts';
-import { RulesPage } from '../../pages/rules/index.ts';
+import { RulesPage } from '../../rules/ui/index.ts';
 import { TrafficPage, useTrafficLog } from '../../traffic/ui/index.ts';
 import {
   addRule,
@@ -32,8 +32,8 @@ import { Alert } from '../../ui/kit/alert.tsx';
 import { Tabs, TabsContent } from '../../ui/kit/tabs.tsx';
 import { notify } from '../../ui/kit/toast.tsx';
 import { Split } from '../../ui/list-detail.tsx';
-import { lastRuleGroup, rememberRuleGroup } from '../../shared/ui/new-rule-group.ts';
-import { ImportRulesInput, exportRules } from '../../shared/ui/rules-file.tsx';
+import { lastRuleGroup, rememberRuleGroup } from '../../rules/ui/new-rule-group.ts';
+import { ImportRulesInput, exportRules } from '../../rules/ui/rules-file.tsx';
 import { SidebarHandle } from '../../ui/sidebar.tsx';
 import { Sidebar } from './sidebar.tsx';
 import type { View } from './sidebar.tsx';

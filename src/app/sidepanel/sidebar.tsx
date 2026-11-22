@@ -1,6 +1,6 @@
 // The editor's sidebar, after T3 Code's: Ghostfetch's name, the search field ("/" puts the cursor
 // in it), the two views, Rules and Traffic, with their counts, the rules in their order
-// (pages/rules' RuleList: how many are on, and + for a new one), and along the bottom the ⋯ menu,
+// (rules/ui's RuleList: how many are on, and + for a new one), and along the bottom the ⋯ menu,
 // Import and Export. From 760px wide it stands beside the open view, as wide as its edge was
 // dragged, or hidden (ui/sidebar.tsx); in a narrow side panel it's the Rules view's own
 // screen, under the top bar, which then has the name and the two views. A rule's dot turns it on
@@ -8,7 +8,7 @@
 // opens Agent access over it (pages/agent).
 import { useEffect, useRef, useState } from 'react';
 import { AgentButton, AgentPanel } from '../../pages/agent/index.ts';
-import { RuleList } from '../../pages/rules/index.ts';
+import { RuleList } from '../../rules/ui/index.ts';
 import { ruleStore } from '../../rules/index.ts';
 import type { TrafficLog } from '../../traffic/index.ts';
 import { useStore } from '../../ui/use-store.ts';

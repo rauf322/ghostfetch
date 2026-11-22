@@ -6,7 +6,7 @@ import type { Rule } from '../../../rules/index.ts';
 import type { LogEntry } from '../../index.ts';
 import { curlCommand } from '../../../lib/index.ts';
 import { useStore } from '../../../ui/use-store.ts';
-import { GroupPicker } from '../../../shared/ui/group-picker.tsx';
+import { GroupPicker } from '../../../rules/ui/group-picker.tsx';
 import { Button } from '../../../ui/kit/button.tsx';
 import { Icon } from '../../../ui/kit/icon.tsx';
 import type { IconName } from '../../../ui/kit/icon.tsx';

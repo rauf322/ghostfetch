@@ -1,6 +1,6 @@
 // How a rule's URL pattern matches, made into a test once: the one the page's interceptor answers
 // requests by (interception/matching.ts) and the one the editor's URL tester tries a URL with
-// (pages/rules/lib/rule-checks.ts), so Try a URL can't say anything the page wouldn't do.
+// (rules/ui/rule-checks.ts), so Try a URL can't say anything the page wouldn't do.
 // Case-sensitive. With no pattern, every URL matches if the rule names a GraphQL operation (which
 // then decides alone, from the request) and none does otherwise. Throws if the pattern is a regex
 // that doesn't compile. Every field has a default: the page gets the rules as they're stored.

@@ -71,7 +71,7 @@ first to leave the layers is what knows nothing of rules, sites or requests: `li
 them, and they import nothing of the layers. Sites is the first context with a folder of its
 own, `sites`: where Ghostfetch runs, from the hosts it's built for to the content scripts the
 background registers for the sites you added. The pages, the extension's parts in `app`,
-`shared/ui` and `traffic` may import it; `shared/api` may not.
+`traffic` and the screens of `rules` (`rules/ui`) may import it; `shared/api` may not.
 
 Traffic is the second, `traffic`: what the page asked for and what each rule did, from the log
 each tab's page keeps to the Traffic view. It's the first with layers inside: `domain` says what
@@ -80,9 +80,9 @@ of a log and a page's counts; `infrastructure` the tab's own log, which the brid
 page; and `ui` the Traffic view and the log's hooks. The messages its parts send each other are
 in `contract.ts`. It has two doors and no other way in: `traffic/index.ts`, with no React, which
 the pages, every part in `app` (the background and the page scripts too) and `rules` (a rule is
-made from a request) may import; and `traffic/ui/index.ts`, which only the pages and the
-extension's own pages in `app` may. Traffic's own `ui` takes what the first door offers from it
-too.
+made from a request) may import; and `traffic/ui/index.ts`, which only the pages, the extension's
+own pages in `app` and the screens of `rules` (`rules/ui`) may. Traffic's own `ui` takes what the
+first door offers from it too.
 
 Interception is the third, `interception`: what runs in the page's own world, where it wraps
 `fetch` and `XMLHttpRequest` and answers a request with the rule that matches it. Its one door,
@@ -91,39 +91,47 @@ into `interceptor.js`, keeps only the entry, which decides whether it runs on th
 it. What Interception and the rules must agree on, so that the editor can't say what the page
 wouldn't do, is the kernel, `kernel`: what a rule's match and its answer are made of, which
 requests a rule matches, and which of its header rows the page gets. The kernel is used through
-its `index.ts`, and `rules`, `shared/ui`, the pages, every part in `app` and `interception` may
+its `index.ts`, and `rules` (its `ui` too), the pages, every part in `app` and `interception` may
 import it.
 
 Rules is the fourth, `rules`: what Ghostfetch should answer, and which rule wins. Its `domain`
 says what a rule and a group are, what the order is and every operation on it, whether a rule is
 answering and what's wrong with one, and imports nothing but the kernel and `lib`; `application`
 has the screens' copy of the order, which saves it and redraws after each operation, what's made
-from something else (a copy of a group or a rule, a rule made from a request),
-the server's responses a body's Diff compares with, and what the page is given of what's stored,
-which the bridge posts; and `infrastructure` how the order is kept, the toolbar badge and the
-clipboard a rule's body editor pastes from. What the bridge sends the interceptor is in
-`contract.ts`. Its one door, `rules/index.ts`, has no React: the pages, every part in `app` (the
-background and the page scripts too), `shared/ui`, `traffic/ui` and, for its types, `interception`
-may import it; `shared/api` may not. The Rules view's screens are still in `pages/rules`, and
-take what they use of `rules` through that door.
+from something else (a copy of a group or a rule, a rule made from a request or from what's typed
+in New rule), rules files, the server's responses a body's Diff compares with, and what the page
+is given of what's stored, which the bridge posts; `infrastructure` how the order is kept, the
+toolbar badge and the clipboard a rule's body editor pastes from; and `ui` the Rules view and the
+widgets other screens show. What the bridge sends the interceptor is in `contract.ts`. It has two
+doors, as Traffic has: `rules/index.ts`, with no React, which the pages, every part in `app` (the
+background and the page scripts too), `traffic/ui` and, for its types, `interception` may import,
+and `shared/api` may not; and `rules/ui/index.ts`, the Rules view, for the editor. The widgets
+other screens show are a public file each in `rules/ui` instead, so the popup, which shows a
+rule's and a group's switch, doesn't load the Rules view with them. The pages, the extension's
+own pages in `app` and `traffic/ui` may import the second door and the widgets' files. Rules' own
+`ui` takes what the first door offers from it too, and what only the screens use (New rule's
+draft, the search, a copy of a rule, the requests New rule offers, the clipboard, rules files) by
+path: the door doesn't offer it, and offering New rule's draft would bring it into the popup
+(`rules/index.ts` says why).
 
-`shared` has no slices, only segments, one for each kind of code: `api` for Ghostfetch's two
-switches, on or off and recording, and `ui` for the components that show a rule or a group. `api`
-is used through its `index.ts`, and so are `lib` (small libraries of Ghostfetch's own), `platform`
-(what differs between the browsers, and opening the editor), the kernel, `interception`, `rules`,
-`sites` and `body-editor`. `ui` and `shared/ui` have a public file per component or hook instead,
-as FSD advises, so a screen that shows a button doesn't load the rest of the kit with it. `lib`,
-`platform`, the kernel, `interception`, `rules`, `sites`, `shared/api` and `traffic` outside its
-`ui` are plain TypeScript, with no React and no npm package. `lib` imports nothing else;
-`platform` and the kernel only `lib`; `sites` only `lib` and `platform`; `traffic` only `lib`,
-`platform` and `sites`; `rules` only `lib`, `platform`, the kernel and `traffic`, and its `domain`
-only `lib` and the kernel; `interception` only the kernel, `lib`, `traffic` and the types of
-`rules`; and `shared/api` only `lib`. That is what keeps the background, which uses `rules`,
-`sites`, `traffic` and `lib`, and the page scripts, the bridge with `rules`, `traffic` and `lib`
-and the interceptor with `interception`, free of the screens' libraries. Besides npm packages,
-`ui` imports only `lib` and `platform`, `body-editor` only `lib` and `ui`, and `traffic/ui` only
-`lib`, `platform`, `ui`, `body-editor`, `rules`, `sites`, `shared/api`, `shared/ui` and the rest
-of `traffic`. `npm run lint` checks all this with eslint-plugin-boundaries, whose policies are in
+`shared` has no slices, only segments, one for each kind of code, and one is left: `api`, for
+Ghostfetch's two switches, on or off and recording. `api` is used through its `index.ts`, and so
+are `lib` (small libraries of Ghostfetch's own), `platform` (what differs between the browsers,
+and opening the editor), the kernel, `interception`, `sites` and `body-editor`. `ui` has a public
+file per component or hook instead, as FSD advises, so a screen that shows a button doesn't load
+the rest of the kit with it. `lib`, `platform`, the kernel, `interception`, `sites`, `shared/api`,
+and `rules` and `traffic` outside their `ui` are plain TypeScript, with no React and no npm
+package. `lib` imports nothing else; `platform` and the kernel only `lib`; `sites` only `lib` and
+`platform`; `traffic` only `lib`, `platform` and `sites`; `rules` only `lib`, `platform`, the
+kernel and `traffic`, and its `domain` only `lib` and the kernel; `interception` only the kernel,
+`lib`, `traffic` and the types of `rules`; and `shared/api` only `lib`. That is what keeps the
+background, which uses `rules`, `sites`, `traffic` and `lib`, and the page scripts, the bridge
+with `rules`, `traffic` and `lib` and the interceptor with `interception`, free of the screens'
+libraries. Besides npm packages, `ui` imports only `lib` and `platform`, `body-editor` only `lib`
+and `ui`, `traffic/ui` only `lib`, `platform`, `ui`, `body-editor`, `rules` and its widgets,
+`sites`, `shared/api` and the rest of `traffic`, and `rules/ui` only `lib`, `platform`, `ui`,
+`body-editor`, the kernel, `sites`, `traffic` by either of its doors, `shared/api` and the rest
+of `rules`. `npm run lint` checks all this with eslint-plugin-boundaries, whose policies are in
 `oxlint.config.ts`.
 
 Inside a page the files are grouped by what they're for: `ui/` holds its components, `model/` its
@@ -140,22 +148,21 @@ src/app/                         the extension's parts, one folder each, which W
   kit/                           the kit page, every kit component in its states (ui/); for npm run dev and the kit test, never in the extension
   styles/                        theme.css, the look's values (colours, the two fonts); themes.css, the other themes' colours; and kit.css: those as Tailwind's theme (type sizes, corners)
 src/pages/                       what the screens show
-  rules/                         the Rules view: the sidebar's rule list, New rule (ui/new-rule/, and its draft, lib/rule-draft.ts, which goes to src/rules/ with the screens) and the rule editor (ui/rule-editor/, a component per part)
   popup/                         the toolbar popup: its header, the tab's site, and its tabs (This page, All rules, Sites)
   agent/                         Agent access, in the editor: the connection to ghostfetch-mcp, what each of the agent's tools does, and its panel and button (see agent-access.md)
 src/shared/                      what more than one part of the extension uses
   api/                           Ghostfetch's two switches (index.ts)
     settings.ts                  Ghostfetch on or off, and recording, which only the popup changes
-  ui/                            the components that show a rule or a group, a public file each
-    rules-file.tsx               rules files: export every rule, a group or one rule, import one (its rules and groups arrive turned off)
+src/rules/                       Rules, what Ghostfetch should answer and which rule wins (index.ts, with no React, and ui/index.ts); its words are in glossary/rules.md
+  domain/                        a rule: its fields (built from the kernel's parts, types.ts) and the words the screens show for them (catalog.ts), making one (rule.ts), whether it's answering (answering.ts), what's wrong with it (problems.ts); groups (group.ts); the order and every operation on it, which keeps two groups from sharing a name (order.ts), and what a search shows of it (filter-rules.ts)
+  application/                   the screens' copy of the order, which saves and redraws after each operation (store.ts); a copy of a group or a rule (duplicate-group.ts, duplicate-rule.ts); a rule made from a request in the log (rule-from-entry.ts), the requests New rule offers to mock (recent-requests.ts), and New rule's draft, what's typed there read and the rule made from it (rule-draft.ts); rules files, writing one and reading one into the order, its rules and groups turned off (rules-file.ts); apart from the rules, the server's responses their bodies' Diff compares with (server-responses.ts); and what the page is given of what's stored, which the bridge posts (page-state.ts)
+  infrastructure/                how the order is kept, as the rules, each naming its group, and the groups, each with its place (order-storage.ts); the toolbar badge, which the background keeps in sync (badge.ts); and the clipboard a rule's body editor's vim keys paste from, with the permission that takes (clipboard.ts)
+  contract.ts                    what the bridge sends the interceptor: the rules that answer, with the two switches
+  ui/                            the Rules view (index.ts, for the editor): the sidebar's rule list, New rule (new-rule/) and the rule editor (rule-editor/, a component per part); and the widgets other screens show, a public file each
     rule-switch.tsx              a rule's switch, the green dot (the kit's SignalSwitch), in the editor's rule list and the popup; group-switch.tsx, a group's
     group-folds.ts               which groups are folded, in the editor's list and the popup alike
     group-picker.tsx             the group a new rule goes into, where New rule and Mock this response make one; new-rule-group.ts, the one it starts on
-src/rules/                       Rules, what Ghostfetch should answer and which rule wins (index.ts, with no React); its words are in glossary/rules.md
-  domain/                        a rule: its fields (built from the kernel's parts, types.ts) and the words the screens show for them (catalog.ts), making one (rule.ts), whether it's answering (answering.ts), what's wrong with it (problems.ts); groups (group.ts); the order and every operation on it, which keeps two groups from sharing a name (order.ts), and what a search shows of it (filter-rules.ts)
-  application/                   the screens' copy of the order, which saves and redraws after each operation (store.ts); a copy of a group or a rule (duplicate-group.ts, duplicate-rule.ts); a rule made from a request in the log (rule-from-entry.ts), and the requests New rule offers to mock (recent-requests.ts); apart from the rules, the server's responses their bodies' Diff compares with (server-responses.ts); and what the page is given of what's stored, which the bridge posts (page-state.ts)
-  infrastructure/                how the order is kept, as the rules, each naming its group, and the groups, each with its place (order-storage.ts); the toolbar badge, which the background keeps in sync (badge.ts); and the clipboard a rule's body editor's vim keys paste from, with the permission that takes (clipboard.ts)
-  contract.ts                    what the bridge sends the interceptor: the rules that answer, with the two switches
+    rules-file.tsx               rules files on screen: Export (every rule, a group or one rule), the file picker behind Import rules…, and the toasts that say how an import went
 src/sites/                       Sites, where Ghostfetch runs (index.ts); its words are in glossary/sites.md
   site.ts                        the sites Ghostfetch runs on: the built-in hosts and the ones you added, which hosts a site covers, and whether Ghostfetch runs on a URL
   store.ts                       the screens' copy of the sites you added, and turning Ghostfetch on or off for one

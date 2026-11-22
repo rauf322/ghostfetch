@@ -17,10 +17,10 @@ import type { RuleCount } from '../../../traffic/index.ts';
 import { openRuleInEditor } from '../../../platform/index.ts';
 import { useStore } from '../../../ui/use-store.ts';
 import { cn } from '../../../ui/cn.ts';
-import { foldStore, isFolded, setFolded } from '../../../shared/ui/group-folds.ts';
-import { GroupSwitch } from '../../../shared/ui/group-switch.tsx';
+import { foldStore, isFolded, setFolded } from '../../../rules/ui/group-folds.ts';
+import { GroupSwitch } from '../../../rules/ui/group-switch.tsx';
 import { Icon } from '../../../ui/kit/icon.tsx';
-import { RuleSwitch } from '../../../shared/ui/rule-switch.tsx';
+import { RuleSwitch } from '../../../rules/ui/rule-switch.tsx';
 import { matchLine } from '../lib/rule-words.ts';
 
 export function RuleList({

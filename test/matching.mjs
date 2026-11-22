@@ -1,6 +1,6 @@
 // A rule's URL pattern, without a browser: which URLs the page's interceptor answers with it
 // (findRule, src/interception/matching.ts), for each way of comparing a URL, and that the
-// rule editor's URL tester (testResult, src/pages/rules/lib/rule-checks.ts) says the same for
+// rule editor's URL tester (testResult, src/rules/ui/rule-checks.ts) says the same for
 // every one of them, so Try a URL in the rule editor tells the truth. And that the requests the
 // editor keeps a rule's server's response from, for its Diff (entryTester), are the ones the page
 // would answer with the rule: the same URLs, methods and GraphQL operations. Then which of two
@@ -11,7 +11,7 @@
 //
 //   node test/matching.mjs      (npm test runs it after test/diff.mjs)
 import { compile, findRule } from '../src/interception/matching.ts';
-import { testResult } from '../src/pages/rules/lib/rule-checks.ts';
+import { testResult } from '../src/rules/ui/rule-checks.ts';
 import {
   bodyProblem,
   createRule,

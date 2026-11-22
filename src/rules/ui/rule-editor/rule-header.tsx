@@ -1,0 +1,38 @@
+// The bar across the top of a rule: back to the sidebar (in a narrow panel), where you are (beside
+// the sidebar, with the rule's group if it's in one), Duplicate (where there's room for the word)
+// and its ⋯ menu. The rule's switch is its dot in the list and in the popup, and Ghostfetch's own
+// switch is the popup's.
+import { groupOf, ruleTitle } from '../../index.ts';
+import type { Rule } from '../../index.ts';
+import { duplicateRule } from '../../application/duplicate-rule.ts';
+import { Button } from '../../../ui/kit/button.tsx';
+import { Icon } from '../../../ui/kit/icon.tsx';
+import { RulesHead } from '../rules-head.tsx';
+import { RuleMenu } from './rule-menu.tsx';
+
+export function RuleHeader({
+  rule,
+  onSelect,
+}: {
+  rule: Rule;
+  onSelect: (id: string | null) => void;
+}) {
+  return (
+    <RulesHead
+      title={ruleTitle(rule)}
+      group={groupOf(rule)?.name}
+      backTestId="rule-back"
+      onBack={() => onSelect(null)}
+    >
+      <Button
+        data-testid="duplicate-rule"
+        onClick={() => onSelect(duplicateRule(rule))}
+        className="hidden @[640px]/main:inline-flex"
+      >
+        <Icon name="copy" size={14} />
+        Duplicate
+      </Button>
+      <RuleMenu rule={rule} onSelect={onSelect} />
+    </RulesHead>
+  );
+}

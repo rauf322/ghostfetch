@@ -66,7 +66,7 @@ export function isId(value: unknown): value is string {
 // Rebuilds a rule field by field from known keys and types, so stored, older or imported
 // rules (which may come from an untrusted file) can't carry unexpected values into the UI.
 // Its group is kept as it says, if it's an id: a group that isn't there leaves it ungrouped
-// (order.ts), and an import gives its groups new ids (rules-file.tsx).
+// (order.ts), and an import gives its groups new ids (application/rules-file.ts).
 export function normalizeRule(input: unknown, { newId = false } = {}): Rule {
   const raw = input as Untrusted;
   const base = createRule();

@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '../../ui/kit/dropdown-menu.tsx';
 import { Icon } from '../../ui/kit/icon.tsx';
-import { exportRules } from '../../shared/ui/rules-file.tsx';
+import { exportRules } from '../../rules/ui/rules-file.tsx';
 import { ThemeMenu } from '../../ui/theme-menu.tsx';
 
 export function EditorMenu({

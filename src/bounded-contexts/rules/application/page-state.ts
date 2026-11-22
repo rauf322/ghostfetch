@@ -2,7 +2,8 @@
 // (PageState, ../contract.ts), made from what it read of storage: the rules that answer, each as
 // the editor reads it, in their order, with the two switches. A function of what was read, with
 // no browser in it: reading storage and posting are the bridge's, which calls this in between,
-// with nothing awaited.
+// with nothing awaited. Rebuilding the rules here is Rules' anticorruption layer on the way to
+// the page (GLOSSARY-MAP.md): the page never gets a shape the editor wouldn't show.
 import { wouldAnswer } from '../domain/answering.ts';
 import { normalizeGroups } from '../domain/group.ts';
 import { layOut } from '../domain/order.ts';

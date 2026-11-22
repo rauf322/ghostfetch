@@ -3,7 +3,8 @@
 // the sites you added, and the background answers once it has registered them
 // (src/app/background/on-message.ts), so a tab reloaded after that gets the change. A type only:
 // nothing of this file ends up in the built extension. The background reads it in a union with
-// Traffic's messages, which it puts together there.
+// Traffic's messages, which it puts together there. It's Sites' published language
+// (GLOSSARY-MAP.md).
 export interface SyncMessage {
   type: 'ghostfetch:sync';
 }

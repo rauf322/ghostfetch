@@ -2,9 +2,10 @@
 // code: the rules and their groups as src/bounded-contexts/rules/ keeps them (which saves them,
 // sends them to open pages and redraws the screens), and the log of the page the editor watches.
 // What a tool is given is checked here again, and a rule is rebuilt by normalizeRule before it's
-// kept, as an imported one is. The agent sees requests only from a page on a dev host
-// (localhost, *.localhost, 127.0.0.1, local.*): what the editor watches on any other site stays in
-// the browser.
+// kept, as an imported one is: Rules' anticorruption layer, for what an agent sends
+// (GLOSSARY-MAP.md). The agent sees requests only from a page on a dev host (localhost,
+// *.localhost, 127.0.0.1, local.*): what the editor watches on any other site stays in the
+// browser.
 //
 // A rule's position is where it's tried in the whole order (0, the first, is tried first); a
 // group's is its place among the list's top-level entries, groups and ungrouped rules (0 is the

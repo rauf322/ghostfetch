@@ -1,5 +1,7 @@
 // The body editor (with its find bar, vim keys, text size and marks for a mistake), the read-only
-// CodeView, and CodeDiff, the body's Diff against the server's response.
+// CodeView, and CodeDiff, the body's Diff against the server's response. A generic context
+// (GLOSSARY-MAP.md): it knows nothing of rules or requests, and Rules and Traffic use it as a
+// library.
 export {
   CodeDiff,
   diffLayoutPreferred,

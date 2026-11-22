@@ -1,9 +1,10 @@
 // A tab's traffic log, as the page keeps it: the bridge (src/app/bridge/) starts one in each frame
 // and gives it what the page reports. Each report is rebuilt before it's kept, as the page can
-// forge one. The top frame's log is the tab's: an iframe's entries reach it through the
-// background, the popup asks it how often each rule answered, and the editor's Traffic view reads
-// it over the "ghostfetch-log" port, so the editor can show requests made before it was opened.
-// It lives with the page and is never stored. Its messages are in ../contract.ts.
+// forge one: clean() is Traffic's anticorruption layer against Interception (GLOSSARY-MAP.md).
+// The top frame's log is the tab's: an iframe's entries reach it through the background, the
+// popup asks it how often each rule answered, and the editor's Traffic view reads it over the
+// "ghostfetch-log" port, so the editor can show requests made before it was opened. It lives with
+// the page and is never stored. Its messages are in ../contract.ts.
 import type { Untrusted } from '../../../lib/index.ts';
 import type {
   CountsMessage,

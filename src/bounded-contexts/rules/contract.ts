@@ -2,6 +2,7 @@
 // each as the editor reads it, with the two switches. Types only: nothing of this file ends up in
 // the built extension. Every other message is its context's own: Traffic's are in
 // src/bounded-contexts/traffic/contract.ts, and Sites' in src/bounded-contexts/sites/contract.ts.
+// This is Rules' published language to Interception (GLOSSARY-MAP.md).
 import type { Rule } from './domain/types.ts';
 
 // A rule as the page gets it: rebuilt as the editor reads it (normalizeRule, domain/rule.ts), not

@@ -123,6 +123,22 @@ Sites, the shared kernel and `lib`, by their doors, and WXT's helpers, and the i
 Interception too, which keeps them free of the screens' libraries. The body editor's engine,
 which the Zen test serves straight from `src/`, imports only `.ts` files: its own and `lib`'s.
 
+The Glossary Map names each relationship between the contexts by its context-map pattern. Where
+each one's translation is in the code, under `src/` but for the agent's server:
+
+| Relationship | Pattern | Where it's done |
+| --- | --- | --- |
+| Rules → Interception | a shared kernel, and Interception conformist | `shared-kernel`, which both call; `bounded-contexts/rules/application/page-state.ts`, which gives the page each rule rebuilt |
+| Interception → Traffic | Traffic's anticorruption layer | `clean()` in `bounded-contexts/traffic/infrastructure/tab-log.ts` |
+| Traffic → Rules | customer and supplier | `rule-from-entry.ts`, `server-responses.ts` and `recent-requests.ts`, in `bounded-contexts/rules/application` |
+| Rules → Traffic | reference by identity | an entry's `ruleId`, `ruleName` and `groupName` (`bounded-contexts/traffic/domain/log-entry.ts`) |
+| What's stored, rules files and hand edits → Rules | Rules' anticorruption layer | `normalizeRule` and `normalizeRules` (`bounded-contexts/rules/domain/rule.ts`) and `normalizeGroups` (`group.ts`), wherever rules are read: `order-storage.ts`, `rules-file.ts`, `page-state.ts`, the agent's tools and `app/background/stored-state.ts`; and Sites' `normalizeSites` (`bounded-contexts/sites/site.ts`), and the editor's `app/sidepanel/legacy-settings.ts` |
+| Agent access → a coding agent | an open host service, the tools its published language | `mcp/ghostfetch-mcp.mjs`, and `bounded-contexts/agent-access/application/agent-tools.ts` and `rule-report.ts` |
+| Agent access → Rules, Traffic, Sites | conformist | their doors |
+| Rules and Traffic → Body editor | generic, used as a library | `bounded-contexts/body-editor/index.ts` |
+| Between the extension's parts | each context's published language | each context's `contract.ts` |
+| The browsers → the rest | an adapter, not a context | `platform` |
+
 In the popup's folder, `app/popup`, the files are grouped by what they're for: `ui/` holds its
 components, `model/` its state and what changes it, and `lib/` plain functions. The popup
 composes components of its own, one per part of the screen, so each file is about one thing.

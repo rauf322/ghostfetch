@@ -1,4 +1,7 @@
 // Making rules: a new one, one rebuilt from data that can't be trusted, and the name a rule goes by.
+// Rebuilding is Rules' anticorruption layer (GLOSSARY-MAP.md): whatever an older version, a hand
+// edit, a rules file or an agent left is read as the editor reads it, by the screens, the badge,
+// the agent's tools and the page alike.
 import type { BodyMode, HeaderRow, Method } from '../../../shared-kernel/index.ts';
 import { randomId } from '../../../lib/index.ts';
 import type { Untrusted } from '../../../lib/index.ts';

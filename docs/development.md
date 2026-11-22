@@ -214,7 +214,7 @@ README.md                        what Ghostfetch does, installing it, and buildi
 GLOSSARY-MAP.md                  the bounded contexts Ghostfetch's words belong to, and how they relate
 docs/                            guide.md, using it in full; security-model.md; agent-access.md; this file
   glossary/                      the words of each context, and the ones it doesn't use: rules.md (rule, group, order, on, answering, paused), interception.md, traffic.md, sites.md, agent-access.md, body-editor.md
-  adr/                           decisions worth knowing the reasons for, one file each (0001: the order decides which rule answers; 0002: the code is cut by bounded context, not by layer)
+  adr/                           decisions worth knowing the reasons for, one file each (0001: the order decides which rule answers; 0002: the code is cut by bounded context, not by layer; 0003: the switches keep the name enabled where they're stored and published)
   media/                         the README's screenshots and recordings, and the Thorn Glass at 512 px
 .output/                         what the build makes: chrome-mv3/, firefox-mv3/ (*-kit/: the kit test's builds)
 web-ext-artifacts/               what npm run zip makes: the packages for each browser, the .xpi and the sources zip

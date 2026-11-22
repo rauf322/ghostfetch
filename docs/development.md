@@ -190,7 +190,8 @@ src/ui/                          the components that know nothing of rules, site
   cn.ts                          cn(), which joins the kit's class names
 src/lib/                         small libraries, a file each (index.ts): JSON, HTML, URLs, durations, status names, cURL
                                  commands, icons, file names, a download, the stores' base, untrusted data, a line diff,
-                                 and the shape of the clipboard the body editor's vim keys read
+                                 the shape of the clipboard the body editor's vim keys read, and a random id that a page
+                                 which isn't a secure context can make too (random-id.ts)
 wxt.config.ts                    the manifest (permissions, content scripts, CSP, Firefox ID) and the build settings
 components.json                  settings for shadcn's CLI, for adding a kit component
 oxlint.config.ts                 the linter's settings (npm run lint), and the table of which folders of src/ may import which, for eslint-plugin-boundaries
@@ -319,10 +320,22 @@ and the names a new group, a copy and an import get. Then when a rule is answeri
 (`isAnswering`: it's on, its group is on and Ghostfetch isn't paused; `wouldAnswer` needs only
 the first two), and what's wrong with one (`regexError`, and `bodyProblem`, which looks only at a
 JSON body of the rule's own). Last, what the page is given of what's stored (`pageState`, which
-the bridge posts): the rules that are on, in no group or a group that's on, in the order, each in
-a group with the group's name and the others as they're stored, none of a type 0.9.0 took out and
-nothing that isn't a rule, and the two switches as they were stored. It needs no browser either,
-and `npm test` runs it after `test/diff.mjs`.
+the bridge posts): the rules that are on, in no group or a group that's on, in the order, each
+rebuilt as the editor reads it (`normalizeRule`, keeping its id) and in a group with the group's
+name, none of a type 0.9.0 took out and nothing that isn't a rule, and the two switches as they
+were stored. So that the editor's next save, which writes the rules rebuilt, never changes what
+the page does: for every odd shape an older version or a hand can leave a rule in (each field
+missing in turn or of the wrong type, a method in small letters, a body mode that isn't one, a
+status written `" 404"` or out of range, a delay past the longest a rule keeps, header rows that
+aren't, an id that isn't one, a type from before 0.9.0, an entry that isn't a rule), the page
+answers a set of requests, through `pageState` and the interceptor's own functions, as it does
+once the editor has rewritten the rule: the same rule or none, the same status, headers, body and
+delay, and the same name in the log. And a rule whose name isn't text, or whose headers aren't a
+list or name a row by a number, answers instead of failing the request. And without
+`crypto.randomUUID`, as in a content script on a page served over plain http from a host that
+isn't localhost, the page still gets its rules rebuilt and in their groups, a valid id kept and
+one that isn't given a version 4 UUID (`randomId`). It needs no browser either, and `npm test`
+runs it after `test/diff.mjs`.
 
 `test/order.mjs` checks the order's own operations (`src/bounded-contexts/rules/domain/order.ts`),
 each on an order of ungrouped rules and groups: what's kept of an order (its rules from the top,
@@ -348,9 +361,11 @@ from a URL (a bare origin keeps its host) or from "POST /path", which Accept val
 Content-Type, and the rule it makes. `npm test` runs it after `test/order.mjs`.
 
 `test/e2e.mjs` loads the built extension into Chromium, runs a local API and checks the rules
-against fetch and XHR (that rules saved by older versions do what they should, and that a rule
-keeping the server's body passes it on as it is: bytes that aren't text, a response as it
-arrives, a no-cors request's opaque response, and over XHR the charset the response names; that
+against fetch and XHR (that rules saved by older versions do what they should; that a rule stored
+by hand whose name is a number, and one whose headers are an object, answer fetch and XHR as the
+editor shows them, each answer counted under the rule; and that a rule keeping the server's body
+passes it on as it is: bytes that aren't text, a response as it arrives, a no-cors request's
+opaque response, and over XHR the charset the response names; that
 an answer a rule holds back past the page's `xhr.timeout` times out; and that a fetch the page
 aborts before a rule answers it is rejected, and listed as aborted under the rule's name, its row
 saying so, rather than as the rule's error or one of the times it fired; that `open()` with a

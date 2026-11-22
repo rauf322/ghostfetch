@@ -1,7 +1,7 @@
 // Whether a rule answers (docs/glossary/rules.md, Answering). A rule has three switches over it:
 // its own, its group's if it's in one, and Ghostfetch's. These are plain functions of the three,
-// with no store behind them, so the background and the page's bridge, which read the rules as
-// they're stored, ask what the screens ask.
+// with no store behind them, so the background and the page's bridge, which read the rules from
+// storage and not from the screens' store, ask what the screens ask.
 import type { Rule } from './types.ts';
 
 // On, and in no group or a group that's on (`groupOn`): all that a rule and its group have to say.

@@ -4,8 +4,9 @@
 // (bounded-contexts/interception/matching.ts), the editor keeps a rule's server's response by
 // (entryTester, bounded-contexts/rules/application/server-responses.ts) and the agent's try_url
 // tries a request with, so neither of those two can say what the page wouldn't do. Throws, as
-// urlTester does, if the pattern is a regex that doesn't compile. Every field has a default: the
-// page gets the rules as they're stored. test/matching.mjs checks the cases.
+// urlTester does, if the pattern is a regex that doesn't compile. Every field has a default all
+// the same, a second line behind the bridge, which gives the page each rule as the editor reads
+// it. test/matching.mjs checks the cases.
 import type { RuleMatch } from './rule-parts.ts';
 import { urlTester } from './url-match.ts';
 

@@ -14,6 +14,7 @@ export { icon } from './icons.ts';
 export type { IconName } from './icons.ts';
 export { checkJson, formatJson } from './json.ts';
 export type { JsonProblem } from './json.ts';
+export { randomId } from './random-id.ts';
 export { slug } from './slug.ts';
 export { splitUrl } from './split-url.ts';
 export { statusLabel, statusName } from './status-names.ts';

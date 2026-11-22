@@ -3,8 +3,8 @@
 // page ever sees Set-Cookie. '' when it does; else why not, in the words the rule editor shows under
 // the row. The interceptor skips the rows this says no to
 // (bounded-contexts/interception/apply-rule.ts), so the editor can't call a row skipped that the
-// page gets, or the other way round. Rules reach the page as they're stored, so the row's fields
-// may be anything.
+// page gets, or the other way round. The page gets each rule as the editor reads it, a row's name
+// and value as text, but they're read as text here all the same, a second line.
 import type { HeaderRow } from './rule-parts.ts';
 
 const TOKEN = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/;

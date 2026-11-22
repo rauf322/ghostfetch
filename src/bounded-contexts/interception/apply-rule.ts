@@ -3,9 +3,10 @@
 // unread: the page gets the server's bytes as they are and as they arrive, never a copy made
 // from their text, which a body that isn't text (an image, a download) wouldn't survive and a
 // stream would never finish (fetch.ts and simulate-xhr.ts each take it their own way). The rule's
-// status and headers apply last. Any other body mode counts as Server's body: rules reach the
-// page as they're stored, and one saved with Merge or Script (both taken out in 0.8.0) called the
-// server too.
+// status and headers apply last. The page gets each rule as the editor reads it
+// (bounded-contexts/rules/application/page-state.ts), with one of those two body modes; any other
+// counts as Server's body all the same, a second line, as one saved with Merge or Script (both
+// taken out in 0.8.0) called the server too.
 import { headerProblem } from '../../shared-kernel/index.ts';
 import type { Rule } from '../rules/index.ts';
 import type { PageRequest, RuleResult } from './types.ts';

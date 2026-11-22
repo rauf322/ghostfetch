@@ -1,5 +1,6 @@
 // Making rules: a new one, one rebuilt from data that can't be trusted, and the name a rule goes by.
 import type { BodyMode, HeaderRow, Method } from '../../../shared-kernel/index.ts';
+import { randomId } from '../../../lib/index.ts';
 import type { Untrusted } from '../../../lib/index.ts';
 import { BODY_MODES, MATCH_MODES, MAX_DELAY, METHODS } from './catalog.ts';
 import type { Rule } from './types.ts';
@@ -7,7 +8,7 @@ import type { Rule } from './types.ts';
 export function createRule(): Rule {
   const now = Date.now();
   return {
-    id: crypto.randomUUID(),
+    id: randomId(),
     name: '',
     enabled: true,
     group: '',
@@ -26,8 +27,8 @@ export function createRule(): Rule {
 }
 
 // Whether stored or imported data is a rule Ghostfetch still has: one with no type (from 0.9.0 on)
-// or a response rule. Redirect, header and block rules, which 0.9.0 took out, aren't. The bridge
-// asks this of the rules as they're stored, before handing them to the page.
+// or a response rule. Redirect, header and block rules, which 0.9.0 took out, aren't. What the
+// page is given asks this of the stored rules before rebuilding them (application/page-state.ts).
 export function isResponseRule(input: unknown) {
   const type = (input as Untrusted)?.type;
   return type === undefined || type === 'response';
@@ -50,8 +51,8 @@ const isMethod = (value: unknown): value is Method =>
   (METHODS as readonly unknown[]).includes(value);
 
 // A stored body mode. Merge and Script, which 0.8.0 took out, called the server too, so a rule
-// saved with one keeps the server's body, as the page already gets it (apply-rule.ts), rather
-// than falling back to Replace and sending a body the rule never had.
+// saved with one keeps the server's body, as it always had on the page, rather than falling back
+// to Replace and sending a body the rule never had.
 function bodyMode(mode: unknown): BodyMode {
   if (isKey(BODY_MODES, mode)) return mode;
   return mode === 'merge' || mode === 'script' ? 'original' : 'replace';
@@ -64,7 +65,8 @@ export function isId(value: unknown): value is string {
 }
 
 // Rebuilds a rule field by field from known keys and types, so stored, older or imported
-// rules (which may come from an untrusted file) can't carry unexpected values into the UI.
+// rules (which may come from an untrusted file) can't carry unexpected values into the screens,
+// an agent's tools or the page (application/page-state.ts).
 // Its group is kept as it says, if it's an id: a group that isn't there leaves it ungrouped
 // (order.ts), and an import gives its groups new ids (application/rules-file.ts).
 export function normalizeRule(input: unknown, { newId = false } = {}): Rule {

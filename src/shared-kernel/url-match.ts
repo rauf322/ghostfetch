@@ -4,8 +4,8 @@
 // page wouldn't do.
 // Case-sensitive. With no pattern, every URL matches if the rule names a GraphQL operation (which
 // then decides alone, from the request) and none does otherwise. Throws if the pattern is a regex
-// that doesn't compile. Every field has a default: the page gets the rules as they're stored.
-// test/matching.mjs checks the cases.
+// that doesn't compile. Every field has a default all the same, a second line behind the bridge,
+// which gives the page each rule as the editor reads it. test/matching.mjs checks the cases.
 import type { RuleMatch } from './rule-parts.ts';
 
 export function urlTester({

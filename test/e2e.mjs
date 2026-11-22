@@ -715,6 +715,94 @@ try {
     );
   });
 
+  // Rules stored by hand, as a person or a script editing storage can leave them: one whose name
+  // is a number, and one whose headers are an object, not a list. The editor reads them as a rule
+  // with no name and one with no headers, and the page gets each rule as the editor reads it
+  // (src/bounded-contexts/rules/application/page-state.ts), so both answer the page's fetch and
+  // XMLHttpRequest as the editor shows them, and the page counts each answer under the rule. Up to
+  // 0.25.1 the page got them as they were stored: the first broke every fetch it answered (the log
+  // couldn't name it), and the second failed every request it matched.
+  const storedByHand = async (id, change) => {
+    const { rules } = await worker.evaluate(() => chrome.storage.local.get('rules'));
+    const tab = (await worker.evaluate(() => chrome.tabs.query({}))).find(
+      (candidate) => candidate.url === page.url(),
+    );
+    // What `read` gives once `done` says it's there, or what it gives after 3 s.
+    const until = async (read, done) => {
+      for (const end = Date.now() + 3000; ; await sleep(100)) {
+        const value = await read();
+        if (done(value) || Date.now() > end) return value;
+      }
+    };
+    const target = `/api/user?case=${id}`;
+    const byHand = createRule();
+    byHand.id = id;
+    byHand.match.url = `case=${id}`;
+    byHand.response.body = JSON.stringify({ byHand: id });
+    change(byHand);
+    try {
+      await setStorage({ rules: [byHand, ...rules] });
+      // The server answers until the page has the rule.
+      const fetched = await until(
+        () => call(target),
+        (got) => got.body?.name !== 'Real',
+      );
+      const overXhr = await xhr(target);
+      const counted = await until(
+        async () =>
+          (
+            await worker.evaluate(
+              (tabId) =>
+                chrome.tabs.sendMessage(
+                  tabId,
+                  { type: 'ghostfetch:counts' },
+                  { frameId: 0 },
+                ),
+              tab.id,
+            )
+          ).rules[id] ?? null,
+        (count) => count && count.mocked + count.failed >= 2,
+      );
+      return {
+        fetch: fetched.error ?? [
+          fetched.status,
+          fetched.headers['content-type'],
+          fetched.body,
+        ],
+        xhr: [overXhr.status, overXhr.text],
+        counted,
+      };
+    } finally {
+      await setStorage({ rules });
+      await sleep(300);
+    }
+  };
+  const answeredByHand = (id) => ({
+    fetch: [200, 'application/json', { byHand: id }],
+    xhr: [200, JSON.stringify({ byHand: id })],
+    counted: { mocked: 2, modified: 0, failed: 0 },
+  });
+  await check(
+    "a rule stored by hand whose name is a number answers the page's fetch and XMLHttpRequest, and the page counts both under it",
+    async () => {
+      const id = 'by-hand-name';
+      const got = await storedByHand(id, (rule) => {
+        rule.name = 5;
+      });
+      expect(got, answeredByHand(id));
+    },
+  );
+  await check(
+    "a rule stored by hand whose headers are an object, not a list, answers the page's fetch and XMLHttpRequest, and the page counts both under it",
+    async () => {
+      const id = 'by-hand-headers';
+      const got = await storedByHand(id, (rule) => {
+        rule.response.headers = { 'X-By-Hand': 'yes' };
+      });
+      expect(got, answeredByHand(id));
+    },
+  );
+
   console.log('switches');
   await check('master switch off disables every rule', async () => {
     await setStorage({ enabled: false });

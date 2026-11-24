@@ -10,6 +10,7 @@ import { GroupSwitch } from './group-switch.tsx';
 import { Button } from '../../../ui/kit/button.tsx';
 import { Icon } from '../../../ui/kit/icon.tsx';
 import { notify } from '../../../ui/kit/toast.tsx';
+import { Tooltip } from '../../../ui/kit/tooltip.tsx';
 import type { HeaderDrag } from './use-rule-drag.ts';
 import { DROP_MARK, INTO_MARK } from './drop-marks.ts';
 import { GroupMenu } from './group-menu.tsx';
@@ -58,23 +59,26 @@ export function GroupHeader({
       {renaming ? (
         <NameField group={group} onDone={onRenamed} />
       ) : (
-        <button
-          type="button"
-          data-testid="group-name"
-          aria-expanded={!folded}
-          // How many of its rules are on, too, which the header shows only where there's room.
-          title={`${rules.length ? `${on} of ${rules.length} on. ` : ''}Click to ${folded ? 'unfold' : 'fold'} it, double-click to rename it`}
-          onClick={onFold}
-          onDoubleClick={() => onRename(group.id)}
-          className="flex min-w-0 items-center gap-1 text-left text-title font-semibold text-strong group-data-off/head:text-t50"
+        // How many of its rules are on, too, which the header shows only where there's room.
+        <Tooltip
+          label={`${rules.length ? `${on} of ${rules.length} on. ` : ''}Click to ${folded ? 'unfold' : 'fold'} it, double-click to rename it`}
         >
-          <span className="truncate">{group.name}</span>
-          <Icon
-            name={folded ? 'forward' : 'down'}
-            size={14}
-            className="flex-none text-t40"
-          />
-        </button>
+          <button
+            type="button"
+            data-testid="group-name"
+            aria-expanded={!folded}
+            onClick={onFold}
+            onDoubleClick={() => onRename(group.id)}
+            className="flex min-w-0 items-center gap-1 text-left text-title font-semibold text-strong group-data-off/head:text-t50"
+          >
+            <span className="truncate">{group.name}</span>
+            <Icon
+              name={folded ? 'forward' : 'down'}
+              size={14}
+              className="flex-none text-t40"
+            />
+          </button>
+        </Tooltip>
       )}
       <span
         data-testid="group-count"
@@ -83,17 +87,18 @@ export function GroupHeader({
       >
         {rules.length ? `${on} of ${rules.length} on` : ''}
       </span>
-      <Button
-        variant="ghost"
-        size="icon-sm"
-        data-testid="group-new-rule"
-        aria-label={`New rule in ${group.name}`}
-        title={`New rule in ${group.name}`}
-        onClick={() => onCreate(group.id)}
-        className="ml-auto @[300px]/rules:ml-0"
-      >
-        <Icon name="plus" size={15} />
-      </Button>
+      <Tooltip label={`New rule in ${group.name}`}>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          data-testid="group-new-rule"
+          aria-label={`New rule in ${group.name}`}
+          onClick={() => onCreate(group.id)}
+          className="ml-auto @[300px]/rules:ml-0"
+        >
+          <Icon name="plus" size={15} />
+        </Button>
+      </Tooltip>
       <GroupMenu group={group} onRename={onRename} />
     </div>
   );

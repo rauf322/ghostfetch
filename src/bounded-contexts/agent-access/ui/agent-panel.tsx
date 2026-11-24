@@ -10,6 +10,7 @@ import { Card } from '../../../ui/kit/card.tsx';
 import { Icon } from '../../../ui/kit/icon.tsx';
 import { Input } from '../../../ui/kit/input.tsx';
 import { SignalDot } from '../../../ui/kit/signal-dot.tsx';
+import { Tooltip } from '../../../ui/kit/tooltip.tsx';
 import { parsePairingCode } from '../domain/pairing-code.ts';
 import {
   ASKS_CONSENT,
@@ -60,15 +61,16 @@ export function AgentPanel({
             {status !== 'off' && <SignalDot on={status === 'connected'} />}
             {WORDS[status]}
           </span>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            title="Close"
-            aria-label="Close Agent access"
-            onClick={onClose}
-          >
-            <Icon name="close" size={14} />
-          </Button>
+          <Tooltip label="Close">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Close Agent access"
+              onClick={onClose}
+            >
+              <Icon name="close" size={14} />
+            </Button>
+          </Tooltip>
         </div>
         {asking ? (
           <PairingForm code={code} refused={status === 'refused'} declined={declined} />

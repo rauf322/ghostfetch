@@ -7,6 +7,7 @@ import { pausedStore, turnGroup } from '../index.ts';
 import type { Group } from '../index.ts';
 import { useStore } from '../../../ui/use-store.ts';
 import { SignalSwitch } from '../../../ui/kit/signal-switch.tsx';
+import { Tooltip } from '../../../ui/kit/tooltip.tsx';
 
 export function GroupSwitch({
   group,
@@ -16,19 +17,22 @@ export function GroupSwitch({
 }) {
   const { paused } = useStore(pausedStore);
   return (
-    <SignalSwitch
-      checked={group.enabled}
-      paused={paused}
-      aria-label={`Turn the group “${group.name}” on or off`}
-      title={
+    <Tooltip
+      label={
         !group.enabled
           ? `Off: its rules don't answer. Click to turn ${group.name} on`
           : !paused
             ? `On. Click to turn ${group.name} off, and its rules with it`
             : `On, but Ghostfetch is off. Click to turn ${group.name} off`
       }
-      onCheckedChange={(on) => turnGroup(group.id, on)}
-      {...props}
-    />
+    >
+      <SignalSwitch
+        checked={group.enabled}
+        paused={paused}
+        aria-label={`Turn the group “${group.name}” on or off`}
+        onCheckedChange={(on) => turnGroup(group.id, on)}
+        {...props}
+      />
+    </Tooltip>
   );
 }

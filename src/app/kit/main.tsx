@@ -6,6 +6,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { KitSheet } from './ui/kit-sheet.tsx';
 import { Toaster } from '../../ui/kit/toast.tsx';
+import { TooltipProvider } from '../../ui/kit/tooltip.tsx';
 import '../styles/kit.css';
 
 // For test/kit.mjs: every CSP violation on this page, recorded from the start, so a component that
@@ -31,18 +32,22 @@ if (params.has('canary'))
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <CSPProvider disableStyleElements={params.get('csp') !== 'off'}>
-      <Toaster>
-        <main className="p-6">
-          <header className="mb-5 flex items-center gap-3">
-            <img src="/icons/icon32.png" width={20} height={20} alt="" />
-            <h1 className="text-title font-medium text-foreground">Ghostfetch UI kit</h1>
-            <span className="text-meta text-t40">
-              src/ui/kit · every component, in its states
-            </span>
-          </header>
-          <KitSheet open={params.has('open')} />
-        </main>
-      </Toaster>
+      <TooltipProvider>
+        <Toaster>
+          <main className="p-6">
+            <header className="mb-5 flex items-center gap-3">
+              <img src="/icons/icon32.png" width={20} height={20} alt="" />
+              <h1 className="text-title font-medium text-foreground">
+                Ghostfetch UI kit
+              </h1>
+              <span className="text-meta text-t40">
+                src/ui/kit · every component, in its states
+              </span>
+            </header>
+            <KitSheet open={params.has('open')} />
+          </main>
+        </Toaster>
+      </TooltipProvider>
     </CSPProvider>
   </StrictMode>,
 );

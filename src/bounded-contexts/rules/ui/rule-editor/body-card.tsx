@@ -49,6 +49,7 @@ import { Input } from '../../../../ui/kit/input.tsx';
 import { Segmented, SegmentedItem } from '../../../../ui/kit/segmented.tsx';
 import { notify } from '../../../../ui/kit/toast.tsx';
 import { Toggle } from '../../../../ui/kit/toggle.tsx';
+import { Tooltip } from '../../../../ui/kit/tooltip.tsx';
 import type { CodeStatus } from '../rule-checks.ts';
 import { useWide } from '../use-wide.ts';
 import { ResponseTitle } from './response-title.tsx';
@@ -199,31 +200,32 @@ export function BodyCard({
           className="flex-none"
         >
           {(Object.keys(BODY_MODES) as BodyMode[]).map((mode) => (
-            <SegmentedItem
-              key={mode}
-              value={mode}
-              data-testid={`body-${mode}`}
-              title={BODY_MODES[mode].desc}
-              className="flex-none px-3"
-            >
-              {BODY_MODES[mode].option}
-            </SegmentedItem>
+            <Tooltip key={mode} label={BODY_MODES[mode].desc}>
+              <SegmentedItem
+                value={mode}
+                data-testid={`body-${mode}`}
+                className="flex-none px-3"
+              >
+                {BODY_MODES[mode].option}
+              </SegmentedItem>
+            </Tooltip>
           ))}
         </Segmented>
         {replaces && (
-          <Input
-            size="sm"
-            list="content-types"
-            aria-label="Content-Type"
-            title="Content-Type"
-            value={response.contentType}
-            onChange={(event) =>
-              editRule(rule.id, (current) => {
-                current.response.contentType = event.target.value;
-              })
-            }
-            className="min-w-[160px] flex-1 font-mono text-meta"
-          />
+          <Tooltip label="Content-Type">
+            <Input
+              size="sm"
+              list="content-types"
+              aria-label="Content-Type"
+              value={response.contentType}
+              onChange={(event) =>
+                editRule(rule.id, (current) => {
+                  current.response.contentType = event.target.value;
+                })
+              }
+              className="min-w-[160px] flex-1 font-mono text-meta"
+            />
+          </Tooltip>
         )}
       </div>
       {replaces ? (
@@ -298,58 +300,63 @@ export function BodyCard({
                 onValueChange={(next) => pickLayout(next as DiffLayout)}
                 className="flex-none"
               >
-                <SegmentedItem
-                  value="split"
-                  data-testid="diff-split"
-                  aria-label="Side by side"
-                  title="Side by side"
-                  className="flex-none px-2"
-                >
-                  <Icon name="split" size={14} />
-                </SegmentedItem>
-                <SegmentedItem
-                  value="inline"
-                  data-testid="diff-inline"
-                  aria-label="Inline"
-                  title="Inline, one under the other"
-                  className="flex-none px-2"
-                >
-                  <Icon name="stack" size={14} />
-                </SegmentedItem>
+                <Tooltip label="Side by side">
+                  <SegmentedItem
+                    value="split"
+                    data-testid="diff-split"
+                    aria-label="Side by side"
+                    className="flex-none px-2"
+                  >
+                    <Icon name="split" size={14} />
+                  </SegmentedItem>
+                </Tooltip>
+                <Tooltip label="Inline, one under the other">
+                  <SegmentedItem
+                    value="inline"
+                    data-testid="diff-inline"
+                    aria-label="Inline"
+                    className="flex-none px-2"
+                  >
+                    <Icon name="stack" size={14} />
+                  </SegmentedItem>
+                </Tooltip>
               </Segmented>
             )}
             {server && (
+              <Tooltip label="Compare the body with the server's response">
+                <Toggle
+                  size="sm"
+                  data-testid="diff-switch"
+                  pressed={diff}
+                  onPressedChange={switchDiff}
+                  className="border-input"
+                >
+                  Diff
+                </Toggle>
+              </Tooltip>
+            )}
+            <Tooltip label="Long lines on as many rows as they take">
               <Toggle
                 size="sm"
-                data-testid="diff-switch"
-                pressed={diff}
-                onPressedChange={switchDiff}
-                title="Compare the body with the server's response"
+                data-testid="wrap"
+                pressed={wrap}
+                onPressedChange={switchWrap}
                 className="border-input"
               >
-                Diff
+                Wrap
               </Toggle>
-            )}
-            <Toggle
-              size="sm"
-              data-testid="wrap"
-              pressed={wrap}
-              onPressedChange={switchWrap}
-              title="Long lines on as many rows as they take"
-              className="border-input"
-            >
-              Wrap
-            </Toggle>
-            <Toggle
-              size="sm"
-              data-testid="vim"
-              pressed={vim}
-              onPressedChange={switchVim}
-              title="Vim keys in the body editor"
-              className="border-input"
-            >
-              Vim keys
-            </Toggle>
+            </Tooltip>
+            <Tooltip label="Vim keys in the body editor">
+              <Toggle
+                size="sm"
+                data-testid="vim"
+                pressed={vim}
+                onPressedChange={switchVim}
+                className="border-input"
+              >
+                Vim keys
+              </Toggle>
+            </Tooltip>
             <Button
               variant="ghost"
               size="sm"

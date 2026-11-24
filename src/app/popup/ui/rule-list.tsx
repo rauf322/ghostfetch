@@ -29,6 +29,7 @@ import {
 } from '../../../bounded-contexts/rules/ui/group-folds.ts';
 import { GroupSwitch } from '../../../bounded-contexts/rules/ui/group-switch.tsx';
 import { Icon } from '../../../ui/kit/icon.tsx';
+import { Tooltip } from '../../../ui/kit/tooltip.tsx';
 import { RuleSwitch } from '../../../bounded-contexts/rules/ui/rule-switch.tsx';
 import { matchLine } from '../lib/rule-words.ts';
 
@@ -139,24 +140,25 @@ function GroupRow({
       className="flex items-center gap-1 rounded-md px-3 py-[7px] hover:bg-hover"
     >
       <GroupSwitch group={group} className="-my-0.5 -ml-[9px]" />
-      <button
-        type="button"
-        data-testid="popup-group-name"
-        aria-expanded={!folded}
-        title={folded ? `Unfold ${group.name}` : `Fold ${group.name}`}
-        onClick={() => setFolded(group.id, !folded)}
-        className={cn(
-          'flex min-w-0 items-center gap-1 text-left text-title font-semibold',
-          group.enabled ? 'text-foreground' : 'text-t40',
-        )}
-      >
-        <span className="truncate">{group.name}</span>
-        <Icon
-          name={folded ? 'forward' : 'down'}
-          size={13}
-          className="flex-none text-t40"
-        />
-      </button>
+      <Tooltip label={folded ? `Unfold ${group.name}` : `Fold ${group.name}`}>
+        <button
+          type="button"
+          data-testid="popup-group-name"
+          aria-expanded={!folded}
+          onClick={() => setFolded(group.id, !folded)}
+          className={cn(
+            'flex min-w-0 items-center gap-1 text-left text-title font-semibold',
+            group.enabled ? 'text-foreground' : 'text-t40',
+          )}
+        >
+          <span className="truncate">{group.name}</span>
+          <Icon
+            name={folded ? 'forward' : 'down'}
+            size={13}
+            className="flex-none text-t40"
+          />
+        </button>
+      </Tooltip>
       <span className="ml-auto flex-none pl-2 text-label text-t40 tabular-nums">
         {rules.length ? `${on} of ${rules.length} on` : 'No rules'}
       </span>
@@ -204,17 +206,18 @@ function RuleRow({
       />
       <div className="min-w-0">
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            title="Edit this rule"
-            onClick={() => openRuleInEditor(rule.id, windowId)}
-            className={cn(
-              'min-w-0 truncate text-left text-title hover:underline hover:decoration-t40 hover:underline-offset-3',
-              wouldAnswer(rule, !groupOff) ? 'text-foreground' : 'text-t40',
-            )}
-          >
-            {ruleTitle(rule)}
-          </button>
+          <Tooltip label="Edit this rule">
+            <button
+              type="button"
+              onClick={() => openRuleInEditor(rule.id, windowId)}
+              className={cn(
+                'min-w-0 truncate text-left text-title hover:underline hover:decoration-t40 hover:underline-offset-3',
+                wouldAnswer(rule, !groupOff) ? 'text-foreground' : 'text-t40',
+              )}
+            >
+              {ruleTitle(rule)}
+            </button>
+          </Tooltip>
           {did && (
             <span
               data-testid="rule-did"

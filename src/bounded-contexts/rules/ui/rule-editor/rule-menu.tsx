@@ -30,6 +30,7 @@ import {
 } from '../../../../ui/kit/dropdown-menu.tsx';
 import { Icon } from '../../../../ui/kit/icon.tsx';
 import { notify } from '../../../../ui/kit/toast.tsx';
+import { Tooltip } from '../../../../ui/kit/tooltip.tsx';
 import { exportRule } from '../rules-file.tsx';
 import { setRenaming } from '../renaming.ts';
 
@@ -80,18 +81,20 @@ export function RuleMenu({
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger
-        render={
-          <Button
-            size="icon"
-            title="More actions"
-            data-testid="rule-menu"
-            className="border border-input"
-          />
-        }
-      >
-        <Icon name="more" size={18} />
-      </DropdownMenuTrigger>
+      <Tooltip label="More actions">
+        <DropdownMenuTrigger
+          render={
+            <Button
+              size="icon"
+              aria-label="More actions"
+              data-testid="rule-menu"
+              className="border border-input"
+            />
+          }
+        >
+          <Icon name="more" size={18} />
+        </DropdownMenuTrigger>
+      </Tooltip>
       <DropdownMenuContent>
         <DropdownMenuItem onClick={() => onSelect(duplicateRule(rule))}>
           <Icon name="copy" /> Duplicate

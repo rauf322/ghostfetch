@@ -3,6 +3,7 @@
 // group: the arrow keys move between them.
 import { SearchField } from '../../../ui/list-detail.tsx';
 import { Segmented, SegmentedItem } from '../../../ui/kit/segmented.tsx';
+import { Tooltip } from '../../../ui/kit/tooltip.tsx';
 import type { TrafficFilter } from '../domain/filter-entries.ts';
 
 const FILTER_LABELS: Record<TrafficFilter, string> = {
@@ -55,13 +56,14 @@ export function TrafficFilters({
         className="grid flex-1 after:invisible after:col-start-1 after:row-start-1 after:h-0 after:min-w-[180px] after:overflow-hidden after:pr-2.5 after:pl-[34px] after:text-body after:whitespace-nowrap after:content-[attr(data-placeholder)]"
       >
         <div className="col-start-1 row-start-1 flex">
-          <SearchField
-            value={search}
-            onChange={(event) => onSearchChange(event.target.value)}
-            placeholder={PLACEHOLDER}
-            title="Search by URL, method, status or rule name"
-            aria-label="Search requests"
-          />
+          <Tooltip label="Search by URL, method, status or rule name">
+            <SearchField
+              value={search}
+              onChange={(event) => onSearchChange(event.target.value)}
+              placeholder={PLACEHOLDER}
+              aria-label="Search requests"
+            />
+          </Tooltip>
         </div>
       </div>
     </div>

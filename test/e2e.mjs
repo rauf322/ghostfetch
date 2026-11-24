@@ -1001,7 +1001,7 @@ try {
         ],
         ['404', 600, ['X-Tabbed']],
       );
-      await app.getByTitle('Remove header').last().click();
+      await app.getByRole('button', { name: 'Remove header' }).last().click();
       expect(await value('headers'), 'No changes');
       await row('delay');
       await app.click('[data-testid="delay-0"]');
@@ -5023,7 +5023,7 @@ try {
         rule.response.headers.map((row) => row.name),
         ['X-Mock', 'X-Added'],
       );
-      await app.getByTitle('Remove header').last().click();
+      await app.getByRole('button', { name: 'Remove header' }).last().click();
     },
   );
   await check(
@@ -5247,7 +5247,7 @@ try {
         { timeout: 3000 },
       );
       await app.getByRole('button', { name: 'Keep on reload' }).click();
-      await app.getByTitle('Clear the log').click();
+      await app.getByRole('button', { name: 'Clear the log' }).click();
       // The log redraws once a frame, however many requests arrive; then the count in the tab goes.
       await app.waitForFunction(
         () =>
@@ -5384,7 +5384,7 @@ try {
           window.clearedWith = document.querySelectorAll(
             '[data-testid="request"]',
           ).length;
-          document.querySelector('button[title="Clear the log"]').click();
+          document.querySelector('button[aria-label="Clear the log"]').click();
         });
         observer.observe(document.body, { childList: true, subtree: true });
       });

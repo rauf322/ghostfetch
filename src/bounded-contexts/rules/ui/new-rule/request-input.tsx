@@ -9,6 +9,7 @@ import { formatDuration, statusLabel } from '../../../../lib/index.ts';
 import { GroupPicker } from '../group-picker.tsx';
 import { Button } from '../../../../ui/kit/button.tsx';
 import { Icon } from '../../../../ui/kit/icon.tsx';
+import { Tooltip } from '../../../../ui/kit/tooltip.tsx';
 import {
   SERVER_RESPONSE,
   chooseStatus,
@@ -128,18 +129,19 @@ export function RequestInput({
           />
           <GroupPicker value={group} onChange={onGroupChange} />
         </div>
-        <Button
-          variant="primary"
-          size="icon"
-          data-testid="composer-submit"
-          aria-label="Make the rule"
-          title="Make the rule (Enter)"
-          disabled={!text.trim()}
-          onClick={onSubmit}
-          className="size-9 flex-none rounded-full text-inverse hover:text-inverse"
-        >
-          <Icon name="send" size={18} />
-        </Button>
+        <Tooltip label="Make the rule" keys="Enter">
+          <Button
+            variant="primary"
+            size="icon"
+            data-testid="composer-submit"
+            aria-label="Make the rule"
+            disabled={!text.trim()}
+            onClick={onSubmit}
+            className="size-9 flex-none rounded-full text-inverse hover:text-inverse"
+          >
+            <Icon name="send" size={18} />
+          </Button>
+        </Tooltip>
       </div>
     </div>
   );

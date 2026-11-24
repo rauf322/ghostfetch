@@ -203,6 +203,8 @@ src/platform/                    what differs between the browsers, and opening 
   open-editor.ts                 the editor in the side panel or a tab, and on a rule the popup picked
 src/ui/                          the components that know nothing of rules, sites or requests, a public file each
   kit/                           the UI kit: React components on Base UI, styled with Tailwind (see UI kit)
+    tooltip.tsx                  the tooltip a control explains itself with, rather than a title: its words, its key, or why it's off; and the provider each page has one of
+    kbd.tsx                      a key's badge, and the one place that writes a key for this platform (⌘B on a Mac, Ctrl+B elsewhere), says it in words for a screen reader, and reads it from a key event
   list-detail.tsx                the editor's layout: the sidebar, as wide as its edge was dragged, and what's open beside it, in a row (a flexbox: Firefox lays a grid's items out again from scratch)
   sidebar.tsx                    the sidebar's width and whether it's hidden, the edge that resizes it (and what keeps its width meanwhile), and the button (and ⌘B) that hides it
   theme.ts                       the themes and Appearance's three settings (contrast, font, text size), and the ones in use; theme-menu.tsx, the ⋯ menus' Theme and Appearance rows
@@ -262,6 +264,23 @@ Without it, Base UI adds `<style>` tags for its selects and scroll areas, which 
 `kit.css` has the two rules they would have added. Chrome reports a blocked tag as a console
 error, which fails `npm test` on the popup and the editor and `npm run test:kit` on the kit page.
 
+A control says what it does with the kit's `<Tooltip>` (`tooltip.tsx`), not a `title`: it
+follows the theme, opens once the pointer rests on the control (350 ms; the next one at once) or
+as soon as Tab brings focus to it, never on a click, closes on a click or a scroll, and stays
+inside the window, the popup's 330 px too. Give it the key that does the same (`keys`, written
+with `modKey()` from `kbd.tsx`, so ⌘B on a Mac and Ctrl+B elsewhere), or why a control is off
+(`reason`, which puts the tooltip on a wrapper around it, as a control that's off takes no
+pointer). A screen reader hears its words as the control's description, as it heard a `title`:
+the tooltip keeps a hidden copy of them in the page, the key in words ("Command B"), and adds it
+to the control's `aria-describedby`, after any description the control has of its own; not where
+its words are the control's name already. A description isn't a name, so a control that's only
+an icon keeps its `aria-label`. A control that opens a menu of its own (`aria-haspopup`) shows
+no tooltip while the menu is open, nor as it closes and gives the control focus back, until the
+pointer or focus leaves the control and comes back. The popup, the editor and the kit page each
+wrap their root in one `<TooltipProvider>`. A `title` is left only where it shows the whole of a
+text cut short (a long rule name, a request's URL), and on the body editor's find bar, which is
+plain DOM.
+
 ### Adding a UI component
 
 From [shadcn/ui](https://ui.shadcn.com), whose CLI `components.json` is set up for (Base UI, style
@@ -274,6 +293,8 @@ base-lyra): `npx shadcn@4.22.1 add <name>` writes `src/ui/kit/<name>.tsx`. Then:
 - Swap its icons for the kit's `<Icon>` (`src/ui/kit/icon.tsx`); if the CLI installed
   `lucide-react` for them, uninstall it.
 - Restyle it with the kit's values, like the other components.
+- Give its controls a `<Tooltip>` rather than a `title`, and an icon-only one an `aria-label`
+  (see above).
 - Put it on the kit page (`src/app/kit/ui/`). `npm run test:kit` fails while a component file has
   nothing on the page.
 
@@ -560,8 +581,18 @@ size), checks every theme's grey text against its floor at each step of Contrast
 on a card, `--t40` and `--t30` at 4.5:1 and 3:1 or more at Standard, 5.5:1 and 4:1 at More,
 6.5:1 and 5.5:1 at Most, and each level above the one below, by 1.15 times its contrast at
 Standard; `src/app/styles/theme.css` says what each level is for), and checks that the kit's
-icons draw the same as `src/lib/icons.ts`. Two self-checks make sure it can fail: a `<style>` tag
-added on purpose has to be caught, and so does Base UI's own when `CSPProvider`'s setting is off.
+icons draw the same as `src/lib/icons.ts`. And the tooltips: one opens once the pointer rests on
+its control, with its key, the next one at once, and one as soon as Tab brings focus to it; a
+control that's off says why; a click alone opens none, not even a field's; a click or a scroll
+closes one, unless the keyboard put it there; while the page scrolls, a control passing under the
+pointer opens none; in a window as wide as the popup, the pause button's at its top right corner
+stays inside, under it; with every tooltip shut, a screen reader gets each one's words as its
+control's description (Chromium's own accessibility tree; in Zen, from `aria-describedby`), a key
+in words, after a description the control has of its own, and none where the words are the
+control's name; and the ⋯ menu, shut with Esc after the keyboard or a click opened it, gives its
+button focus back with no tooltip, which shows again once focus or the pointer leaves and comes
+back. Two self-checks make sure it can fail: a `<style>` tag added on purpose has to be caught,
+and so does Base UI's own when `CSPProvider`'s setting is off.
 
 ```sh
 npm run test:firefox     # builds, then tests in Zen from /Applications; FIREFOX=/path/to/firefox for another build

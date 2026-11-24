@@ -7,6 +7,7 @@ import type { ComponentProps, ReactNode } from 'react';
 import { cn } from './cn.ts';
 import { Icon } from './kit/icon.tsx';
 import { Input } from './kit/input.tsx';
+import { Kbd } from './kit/kbd.tsx';
 import { holdWidths, releaseWidths, useListColumn } from './sidebar.tsx';
 
 // The sidebar and what's open beside it, in a row: a ListPane, a SidebarHandle, then the open
@@ -196,12 +197,9 @@ export function SearchField({
         {...props}
       />
       {hint && (
-        <kbd
-          aria-hidden="true"
-          className="pointer-events-none absolute right-2 flex h-[18px] min-w-[18px] items-center justify-center rounded-[5px] border border-border px-1 font-mono text-micro text-t40"
-        >
+        <Kbd aria-hidden="true" className="absolute right-2">
           {hint}
-        </kbd>
+        </Kbd>
       )}
     </div>
   );

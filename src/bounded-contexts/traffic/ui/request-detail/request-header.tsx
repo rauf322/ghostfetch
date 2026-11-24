@@ -5,6 +5,7 @@ import { formatDuration, splitUrl, statusName } from '../../../../lib/index.ts';
 import { StatusCode } from '../../../../ui/kit/badge.tsx';
 import { Button } from '../../../../ui/kit/button.tsx';
 import { Icon } from '../../../../ui/kit/icon.tsx';
+import { Tooltip } from '../../../../ui/kit/tooltip.tsx';
 import { KIND_LABELS } from '../entry-labels.ts';
 
 const CHIP =
@@ -46,16 +47,18 @@ export function RequestHeader({
           )}
         </div>
       </div>
-      <Button
-        variant="ghost"
-        size="icon"
-        title="Close"
-        data-testid="request-back"
-        onClick={onClose}
-        className="flex-none rounded-full bg-pressed text-t80"
-      >
-        <Icon name="close" size={16} />
-      </Button>
+      <Tooltip label="Close">
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Close"
+          data-testid="request-back"
+          onClick={onClose}
+          className="flex-none rounded-full bg-pressed text-t80"
+        >
+          <Icon name="close" size={16} />
+        </Button>
+      </Tooltip>
     </div>
   );
 }

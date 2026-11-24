@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '../../ui/kit/dropdown-menu.tsx';
 import { Icon } from '../../ui/kit/icon.tsx';
+import { Tooltip } from '../../ui/kit/tooltip.tsx';
 import { exportRules } from '../../bounded-contexts/rules/ui/rules-file.tsx';
 import { AppearanceMenu, ThemeMenu } from '../../ui/theme-menu.tsx';
 
@@ -32,19 +33,21 @@ export function EditorMenu({
 }) {
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger
-        render={
-          <Button
-            variant="ghost"
-            size="icon"
-            title="More"
-            data-testid={testId}
-            className={cn('self-center', className)}
-          />
-        }
-      >
-        <Icon name="more" size={18} />
-      </DropdownMenuTrigger>
+      <Tooltip label="More">
+        <DropdownMenuTrigger
+          render={
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="More"
+              data-testid={testId}
+              className={cn('self-center', className)}
+            />
+          }
+        >
+          <Icon name="more" size={18} />
+        </DropdownMenuTrigger>
+      </Tooltip>
       <DropdownMenuContent>
         {files && (
           <>

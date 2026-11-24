@@ -3,6 +3,7 @@
 // site you added). A tab that isn't on a website gets a few words for that.
 import { isBuiltInHost, turnOffFor } from '../../../bounded-contexts/sites/index.ts';
 import { cn } from '../../../ui/cn.ts';
+import { Tooltip } from '../../../ui/kit/tooltip.tsx';
 
 export function SiteLine({
   tab,
@@ -46,22 +47,20 @@ export function SiteLine({
       </span>
       {runsHere &&
         (isBuiltInHost(host) ? (
-          <span
-            title="Ghostfetch always runs on localhost, 127.0.0.1 and local.* sites"
-            className="ml-auto flex-none text-label text-t40"
-          >
-            Always on
-          </span>
+          <Tooltip label="Ghostfetch always runs on localhost, 127.0.0.1 and local.* sites">
+            <span className="ml-auto flex-none text-label text-t40">Always on</span>
+          </Tooltip>
         ) : (
-          <button
-            type="button"
-            data-testid="turn-off-here"
-            title={`Turn Ghostfetch off on ${host}; the page reloads`}
-            onClick={() => turnOffFor(host, tabId)}
-            className="ml-auto flex-none text-label text-t50 hover:text-foreground"
-          >
-            Turn off here
-          </button>
+          <Tooltip label={`Turn Ghostfetch off on ${host}; the page reloads`}>
+            <button
+              type="button"
+              data-testid="turn-off-here"
+              onClick={() => turnOffFor(host, tabId)}
+              className="ml-auto flex-none text-label text-t50 hover:text-foreground"
+            >
+              Turn off here
+            </button>
+          </Tooltip>
         ))}
     </div>
   );

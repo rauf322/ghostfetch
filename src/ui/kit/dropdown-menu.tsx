@@ -1,6 +1,8 @@
 import { Menu as MenuPrimitive } from '@base-ui/react/menu';
+import type { ComponentProps } from 'react';
 import { cn } from '../cn.ts';
 import { Icon } from './icon.tsx';
+import { Kbd } from './kbd.tsx';
 
 // Menus: a rounded card with a hairline border and a deep shadow, its items rounded rows. A
 // destructive item turns inverted when highlighted. Base UI does the keyboard: Enter or the arrow
@@ -63,6 +65,29 @@ export function DropdownMenuItem({
         'data-[variant=destructive]:data-highlighted:bg-foreground data-[variant=destructive]:data-highlighted:text-inverse data-[variant=destructive]:data-highlighted:[&_[data-slot=icon]]:text-inverse',
         className,
       )}
+      {...props}
+    />
+  );
+}
+
+// At a row's right end: a quiet detail, as the theme in use beside Theme ("Ghostfetch") and
+// "Default" beside Appearance, cut short with … where it's long; or the key that does what the row
+// does, in a Kbd as a tooltip has it.
+export function DropdownMenuDetail({ className, ...props }: ComponentProps<'span'>) {
+  return (
+    <span
+      data-slot="dropdown-menu-detail"
+      className={cn('ml-auto truncate pl-4 text-t40', className)}
+      {...props}
+    />
+  );
+}
+
+export function DropdownMenuShortcut({ className, ...props }: ComponentProps<'kbd'>) {
+  return (
+    <Kbd
+      data-slot="dropdown-menu-shortcut"
+      className={cn('ml-auto', className)}
       {...props}
     />
   );

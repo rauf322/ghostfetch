@@ -21,6 +21,7 @@ import { useStore } from '../../../ui/use-store.ts';
 import { foldStore, isFolded, setFolded } from './group-folds.ts';
 import { Button } from '../../../ui/kit/button.tsx';
 import { Icon } from '../../../ui/kit/icon.tsx';
+import { Tooltip } from '../../../ui/kit/tooltip.tsx';
 import { ListEmpty } from '../../../ui/list-detail.tsx';
 import { renamingStore, setRenaming } from './renaming.ts';
 import { useRuleDrag } from './use-rule-drag.ts';
@@ -93,26 +94,28 @@ export function RuleList({ selectedId, query, onSelect, onCreate, log }: RuleLis
               {shown.length ? `${on} of ${shown.length} on` : 'Rules'}
             </h2>
             <div className="-my-1 -mr-1.5 flex items-center">
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                data-testid="new-group"
-                aria-label="New group"
-                title="New group"
-                onClick={newGroup}
-              >
-                <Icon name="newgroup" size={15} />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                data-testid="new-rule"
-                aria-label="New rule"
-                title="New rule"
-                onClick={() => onCreate()}
-              >
-                <Icon name="plus" size={15} />
-              </Button>
+              <Tooltip label="New group">
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  data-testid="new-group"
+                  aria-label="New group"
+                  onClick={newGroup}
+                >
+                  <Icon name="newgroup" size={15} />
+                </Button>
+              </Tooltip>
+              <Tooltip label="New rule">
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  data-testid="new-rule"
+                  aria-label="New rule"
+                  onClick={() => onCreate()}
+                >
+                  <Icon name="plus" size={15} />
+                </Button>
+              </Tooltip>
             </div>
           </div>
           <ul data-entries>

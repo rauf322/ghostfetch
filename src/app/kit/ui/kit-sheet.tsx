@@ -14,6 +14,7 @@ import { SegmentedSection } from './sections/segmented-section.tsx';
 import { SelectSection } from './sections/select-section.tsx';
 import { TabsSection } from './sections/tabs-section.tsx';
 import { ToggleSection } from './sections/toggle-section.tsx';
+import { TooltipSection } from './sections/tooltip-section.tsx';
 
 export function KitSheet({ open }: { open: boolean }) {
   return (
@@ -27,6 +28,7 @@ export function KitSheet({ open }: { open: boolean }) {
       <BadgeSection />
       <AlertSection />
       <AccordionSection />
+      <TooltipSection />
       <ItemSection />
       <IconsSection />
     </div>

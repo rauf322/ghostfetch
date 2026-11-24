@@ -59,21 +59,55 @@ const ICONS = Object.fromEntries(
   ].map(([, name]) => [name, icon(name, 18)]),
 );
 
+// The description a screen reader gets of the element `selector` finds, '' for none: in Chromium,
+// the browser's own, from its accessibility tree (`cdp`, a DevTools session on the page); in Zen,
+// whose automation has no such tree, worked out as browsers do from its aria-describedby.
+async function describedAs(page, cdp, selector) {
+  if (!cdp)
+    return page.evaluate(
+      (wanted) =>
+        (document.querySelector(wanted).getAttribute('aria-describedby') ?? '')
+          .split(/\s+/)
+          .map((id) => document.getElementById(id)?.textContent.trim() ?? '')
+          .filter(Boolean)
+          .join(' '),
+      selector,
+    );
+  const { root } = await cdp.send('DOM.getDocument', { depth: 0 });
+  const { nodeId } = await cdp.send('DOM.querySelector', {
+    nodeId: root.nodeId,
+    selector,
+  });
+  const { nodes } = await cdp.send('Accessibility.getPartialAXTree', {
+    nodeId,
+    fetchRelatives: false,
+  });
+  return nodes[0]?.description?.value ?? '';
+}
+
 // The few things the checks do with a page, written once for Playwright (Chromium) and Puppeteer
 // (Zen), whose pages have these in common.
-function driver(page, problems) {
+function driver(page, problems, cdp) {
   return {
     page,
     problems,
     run: (fn, arg) => page.evaluate(fn, arg),
-    // Puppeteer only knows the space bar as " ", which Playwright takes too.
-    press: (key) => page.keyboard.press(key === 'Space' ? ' ' : key),
+    // Puppeteer only knows the space bar as " ", which Playwright takes too, and no Shift+ keys.
+    async press(key) {
+      if (!key.startsWith('Shift+'))
+        return page.keyboard.press(key === 'Space' ? ' ' : key);
+      await page.keyboard.down('Shift');
+      await page.keyboard.press(key.slice('Shift+'.length));
+      return page.keyboard.up('Shift');
+    },
+    description: (selector) => describedAs(page, cdp, selector),
     type: (text) => page.keyboard.type(text),
     click: (selector) => page.click(selector),
     focus: (selector) => page.focus(selector),
     resize: (size) =>
       page.setViewportSize ? page.setViewportSize(size) : page.setViewport(size),
     clickPoint: ({ x, y }) => page.mouse.click(x, y),
+    pointTo: ({ x, y }) => page.mouse.move(x, y),
     async until(fn, arg, what) {
       for (let tries = 0; tries < 50; tries++) {
         if (await page.evaluate(fn, arg)) return;
@@ -134,6 +168,54 @@ const selectOpen = popupOpen('select-content');
 const selectClosed = popupClosed('select-content');
 const menuOpen = popupOpen('dropdown-menu-content');
 const menuClosed = popupClosed('dropdown-menu-content');
+
+// The tooltip open now, as [its lines (the label, then why the control is off), its key, its box
+// as [left, top, right, bottom], the window's width and height], or null. `within` ms: the first
+// one open in that time, or null.
+async function tooltip(kit, within = 0) {
+  const started = Date.now();
+  for (;;) {
+    const open = await kit.run(() => {
+      const popup = document.querySelector('[data-slot=tooltip][data-open]');
+      if (!popup) return null;
+      const box = popup.getBoundingClientRect();
+      return [
+        [...popup.children].map((line) => line.firstChild.textContent),
+        popup.querySelector('[data-slot=tooltip-keys]')?.textContent ?? null,
+        [box.left, box.top, box.right, box.bottom].map(Math.round),
+        document.documentElement.clientWidth,
+        document.documentElement.clientHeight,
+      ];
+    });
+    if (open || Date.now() - started >= within) return open;
+    await sleep(20);
+  }
+}
+// The middles of the kit's tooltip controls (data-testid kit-tooltip...), with their row scrolled
+// to the middle of the window first.
+const tooltipControls = (kit) =>
+  kit.run(() => {
+    document
+      .querySelector('[data-testid=kit-tooltip-key]')
+      .scrollIntoView({ block: 'center' });
+    return Object.fromEntries(
+      ['key', 'toggle', 'off', 'field'].map((name) => {
+        const box = document
+          .querySelector(
+            `[data-testid=kit-tooltip${name === 'toggle' ? '' : `-${name}`}]`,
+          )
+          .getBoundingClientRect();
+        return [
+          name,
+          { x: box.x + Math.min(box.width / 2, 40), y: box.y + box.height / 2 },
+        ];
+      }),
+    );
+  });
+// Somewhere with no control, to move the pointer off one.
+const NOWHERE = { x: 2, y: 2 };
+// Focus in an open menu: on the menu itself (opened with a click) or on an item (with a key).
+const INSIDE_MENU = '[role=menu], [role=menu] *';
 
 // The grey levels that are text, brightest first, and the floor every theme holds them to on its
 // page and on a card at each step of Appearance's Contrast (src/app/styles/theme.css): --t40 and
@@ -776,6 +858,290 @@ async function runChecks(browser, open) {
     );
   });
 
+  await check(
+    `${browser}: tooltip: the pointer resting on a control opens its tooltip, with its key, and moving to the next opens that one at once; Tab opens one; a control that's off says why; in a 330 px window the popup's pause button's stays inside, under it`,
+    async () => {
+      const at = await tooltipControls(kit);
+      await kit.pointTo(NOWHERE);
+      await sleep(500);
+      await kit.pointTo(at.key);
+      // Not at once: the pointer has to rest on it a moment (TOOLTIP_DELAY in tooltip.tsx).
+      const passing = await tooltip(kit);
+      const rested = (await tooltip(kit, 2000))?.slice(0, 2);
+      await kit.pointTo(at.toggle);
+      const next = (await tooltip(kit, 150))?.[0];
+      await kit.pointTo(at.off);
+      const off = (await tooltip(kit, 150))?.[0];
+      await kit.pointTo(NOWHERE);
+      await settles(
+        kit,
+        () => !document.querySelector('[data-slot=tooltip]'),
+        true,
+        'closed',
+      );
+      // Tab from the key's button: to Keep on reload, then to the control that's off.
+      await kit.focus('[data-testid=kit-tooltip-key]');
+      await kit.press('Tab');
+      const tabbed = [(await tooltip(kit, 150))?.[0]];
+      await kit.press('Tab');
+      tabbed.push((await tooltip(kit, 150))?.[0]);
+      await kit.press('Escape');
+      await kit.run(() => document.activeElement.blur());
+      // The pause button at the top right corner of a window as wide as the popup. The pointer
+      // comes to it once the page is still: while it scrolls, the pointer opens no tooltip.
+      await kit.resize({ width: 330, height: 600 });
+      const button = await kit.run(() => {
+        const pause = document.querySelector('[data-testid=kit-tooltip-edge]');
+        pause.scrollIntoView({ block: 'start', inline: 'end' });
+        const box = pause.getBoundingClientRect();
+        return [box.x + box.width / 2, box.y + box.height / 2, box.right, box.bottom];
+      });
+      await sleep(500);
+      await kit.pointTo({ x: button[0], y: button[1] });
+      const [, , [left, top, right, bottom], width, height] = await tooltip(kit, 2000);
+      await kit.pointTo(NOWHERE);
+      await kit.resize(VIEWPORT);
+      await kit.run(() => window.scrollTo(0, 0));
+      const mod = await kit.run(() =>
+        /Mac/.test(navigator.userAgent) ? '⌘B' : 'Ctrl+B',
+      );
+      expect(
+        [
+          passing,
+          rested,
+          next,
+          off,
+          tabbed,
+          [left >= 0, right <= width, top >= button[3], bottom <= height],
+          [button[2] > width - 30, width],
+        ],
+        [
+          null,
+          [['Hide the sidebar'], mod],
+          ['Keep requests when the page reloads'],
+          ['Turn on Agent access', "Paste your agent's pairing code first"],
+          [
+            ['Keep requests when the page reloads'],
+            ['Turn on Agent access', "Paste your agent's pairing code first"],
+          ],
+          [true, true, true, true],
+          [true, 330],
+        ],
+        `the tooltip at ${[left, top, right, bottom]} in ${width}×${height}`,
+      );
+    },
+  );
+
+  await check(
+    `${browser}: tooltip: a click alone opens none, not even a field's (which a click gives :focus-visible); a click on its control closes one, and so does a scroll, unless the keyboard put it there; while the page scrolls, a control passing under the pointer opens none`,
+    async () => {
+      const at = await tooltipControls(kit);
+      const wait = () => sleep(800);
+      await kit.pointTo(NOWHERE);
+      await sleep(500);
+      await kit.clickPoint(at.key);
+      await wait();
+      const clicked = await tooltip(kit);
+      await kit.pointTo(NOWHERE);
+      await kit.clickPoint(at.field);
+      await wait();
+      const field = [
+        await tooltip(kit),
+        await kit.run(() => [
+          document.activeElement.dataset.testid,
+          document.activeElement.matches(':focus-visible'),
+        ]),
+      ];
+      await kit.run(() => document.activeElement.blur());
+      await kit.pointTo(NOWHERE);
+      await sleep(500);
+      // Rested on, then clicked: it closes, and stays closed under the pointer.
+      await kit.pointTo(at.key);
+      const before = (await tooltip(kit, 2000))?.[0];
+      await kit.clickPoint(at.key);
+      await wait();
+      const closed = await tooltip(kit);
+      await kit.pointTo(NOWHERE);
+      await sleep(500);
+      // Rested on, then the page scrolls a pixel, the pointer still on the control.
+      await kit.pointTo(at.key);
+      const shown = (await tooltip(kit, 2000))?.[0];
+      await kit.run(() => window.scrollBy(0, 1));
+      await sleep(300);
+      const scrolled = await tooltip(kit);
+      await kit.pointTo(NOWHERE);
+      // Put there by Tab, it stays through the same scroll.
+      await kit.focus('[data-testid=kit-tooltip-key]');
+      await kit.press('Tab');
+      const tabbed = (await tooltip(kit, 150))?.[0];
+      await kit.run(() => window.scrollBy(0, -1));
+      await sleep(300);
+      const kept = (await tooltip(kit))?.[0];
+      await kit.press('Escape');
+      await kit.run(() => document.activeElement.blur());
+      // Rested on, then the page scrolls under the still pointer in small steps, until the field
+      // below is under it: any tooltip that opens meanwhile, but the one that was open. Chromium
+      // tells the field the pointer came while the page still moves (Zen once it's still).
+      const again = await tooltipControls(kit);
+      await kit.pointTo(NOWHERE);
+      await sleep(500);
+      await kit.pointTo(again.key);
+      const resting = (await tooltip(kit, 2000))?.[0];
+      const flashed = await kit.run(async () => {
+        const middle = (testid) => {
+          const box = document
+            .querySelector(`[data-testid=${testid}]`)
+            .getBoundingClientRect();
+          return box.y + box.height / 2;
+        };
+        const down = middle('kit-tooltip-field') - middle('kit-tooltip-key');
+        const opened = new Set();
+        const watch = new MutationObserver(() => {
+          for (const popup of document.querySelectorAll('[data-slot=tooltip][data-open]'))
+            opened.add(popup.firstChild.firstChild.textContent);
+        });
+        watch.observe(document.body, {
+          subtree: true,
+          childList: true,
+          attributes: true,
+          attributeFilter: ['data-open'],
+        });
+        for (let step = 0; step < 12; step++) {
+          window.scrollBy(0, down / 12);
+          await new Promise((resolve) => setTimeout(resolve, 30));
+        }
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        watch.disconnect();
+        return [...opened].filter((label) => label !== 'Hide the sidebar');
+      });
+      await kit.pointTo(NOWHERE);
+      expect(
+        [clicked, field, before, closed, shown, scrolled, tabbed, kept, resting, flashed],
+        [
+          null,
+          [null, ['kit-tooltip-field', true]],
+          ['Hide the sidebar'],
+          null,
+          ['Hide the sidebar'],
+          null,
+          ['Keep requests when the page reloads'],
+          ['Keep requests when the page reloads'],
+          ['Hide the sidebar'],
+          [],
+        ],
+      );
+    },
+  );
+
+  await check(
+    `${browser}: tooltip: with every tooltip shut, a screen reader gets its words as its control's description, a key in words, after a description the control has of its own; none where the words are the control's name`,
+    async () => {
+      await kit.pointTo(NOWHERE);
+      await kit.run(() => document.activeElement?.blur());
+      await settles(
+        kit,
+        () => !document.querySelector('[data-slot=tooltip]'),
+        true,
+        'shut',
+      );
+      const heard = {};
+      for (const [control, selector] of Object.entries({
+        // Named "Keep on reload".
+        words: '[data-testid=kit-tooltip]',
+        // The ⋯, named "More", as its tooltip says.
+        name: '[data-testid=kit-menu-slots]',
+        // Named "Hide the sidebar", as its tooltip says, with ⌘B.
+        key: '[data-testid=kit-tooltip-key]',
+        // With aria-describedby of its own.
+        own: '[data-testid=kit-tooltip-field]',
+        off: '[data-slot=tooltip-reason]',
+      }))
+        heard[control] = await kit.description(selector);
+      const linked = await kit.run(() =>
+        document
+          .querySelector('[data-testid=kit-menu-slots]')
+          .hasAttribute('aria-describedby'),
+      );
+      const key = await kit.run(() =>
+        /Mac/.test(navigator.userAgent) ? 'Command B' : 'Control B',
+      );
+      expect(
+        [heard, linked],
+        [
+          {
+            words: 'Keep requests when the page reloads',
+            name: '',
+            key,
+            own: 'Narrows the list as you type. Search by URL, method, status or rule name',
+            off: "Turn on Agent access. Paste your agent's pairing code first",
+          },
+          false,
+        ],
+      );
+    },
+  );
+
+  await check(
+    `${browser}: tooltip: the ⋯ menu opened from the keyboard and shut with Esc gives its button focus back with no tooltip, which shows once focus leaves and comes back; shut with Esc after a click, none while the pointer stays, and one once it leaves and comes back`,
+    async () => {
+      // The labels of the tooltips open now.
+      const labels = () =>
+        [...document.querySelectorAll('[data-slot=tooltip][data-open]')].map(
+          (popup) => popup.firstChild.firstChild.textContent,
+        );
+      const showing = () => kit.run(labels);
+      const shows = (label) => settles(kit, labels, [label], `${label}'s tooltip`);
+      await kit.pointTo(NOWHERE);
+      await sleep(500);
+      // From the field before it.
+      await kit.focus('[data-testid=kit-tooltip-field]');
+      await kit.press('Tab');
+      await focusOn(kit, '[data-testid=kit-menu-slots]');
+      await shows('More');
+      await kit.press('Enter');
+      await menuOpen(kit);
+      // Esc once focus is in the menu, which then gives it back: before, Esc reaches the button.
+      await focusOn(kit, INSIDE_MENU);
+      await kit.press('Escape');
+      await menuClosed(kit);
+      await focusOn(kit, '[data-testid=kit-menu-slots]');
+      await sleep(800);
+      const keyboard = await showing();
+      await kit.press('Tab');
+      await kit.press('Shift+Tab');
+      await focusOn(kit, '[data-testid=kit-menu-slots]');
+      await shows('More');
+      await kit.press('Escape');
+      await kit.run(() => document.activeElement.blur());
+      // With the pointer: a click opens the menu, Esc shuts it.
+      const at = await kit.run(() => {
+        const box = document
+          .querySelector('[data-testid=kit-menu-slots]')
+          .getBoundingClientRect();
+        return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+      });
+      await kit.pointTo(NOWHERE);
+      await sleep(500);
+      await kit.clickPoint(at);
+      await menuOpen(kit);
+      await focusOn(kit, INSIDE_MENU);
+      await kit.press('Escape');
+      await menuClosed(kit);
+      await sleep(800);
+      const staying = await showing();
+      await kit.pointTo({ x: at.x + 3, y: at.y + 2 });
+      await sleep(800);
+      const moved = await showing();
+      await kit.pointTo(NOWHERE);
+      await sleep(200);
+      await kit.pointTo(at);
+      await shows('More');
+      await kit.pointTo(NOWHERE);
+      await kit.run(() => document.activeElement.blur());
+      expect([keyboard, staying, moved], [[], [], []]);
+    },
+  );
+
   await check(`${browser}: icons: the same shapes as src/lib/icons.ts`, async () => {
     const differences = await kit.run((expected) => {
       const shown = Object.fromEntries(
@@ -917,7 +1283,7 @@ async function inChromium() {
           message.type() === 'error' && problems.push(`console: ${message.text()}`),
       );
       await page.goto(`${origin}/kit.html${query}`);
-      return driver(page, problems);
+      return driver(page, problems, await context.newCDPSession(page));
     });
   } finally {
     await context.close();

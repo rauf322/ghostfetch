@@ -7,6 +7,7 @@
 // each, and a step picked applies to every page at once, the menu staying open as Theme's does.
 import { Fragment, useState } from 'react';
 import {
+  DropdownMenuDetail,
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
@@ -35,9 +36,9 @@ export function ThemeMenu() {
     <DropdownMenuSub>
       <DropdownMenuSubTrigger data-testid="theme-menu">
         <Icon name="theme" /> Theme
-        <span className="ml-auto pl-4 text-t40">
+        <DropdownMenuDetail>
           {THEMES.find((item) => item.id === theme)!.name}
-        </span>
+        </DropdownMenuDetail>
       </DropdownMenuSubTrigger>
       <DropdownMenuSubContent>
         <DropdownMenuRadioGroup
@@ -81,9 +82,9 @@ export function AppearanceMenu() {
     <DropdownMenuSub>
       <DropdownMenuSubTrigger data-testid="appearance-menu">
         <Icon name="type" /> Appearance
-        <span className="ml-auto max-w-40 truncate pl-4 text-t40">
+        <DropdownMenuDetail className="max-w-40">
           {changed.join(', ') || 'Default'}
-        </span>
+        </DropdownMenuDetail>
       </DropdownMenuSubTrigger>
       <DropdownMenuSubContent>
         {SETTINGS.map((setting, index) => (

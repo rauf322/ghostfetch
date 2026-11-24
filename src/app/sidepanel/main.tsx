@@ -11,6 +11,7 @@ import {
 import { initSites } from '../../bounded-contexts/sites/index.ts';
 import { initRecording } from '../../bounded-contexts/traffic/index.ts';
 import { Toaster } from '../../ui/kit/toast.tsx';
+import { TooltipProvider } from '../../ui/kit/tooltip.tsx';
 import { Editor } from './editor.tsx';
 import { moveLegacySettings } from './legacy-settings.ts';
 import '../styles/kit.css';
@@ -27,9 +28,11 @@ flushSync(() => {
   root.render(
     <StrictMode>
       <CSPProvider disableStyleElements>
-        <Toaster>
-          <Editor inTab={inTab} windowId={windowId!} />
-        </Toaster>
+        <TooltipProvider>
+          <Toaster>
+            <Editor inTab={inTab} windowId={windowId!} />
+          </Toaster>
+        </TooltipProvider>
       </CSPProvider>
     </StrictMode>,
   );

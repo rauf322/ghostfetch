@@ -5,6 +5,7 @@
 import type { ReactNode } from 'react';
 import { Button } from '../../../ui/kit/button.tsx';
 import { Icon } from '../../../ui/kit/icon.tsx';
+import { Tooltip } from '../../../ui/kit/tooltip.tsx';
 import { PaneHead } from '../../../ui/list-detail.tsx';
 import { SidebarToggle } from '../../../ui/sidebar.tsx';
 
@@ -25,17 +26,18 @@ export function RulesHead({
   return (
     <PaneHead className="h-12 items-center gap-1.5 border-b-0 px-2">
       <SidebarToggle />
-      <Button
-        variant="ghost"
-        size="sm"
-        title="All rules"
-        data-testid={backTestId}
-        onClick={onBack}
-        className="gap-1 pr-2.5 pl-1 text-control text-t80 wide:hidden"
-      >
-        <Icon name="back" size={18} />
-        Rules
-      </Button>
+      <Tooltip label="All rules">
+        <Button
+          variant="ghost"
+          size="sm"
+          data-testid={backTestId}
+          onClick={onBack}
+          className="gap-1 pr-2.5 pl-1 text-control text-t80 wide:hidden"
+        >
+          <Icon name="back" size={18} />
+          Rules
+        </Button>
+      </Tooltip>
       <span
         data-testid="rules-head-path"
         className="hidden min-w-0 truncate px-1 text-control text-t40 wide:block"

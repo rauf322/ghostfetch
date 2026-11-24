@@ -11,6 +11,7 @@ import {
 } from '../../../ui/kit/dropdown-menu.tsx';
 import { Icon } from '../../../ui/kit/icon.tsx';
 import { notify } from '../../../ui/kit/toast.tsx';
+import { Tooltip } from '../../../ui/kit/tooltip.tsx';
 import { exportGroup } from './rules-file.tsx';
 
 export function GroupMenu({
@@ -37,19 +38,20 @@ export function GroupMenu({
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger
-        render={
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            title="More actions"
-            aria-label={`More actions for ${group.name}`}
-            data-testid="group-menu"
-          />
-        }
-      >
-        <Icon name="more" size={15} />
-      </DropdownMenuTrigger>
+      <Tooltip label="More actions">
+        <DropdownMenuTrigger
+          render={
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label={`More actions for ${group.name}`}
+              data-testid="group-menu"
+            />
+          }
+        >
+          <Icon name="more" size={15} />
+        </DropdownMenuTrigger>
+      </Tooltip>
       <DropdownMenuContent>
         <DropdownMenuItem onClick={() => onRename(group.id)}>
           <Icon name="edit" /> Rename

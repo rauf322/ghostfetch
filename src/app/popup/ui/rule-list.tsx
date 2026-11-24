@@ -1,7 +1,8 @@
 // The popup's rules, in your order, each with its switch, the green dot: pulsing while the rule is
 // answering, still while it's on but its group or Ghostfetch is off, grey while it's off, as in
 // the editor's list. Then its name, which opens it in the editor, with what it did on the tab's
-// page at the right ("2 mocked"), and what it matches under it.
+// page at the right ("2 mocked"), and what it matches under it, cut in its middle where it's
+// long, so the URL's end stays.
 //
 // Whole (All rules), it's the order as the editor's list has it: each group a row with its own dot,
 // its name, which folds it or unfolds it as in the editor, and how many of its rules are on, its
@@ -29,6 +30,7 @@ import {
 } from '../../../bounded-contexts/rules/ui/group-folds.ts';
 import { GroupSwitch } from '../../../bounded-contexts/rules/ui/group-switch.tsx';
 import { Icon } from '../../../ui/kit/icon.tsx';
+import { MiddleTruncate } from '../../../ui/kit/middle-truncate.tsx';
 import { Tooltip } from '../../../ui/kit/tooltip.tsx';
 import { RuleSwitch } from '../../../bounded-contexts/rules/ui/rule-switch.tsx';
 import { matchLine } from '../lib/rule-words.ts';
@@ -239,7 +241,7 @@ function RuleRow({
               {group.name}
             </span>
           )}
-          <span className="min-w-0 truncate font-mono">{matchLine(rule)}</span>
+          <MiddleTruncate text={matchLine(rule)} className="font-mono" />
         </div>
       </div>
     </div>

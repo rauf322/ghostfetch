@@ -1,7 +1,7 @@
 // Items: rows of rules and of requests, as the two lists show them, one of each selected. A rule
 // starts with its switch, the green dot, and says at the right of its name what it did on the
 // page, and nothing while it hasn't answered. The requests sit in a card (ItemList), as Traffic's
-// groups do.
+// groups do. A URL that doesn't fit is cut in its middle, so its end stays (MiddleTruncate).
 import { useState } from 'react';
 import { formatDuration } from '../../../../lib/index.ts';
 import { Badge, StatusCode } from '../../../../ui/kit/badge.tsx';
@@ -12,6 +12,7 @@ import {
   ItemList,
   ItemTitle,
 } from '../../../../ui/kit/item.tsx';
+import { MiddleTruncate } from '../../../../ui/kit/middle-truncate.tsx';
 import { SignalSwitch } from '../../../../ui/kit/signal-switch.tsx';
 import { Method } from '../../../../ui/list-detail.tsx';
 import { Cell } from '../cell.tsx';
@@ -137,9 +138,10 @@ export function ItemSection() {
                       {rule.method}
                     </span>
                   )}
-                  <span className="max-w-[62%] flex-none truncate font-mono text-t65">
-                    {rule.url}
-                  </span>
+                  <MiddleTruncate
+                    text={rule.url}
+                    className="max-w-[62%] flex-none font-mono text-t65"
+                  />
                   <span className="min-w-0 flex-[0_10_auto] truncate text-t40">
                     {rule.summary}
                   </span>
@@ -158,9 +160,10 @@ export function ItemSection() {
             >
               <Method matched={Boolean(entry.action)}>{entry.method}</Method>
               <span className="flex min-w-0 flex-col gap-0.5">
-                <span className="truncate font-mono text-body text-foreground">
-                  {entry.path}
-                </span>
+                <MiddleTruncate
+                  text={entry.path}
+                  className="font-mono text-body text-foreground"
+                />
                 <span className="flex min-w-0 items-center gap-1 overflow-hidden text-label whitespace-nowrap text-t40">
                   {entry.action ? (
                     <>

@@ -1,4 +1,5 @@
-// One request in the list: its method (green when a rule answered it), its path, then what the rule
+// One request in the list: its method (green when a rule answered it), its path (cut in its middle
+// where it's long, so its query's end stays; the row's title holds the whole URL), then what the rule
 // did and which rule, with its group if it was in one ("Mocked by Feature flags · PR-1"), or why it
 // failed and the rule it was under ("Aborted · Feature flags"), or else where the request went and
 // what made it; on the right its status over how long it took. Entries come from the page, so
@@ -8,6 +9,7 @@ import type { LogEntry } from '../index.ts';
 import { formatDuration, splitUrl } from '../../../lib/index.ts';
 import { StatusCode } from '../../../ui/kit/badge.tsx';
 import { Item } from '../../../ui/kit/item.tsx';
+import { MiddleTruncate } from '../../../ui/kit/middle-truncate.tsx';
 import { Method } from '../../../ui/list-detail.tsx';
 import { KIND_LABELS } from './entry-labels.ts';
 import { ActionBadge } from './action-badge.tsx';
@@ -35,12 +37,11 @@ export const RequestRow = memo(function RequestRow({
     >
       <Method matched={answered}>{entry.method}</Method>
       <span className="flex min-w-0 flex-col gap-0.5">
-        <span
+        <MiddleTruncate
           data-testid="request-path"
-          className="truncate font-mono text-body text-foreground"
-        >
-          {path}
-        </span>
+          text={path}
+          className="font-mono text-body text-foreground"
+        />
         <span className="flex min-w-0 items-center gap-1 overflow-hidden text-label whitespace-nowrap text-t40">
           {entry.action ? (
             <>

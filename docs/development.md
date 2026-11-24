@@ -205,6 +205,7 @@ src/ui/                          the components that know nothing of rules, site
   kit/                           the UI kit: React components on Base UI, styled with Tailwind (see UI kit)
     tooltip.tsx                  the tooltip a control explains itself with, rather than a title: its words, its key, or why it's off; and the provider each page has one of
     kbd.tsx                      a key's badge, and the one place that writes a key for this platform (⌘B on a Mac, Ctrl+B elsewhere), says it in words for a screen reader, and reads it from a key event
+    middle-truncate.tsx          a URL cut short in its middle, so its end stays, with CSS only; copied whole, and read whole by a screen reader
   list-detail.tsx                the editor's layout: the sidebar, as wide as its edge was dragged, and what's open beside it, in a row (a flexbox: Firefox lays a grid's items out again from scratch)
   sidebar.tsx                    the sidebar's width and whether it's hidden, the edge that resizes it (and what keeps its width meanwhile), and the button (and ⌘B) that hides it
   theme.ts                       the themes and Appearance's three settings (contrast, font, text size), and the ones in use; theme-menu.tsx, the ⋯ menus' Theme and Appearance rows
@@ -280,6 +281,17 @@ pointer or focus leaves the control and comes back. The popup, the editor and th
 wrap their root in one `<TooltipProvider>`. A `title` is left only where it shows the whole of a
 text cut short (a long rule name, a request's URL), and on the body editor's find bar, which is
 plain DOM.
+
+A URL with no room is cut in its middle with `<MiddleTruncate>` (`middle-truncate.tsx`), as the
+rule rows, the popup's rows, Traffic's rows and open request and New rule's recent requests do,
+since its end is what tells two apart: `/api/search?q=inv…oices&page=2`. It's CSS only, with no
+measuring: a head that gives way with the ellipsis, and a tail that doesn't (the last path
+segment, if it's 16 characters or fewer, or else the last 10, moved back to after a break). In
+less room than that end, the end gives way at its start, so its last characters still show. Its
+`data-full` holds the whole text; `isCut()` says whether either part is cut, for a tooltip only
+when something is. Selected and copied, it's the whole text in one piece, and a screen reader
+reads it once. The ellipsis comes after the last whole character that fits, so a cut can leave a
+gap of up to a character before the end; closing it would take measuring.
 
 ### Adding a UI component
 
@@ -465,7 +477,8 @@ keeps typing in one quick: only the piece typed into redrawn, a new line only ad
 the editor's sizes its own, the boxes around it changing only in size between its two layouts,
 and vim's cursor on a layer of one line), a rule's dot in the list (it turns the rule off and on,
 saved, without opening it; one that's off is greyed and its chip says Off; Traffic only says
-whether it's recording), a row's tooltip only for a name or URL it cuts short, a theme picked
+whether it's recording), a long URL cut in its middle, its end in sight inside the row, a row's
+tooltip only for a name or URL it cuts short, a theme picked
 in the `⋯` menu (the editor and the open popup
 recoloured, and set before a page draws), the `⋯` menu's Appearance (its contrast, font and text
 size on the editor and the open popup at once, on a page opened afterwards before any of its
@@ -591,8 +604,12 @@ control's description (Chromium's own accessibility tree; in Zen, from `aria-des
 in words, after a description the control has of its own, and none where the words are the
 control's name; and the ⋯ menu, shut with Esc after the keyboard or a click opened it, gives its
 button focus back with no tooltip, which shows again once focus or the pointer leaves and comes
-back. Two self-checks make sure it can fail: a `<style>` tag added on purpose has to be caught,
-and so does Base UI's own when `CSPProvider`'s setting is off.
+back. And a URL cut in the middle: in a narrow box a long one keeps its end whole after its
+head's ellipsis, a short one is whole, one shorter than an end has no head, and in less room than
+its end the end gives way inside its box; each, selected and copied with the keyboard, is on the
+clipboard as the text it is, in one piece; and a screen reader names it once, whole. Two
+self-checks make sure it can fail: a `<style>` tag added on purpose has to be caught, and so does
+Base UI's own when `CSPProvider`'s setting is off.
 
 ```sh
 npm run test:firefox     # builds, then tests in Zen from /Applications; FIREFOX=/path/to/firefox for another build

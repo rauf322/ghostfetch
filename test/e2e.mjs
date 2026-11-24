@@ -3768,7 +3768,7 @@ try {
     },
   );
   await check(
-    "a long rule name is cut short in the popup, after its dot and inside its row, with nothing moving under the pointer, and the editor's list shows a name or URL whole in a tooltip only when it's cut short",
+    "a long rule name is cut short in the popup, after its dot and inside its row, with nothing moving under the pointer; the editor's list cuts a long URL in its middle, its end in sight inside the row, and shows a name or URL whole in a tooltip only when it's cut short",
     async () => {
       const rules = (await worker.evaluate(() => chrome.storage.local.get('rules')))
         .rules;
@@ -3808,16 +3808,39 @@ try {
         await row.hover();
         await sleep(250);
         const pointed = await edges();
-        // The editor: each row under the pointer, its tooltip, and what it cuts short.
+        // The editor: the long URL, its title as the rule has no name, cut in its middle: the
+        // head cut short, the end whole and inside the row.
         await show('rules');
         await app.waitForSelector(`[data-testid="rule"][data-url="${url}"]`);
+        const end = await app
+          .locator(`[data-testid="rule"][data-url="${url}"]`)
+          .evaluate((element) => {
+            const head = element.querySelector(
+              '[data-slot="item-title"] [data-part="head"]',
+            );
+            const tail = element.querySelector(
+              '[data-slot="item-title"] [data-part="tail"]',
+            );
+            return [
+              head.scrollWidth > head.clientWidth,
+              tail.textContent,
+              tail.scrollWidth <= tail.clientWidth,
+              tail.getBoundingClientRect().right <= element.getBoundingClientRect().right,
+            ];
+          });
+        // Each row under the pointer, its tooltip, and what it cuts short: a name at its end, a
+        // URL in its middle (its head, or in less room than its end, its end).
         const tips = [];
         for (const item of await app.locator('[data-testid="rule"]').all()) {
           await item.hover();
           tips.push(
             await item.evaluate((element) => {
               const cut = [...element.querySelectorAll('[data-full]')]
-                .filter((part) => part.scrollWidth > part.clientWidth)
+                .filter((part) =>
+                  [part, ...part.querySelectorAll('[data-part]')].some(
+                    (each) => each.scrollWidth > each.clientWidth,
+                  ),
+                )
                 .map((part) => part.dataset.full);
               return [
                 cut.length > 0,
@@ -3830,11 +3853,19 @@ try {
           [
             resting.filter((each) => typeof each === 'boolean'),
             pointed[3] === resting[3],
+            end,
             tips.every(([, right]) => right),
             tips.some(([cut]) => cut),
             tips.some(([cut]) => !cut),
           ],
-          [[true, true, true, true], true, true, true, true],
+          [
+            [true, true, true, true],
+            true,
+            [true, '1e2f3a4b5c6d', true, true],
+            true,
+            true,
+            true,
+          ],
         );
       } finally {
         await popup.mouse.move(1, 1);

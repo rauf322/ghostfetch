@@ -11,6 +11,7 @@ import { StatusCode } from '../../../../ui/kit/badge.tsx';
 import { Button } from '../../../../ui/kit/button.tsx';
 import { Icon } from '../../../../ui/kit/icon.tsx';
 import { ItemList } from '../../../../ui/kit/item.tsx';
+import { MiddleTruncate } from '../../../../ui/kit/middle-truncate.tsx';
 import { Method, PaneSection } from '../../../../ui/list-detail.tsx';
 
 export function RecentRequests({
@@ -49,9 +50,10 @@ export function RecentRequests({
             className="flex items-center gap-3 rounded-md px-2.5 py-2 hover:bg-hover"
           >
             <Method>{entry.method}</Method>
-            <span className="min-w-0 flex-1 truncate font-mono text-body text-foreground">
-              {splitUrl(entry.url).path}
-            </span>
+            <MiddleTruncate
+              text={splitUrl(entry.url).path}
+              className="flex-1 font-mono text-body text-foreground"
+            />
             <span className="hidden flex-none items-center gap-1.5 font-mono text-label text-t40 @[520px]/composer:flex">
               <StatusCode status={entry.status} failed={Boolean(entry.error)} />
               {entry.duration != null && `· ${formatDuration(entry.duration)}`}

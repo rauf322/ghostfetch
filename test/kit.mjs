@@ -85,6 +85,44 @@ async function describedAs(page, cdp, selector) {
   return nodes[0]?.description?.value ?? '';
 }
 
+// The name a screen reader gives the element `selector` finds: in Chromium, the browser's own;
+// in Zen, worked out from the page as browsers do for a name made of its words: text that isn't
+// aria-hidden, and what ::before and ::after add.
+async function namedAs(page, cdp, selector) {
+  if (!cdp)
+    return page.evaluate((wanted) => {
+      const added = (element, which) => {
+        const content = getComputedStyle(element, which).content;
+        return content.startsWith('"') ? JSON.parse(content) : '';
+      };
+      const words = (element) =>
+        element.getAttribute('aria-hidden') === 'true'
+          ? ''
+          : added(element, '::before') +
+            [...element.childNodes]
+              .map((node) =>
+                node.nodeType === Node.TEXT_NODE
+                  ? node.textContent
+                  : node.nodeType === Node.ELEMENT_NODE
+                    ? words(node)
+                    : '',
+              )
+              .join('') +
+            added(element, '::after');
+      return words(document.querySelector(wanted)).replace(/\s+/g, ' ').trim();
+    }, selector);
+  const { root } = await cdp.send('DOM.getDocument', { depth: 0 });
+  const { nodeId } = await cdp.send('DOM.querySelector', {
+    nodeId: root.nodeId,
+    selector,
+  });
+  const { nodes } = await cdp.send('Accessibility.getPartialAXTree', {
+    nodeId,
+    fetchRelatives: false,
+  });
+  return nodes[0]?.name?.value ?? '';
+}
+
 // The few things the checks do with a page, written once for Playwright (Chromium) and Puppeteer
 // (Zen), whose pages have these in common.
 function driver(page, problems, cdp) {
@@ -101,6 +139,18 @@ function driver(page, problems, cdp) {
       return page.keyboard.up('Shift');
     },
     description: (selector) => describedAs(page, cdp, selector),
+    name: (selector) => namedAs(page, cdp, selector),
+    // Copies what's selected, as a person does: ⌘C, or Ctrl+C off a Mac. Playwright (Chromium,
+    // the page with a DevTools session) knows the key by that name; Puppeteer holds it down.
+    async copy() {
+      if (cdp) return page.keyboard.press('ControlOrMeta+C');
+      const command = process.platform === 'darwin' ? 'Meta' : 'Control';
+      await page.keyboard.down(command);
+      await page.keyboard.press('c');
+      return page.keyboard.up(command);
+    },
+    // What's on the system clipboard (each browser is let read it: see inChromium(), inZen()).
+    clipboard: () => page.evaluate(() => navigator.clipboard.readText()),
     type: (text) => page.keyboard.type(text),
     click: (selector) => page.click(selector),
     focus: (selector) => page.focus(selector),
@@ -1142,6 +1192,78 @@ async function runChecks(browser, open) {
     },
   );
 
+  await check(
+    `${browser}: URL cut in the middle: in a narrow box a long one keeps its end whole after its head's ellipsis; a short one is whole; one shorter than an end has no head; in less room than its end, the end gives way at its start, its last characters in sight inside its box; each copies as the text it is, in one piece; a screen reader names it once, whole`,
+    async () => {
+      const boxes = await kit.run(() =>
+        Object.fromEntries(
+          ['long', 'short', 'bare', 'tight'].map((name) => {
+            const element = document.querySelector(`[data-testid=kit-middle-${name}]`);
+            const head = element.querySelector('[data-part=head]');
+            const tail = element.querySelector('[data-part=tail]');
+            const cut = (part) => part.scrollWidth > part.clientWidth;
+            const box = element.parentElement;
+            const inside =
+              box.getBoundingClientRect().right -
+              parseFloat(getComputedStyle(box).paddingRight);
+            // Where the tail's first and last characters are drawn, against the tail's box: its
+            // last one in sight, and its first cut only where the tail gives way.
+            const text = tail.firstChild.firstChild;
+            const drawn = (at) => {
+              const range = document.createRange();
+              range.setStart(text, at);
+              range.setEnd(text, at + 1);
+              return range.getBoundingClientRect();
+            };
+            const edges = tail.getBoundingClientRect();
+            return [
+              name,
+              [
+                head && [cut(head), getComputedStyle(head).textOverflow],
+                [tail.textContent, cut(tail)],
+                [
+                  drawn(text.length - 1).right <= edges.right + 0.5,
+                  drawn(0).left < edges.left - 0.5,
+                ],
+                edges.right <= inside + 0.5,
+              ],
+            ];
+          }),
+        ),
+      );
+      // Each selected whole, as a drag across it does, and copied.
+      const copied = [];
+      for (const name of ['long', 'short', 'button']) {
+        await kit.run((id) => {
+          const range = document.createRange();
+          range.selectNodeContents(document.querySelector(`[data-testid=${id}]`));
+          getSelection().removeAllRanges();
+          getSelection().addRange(range);
+        }, `kit-middle-${name}`);
+        await kit.copy();
+        copied.push(await kit.clipboard());
+      }
+      await kit.run(() => getSelection().removeAllRanges());
+      expect(
+        [boxes, copied, await kit.name('[data-testid=kit-middle-button]')],
+        [
+          {
+            long: [[true, 'ellipsis'], ['created_at', false], [true, false], true],
+            short: [[false, 'ellipsis'], ['/search?q=inv', false], [true, false], true],
+            bare: [null, ['/graphql', false], [true, false], true],
+            tight: [[true, 'ellipsis'], ['created_at', true], [true, true], true],
+          },
+          [
+            '/api/search?q=invoices&page=2&sort=-created_at',
+            '/api/search?q=inv',
+            '/graphql GetInvoices',
+          ],
+          '/graphql GetInvoices',
+        ],
+      );
+    },
+  );
+
   await check(`${browser}: icons: the same shapes as src/lib/icons.ts`, async () => {
     const differences = await kit.run((expected) => {
       const shown = Object.fromEntries(
@@ -1270,6 +1392,9 @@ async function inChromium() {
       context.serviceWorkers()[0] ||
       (await context.waitForEvent('serviceworker', { timeout: 10_000 }));
     const origin = `chrome-extension://${new URL(worker.url()).host}`;
+    // For the copy check to read what was copied. Chromium grants no permission to an
+    // extension's origin by name ("opaque"), so to every page.
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
     console.log(
       `Chromium ${context.browser()?.version() ?? ''}, the kit page at ${origin}/kit.html`,
     );
@@ -1329,6 +1454,12 @@ async function inZen() {
     browser: 'firefox',
     executablePath: FIREFOX,
     headless: !process.env.HEADED,
+    // For the copy check to read what was copied: Firefox's own switches for tests, which let a
+    // page read the clipboard without a person pasting.
+    extraPrefsFirefox: {
+      'dom.events.asyncClipboard.readText': true,
+      'dom.events.testing.asyncClipboard': true,
+    },
   });
   try {
     console.log(

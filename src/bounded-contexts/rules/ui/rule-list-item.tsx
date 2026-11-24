@@ -3,8 +3,8 @@
 // its priority. Click it to open it, or its dot to turn it on or off without opening it; drag it
 // to reorder, or into a group or out of one. A rule in a group stands under the group's header,
 // set in; while the group is off, it fades as a rule that's off does, as it doesn't answer, and
-// its dot stays as its own switch is. Under the pointer, a name or URL the row cuts short shows
-// whole in a tooltip.
+// its dot stays as its own switch is. A URL the row has no room for is cut in its middle, so its
+// end stays; under the pointer, a name or URL the row cuts short shows whole in a tooltip.
 import { memo } from 'react';
 import type { PointerEvent } from 'react';
 import { pausedStore, ruleTitle, wouldAnswer } from '../index.ts';
@@ -15,6 +15,7 @@ import { useStore } from '../../../ui/use-store.ts';
 import { useTrafficValue } from '../../traffic/ui/index.ts';
 import { cn } from '../../../ui/cn.ts';
 import { Item, ItemContent, ItemDescription, ItemTitle } from '../../../ui/kit/item.tsx';
+import { MiddleTruncate, isCut } from '../../../ui/kit/middle-truncate.tsx';
 import { RuleSwitch } from './rule-switch.tsx';
 import { ruleSummary } from './rule-summary.ts';
 import type { RowDrag } from './use-rule-drag.ts';
@@ -105,9 +106,16 @@ export const RuleListItem = memo(function RuleListItem({
       />
       <ItemContent>
         <div className="flex min-w-0 items-center gap-2">
-          <ItemTitle className="min-w-0" data-full={title}>
-            {title}
-          </ItemTitle>
+          {rule.name.trim() ? (
+            <ItemTitle className="min-w-0" data-full={title}>
+              {title}
+            </ItemTitle>
+          ) : (
+            // An unnamed rule's title is its URL (or its GraphQL operation), cut in its middle.
+            <ItemTitle className="min-w-0">
+              <MiddleTruncate text={title} />
+            </ItemTitle>
+          )}
           {!groupOff && <RuleDid rule={rule} log={log} />}
         </div>
         <ItemDescription>
@@ -117,14 +125,12 @@ export const RuleListItem = memo(function RuleListItem({
             </span>
           )}
           {pattern && (
-            <span
-              data-full={pattern}
-              className="max-w-[62%] flex-none truncate font-mono text-t65"
-            >
-              {pattern}
-            </span>
+            <MiddleTruncate
+              text={pattern}
+              className="max-w-[62%] flex-none font-mono text-t65"
+            />
           )}
-          {/* the summary gives way before the URL does */}
+          {/* the summary gives way before the URL does, which then gives way in its middle */}
           <span className="min-w-0 flex-[0_10_auto] truncate text-t40">
             {ruleSummary(rule)}
           </span>
@@ -135,12 +141,12 @@ export const RuleListItem = memo(function RuleListItem({
 }, drawsTheSame);
 
 // The row's tooltip, set as the pointer comes: the name or the URL in full, only where the row
-// cuts it short (data-full holds it whole). A row that shows both whole has none, so there's no
-// tooltip saying again what it says.
+// cuts it short (data-full holds it whole; a URL is cut in its middle, which isCut() reads). A row
+// that shows both whole has none, so there's no tooltip saying again what it says.
 function tipWhenCut(event: PointerEvent<HTMLElement>) {
   const row = event.currentTarget;
   const cut = [...row.querySelectorAll<HTMLElement>('[data-full]')]
-    .filter((part) => part.scrollWidth > part.clientWidth)
+    .filter(isCut)
     .map((part) => part.dataset.full);
   if (cut.length) row.title = cut.join('\n');
   else row.removeAttribute('title');

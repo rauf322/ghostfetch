@@ -63,7 +63,8 @@ editor (`body-editor`), which is generic. Their words are in [`docs/glossary/`](
 how they relate in the [Glossary Map](../GLOSSARY-MAP.md). `shared-kernel` is the shared kernel:
 the part of the model that Rules and Interception share, and change only together, so that the
 editor can't say what the page wouldn't do. `app` is the composition root, a folder for each part
-of the extension that WXT builds, which only puts the rest together. And three folders know no
+of the extension that WXT builds, which puts the rest together; the popup's own screens are in it
+too, as the popup has no model of its own. And three folders know no
 domain, nothing of rules, sites or requests: `lib` (small libraries of Ghostfetch's own),
 `platform` (what differs between the browsers, and opening the editor) and `ui` (the UI kit, the
 themes and the editor's layout).
@@ -132,11 +133,14 @@ each one's translation is in the code, under `src/` but for the agent's server:
 | Interception → Traffic | Traffic's anticorruption layer | `clean()` in `bounded-contexts/traffic/infrastructure/tab-log.ts` |
 | Traffic → Rules | customer and supplier | `rule-from-entry.ts`, `server-responses.ts` and `recent-requests.ts`, in `bounded-contexts/rules/application` |
 | Rules → Traffic | reference by identity | an entry's `ruleId`, `ruleName` and `groupName` (`bounded-contexts/traffic/domain/log-entry.ts`) |
-| What's stored, rules files and hand edits → Rules | Rules' anticorruption layer | `normalizeRule` and `normalizeRules` (`bounded-contexts/rules/domain/rule.ts`) and `normalizeGroups` (`group.ts`), wherever rules are read: `order-storage.ts`, `rules-file.ts`, `page-state.ts`, the agent's tools and `app/background/stored-state.ts`; and Sites' `normalizeSites` (`bounded-contexts/sites/site.ts`), and the editor's `app/sidepanel/legacy-settings.ts` |
+| Sites → Traffic | Traffic conformist | Sites' door, `bounded-contexts/sites/index.ts`, which Traffic's screens use |
+| What's stored, rules files and hand edits → Rules | Rules' anticorruption layer | `normalizeRule` and `normalizeRules` (`bounded-contexts/rules/domain/rule.ts`) and `normalizeGroups` (`group.ts`), wherever rules are read: `order-storage.ts`, `rules-file.ts`, `page-state.ts`, the agent's tools and `app/background/stored-state.ts` |
+| What's stored → Sites | Sites' anticorruption layer | `normalizeSites` (`bounded-contexts/sites/site.ts`), wherever the sites you added are read: Sites' `store.ts` and `app/background/stored-state.ts` |
 | Agent access → a coding agent | an open host service, the tools its published language | `mcp/ghostfetch-mcp.mjs`, and `bounded-contexts/agent-access/application/agent-tools.ts` and `rule-report.ts` |
 | Agent access → Rules, Traffic, Sites | conformist | their doors |
-| Rules and Traffic → Body editor | generic, used as a library | `bounded-contexts/body-editor/index.ts` |
+| Rules and Traffic → Body editor | generic, used as a library | its door, `bounded-contexts/body-editor/index.ts`; the JSON check and Format they use with it are `lib`'s (`checkJson`, `formatJson`) |
 | Between the extension's parts | each context's published language | each context's `contract.ts` |
+| Older versions' settings → the editor | an anticorruption layer of the editor's own | `app/sidepanel/legacy-settings.ts` |
 | The browsers → the rest | an adapter, not a context | `platform` |
 
 In the popup's folder, `app/popup`, the files are grouped by what they're for: `ui/` holds its

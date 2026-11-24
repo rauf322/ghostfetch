@@ -7,8 +7,9 @@
 // The rest of it is Interception, in src/bounded-contexts/interception/, whose files only declare
 // things, and take copies of the browser's own functions as the script starts. This function
 // decides whether the interceptor runs on this page, then opens the channel to the bridge
-// (page-channel.ts) and wraps fetch (fetch.ts) and XMLHttpRequest (xhr.ts). Which rule a request
-// gets is matching.ts, what it gets apply-rule.ts.
+// (interception/page-channel.ts) and wraps fetch (interception/fetch.ts) and XMLHttpRequest
+// (interception/xhr.ts). Which rule a request gets is interception/matching.ts, what it gets
+// interception/apply-rule.ts.
 import { defineUnlistedScript } from 'wxt/utils/define-unlisted-script';
 import {
   openChannel,

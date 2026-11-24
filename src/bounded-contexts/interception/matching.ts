@@ -11,7 +11,9 @@ export function compile(rules: PageRule[]) {
     try {
       compiled.push({ rule, test: requestTester(rule.match || {}) });
     } catch {
-      // Invalid regex: the editor already shows the error, so just skip the rule.
+      // A rule whose test can't be made: a regex that doesn't compile, which the editor already
+      // shows, or an operation that isn't text, which the bridge's rebuilding already makes none.
+      // Skip it.
     }
   }
   return compiled;

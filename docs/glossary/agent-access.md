@@ -30,5 +30,6 @@ _Avoid_: command, endpoint, action
 
 **Dev host**:
 A host whose pages' requests an agent may see: localhost, any name under .localhost, 127.0.0.1,
-and any name that starts with "local.". Requests from any other page stay in the browser.
+and any name that starts with "local." and a letter or a digit. Requests from any other page stay
+in the browser.
 _Avoid_: built-in host (Sites' word, for what are today the same hosts)

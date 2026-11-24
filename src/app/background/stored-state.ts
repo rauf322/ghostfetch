@@ -1,6 +1,7 @@
 // What the background reads of what Ghostfetch keeps: chrome.storage.local holds
 // { enabled, record, sites, rules, groups }, and the content scripts and the badge need all but
-// record: of the groups, only which are off.
+// record: of the groups, only which are off. The rules are read through Rules' anticorruption
+// layer and the sites through Sites' (GLOSSARY-MAP.md), as the screens read them.
 import { normalizeRules, offGroups } from '../../bounded-contexts/rules/index.ts';
 import type { Rule } from '../../bounded-contexts/rules/index.ts';
 import { normalizeSites } from '../../bounded-contexts/sites/index.ts';

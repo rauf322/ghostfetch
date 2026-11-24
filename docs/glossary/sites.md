@@ -13,7 +13,7 @@ _Avoid_: domain, origin, URL
 
 **Built-in host**:
 A host Ghostfetch always runs on: localhost, any name under .localhost, 127.0.0.1, and any name
-that starts with "local.".
+that starts with "local." and a letter or a digit.
 _Avoid_: default site, dev host (Agent access's word)
 
 **Added site**:

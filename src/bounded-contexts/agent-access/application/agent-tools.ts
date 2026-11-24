@@ -166,8 +166,8 @@ function groupNamed({ id, name }: Params) {
   return found;
 }
 
-// The editor's toast, the kit's notify, which use-agent-access.ts passes in: a rule or a group the
-// agent deletes comes back with its Undo.
+// The editor's toast, the kit's notify, which ui/use-agent-access.ts passes in: a rule or a
+// group the agent deletes comes back with its Undo.
 type Notify = (
   title: string,
   options: { icon: 'trash'; action: string; onAction: () => void },

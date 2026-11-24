@@ -7,7 +7,8 @@
 // Hosts like local.myapp.com, the usual name for a dev build of a real domain.
 const LOCAL_PREFIX = /^local\.[a-z0-9]/;
 
-// localhost, any name under .localhost, 127.0.0.1, and any name that starts with "local.".
+// localhost, any name under .localhost, 127.0.0.1, and any name that starts with "local." and a
+// letter or a digit.
 export function isDevHost(host: string) {
   return (
     host === '127.0.0.1' ||

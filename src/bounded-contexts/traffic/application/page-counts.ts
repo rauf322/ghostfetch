@@ -1,7 +1,8 @@
 // How often each rule has answered on a tab's page, which the popup shows ("2 mocked"), as does
-// the editor's rule list for the page it watches. The tab's top-frame bridge (src/app/bridge/)
-// counts its traffic log and answers the popup with the counts alone, none of the log's URLs or
-// bodies, so the popup opens as quickly however long the log is.
+// the editor's rule list for the page it watches. The tab's log in its top frame
+// (infrastructure/tab-log.ts, which the bridge starts) counts what it holds and answers the popup
+// with the counts alone, none of the log's URLs or bodies, so the popup opens as quickly however
+// long the log is.
 import type { LogEntry } from '../domain/log-entry.ts';
 import type { CountsMessage, PageCounts, RuleCount } from '../contract.ts';
 
@@ -17,7 +18,7 @@ export function countWords(count: RuleCount | undefined) {
     .join(' · ');
 }
 
-// How often one rule answered among a page's requests, by what it did, as the bridge counts them
+// How often one rule answered among a page's requests, by what it did, as the tab's log counts them
 // for the popup: a request the page gave up on before the rule answered (action '') is none of
 // them.
 export function countRule(entries: readonly LogEntry[], ruleId: string): RuleCount {

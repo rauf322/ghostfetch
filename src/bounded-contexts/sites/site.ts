@@ -51,7 +51,8 @@ export function normalizeSite(input: unknown): string {
 }
 
 // The sites you added, cleaned up: bare hostnames and addresses, no duplicates, no built-in hosts
-// (they're always on anyway).
+// (they're always on anyway). Sites' anticorruption layer (GLOSSARY-MAP.md): what an older version
+// or a hand left under `sites` is read this way, by the screens and the background alike.
 export function normalizeSites(list: unknown): string[] {
   return [...new Set((Array.isArray(list) ? list : []).map(normalizeSite))].filter(
     (site) => site && !isBuiltInHost(site),

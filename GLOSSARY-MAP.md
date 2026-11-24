@@ -37,17 +37,22 @@ each one's translation is in the code is in [docs/development.md](docs/developme
   shows beside each rule what it did on a page, each in its own words.
 - **Rules → Traffic** (*reference by identity*): an entry keeps the id of the rule that answered,
   with its name and its group's name as they were then.
-- **Sites → Interception, Traffic**: Sites decides whether anything of Ghostfetch is on a page. No
-  model crosses.
+- **Sites → Interception, Traffic** (Traffic *conformist*): Sites decides whether anything of
+  Ghostfetch is on a page. Traffic's screens say so, and turn Ghostfetch on for a site, in Sites'
+  own words; of Sites, Interception gets only whether the page scripts run at all.
 - **Agent access → Rules, Traffic, Sites** (*conformist*): Agent access takes their words as they
   are, and gives an agent tools that do what the editor's user can do.
 - **Agent access → a coding agent** (an *open host service*, the tools its *published
   language*): the tools' names and fields are a promise to every agent, kept from version to
   version. What an agent sends passes Rules' anticorruption layer, as a rules file does.
 - **Body editor** (*generic*): shares no meaning with the others. Rules and Traffic use it as a
-  library: text in, text and mistakes out.
+  library: they give it the text to show or edit, and Rules the mistake it found in it, and Rules
+  takes the edited text back.
 - **What older versions, hand edits and rules files leave → Rules** (Rules' *anticorruption
   layer*): every rule and group is read as the editor reads it, each rule rebuilt field by field,
   before the screens, the badge, an agent or the page see it.
+- **What older versions and hand edits leave → Sites** (Sites' *anticorruption layer*): the sites
+  you added are read as bare hostnames and addresses, with no duplicates and no built-in host,
+  before the screens or the background use them.
 - **Between the extension's parts** (the page, the bridge, the background, the screens): each
   context's messages are its *published language*.

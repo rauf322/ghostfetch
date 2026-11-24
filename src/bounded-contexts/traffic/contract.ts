@@ -2,10 +2,11 @@
 // saw, to its bridge; an iframe's entry, to the background and on to its tab's top frame; the
 // popup's question of what each rule did on a page, with the counts that answer it; and what a
 // tab's log and the Traffic view say over the port between them. Types, and the name of that port:
-// nothing else of this file ends up in the built extension. FrameEntryMessage and CountsMessage
-// are its chrome.runtime and chrome.tabs messages, which the background puts in a union with
-// Sites' own (src/app/background/on-message.ts). They're Traffic's published language
-// (GLOSSARY-MAP.md).
+// nothing else of this file ends up in the built extension. FrameEntryMessage is its
+// chrome.runtime message, which the background hears in a union with Sites' own
+// (src/app/background/on-message.ts); CountsMessage is the popup's chrome.tabs message to a tab's
+// top frame, which the tab's log answers (infrastructure/tab-log.ts). They're Traffic's published
+// language (GLOSSARY-MAP.md).
 import type { LogEntry } from './domain/log-entry.ts';
 
 // The interceptor to the bridge: a request it saw. The page can forge these, so the bridge

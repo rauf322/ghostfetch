@@ -1,6 +1,6 @@
 // What to do with an open request: Mock this response, the one big button, with the group the rule
 // goes into under it once there's a group, and a row of quieter ones: copy the URL, the request as
-// a cURL command, and the response's body.
+// a cURL command, and the response's body, each saying in itself that it copied (CopyButton).
 import { ruleFromEntry, ruleStore } from '../../../rules/index.ts';
 import type { Rule } from '../../../rules/index.ts';
 import type { LogEntry } from '../../index.ts';
@@ -8,8 +8,8 @@ import { curlCommand } from '../../../../lib/index.ts';
 import { useStore } from '../../../../ui/use-store.ts';
 import { GroupPicker } from '../../../rules/ui/group-picker.tsx';
 import { Button } from '../../../../ui/kit/button.tsx';
+import { CopyButton } from '../../../../ui/kit/copy-button.tsx';
 import { Icon } from '../../../../ui/kit/icon.tsx';
-import type { IconName } from '../../../../ui/kit/icon.tsx';
 import { notify } from '../../../../ui/kit/toast.tsx';
 
 export function RequestActions({
@@ -27,19 +27,6 @@ export function RequestActions({
   onMock: (draft: Rule, entry: LogEntry) => void;
 }) {
   const { groups } = useStore(ruleStore);
-  async function copy(text: string, what: string) {
-    try {
-      await navigator.clipboard.writeText(text);
-      notify(`Copied ${what}`, { kind: 'success' });
-    } catch {
-      // The browser kept the clipboard: Firefox's sidebar without focus, or no permission.
-      notify(`Couldn't copy ${what}`, {
-        kind: 'error',
-        description: "The browser didn't allow it.",
-      });
-    }
-  }
-
   return (
     <div className="flex flex-col gap-2">
       <Button
@@ -67,52 +54,46 @@ export function RequestActions({
         </div>
       )}
       {/* Each as wide as its words, sharing what's left: the three fit a side panel side by
-          side, where equal thirds would cut "Copy as cURL" short. */}
+          side, where equal thirds would cut "Copy as cURL" short. A copy says so in its button
+          for a second ("Copied"), not in a toast. */}
       <div className="flex flex-wrap gap-1.5">
-        <Secondary icon="link" onClick={() => copy(entry.url, 'the URL')}>
+        <CopyButton
+          size="lg"
+          icon="link"
+          text={entry.url}
+          what="the URL"
+          data-testid="copy-url"
+          className={SECONDARY}
+        >
           Copy URL
-        </Secondary>
-        <Secondary
+        </CopyButton>
+        <CopyButton
+          size="lg"
           icon="terminal"
-          onClick={() =>
-            copy(
-              curlCommand({
-                method: entry.method,
-                url: entry.url,
-                body: entry.requestBody,
-              }),
-              'a cURL command',
-            )
+          text={() =>
+            curlCommand({ method: entry.method, url: entry.url, body: entry.requestBody })
           }
+          what="the cURL command"
+          data-testid="copy-curl"
+          className={SECONDARY}
         >
           Copy as cURL
-        </Secondary>
+        </CopyButton>
         {entry.responseBody && (
-          <Secondary
+          <CopyButton
+            size="lg"
             icon="copy"
-            onClick={() => copy(pretty ?? entry.responseBody, 'the response body')}
+            text={pretty ?? entry.responseBody}
+            what="the response body"
+            data-testid="copy-body"
+            className={SECONDARY}
           >
             Copy body
-          </Secondary>
+          </CopyButton>
         )}
       </div>
     </div>
   );
 }
 
-function Secondary({
-  icon,
-  onClick,
-  children,
-}: {
-  icon: IconName;
-  onClick: () => void;
-  children: string;
-}) {
-  return (
-    <Button size="lg" onClick={onClick} className="flex-auto gap-1.5 px-2 text-t80">
-      <Icon name={icon} size={14} className="flex-none" />
-      {children}
-    </Button>
-  );
-}
+const SECONDARY = 'flex-auto px-2 text-t80';

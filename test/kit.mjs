@@ -1264,6 +1264,118 @@ async function runChecks(browser, open) {
     },
   );
 
+  await check(
+    `${browser}: copy button: a press copies, and for a second it says "Copied" with a check in the signal's colour, as wide as before and named as before, a polite live region saying "Copied the URL" once, then nothing; pressed again it starts the second over; Enter copies and it keeps the focus; a refused copy shows the error toast and leaves it as it was`,
+    async () => {
+      const button = '[data-testid=kit-copy]';
+      // The button: whether it says Copied, its width, whether its check is drawn in the signal's
+      // colour, and its live region (the element after it): what it says, and in how many pieces.
+      const state = () =>
+        kit.run((selector) => {
+          const element = document.querySelector(selector);
+          const live = element.nextElementSibling;
+          const probe = document.createElement('span');
+          probe.className = 'text-signal';
+          document.body.append(probe);
+          const signal = getComputedStyle(probe).color;
+          probe.remove();
+          const rest = element.querySelector('[data-part=words]');
+          const copied = element.querySelector('[data-part=copied]');
+          return [
+            element.hasAttribute('data-copied'),
+            Math.round(element.getBoundingClientRect().width),
+            getComputedStyle(copied).opacity === '1' &&
+              getComputedStyle(rest).opacity === '0',
+            getComputedStyle(copied.querySelector('svg')).color === signal,
+            live.getAttribute('aria-live'),
+            live.textContent,
+            live.children.length,
+          ];
+        }, button);
+      const toasts = () =>
+        kit.run(() =>
+          [...document.querySelectorAll('[data-slot=toast]')]
+            .map((toast) => toast.textContent)
+            .filter((text) => /cop(y|ied)/i.test(text)),
+        );
+      await kit.pointTo(NOWHERE);
+      const before = await state();
+      await kit.click(button);
+      await kit.until(
+        (selector) => document.querySelector(selector).hasAttribute('data-copied'),
+        button,
+        'Copied',
+      );
+      const pressed = [await state(), await kit.clipboard(), await kit.name(button)];
+      // Pressed again 0.6 s in: still Copied 1.35 s after the first press, then not.
+      await sleep(600);
+      await kit.click(button);
+      await sleep(750);
+      const again = (await state())[0];
+      await kit.until(
+        (selector) => !document.querySelector(selector).hasAttribute('data-copied'),
+        button,
+        'the words back',
+      );
+      const after = await state();
+      // From the keyboard: Enter, and it keeps the focus.
+      await kit.focus(button);
+      await kit.press('Enter');
+      await kit.until(
+        (selector) => document.querySelector(selector).hasAttribute('data-copied'),
+        button,
+        'Copied by Enter',
+      );
+      const keyboard = await kit.run(
+        (selector) => document.activeElement === document.querySelector(selector),
+        button,
+      );
+      await kit.until(
+        (selector) => !document.querySelector(selector).hasAttribute('data-copied'),
+        button,
+        'the words back',
+      );
+      // Refused, as the browser does in Firefox's sidebar without the focus.
+      await kit.run(() => {
+        navigator.clipboard.writeText = () =>
+          Promise.reject(new DOMException('Document is not focused.', 'NotAllowedError'));
+      });
+      await kit.click(button);
+      await kit.until(
+        () =>
+          [...document.querySelectorAll('[data-slot=toast]')].some((toast) =>
+            toast.textContent.includes("Couldn't copy the URL"),
+          ),
+        undefined,
+        'the error toast',
+      );
+      const refused = [await state(), await toasts()];
+      await kit.run(() => delete navigator.clipboard.writeText);
+      await kit.run(() => document.activeElement.blur());
+      const width = before[1];
+      expect(
+        [before, pressed, again, after, keyboard, refused],
+        [
+          [false, width, false, true, 'polite', '', 0],
+          [
+            [true, width, true, true, 'polite', 'Copied the URL', 1],
+            'https://app.acme.test/api/search?q=invoices&page=2',
+            'Copy URL',
+          ],
+          true,
+          [false, width, false, true, 'polite', '', 0],
+          true,
+          [
+            [false, width, false, true, 'polite', '', 0],
+            [
+              "Couldn't copy the URLThe browser didn't let Ghostfetch use the clipboard. Click in Ghostfetch, then copy again.",
+            ],
+          ],
+        ],
+      );
+    },
+  );
+
   await check(`${browser}: icons: the same shapes as src/lib/icons.ts`, async () => {
     const differences = await kit.run((expected) => {
       const shown = Object.fromEntries(

@@ -206,6 +206,7 @@ src/ui/                          the components that know nothing of rules, site
     tooltip.tsx                  the tooltip a control explains itself with, rather than a title: its words, its key, or why it's off; and the provider each page has one of
     kbd.tsx                      a key's badge, and the one place that writes a key for this platform (⌘B on a Mac, Ctrl+B elsewhere), says it in words for a screen reader, and reads it from a key event
     middle-truncate.tsx          a URL cut short in its middle, so its end stays, with CSS only; copied whole, and read whole by a screen reader
+    copy-button.tsx              a button that copies and says so in itself for a second ("Copied", told to a screen reader once), and useCopied() for a control of another shape; a refused copy gets a toast
   list-detail.tsx                the editor's layout: the sidebar, as wide as its edge was dragged, and what's open beside it, in a row (a flexbox: Firefox lays a grid's items out again from scratch)
   sidebar.tsx                    the sidebar's width and whether it's hidden, the edge that resizes it (and what keeps its width meanwhile), and the button (and ⌘B) that hides it
   theme.ts                       the themes and Appearance's three settings (contrast, font, text size), and the ones in use; theme-menu.tsx, the ⋯ menus' Theme and Appearance rows
@@ -292,6 +293,14 @@ less room than that end, the end gives way at its start, so its last characters 
 when something is. Selected and copied, it's the whole text in one piece, and a screen reader
 reads it once. The ellipsis comes after the last whole character that fits, so a cut can leave a
 gap of up to a character before the end; closing it would take measuring.
+
+A control that copies says so in itself, not in a toast at the window's corner: `<CopyButton>`
+(`copy-button.tsx`), as Traffic's Copy URL, Copy as cURL and Copy body are, shows a check in
+the signal's colour and "Copied" for a second, keeping its width and its name, and a polite live
+region tells a screen reader once ("Copied the URL"). Pressed again, it copies again and starts
+the second over; it stays pressable, so the keyboard keeps its focus. A copy the browser refuses
+(Firefox's sidebar while it hasn't the focus) leaves it as it was and shows an error toast saying
+what to do. `useCopied()` is the same for a control of another shape.
 
 ### Adding a UI component
 
@@ -460,7 +469,9 @@ Windows line ends compared and clicked as the editor has it, a click on Edit her
 character under it, the same lines on screen after a change of layout, and none kept from Mock
 this response on a request a rule answered), the
 traffic view (its filters, Keep on reload, which stops at 500 requests however a page that asks
-for a lot as it starts reloads, Clear, a request's Sent time, when it was sent and not when its
+for a lot as it starts reloads, Clear, an open request's Copy URL, Copy as cURL and Copy body,
+each saying "Copied" in itself with no toast, and an error toast for a copy the browser refuses,
+a request's Sent time, when it was sent and not when its
 response ended, an iframe's requests, which the background passes on to its tab's log (one a
 rule answers and one no rule does, made in an iframe on another host Ghostfetch runs on, both
 listed for the tab, and the one answered in the popup's counts for the tab), and the page it
@@ -607,7 +618,11 @@ button focus back with no tooltip, which shows again once focus or the pointer l
 back. And a URL cut in the middle: in a narrow box a long one keeps its end whole after its
 head's ellipsis, a short one is whole, one shorter than an end has no head, and in less room than
 its end the end gives way inside its box; each, selected and copied with the keyboard, is on the
-clipboard as the text it is, in one piece; and a screen reader names it once, whole. Two
+clipboard as the text it is, in one piece; and a screen reader names it once, whole. And a copy
+button: a press copies (read back from the clipboard), and for a second it says "Copied" with a
+check in the signal's colour, as wide as before and named as before, its live region saying it
+once and then nothing; pressed again it starts the second over; Enter copies and it keeps the
+focus; and a copy the browser refuses shows the error toast and leaves it as it was. Two
 self-checks make sure it can fail: a `<style>` tag added on purpose has to be caught, and so does
 Base UI's own when `CSPProvider`'s setting is off.
 

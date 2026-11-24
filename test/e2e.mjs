@@ -19,7 +19,7 @@ import {
   normalizeSites,
   siteMatchPatterns,
 } from '../src/bounded-contexts/sites/index.ts';
-import { diffLines, formatJson } from '../src/lib/index.ts';
+import { curlCommand, diffLines, formatJson } from '../src/lib/index.ts';
 import {
   CHROME_BUILD,
   VIM_START,
@@ -2736,6 +2736,93 @@ try {
         throw new Error(
           `sent at ${sent[0]}, shown as ${shown}, which is when its response ended (${await at(sentAt + 2500)})`,
         );
+    },
+  );
+  await check(
+    'an open request\'s Copy URL, Copy as cURL and Copy body each copy and say so in the button ("Copied", a polite live region saying what), with no toast; a copy the browser refuses shows the error toast, saying what to do, and leaves the button as it was',
+    async () => {
+      // Up to 0.26.0 a copy said so in a toast at the corner, over the list in a side panel.
+      const url = `${ORIGIN}/api/user?case=live-check`;
+      await app
+        .locator('[data-testid="request"]', { hasText: 'case=live-check' })
+        .first()
+        .click();
+      // What the page writes to the clipboard, kept as it's written: the clipboard is the
+      // browser's own (the kit check reads it back).
+      await app.evaluate(() => {
+        window.copiedTexts = [];
+        navigator.clipboard.writeText = async (text) => {
+          window.copiedTexts.push(text);
+        };
+      });
+      const said = [];
+      for (const testid of ['copy-url', 'copy-curl', 'copy-body']) {
+        await app.click(`[data-testid="${testid}"]`);
+        await app.waitForSelector(`[data-testid="${testid}"][data-copied]`);
+        said.push(
+          await app
+            .locator(`[data-testid="${testid}"]`)
+            .evaluate((button) => [
+              getComputedStyle(button.querySelector('[data-part=copied]')).opacity,
+              button.nextElementSibling.getAttribute('aria-live'),
+              button.nextElementSibling.textContent,
+            ]),
+        );
+      }
+      const copied = await app.evaluate(() => window.copiedTexts);
+      const toasted = await app
+        .locator('[data-slot="toast"]', { hasText: /cop(y|ied)/i })
+        .count();
+      // Refused, as Firefox's sidebar does without the focus, once Copy URL says its words again.
+      await app.evaluate(() => {
+        navigator.clipboard.writeText = () =>
+          Promise.reject(new DOMException('Document is not focused.', 'NotAllowedError'));
+      });
+      await app.waitForSelector('[data-testid="copy-url"]:not([data-copied])');
+      await app.click('[data-testid="copy-url"]');
+      const toast = app.locator('[data-slot="toast"]', {
+        hasText: "Couldn't copy the URL",
+      });
+      await toast.waitFor({ timeout: 3000 });
+      await sleep(200);
+      const refused = [
+        await toast.textContent(),
+        await app
+          .locator('[data-testid="copy-url"]')
+          .evaluate((button) => [
+            button.hasAttribute('data-copied'),
+            button.nextElementSibling.textContent,
+          ]),
+      ];
+      await app.evaluate(() => delete navigator.clipboard.writeText);
+      await app.locator('[data-testid="request-back"]').click();
+      expect(
+        [
+          said,
+          copied[0],
+          copied[1],
+          JSON.parse(copied[2]).name,
+          copied[2].includes('\n'),
+          toasted,
+          refused,
+        ],
+        [
+          [
+            ['1', 'polite', 'Copied the URL'],
+            ['1', 'polite', 'Copied the cURL command'],
+            ['1', 'polite', 'Copied the response body'],
+          ],
+          url,
+          curlCommand({ method: 'GET', url, body: '' }),
+          'Real',
+          true,
+          0,
+          [
+            "Couldn't copy the URLThe browser didn't let Ghostfetch use the clipboard. Click in Ghostfetch, then copy again.",
+            [false, ''],
+          ],
+        ],
+      );
     },
   );
   await check('"Mock this response" turns a request into a rule', async () => {

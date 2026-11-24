@@ -1,5 +1,4 @@
 import { Menu as MenuPrimitive } from '@base-ui/react/menu';
-import type { ComponentProps } from 'react';
 import { cn } from '../cn.ts';
 import { Icon } from './icon.tsx';
 
@@ -156,9 +155,14 @@ export function DropdownMenuSeparator({
   );
 }
 
-export function DropdownMenuLabel({ className, ...props }: ComponentProps<'div'>) {
+// The name over a group of items, as Appearance's Contrast, Font and Text size. It goes inside its
+// DropdownMenuRadioGroup, which it names for a screen reader too (Base UI's GroupLabel).
+export function DropdownMenuLabel({
+  className,
+  ...props
+}: MenuPrimitive.GroupLabel.Props) {
   return (
-    <div
+    <MenuPrimitive.GroupLabel
       data-slot="dropdown-menu-label"
       className={cn('px-2.5 pt-2 pb-1 text-label font-medium text-t40', className)}
       {...props}

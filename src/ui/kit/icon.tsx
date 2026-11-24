@@ -113,6 +113,7 @@ const SHAPES = {
       <path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor" />
     </>
   ),
+  type: <path d="M5 7V5h14v2M12 5v14M9 19h6" />,
   split: (
     <>
       <rect x="3" y="4" width="18" height="16" rx="2" />

@@ -145,6 +145,40 @@
   --color-ring: var(--ring);
 }
 
+/* Appearance's Font and Text size (src/ui/theme.ts), which public/theme.js puts on <html> as
+   data-font and data-size; its Contrast, and the Font of the body editor's words, are in
+   theme.css. Outside the layers, so they win over the values in @theme above. Font: Commit Mono
+   for words too. */
+:root[data-font='mono'] {
+  --font-sans: var(--font);
+}
+
+/* Text size: the nine type sizes ×1.125 (Large) and ×1.25 (Larger), each to the nearest half
+   pixel. Only text grows: spacing and icons keep their sizes, and the body editor keeps its own
+   (code-editor.css). */
+:root[data-size='large'] {
+  --text-micro: 12.5px;
+  --text-label: 13.5px;
+  --text-control: 14.5px;
+  --text-meta: 13.5px;
+  --text-small: 14.5px;
+  --text-body: 14.5px;
+  --text-title: 16px;
+  --text-heading: 20.5px;
+  --text-hero: 22.5px;
+}
+:root[data-size='larger'] {
+  --text-micro: 14px;
+  --text-label: 15px;
+  --text-control: 16.5px;
+  --text-meta: 15px;
+  --text-small: 16.5px;
+  --text-body: 16.5px;
+  --text-title: 17.5px;
+  --text-heading: 22.5px;
+  --text-hero: 25px;
+}
+
 /* Outside the layers on purpose: Chrome adds body { font-family: system-ui, sans-serif } to
    extension pages as an unlayered style, which beats anything inside @layer, and a rule on body
    also beats the font Tailwind's base styles set on html. */

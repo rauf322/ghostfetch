@@ -210,6 +210,21 @@ and errors stay inverted, in the theme's text colour. A theme recolours every pa
 Ghostfetch's at once, the popup too, and is remembered in this browser. Each page puts it on
 before it first draws (`public/theme.js`), so none flashes Ghostfetch's own colours first.
 
+Under Theme, **Appearance** has three settings for every theme, each a few steps; the row says
+which steps you picked that aren't the defaults:
+
+- **Contrast**: Standard, **More** or **Most**. More and Most bring quieter text (labels, hints,
+  placeholders) and the lines between things nearer the text colour, so they're easier to read.
+  The steps of grey stay apart, so what's quieter still looks quieter.
+- **Font**: Geist or **Commit Mono**, the font of code, for words too.
+- **Text size**: Default, **Large** or **Larger**, an eighth and a quarter larger. Only the text
+  grows: spacing and icons stay as they are, and the body editor keeps its own text size (⌘= and
+  ⌘−). Where a row's words no longer fit side by side, they go on to another line rather than
+  being cut.
+
+Like the theme, each changes every open page of Ghostfetch's at once, is remembered in this
+browser, and is on each page before it first draws.
+
 ## Vim keys
 
 **Vim keys** under a body editor, next to **Format**, turns on vim keys. It's one

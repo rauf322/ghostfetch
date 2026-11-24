@@ -1,10 +1,10 @@
 // UI kit check: the kit page (src/app/kit/, every component of src/ui/kit/) under the
 // extension pages' real CSP, in Chromium and in Zen. It fails on any CSP violation, uncaught
 // error or console error, drives each component with the keyboard and the mouse, holds every
-// theme's grey text to its floor (src/app/styles/theme.css), and checks the kit's icons against
-// src/lib/icons.ts. Two self-checks make sure a pass means something: a <style> tag added on
-// purpose has to be caught, and so does Base UI's own when its CSPProvider setting is off (every
-// page built on the kit keeps it on).
+// theme's grey text to its floor at each step of Appearance's Contrast (src/app/styles/theme.css),
+// and checks the kit's icons against src/lib/icons.ts. Two self-checks make sure a pass means
+// something: a <style> tag added on purpose has to be caught, and so does Base UI's own when its
+// CSPProvider setting is off (every page built on the kit keeps it on).
 //
 //   npm run test:kit      builds the kit page (wxt build --mode kit, both browsers), then runs this
 //
@@ -19,7 +19,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { launch } from 'puppeteer-core';
 import { icon } from '../src/lib/index.ts';
-import { THEMES } from '../src/ui/theme.ts';
+import { APPEARANCE, THEMES } from '../src/ui/theme.ts';
 import { ROOT, check, expect, finish, requireBuild, sleep } from './fixtures.mjs';
 
 const require = createRequire(import.meta.url);
@@ -136,11 +136,16 @@ const menuOpen = popupOpen('dropdown-menu-content');
 const menuClosed = popupClosed('dropdown-menu-content');
 
 // The grey levels that are text, brightest first, and the floor every theme holds them to on its
-// page and on a card (src/app/styles/theme.css): --t40 and --t30 at these contrasts or more, and
-// each level at least STEP times the contrast of the one below it, so the levels stay apart.
+// page and on a card at each step of Appearance's Contrast (src/app/styles/theme.css): --t40 and
+// --t30 at these contrasts or more, and each level at least `apart` times the contrast of the one
+// below it. More and Most move every level toward the text, which brings them closer together:
+// there a level only has to stay above the one below it.
 const LEVELS = ['t80', 't65', 't50', 't40', 't30'];
-const FLOOR = { t40: 4.5, t30: 3 };
-const STEP = 1.15;
+const FLOORS = {
+  standard: { t40: 4.5, t30: 3, apart: 1.15 },
+  more: { t40: 5.5, t30: 4, apart: 1 },
+  most: { t40: 6.5, t30: 5.5, apart: 1 },
+};
 
 // A computed colour as [red, green, blue, alpha], each from 0 to 1. It comes as rgb() or rgba(),
 // in 0 to 255, or as color(srgb r g b / a), in 0 to 1, which is what color-mix() computes to.
@@ -519,7 +524,9 @@ async function runChecks(browser, open) {
       await kit.press('Enter');
       await menuOpen(kit);
       await focusOn(kit, '[role=menuitem]');
-      // Up from the first row, round to the last: Theme.
+      // Up from the first row, round to the last (Appearance), and one more: Theme.
+      await kit.press('ArrowUp');
+      await focusOn(kit, '[data-testid=appearance-menu]');
       await kit.press('ArrowUp');
       await focusOn(kit, '[data-testid=theme-menu]');
       await kit.press('ArrowRight');
@@ -550,13 +557,101 @@ async function runChecks(browser, open) {
   );
 
   await check(
-    `${browser}: every theme's grey text reads: on the page and on a card, --t40 at 4.5:1 or more, --t30 at 3:1 or more, and each level at least 1.15× the contrast of the one below`,
+    `${browser}: menu: the right arrow opens Appearance's Contrast, Font and Text size, each a group its label names; Enter picks a step, which restyles the page, is remembered and shows in the row, with them still open; the defaults picked again leave nothing behind`,
+    async () => {
+      // What's on <html> and stored for each setting, what the Appearance row says, and what the
+      // page draws with: how far the grey levels are lifted, and the font and size of body text,
+      // read from a probe with the type size the kit gives it (<body>'s own size isn't one:
+      // Chrome sets it to 75% on extension pages, over the kit's).
+      const look = () =>
+        kit.run(() => {
+          const names = ['contrast', 'font', 'size'];
+          const root = document.documentElement;
+          const probe = document.createElement('span');
+          probe.className = 'text-body';
+          document.body.append(probe);
+          const text = getComputedStyle(probe);
+          const drawn = [
+            text.fontFamily.split(',')[0].replaceAll('"', ''),
+            text.fontSize,
+          ];
+          probe.remove();
+          return [
+            names.map((name) => root.dataset[name] ?? ''),
+            names.map((name) => localStorage.getItem(`ghostfetch.${name}`)),
+            document.querySelector('[data-testid=appearance-menu] > span').textContent,
+            getComputedStyle(root).getPropertyValue('--lift').trim(),
+            ...drawn,
+          ];
+        });
+      // Moves to a step with the arrow key, `times` over, and picks it.
+      const pick = async (key, times, testid) => {
+        for (let time = 0; time < times; time++) await kit.press(key);
+        await focusOn(kit, `[data-testid=${testid}]`);
+        await kit.press('Enter');
+      };
+      await kit.focus('[data-testid=kit-menu]');
+      await kit.press('Enter');
+      await menuOpen(kit);
+      await focusOn(kit, '[role=menuitem]');
+      // Up from the first row, round to the last: Appearance.
+      await kit.press('ArrowUp');
+      await focusOn(kit, '[data-testid=appearance-menu]');
+      await kit.press('ArrowRight');
+      await focusOn(kit, '[data-testid=contrast-standard]');
+      const groups = await kit.run(() =>
+        [
+          ...document.querySelectorAll(
+            '[data-slot=dropdown-menu-sub-content][data-open] [role=group]',
+          ),
+        ].map(
+          (group) =>
+            document.getElementById(group.getAttribute('aria-labelledby'))?.textContent,
+        ),
+      );
+      // Down through the groups: Most, Commit Mono, Larger.
+      await pick('ArrowDown', 2, 'contrast-most');
+      await pick('ArrowDown', 2, 'font-mono');
+      await pick('ArrowDown', 3, 'size-larger');
+      const picked = await look();
+      // And up again: Default, Geist, Standard.
+      await pick('ArrowUp', 2, 'size-default');
+      await pick('ArrowUp', 2, 'font-geist');
+      await pick('ArrowUp', 3, 'contrast-standard');
+      const back = await look();
+      await kit.press('Escape');
+      await focusOn(kit, '[data-testid=appearance-menu]');
+      await kit.press('Escape');
+      await menuClosed(kit);
+      await focusOn(kit, '[data-testid=kit-menu]');
+      expect(
+        [groups, picked, back],
+        [
+          ['Contrast', 'Font', 'Text size'],
+          [
+            ['most', 'mono', 'larger'],
+            ['most', 'mono', 'larger'],
+            'Most, Commit Mono, Larger',
+            '60%',
+            'Commit Mono',
+            '16.5px',
+          ],
+          [['', '', ''], [null, null, null], 'Default', '0%', 'Geist', '13px'],
+        ],
+      );
+    },
+  );
+
+  await check(
+    `${browser}: every theme's grey text reads at each contrast, on the page and on a card: --t40 and --t30 at 4.5:1 and 3:1 or more at Standard, 5.5:1 and 4:1 at More, 6.5:1 and 5.5:1 at Most, and each level above the one below (by 1.15× at Standard)`,
     async () => {
       // Each theme the stylesheets have (as test/e2e.mjs finds them for the selection colour),
-      // put on <html> in turn, and the computed colours of its levels, its page and its cards,
-      // read through a probe's background (a custom property's own value isn't resolved).
+      // put on <html> in turn at each step of Contrast, and the computed colours of its levels,
+      // its page and its cards, read through a probe's background (a custom property's own value
+      // isn't resolved).
+      const steps = APPEARANCE.contrast.steps.map((step) => step.id);
       const colours = await kit.run(
-        (names) => {
+        ([names, contrasts]) => {
           const rules = (list) =>
             [...list].flatMap((rule) => [
               rule,
@@ -579,52 +674,67 @@ async function runChecks(browser, open) {
           try {
             for (const theme of themes) {
               root.dataset.theme = theme;
-              found[theme] = Object.fromEntries(
-                names.map((name) => {
-                  probe.style.backgroundColor = `var(--${name})`;
-                  return [name, getComputedStyle(probe).backgroundColor];
-                }),
-              );
+              found[theme] = {};
+              for (const [index, step] of contrasts.entries()) {
+                // The first step is the default, which puts no attribute.
+                if (index) root.dataset.contrast = step;
+                else delete root.dataset.contrast;
+                found[theme][step] = Object.fromEntries(
+                  names.map((name) => {
+                    probe.style.backgroundColor = `var(--${name})`;
+                    return [name, getComputedStyle(probe).backgroundColor];
+                  }),
+                );
+              }
             }
           } finally {
-            // Ghostfetch's own again: no attribute, as setTheme() (src/ui/theme.ts) leaves it.
+            // Ghostfetch's own at Standard again: no attributes, as src/ui/theme.ts leaves them.
             probe.remove();
             delete root.dataset.theme;
+            delete root.dataset.contrast;
           }
           return found;
         },
-        [...LEVELS, 'bg', 'panel'],
+        [[...LEVELS, 'bg', 'panel'], steps],
       );
       expect(
-        Object.keys(colours).toSorted(),
-        THEMES.map((theme) => theme.id).toSorted(),
-        'the themes the stylesheets have',
+        [Object.keys(colours).toSorted(), steps.filter((step) => !FLOORS[step])],
+        [THEMES.map((theme) => theme.id).toSorted(), []],
+        'the themes the stylesheets have, and the contrast steps with no floor here',
       );
       const faint = [];
-      for (const [theme, colour] of Object.entries(colours))
-        for (const [surface, name] of [
-          ['the page', 'bg'],
-          ['a card', 'panel'],
-        ]) {
-          const under = parseColour(colour[name]);
-          const ratio = Object.fromEntries(
-            LEVELS.map((level) => [
-              level,
-              contrast(over(parseColour(colour[level]), under), under),
-            ]),
-          );
-          const reads = (level) => `--${level} ${ratio[level].toFixed(2)}:1`;
-          for (const [level, floor] of Object.entries(FLOOR))
-            if (ratio[level] < floor)
-              faint.push(`${theme}, on ${surface}: ${reads(level)}, under ${floor}:1`);
-          for (const [index, level] of LEVELS.slice(0, -1).entries()) {
-            const below = LEVELS[index + 1];
-            if (ratio[level] < STEP * ratio[below])
-              faint.push(
-                `${theme}, on ${surface}: ${reads(level)}, under ${STEP}× ${reads(below)}`,
-              );
+      for (const [theme, byStep] of Object.entries(colours))
+        for (const [step, colour] of Object.entries(byStep))
+          for (const [surface, name] of [
+            ['the page', 'bg'],
+            ['a card', 'panel'],
+          ]) {
+            const floor = FLOORS[step];
+            const under = parseColour(colour[name]);
+            const ratio = Object.fromEntries(
+              LEVELS.map((level) => [
+                level,
+                contrast(over(parseColour(colour[level]), under), under),
+              ]),
+            );
+            const reads = (level) => `--${level} ${ratio[level].toFixed(2)}:1`;
+            const at = `${theme} at ${step}, on ${surface}`;
+            for (const level of ['t40', 't30'])
+              if (ratio[level] < floor[level])
+                faint.push(`${at}: ${reads(level)}, under ${floor[level]}:1`);
+            for (const [index, level] of LEVELS.slice(0, -1).entries()) {
+              const below = LEVELS[index + 1];
+              if (
+                !(
+                  ratio[level] > ratio[below] &&
+                  ratio[level] >= floor.apart * ratio[below]
+                )
+              )
+                faint.push(
+                  `${at}: ${reads(level)}, ${floor.apart > 1 ? `under ${floor.apart}×` : 'not above'} ${reads(below)}`,
+                );
+            }
           }
-        }
       expect(faint, [], 'too faint');
     },
   );

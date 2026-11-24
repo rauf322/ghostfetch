@@ -116,7 +116,8 @@ from localhost pages. [Setting it up](docs/agent-access.md).
 
 Ghostfetch's own near-black look, or Rosé Pine, Rosé Pine Moon, Rosé Pine Dawn (light),
 Catppuccin Macchiato or Vague, in the colours their Neovim themes use. **Theme** is in the
-editor's `⋯` menu.
+editor's `⋯` menu, and under it **Appearance**: more contrast for quieter text and lines,
+Commit Mono for words as well as code, and larger text.
 
 ## Install
 

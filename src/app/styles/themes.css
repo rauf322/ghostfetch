@@ -6,7 +6,8 @@
    that's quieter is the theme's text, fainter, unless the theme has a step for it, and never
    fainter than the floor theme.css gives its level. The floor is a contrast, so the less a
    theme's text stands out from its page, the more of it each level keeps (Rosé Pine Dawn's
-   the most).
+   the most). Those levels and two of the lines are bases (--t40-base, --line-base): theme.css
+   makes the ones the components use from them, lifted toward the text by Appearance's Contrast.
 
    src/ui/theme.ts lists them by name; public/theme.js puts the one you picked on <html>
    before the page draws. */
@@ -20,14 +21,14 @@
   --text: #e0def4;
   --strong: #e0def4;
   --inverse: #191724;
-  --t80: rgba(224, 222, 244, 0.8);
-  --t65: rgba(224, 222, 244, 0.7);
-  --t50: rgba(224, 222, 244, 0.62);
-  --t40: rgba(224, 222, 244, 0.54);
-  --t30: rgba(224, 222, 244, 0.4);
-  --t20: rgba(224, 222, 244, 0.2);
-  --line: #403d52;
-  --line-strong: #524f67;
+  --t80-base: rgba(224, 222, 244, 0.8);
+  --t65-base: rgba(224, 222, 244, 0.7);
+  --t50-base: rgba(224, 222, 244, 0.62);
+  --t40-base: rgba(224, 222, 244, 0.54);
+  --t30-base: rgba(224, 222, 244, 0.4);
+  --t20-base: rgba(224, 222, 244, 0.2);
+  --line-base: #403d52;
+  --line-strong-base: #524f67;
   --line-soft: #26233a;
   --panel: #1f1d2e;
   --hover: #26233a;
@@ -53,14 +54,14 @@
   --text: #e0def4;
   --strong: #e0def4;
   --inverse: #232136;
-  --t80: rgba(224, 222, 244, 0.85);
-  --t65: rgba(224, 222, 244, 0.75);
-  --t50: rgba(224, 222, 244, 0.66);
-  --t40: rgba(224, 222, 244, 0.58);
-  --t30: rgba(224, 222, 244, 0.42);
-  --t20: rgba(224, 222, 244, 0.2);
-  --line: #44415a;
-  --line-strong: #56526e;
+  --t80-base: rgba(224, 222, 244, 0.85);
+  --t65-base: rgba(224, 222, 244, 0.75);
+  --t50-base: rgba(224, 222, 244, 0.66);
+  --t40-base: rgba(224, 222, 244, 0.58);
+  --t30-base: rgba(224, 222, 244, 0.42);
+  --t20-base: rgba(224, 222, 244, 0.2);
+  --line-base: #44415a;
+  --line-strong-base: #56526e;
   --line-soft: #393552;
   --panel: #2a273f;
   --hover: #393552;
@@ -87,14 +88,14 @@
   --text: #464261;
   --strong: #464261;
   --inverse: #faf4ed;
-  --t80: rgba(70, 66, 97, 0.98);
-  --t65: rgba(70, 66, 97, 0.91);
-  --t50: rgba(70, 66, 97, 0.84);
-  --t40: rgba(70, 66, 97, 0.77);
-  --t30: rgba(70, 66, 97, 0.6);
-  --t20: rgba(70, 66, 97, 0.2);
-  --line: #dfdad9;
-  --line-strong: #cecacd;
+  --t80-base: rgba(70, 66, 97, 0.98);
+  --t65-base: rgba(70, 66, 97, 0.91);
+  --t50-base: rgba(70, 66, 97, 0.84);
+  --t40-base: rgba(70, 66, 97, 0.77);
+  --t30-base: rgba(70, 66, 97, 0.6);
+  --t20-base: rgba(70, 66, 97, 0.2);
+  --line-base: #dfdad9;
+  --line-strong-base: #cecacd;
   --line-soft: #f2e9e1;
   --panel: #fffaf3;
   --hover: #f2e9e1;
@@ -124,14 +125,14 @@
   --text: #cad3f5;
   --strong: #cad3f5;
   --inverse: #181926;
-  --t80: #b8c0e0;
-  --t65: #a7afce;
-  --t50: #979ebb;
-  --t40: #8990ac;
-  --t30: #6e738d;
-  --t20: #5b6078;
-  --line: #363a4f;
-  --line-strong: #494d64;
+  --t80-base: #b8c0e0;
+  --t65-base: #a7afce;
+  --t50-base: #979ebb;
+  --t40-base: #8990ac;
+  --t30-base: #6e738d;
+  --t20-base: #5b6078;
+  --line-base: #363a4f;
+  --line-strong-base: #494d64;
   --line-soft: #181926;
   --panel: #1e2030;
   --hover: #363a4f;
@@ -158,14 +159,14 @@
   --text: #cdcdcd;
   --strong: #cdcdcd;
   --inverse: #141415;
-  --t80: rgba(205, 205, 205, 0.85);
-  --t65: rgba(205, 205, 205, 0.76);
-  --t50: rgba(205, 205, 205, 0.68);
-  --t40: rgba(205, 205, 205, 0.6);
-  --t30: rgba(205, 205, 205, 0.44);
-  --t20: rgba(205, 205, 205, 0.2);
-  --line: #252530;
-  --line-strong: #333738;
+  --t80-base: rgba(205, 205, 205, 0.85);
+  --t65-base: rgba(205, 205, 205, 0.76);
+  --t50-base: rgba(205, 205, 205, 0.68);
+  --t40-base: rgba(205, 205, 205, 0.6);
+  --t30-base: rgba(205, 205, 205, 0.44);
+  --t20-base: rgba(205, 205, 205, 0.2);
+  --line-base: #252530;
+  --line-strong-base: #333738;
   --line-soft: #1c1c24;
   --panel: #1c1c24;
   --hover: #252530;

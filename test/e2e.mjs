@@ -4330,6 +4330,98 @@ try {
     },
   );
   await check(
+    "the ⋯ menu's Appearance restyles the editor and the open popup at once, a page opened afterwards has it before it draws, and the defaults picked again leave nothing behind",
+    async () => {
+      // What's on <html> and stored for each setting, and what the page draws with: how far the
+      // grey levels are lifted, and the font and size of body text, read from a probe with the
+      // type size the kit gives it (<body>'s own size isn't one: Chrome sets it to 75% on
+      // extension pages, over the kit's).
+      const look = (target) =>
+        target.evaluate(() => {
+          const names = ['contrast', 'font', 'size'];
+          const root = document.documentElement;
+          const probe = document.createElement('span');
+          probe.className = 'text-body';
+          document.body.append(probe);
+          const text = getComputedStyle(probe);
+          const drawn = [
+            text.fontFamily.split(',')[0].replaceAll('"', ''),
+            text.fontSize,
+          ];
+          probe.remove();
+          return [
+            names.map((name) => root.dataset[name] ?? ''),
+            names.map((name) => localStorage.getItem(`ghostfetch.${name}`)),
+            getComputedStyle(root).getPropertyValue('--lift').trim(),
+            ...drawn,
+          ];
+        });
+      const pick = async (...steps) => {
+        await app.click('[data-testid="sidebar-menu"]');
+        await app.click('[data-testid="appearance-menu"]');
+        for (const step of steps) {
+          await app.click(`[data-testid="${step}"]`);
+          // The menu stays open, to pick another.
+          await app.waitForSelector(`[data-testid="${step}"][data-checked]`);
+        }
+        await app.keyboard.press('Escape');
+        await app.keyboard.press('Escape');
+      };
+      const PICKED = [
+        ['most', 'mono', 'larger'],
+        ['most', 'mono', 'larger'],
+        '60%',
+        'Commit Mono',
+        '16.5px',
+      ];
+      const DEFAULTS = [['', '', ''], [null, null, null], '0%', 'Geist', '13px'];
+      const fresh = await context.newPage();
+      try {
+        await pick('contrast-most', 'font-mono', 'size-larger');
+        const seen = [await look(app)];
+        // The popup, already open, follows (the storage event).
+        await popup.waitForFunction(
+          () => document.documentElement.dataset.size === 'larger',
+        );
+        seen.push(await look(popup));
+        // A page opened now has them on <html> as its <body> begins: public/theme.js, in
+        // <head>, has put them there, and none of the page's modules has run yet.
+        await fresh.addInitScript(() => {
+          new MutationObserver((records, observer) => {
+            if (!document.body) return;
+            observer.disconnect();
+            window.atBody = ['theme', 'contrast', 'font', 'size'].map(
+              (name) => document.documentElement.dataset[name] ?? '',
+            );
+          }).observe(document, { childList: true, subtree: true });
+        });
+        await fresh.goto(`chrome-extension://${extensionId}/popup.html`);
+        await fresh.waitForFunction(() => window.atBody);
+        seen.push(await fresh.evaluate(() => window.atBody));
+        await pick('contrast-standard', 'font-geist', 'size-default');
+        seen.push(await look(app));
+        await popup.waitForFunction(() => !document.documentElement.dataset.size);
+        seen.push(await look(popup));
+        expect(seen, [
+          PICKED,
+          PICKED,
+          ['', 'most', 'mono', 'larger'],
+          DEFAULTS,
+          DEFAULTS,
+        ]);
+      } finally {
+        // The defaults again whatever happened, for the checks after this one.
+        await fresh.close();
+        await app.evaluate(() => {
+          for (const name of ['contrast', 'font', 'size']) {
+            localStorage.removeItem(`ghostfetch.${name}`);
+            delete document.documentElement.dataset[name];
+          }
+        });
+      }
+    },
+  );
+  await check(
     "every theme's selection colour is see-through: the body editor's selection lies over its coloured text",
     async () => {
       // Each theme the stylesheets have, and how opaque its selection colour is, read through a

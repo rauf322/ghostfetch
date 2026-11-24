@@ -94,12 +94,14 @@ export function DetailPane({ className, ...props }: ComponentProps<'section'>) {
   );
 }
 
-// The bar under the sidebar: a hairline, then a row of quiet buttons.
+// The bar under the sidebar: a hairline, then a row of quiet buttons, which goes on to a second row
+// when their words are too wide for one (Appearance's Font and Text size). One row is 44 px: the
+// hairline, and 5.5 px above and below the 32 px buttons.
 export function PaneFooter({ className, ...props }: ComponentProps<'footer'>) {
   return (
     <footer
       className={cn(
-        'flex h-11 flex-none items-center gap-0.5 border-t border-border px-1.5',
+        'flex min-h-11 flex-none flex-wrap items-center gap-0.5 border-t border-border px-1.5 py-[5.5px]',
         className,
       )}
       {...props}
@@ -216,7 +218,7 @@ export function Method({
     <span
       data-matched={matched || undefined}
       className={cn(
-        'inline-flex h-7 min-w-11 flex-none items-center justify-center rounded-md bg-pressed px-1.5 font-mono text-[11px] font-medium text-t65 data-matched:bg-signal-soft data-matched:text-signal',
+        'inline-flex h-7 min-w-11 flex-none items-center justify-center rounded-md bg-pressed px-1.5 font-mono text-micro font-medium text-t65 data-matched:bg-signal-soft data-matched:text-signal',
         className,
       )}
       {...props}

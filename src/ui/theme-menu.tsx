@@ -1,17 +1,31 @@
 // The Theme row of a ⋯ menu, with the theme in use at its right. It opens the themes beside it,
 // each with a swatch, and a click recolours every page of Ghostfetch's at once. The menu stays
 // open, so you can try one after another.
-import { useState } from 'react';
+//
+// And the Appearance row under it, with the steps in use that aren't the defaults at its right
+// ("Default" while none is). It opens Contrast, Font and Text size beside it, a labelled group
+// each, and a step picked applies to every page at once, the menu staying open as Theme's does.
+import { Fragment, useState } from 'react';
 import {
+  DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
+  DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
 } from './kit/dropdown-menu.tsx';
 import { Icon } from './kit/icon.tsx';
-import { THEMES, currentTheme, setTheme } from './theme.ts';
-import type { ThemeId } from './theme.ts';
+import {
+  APPEARANCE,
+  SETTINGS,
+  THEMES,
+  currentStep,
+  currentTheme,
+  setStep,
+  setTheme,
+} from './theme.ts';
+import type { Setting, StepId, ThemeId } from './theme.ts';
 
 export function ThemeMenu() {
   // Read as the menu opens (its rows are only drawn while it's open), so a theme picked in
@@ -44,6 +58,57 @@ export function ThemeMenu() {
             </DropdownMenuRadioItem>
           ))}
         </DropdownMenuRadioGroup>
+      </DropdownMenuSubContent>
+    </DropdownMenuSub>
+  );
+}
+
+export function AppearanceMenu() {
+  // Read as the menu opens, as the theme is.
+  const [steps, setSteps] = useState(
+    () =>
+      Object.fromEntries(SETTINGS.map((setting) => [setting, currentStep(setting)])) as {
+        [S in Setting]: StepId<S>;
+      },
+  );
+  const changed = SETTINGS.filter(
+    (setting) => steps[setting] !== APPEARANCE[setting].steps[0].id,
+  ).map(
+    (setting) =>
+      APPEARANCE[setting].steps.find((step) => step.id === steps[setting])?.name,
+  );
+  return (
+    <DropdownMenuSub>
+      <DropdownMenuSubTrigger data-testid="appearance-menu">
+        <Icon name="type" /> Appearance
+        <span className="ml-auto max-w-40 truncate pl-4 text-t40">
+          {changed.join(', ') || 'Default'}
+        </span>
+      </DropdownMenuSubTrigger>
+      <DropdownMenuSubContent>
+        {SETTINGS.map((setting, index) => (
+          <Fragment key={setting}>
+            {index > 0 && <DropdownMenuSeparator />}
+            <DropdownMenuRadioGroup
+              value={steps[setting]}
+              onValueChange={(next: StepId<Setting>) => {
+                setStep(setting, next);
+                setSteps((now) => ({ ...now, [setting]: next }));
+              }}
+            >
+              <DropdownMenuLabel>{APPEARANCE[setting].name}</DropdownMenuLabel>
+              {APPEARANCE[setting].steps.map((step) => (
+                <DropdownMenuRadioItem
+                  key={step.id}
+                  value={step.id}
+                  data-testid={`${setting}-${step.id}`}
+                >
+                  {step.name}
+                </DropdownMenuRadioItem>
+              ))}
+            </DropdownMenuRadioGroup>
+          </Fragment>
+        ))}
       </DropdownMenuSubContent>
     </DropdownMenuSub>
   );

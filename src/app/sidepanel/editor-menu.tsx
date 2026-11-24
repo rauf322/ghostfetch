@@ -1,5 +1,6 @@
 // The editor's ⋯ menu: import and export rules (`files`; the sidebar's footer has those as buttons
-// beside the menu), move the editor between a tab of its own and the side panel, and pick a theme.
+// beside the menu), move the editor between a tab of its own and the side panel, and pick a theme
+// and the appearance (contrast, font, text size).
 import { openInSidePanel, openInTab } from '../../platform/index.ts';
 import { cn } from '../../ui/cn.ts';
 import { Button } from '../../ui/kit/button.tsx';
@@ -12,7 +13,7 @@ import {
 } from '../../ui/kit/dropdown-menu.tsx';
 import { Icon } from '../../ui/kit/icon.tsx';
 import { exportRules } from '../../bounded-contexts/rules/ui/rules-file.tsx';
-import { ThemeMenu } from '../../ui/theme-menu.tsx';
+import { AppearanceMenu, ThemeMenu } from '../../ui/theme-menu.tsx';
 
 export function EditorMenu({
   inTab,
@@ -66,6 +67,7 @@ export function EditorMenu({
         )}
         <DropdownMenuSeparator />
         <ThemeMenu />
+        <AppearanceMenu />
       </DropdownMenuContent>
     </DropdownMenu>
   );

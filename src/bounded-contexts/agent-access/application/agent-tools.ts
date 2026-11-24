@@ -41,6 +41,7 @@ import {
   restoreGroup,
   ruleFromEntry,
   ruleStore,
+  rulesWritten,
   ruleTitle,
   turnGroup,
   wouldAnswer,
@@ -98,12 +99,12 @@ function pathOf(url: string) {
   }
 }
 
-// Once a change to the rules is written, and a moment more for each open page's bridge to hear of
-// it and hand the rules in, so a request the agent has the page make next is answered by them: in
-// Firefox the rules reach the page about 20 ms after the write. (A read waits for the write before
-// it, which the change made at once.)
+// Once a change to the rules is written (Rules' rulesWritten(); the change wrote them at once), and
+// a moment more for each open page's bridge to hear of it and hand the rules in, so a request the
+// agent has the page make next is answered by them: in Firefox the rules reach the page about
+// 20 ms after the write.
 async function rulesApplied() {
-  await chrome.storage.local.get('rulesWriter');
+  await rulesWritten();
   await new Promise((resolve) => setTimeout(resolve, 100));
 }
 

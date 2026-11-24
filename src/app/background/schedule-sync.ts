@@ -13,7 +13,7 @@ export function scheduleSync({ scripts = true } = {}) {
     .then(async () => {
       const state = await loadState();
       if (scripts) await syncContentScripts(state);
-      updateBadge(state.enabled, state.rules, state.off);
+      updateBadge(!state.enabled, state.rules, state.off);
     })
     .catch((error) => console.error('[Ghostfetch] sync failed', error));
   return queue;

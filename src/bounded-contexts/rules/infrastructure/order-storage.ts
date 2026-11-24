@@ -86,3 +86,9 @@ export function saveOrder({ immediate = false } = {}) {
 export function saveOrderNow() {
   if (saveTimer) saveOrder({ immediate: true });
 }
+
+// Once every write of the order this view has made is in storage: a read waits for the writes
+// before it. An edit still waiting out the pause isn't one yet (saveOrderNow() makes it one).
+export async function orderWritten() {
+  await chrome.storage.local.get('rulesWriter');
+}

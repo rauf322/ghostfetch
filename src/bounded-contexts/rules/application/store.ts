@@ -14,6 +14,7 @@
 import { createStore } from '../../../lib/index.ts';
 import type { StoredGroup } from '../domain/group.ts';
 import {
+  orderWritten,
   readOrder,
   saveOrder,
   saveOrderNow,
@@ -86,6 +87,12 @@ export function storedGroups(): StoredGroup[] {
 // Writes an edit that's waiting out the pause now: vim's Space s and :w, saving as an editor does.
 export function saveRulesNow() {
   saveOrderNow();
+}
+
+// Once the changes to the order made here so far are in storage, for what has to wait for them:
+// the agent's tools, before the page makes its next request.
+export function rulesWritten() {
+  return orderWritten();
 }
 
 export function findRule(id: string | null | undefined) {

@@ -76,6 +76,7 @@ export {
   restoreGroup,
   ruleRevision,
   ruleStore,
+  rulesWritten,
   saveRulesNow,
   storedGroups,
   touchRule,

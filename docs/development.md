@@ -531,7 +531,9 @@ wildcard and method, and answers with a status, a header, a content type and a d
 server's own body under another status, a header of the server's removed. And groups: a rule
 saved into a group no group has yet, which that makes, named in list_rules, recent_requests and
 Traffic; the group turned off, which the page, try_url and the rule's report then pass by; a
-copy made where it's told, a rename, and delete_group, undone in the editor. It also checks
+copy made where it's told, a rename, and delete_group, undone in the editor; and a group made
+under a name that's taken, which gets the next number and is named so in the panel's list of
+what the agent did. It also checks
 that the footer's Agent button fits beside ⋯, Import and Export from the sidebar's narrowest width
 up, named only where there's room.
 

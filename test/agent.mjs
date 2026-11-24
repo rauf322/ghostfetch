@@ -551,6 +551,58 @@ try {
   );
 
   await check(
+    "a group save_rule makes is named in the panel's activity as it's made, though its name was taken and it got the next number: a name cut at 100 characters that ends in a space, asked for twice",
+    async () => {
+      // 99 letters, a space and more: cut at 100 characters, the name ends in the space, which
+      // the look-up by name passes by, so the second ask makes a group of its own, which takes
+      // the next free name.
+      const letters = 'g'.repeat(99);
+      const wanted = `${letters} tail`;
+      const first = await tool('save_rule', {
+        name: 'Long group, 1',
+        group: wanted,
+        match: { url: '/api/agent-long-group-1' },
+        response: { body: { long: 1 } },
+      });
+      const second = await tool('save_rule', {
+        name: 'Long group, 2',
+        group: wanted,
+        match: { url: '/api/agent-long-group-2' },
+        response: { body: { long: 2 } },
+      });
+      await app.waitForFunction(
+        () =>
+          document
+            .querySelector('[data-testid="agent-activity"] li > :first-child')
+            ?.textContent?.includes('Long group, 2') ?? false,
+        null,
+        { timeout: 3000 },
+      );
+      // The newest four of what the agent did, the newest first: each rule, after its group.
+      const activity = (
+        await app
+          .locator('[data-testid="agent-activity"] li > :first-child')
+          .allTextContents()
+      ).slice(0, 4);
+      for (const group of (await tool('list_rules')).groups ?? [])
+        if (group.name.startsWith(letters)) await tool('delete_group', { id: group.id });
+      expect(
+        [first.group, second.group, activity],
+        [
+          `${letters} `,
+          `${letters}  (2)`,
+          [
+            'Created “Long group, 2”',
+            `Created the group “${letters}  (2)”`,
+            'Created “Long group, 1”',
+            `Created the group “${letters} ”`,
+          ],
+        ],
+      );
+    },
+  );
+
+  await check(
     "a page that isn't on a dev host stays in the browser: its requests, what the rules did there, and its address and title",
     async () => {
       await page.goto(`${EVIL_ORIGIN}/`);

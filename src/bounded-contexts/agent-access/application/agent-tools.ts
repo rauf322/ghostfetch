@@ -269,8 +269,10 @@ export function createAgentTools({
     if (!name) return '';
     const found = findGroupNamed(name);
     if (found) return found.id;
+    // Made under the name it's given, or the next free one if a group has it: the look-up by name
+    // passes by a stored name that ends in a space (a name cut at 100 characters).
     const made = addGroup(createGroup(name), 0);
-    noteActivity(`Created the group “${name}”`, null);
+    noteActivity(`Created the group “${made.name}”`, null);
     return made.id;
   }
 

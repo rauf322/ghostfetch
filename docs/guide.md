@@ -202,7 +202,8 @@ pulses. Errors and failed requests are inverted white instead of red.
 The editor's `⋯` menu has **Theme**: Ghostfetch's own (above, the default), **Rosé Pine**,
 **Rosé Pine Moon**, **Rosé Pine Dawn** (light), **Catppuccin Macchiato** and **Vague**. Each
 takes its colours from its theme's palette as its Neovim plugin has them: the page, the
-cards and the steps on them, quieter text, and the body editor's JSON colours. The green is the
+cards and the steps on them, quieter text (made strong enough to read on the page and on
+cards), and the body editor's JSON colours. The green is the
 theme's colour for what's added or fine (Catppuccin's green, Vague's; foam in Rosé Pine and
 pine in Dawn, as its own "ok", leaf, is too faint to tell a rule that's on from one that's off),
 and errors stay inverted, in the theme's text colour. A theme recolours every page of

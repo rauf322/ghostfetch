@@ -552,9 +552,12 @@ up, named only where there's room.
 Zen (served with the CSP as a response header there, since Firefox's automation can't open
 extension pages). It fails on any CSP violation, uncaught error or console error, drives every
 live component with the keyboard and the mouse (the menu's Theme row too, which recolours the
-kit page: open it to see every component in every theme), and checks that the kit's icons draw the same as
-`src/lib/icons.ts`. Two self-checks make sure it can fail: a `<style>` tag added on purpose has
-to be caught, and so does Base UI's own when `CSPProvider`'s setting is off.
+kit page: open it to see every component in every theme), checks every theme's grey text against
+its floor (on the page and on a card, `--t40` at 4.5:1 or more, `--t30` at 3:1 or more, and each
+level at least 1.15 times the contrast of the one below; `src/app/styles/theme.css` says what each
+level is for), and checks that the kit's icons draw the same as `src/lib/icons.ts`. Two
+self-checks make sure it can fail: a `<style>` tag added on purpose has to be caught, and so does
+Base UI's own when `CSPProvider`'s setting is off.
 
 ```sh
 npm run test:firefox     # builds, then tests in Zen from /Applications; FIREFOX=/path/to/firefox for another build

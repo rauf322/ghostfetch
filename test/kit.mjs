@@ -1,9 +1,10 @@
 // UI kit check: the kit page (src/app/kit/, every component of src/ui/kit/) under the
 // extension pages' real CSP, in Chromium and in Zen. It fails on any CSP violation, uncaught
-// error or console error, drives each component with the keyboard and the mouse, and checks the
-// kit's icons against src/lib/icons.ts. Two self-checks make sure a pass means something: a
-// <style> tag added on purpose has to be caught, and so does Base UI's own when its CSPProvider
-// setting is off (every page built on the kit keeps it on).
+// error or console error, drives each component with the keyboard and the mouse, holds every
+// theme's grey text to its floor (src/app/styles/theme.css), and checks the kit's icons against
+// src/lib/icons.ts. Two self-checks make sure a pass means something: a <style> tag added on
+// purpose has to be caught, and so does Base UI's own when its CSPProvider setting is off (every
+// page built on the kit keeps it on).
 //
 //   npm run test:kit      builds the kit page (wxt build --mode kit, both browsers), then runs this
 //
@@ -18,6 +19,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { launch } from 'puppeteer-core';
 import { icon } from '../src/lib/index.ts';
+import { THEMES } from '../src/ui/theme.ts';
 import { ROOT, check, expect, finish, requireBuild, sleep } from './fixtures.mjs';
 
 const require = createRequire(import.meta.url);
@@ -132,6 +134,47 @@ const selectOpen = popupOpen('select-content');
 const selectClosed = popupClosed('select-content');
 const menuOpen = popupOpen('dropdown-menu-content');
 const menuClosed = popupClosed('dropdown-menu-content');
+
+// The grey levels that are text, brightest first, and the floor every theme holds them to on its
+// page and on a card (src/app/styles/theme.css): --t40 and --t30 at these contrasts or more, and
+// each level at least STEP times the contrast of the one below it, so the levels stay apart.
+const LEVELS = ['t80', 't65', 't50', 't40', 't30'];
+const FLOOR = { t40: 4.5, t30: 3 };
+const STEP = 1.15;
+
+// A computed colour as [red, green, blue, alpha], each from 0 to 1. It comes as rgb() or rgba(),
+// in 0 to 255, or as color(srgb r g b / a), in 0 to 1, which is what color-mix() computes to.
+function parseColour(text) {
+  const match = /^(?:rgba?\((?<legacy>[^)]*)\)|color\(srgb (?<srgb>[^)]*)\))$/.exec(text);
+  const channels = (match?.groups.legacy ?? match?.groups.srgb ?? '')
+    .split(/[\s,/]+/)
+    .filter(Boolean)
+    .map(Number);
+  if (channels.length < 3 || channels.some((channel) => Number.isNaN(channel)))
+    throw new Error(`a colour this check can't read: ${text}`);
+  const [red, green, blue, alpha = 1] = channels;
+  const scale = match.groups.legacy === undefined ? 1 : 255;
+  return [red / scale, green / scale, blue / scale, alpha];
+}
+// A see-through colour over an opaque one, blended as the browser draws it.
+const over = (top, under) => [
+  ...top
+    .slice(0, 3)
+    .map((channel, index) => top[3] * channel + (1 - top[3]) * under[index]),
+  1,
+];
+// WCAG 2's contrast between two opaque colours, from 1 to 21.
+const luminance = (colour) =>
+  colour
+    .slice(0, 3)
+    .map((channel) =>
+      channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4,
+    )
+    .reduce((sum, channel, index) => sum + channel * [0.2126, 0.7152, 0.0722][index], 0);
+const contrast = (one, other) => {
+  const [light, dark] = [luminance(one), luminance(other)].toSorted((a, b) => b - a);
+  return (light + 0.05) / (dark + 0.05);
+};
 
 // Every check, in one browser. `open(query)` loads kit.html with that query in a new page.
 async function runChecks(browser, open) {
@@ -503,6 +546,86 @@ async function runChecks(browser, open) {
         false,
         ['', 'rgb(11, 11, 12)'],
       ]);
+    },
+  );
+
+  await check(
+    `${browser}: every theme's grey text reads: on the page and on a card, --t40 at 4.5:1 or more, --t30 at 3:1 or more, and each level at least 1.15× the contrast of the one below`,
+    async () => {
+      // Each theme the stylesheets have (as test/e2e.mjs finds them for the selection colour),
+      // put on <html> in turn, and the computed colours of its levels, its page and its cards,
+      // read through a probe's background (a custom property's own value isn't resolved).
+      const colours = await kit.run(
+        (names) => {
+          const rules = (list) =>
+            [...list].flatMap((rule) => [
+              rule,
+              ...(rule.cssRules ? rules(rule.cssRules) : []),
+            ]);
+          const themes = new Set(
+            [...document.styleSheets]
+              .flatMap((sheet) => rules(sheet.cssRules))
+              .flatMap((rule) => [
+                ...(rule.selectorText ?? '').matchAll(
+                  /\[data-theme=['"]?([\w-]+)['"]?\]/g,
+                ),
+              ])
+              .map((match) => match[1]),
+          );
+          const root = document.documentElement;
+          const probe = document.createElement('div');
+          document.body.append(probe);
+          const found = {};
+          try {
+            for (const theme of themes) {
+              root.dataset.theme = theme;
+              found[theme] = Object.fromEntries(
+                names.map((name) => {
+                  probe.style.backgroundColor = `var(--${name})`;
+                  return [name, getComputedStyle(probe).backgroundColor];
+                }),
+              );
+            }
+          } finally {
+            // Ghostfetch's own again: no attribute, as setTheme() (src/ui/theme.ts) leaves it.
+            probe.remove();
+            delete root.dataset.theme;
+          }
+          return found;
+        },
+        [...LEVELS, 'bg', 'panel'],
+      );
+      expect(
+        Object.keys(colours).toSorted(),
+        THEMES.map((theme) => theme.id).toSorted(),
+        'the themes the stylesheets have',
+      );
+      const faint = [];
+      for (const [theme, colour] of Object.entries(colours))
+        for (const [surface, name] of [
+          ['the page', 'bg'],
+          ['a card', 'panel'],
+        ]) {
+          const under = parseColour(colour[name]);
+          const ratio = Object.fromEntries(
+            LEVELS.map((level) => [
+              level,
+              contrast(over(parseColour(colour[level]), under), under),
+            ]),
+          );
+          const reads = (level) => `--${level} ${ratio[level].toFixed(2)}:1`;
+          for (const [level, floor] of Object.entries(FLOOR))
+            if (ratio[level] < floor)
+              faint.push(`${theme}, on ${surface}: ${reads(level)}, under ${floor}:1`);
+          for (const [index, level] of LEVELS.slice(0, -1).entries()) {
+            const below = LEVELS[index + 1];
+            if (ratio[level] < STEP * ratio[below])
+              faint.push(
+                `${theme}, on ${surface}: ${reads(level)}, under ${STEP}× ${reads(below)}`,
+              );
+          }
+        }
+      expect(faint, [], 'too faint');
     },
   );
 

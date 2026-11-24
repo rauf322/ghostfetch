@@ -33,8 +33,9 @@ interface SidebarProps {
   query: string;
   onQueryChange: (query: string) => void;
   selectedId: string | null;
-  // A rule was picked: it opens, in the Rules view, from Traffic too.
-  onSelect: (id: string) => void;
+  // A rule was picked: it opens, in the Rules view, from Traffic too. null: the open rule was
+  // deleted from its row's ⋯ menu, and closes, the view staying as it is.
+  onSelect: (id: string | null) => void;
   // New rule: the + (in the group New rule offers), or a group's + (in that group).
   onNewRule: (group?: string) => void;
   onImport: () => void;

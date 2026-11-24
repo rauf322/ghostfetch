@@ -1,19 +1,32 @@
 // Items: rows of rules and of requests, as the two lists show them, one of each selected. A rule
-// starts with its switch, the green dot, and says at the right of its name what it did on the
-// page, and nothing while it hasn't answered. The requests sit in a card (ItemList), as Traffic's
-// groups do. A URL that doesn't fit is cut in its middle, so its end stays (MiddleTruncate).
+// starts with its switch, the green dot, and its slot at the right of its name (ItemSlot) says
+// what it did on the page and when, and nothing while it hasn't answered, when its name steps
+// back (quiet); under the pointer, with keyboard focus in the row or while its ⋯ menu is open, the
+// slot shows its actions (ItemAction): turn it on or off, as its dot does, and the menu. The
+// requests sit in a card (ItemList), as Traffic's groups do. A URL that doesn't fit is cut in its
+// middle, so its end stays (MiddleTruncate).
 import { useState } from 'react';
 import { formatDuration } from '../../../../lib/index.ts';
 import { Badge, StatusCode } from '../../../../ui/kit/badge.tsx';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../../../../ui/kit/dropdown-menu.tsx';
+import { Icon } from '../../../../ui/kit/icon.tsx';
+import {
   Item,
+  ItemAction,
   ItemContent,
   ItemDescription,
   ItemList,
+  ItemSlot,
   ItemTitle,
 } from '../../../../ui/kit/item.tsx';
 import { MiddleTruncate } from '../../../../ui/kit/middle-truncate.tsx';
 import { SignalSwitch } from '../../../../ui/kit/signal-switch.tsx';
+import { Tooltip } from '../../../../ui/kit/tooltip.tsx';
 import { Method } from '../../../../ui/list-detail.tsx';
 import { Cell } from '../cell.tsx';
 
@@ -23,8 +36,9 @@ const RULES: {
   url: string;
   summary: string;
   on: boolean;
-  // What it did on the page.
+  // What it did on the page, and how long ago it last did.
   did?: string;
+  ago?: string;
 }[] = [
   {
     name: 'Logged-in admin user',
@@ -32,7 +46,8 @@ const RULES: {
     url: '/api/user',
     summary: 'Replace · 200',
     on: true,
-    did: '2 mocked',
+    did: '2 mocked · 1 failed',
+    ago: '4m',
   },
   {
     name: 'Slow team page',
@@ -100,37 +115,54 @@ const REQUESTS: {
 ];
 
 export function ItemSection() {
-  // Which rules are on: their dots switch them, as in the editor's list.
+  // Which rules are on: their dots switch them, as in the editor's list, and so do their rows'
+  // Turn off and Turn on.
   const [on, setOn] = useState(() => RULES.map((rule) => rule.on));
+  const turn = (position: number, next: boolean) =>
+    setOn((was) => was.map((value, index) => (index === position ? next : value)));
   return (
     <Cell title="Item" note="rule rows, and request rows in a card" wide>
       <div className="grid grid-cols-2 gap-6">
-        <ul className="m-0 list-none py-1">
+        <ul data-testid="kit-rules" className="m-0 list-none py-1">
           {RULES.map((rule, position) => (
             <Item
               key={rule.name}
               variant="rule"
-              selected={position === 1}
+              selected={position === 0}
               off={!on[position]}
             >
               <SignalSwitch
                 aria-label={`Turn “${rule.name}” on or off`}
                 checked={on[position]}
-                onCheckedChange={(next) =>
-                  setOn((was) =>
-                    was.map((value, index) => (index === position ? next : value)),
-                  )
-                }
+                onCheckedChange={(next) => turn(position, next)}
                 className="-my-0.5 -ml-[9px] self-start"
               />
               <ItemContent>
                 <div className="flex min-w-0 items-center gap-2">
-                  <ItemTitle className="min-w-0">{rule.name}</ItemTitle>
-                  {on[position] && rule.did && (
-                    <span className="ml-auto flex-none text-label text-signal">
-                      {rule.did}
-                    </span>
-                  )}
+                  {/* As in the editor's list: the name keeps 7 letters' room, or 60% of the
+                      line, and one that's on but hasn't answered steps back. */}
+                  <ItemTitle
+                    quiet={on[position] && !rule.did && position !== 0}
+                    className="min-w-[min(7em,60%)] flex-1"
+                  >
+                    {rule.name}
+                  </ItemTitle>
+                  <ItemSlot
+                    actions={
+                      <RuleActions
+                        name={rule.name}
+                        on={on[position]}
+                        onTurn={(next) => turn(position, next)}
+                      />
+                    }
+                  >
+                    {on[position] && rule.did && (
+                      <>
+                        <span className="text-signal">{rule.did}</span>{' '}
+                        <span className="text-t50">{`· ${rule.ago}`}</span>
+                      </>
+                    )}
+                  </ItemSlot>
                 </div>
                 <ItemDescription>
                   {rule.method !== 'ANY' && (
@@ -187,5 +219,45 @@ export function ItemSection() {
         </ItemList>
       </div>
     </Cell>
+  );
+}
+
+// A rule row's actions, in its slot: turn it on or off, and its ⋯ menu (here two items that do
+// nothing).
+function RuleActions({
+  name,
+  on,
+  onTurn,
+}: {
+  name: string;
+  on: boolean;
+  onTurn: (on: boolean) => void;
+}) {
+  const turn = on ? 'Turn off' : 'Turn on';
+  return (
+    <>
+      <Tooltip label={turn}>
+        <ItemAction aria-label={`${turn} “${name}”`} onClick={() => onTurn(!on)}>
+          <Icon name="power" size={14} />
+        </ItemAction>
+      </Tooltip>
+      <DropdownMenu>
+        <Tooltip label="More actions">
+          <DropdownMenuTrigger
+            render={<ItemAction aria-label={`More actions for “${name}”`} />}
+          >
+            <Icon name="more" size={15} />
+          </DropdownMenuTrigger>
+        </Tooltip>
+        <DropdownMenuContent>
+          <DropdownMenuItem>
+            <Icon name="copy" /> Duplicate
+          </DropdownMenuItem>
+          <DropdownMenuItem variant="destructive">
+            <Icon name="close" /> Delete
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </>
   );
 }

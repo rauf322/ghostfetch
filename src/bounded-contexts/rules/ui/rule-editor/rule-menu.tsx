@@ -1,5 +1,7 @@
 // A rule's ⋯ menu: duplicate it, move it to a group or out of one, export it, or delete it (with
-// Undo in the toast, which puts it back where it was, in its group).
+// Undo in the toast, which puts it back where it was, in its group). The open rule's, in its header
+// (RuleMenu), and its row's in the list (the ⋯ in the row's slot, rule-list-item.tsx) are one list
+// of items (RuleMenuItems), so the two can't drift apart.
 import {
   NEW_GROUP,
   addGroup,
@@ -44,17 +46,52 @@ export function RuleMenu({
   rule: Rule;
   onSelect: (id: string | null) => void;
 }) {
+  return (
+    <DropdownMenu>
+      <Tooltip label="More actions">
+        <DropdownMenuTrigger
+          render={
+            <Button
+              size="icon"
+              aria-label="More actions"
+              data-testid="rule-menu"
+              className="border border-input"
+            />
+          }
+        >
+          <Icon name="more" size={18} />
+        </DropdownMenuTrigger>
+      </Tooltip>
+      <DropdownMenuContent>
+        <RuleMenuItems rule={rule} open onSelect={onSelect} />
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+// The menu's items, in a DropdownMenuContent. Duplicate opens the copy; Delete closes the rule if
+// it's the open one (`open`), and Undo opens it again, while a rule deleted from its row with
+// another one open leaves that one open.
+export function RuleMenuItems({
+  rule,
+  open,
+  onSelect,
+}: {
+  rule: Rule;
+  open: boolean;
+  onSelect: (id: string | null) => void;
+}) {
   const { groups } = useStore(ruleStore);
 
   function remove() {
     const removed = removeRule(rule.id);
-    onSelect(null);
+    if (open) onSelect(null);
     notify(`Deleted “${ruleTitle(rule)}”`, {
       icon: 'trash',
       action: 'Undo',
       onAction: () => {
         addRule(removed!.rule, removed!.place);
-        onSelect(removed!.rule.id);
+        if (open) onSelect(removed!.rule.id);
       },
     });
   }
@@ -80,66 +117,46 @@ export function RuleMenu({
   }
 
   return (
-    <DropdownMenu>
-      <Tooltip label="More actions">
-        <DropdownMenuTrigger
-          render={
-            <Button
-              size="icon"
-              aria-label="More actions"
-              data-testid="rule-menu"
-              className="border border-input"
-            />
-          }
-        >
-          <Icon name="more" size={18} />
-        </DropdownMenuTrigger>
-      </Tooltip>
-      <DropdownMenuContent>
-        <DropdownMenuItem onClick={() => onSelect(duplicateRule(rule))}>
-          <Icon name="copy" /> Duplicate
-        </DropdownMenuItem>
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger data-testid="move-to-group">
-            <Icon name="group" /> Move to group
-          </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent>
-            <DropdownMenuRadioGroup
-              value={placeOf(rule.id)?.group || NONE}
-              onValueChange={(next: string) => moveTo(next === NONE ? '' : next)}
-            >
-              <DropdownMenuRadioItem value={NONE} closeOnClick data-testid="move-to-none">
-                No group
+    <>
+      <DropdownMenuItem onClick={() => onSelect(duplicateRule(rule))}>
+        <Icon name="copy" /> Duplicate
+      </DropdownMenuItem>
+      <DropdownMenuSub>
+        <DropdownMenuSubTrigger data-testid="move-to-group">
+          <Icon name="group" /> Move to group
+        </DropdownMenuSubTrigger>
+        <DropdownMenuSubContent>
+          <DropdownMenuRadioGroup
+            value={placeOf(rule.id)?.group || NONE}
+            onValueChange={(next: string) => moveTo(next === NONE ? '' : next)}
+          >
+            <DropdownMenuRadioItem value={NONE} closeOnClick data-testid="move-to-none">
+              No group
+            </DropdownMenuRadioItem>
+            {groups.map((group) => (
+              <DropdownMenuRadioItem
+                key={group.id}
+                value={group.id}
+                closeOnClick
+                data-testid="move-to"
+                data-group={group.name}
+              >
+                <span className="min-w-0 truncate">{group.name}</span>
               </DropdownMenuRadioItem>
-              {groups.map((group) => (
-                <DropdownMenuRadioItem
-                  key={group.id}
-                  value={group.id}
-                  closeOnClick
-                  data-testid="move-to"
-                  data-group={group.name}
-                >
-                  <span className="min-w-0 truncate">{group.name}</span>
-                </DropdownMenuRadioItem>
-              ))}
-            </DropdownMenuRadioGroup>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem data-testid="move-to-new" onClick={moveToNew}>
-              <Icon name="newgroup" /> New group…
-            </DropdownMenuItem>
-          </DropdownMenuSubContent>
-        </DropdownMenuSub>
-        <DropdownMenuItem onClick={() => exportRule(rule)}>
-          <Icon name="export" /> Export this rule
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          variant="destructive"
-          data-testid="delete-rule"
-          onClick={remove}
-        >
-          <Icon name="close" /> Delete
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+            ))}
+          </DropdownMenuRadioGroup>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem data-testid="move-to-new" onClick={moveToNew}>
+            <Icon name="newgroup" /> New group…
+          </DropdownMenuItem>
+        </DropdownMenuSubContent>
+      </DropdownMenuSub>
+      <DropdownMenuItem onClick={() => exportRule(rule)}>
+        <Icon name="export" /> Export this rule
+      </DropdownMenuItem>
+      <DropdownMenuItem variant="destructive" data-testid="delete-rule" onClick={remove}>
+        <Icon name="close" /> Delete
+      </DropdownMenuItem>
+    </>
   );
 }

@@ -98,6 +98,10 @@
    place. The view names itself with @container/traffic. */
 @custom-variant beside (@container traffic (min-width: 700px));
 
+/* Where nothing can hover (`touch:`): a touch screen with no mouse or trackpad. A list row's
+   actions, which show under the pointer (ItemSlot, ui/kit/item.tsx), aren't there. */
+@custom-variant touch (@media (any-hover: none));
+
 /* The sidebar's width (ListPane, in ui/list-detail.tsx), which changes on every frame while
    its edge is dragged. Not inherited: a custom property normally is, and then every element under
    the one it's set on had its style worked out again on every frame (each coloured token of a long

@@ -83,10 +83,12 @@ export function Editor({ inTab, windowId }: { inTab: boolean; windowId: number }
     setSelectedRule(id);
   }, []);
 
+  // A rule opens in the Rules view, from wherever the editor was; null closes the open rule (one
+  // deleted from its row in the list), leaving the view as it is.
   const openRule = useCallback(
-    (id: string) => {
-      showView('rules');
-      select(findRule(id) ? id : null);
+    (id: string | null) => {
+      if (id) showView('rules');
+      select(id && findRule(id) ? id : null);
     },
     [showView, select],
   );

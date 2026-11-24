@@ -68,8 +68,11 @@ What's different in Firefox-based browsers:
     drag them to reorder. A rule's dot turns it on or off without opening it, as in the popup:
     green and pulsing while it's on, grey while it's off. A rule that's off is dimmed and keeps
     its place in the list, and its chip, open, says **Off**. One that answered on the page the
-    editor watches says what it did there at the right of its name ("2 mocked"). **Duplicate**,
-    in an open rule's header, copies it.
+    editor watches says what it did there at the right of its name, and how long ago it last
+    did ("2 mocked · 4m"); one that's on but hasn't answered there steps back, its name in a
+    quieter grey. Under the pointer, the same place has the rule's **Turn off** (or **Turn on**)
+    and its **⋯** menu, the one an open rule has in its header. **Duplicate**, in an open rule's
+    header, copies it.
 
     <a id="groups"></a>**Groups** keep the rules for one piece of work together, a PR's, say,
     to turn on and off as one. **New group** (beside **+**) makes one at the top of the list,

@@ -2625,6 +2625,375 @@ try {
     },
   );
 
+  // A rule's row: its slot (ItemSlot), which says what the rule did on the page the editor watches
+  // and when, or under the pointer has the row's actions; and its name, which steps back for a
+  // rule that's on but hasn't answered there. Three rules at the top of the list for these checks,
+  // and the list as it was after them: one that answers /api/slot-check, one that's on but nothing
+  // asks for, and one that's off. The rule open since the check before stays open.
+  const SLOT = '/api/slot-check';
+  const NEVER = '/api/slot-never';
+  const OFF = '/api/slot-off';
+  const slotRule = (url, name, enabled = true) => {
+    const rule = createRule();
+    Object.assign(rule, { name, enabled });
+    rule.match.url = url;
+    rule.response.body = '{"slot":true}';
+    return rule;
+  };
+  const SLOT_RULES = [
+    slotRule(SLOT, 'Slot check'),
+    slotRule(NEVER, 'Never asked for'),
+    slotRule(OFF, 'Switched off', false),
+  ];
+  const ruleRow = (url) => app.locator(`[data-testid="rule"][data-url="${url}"]`);
+  // What the open rule matches, or null with none open, read at once.
+  const openNow = () =>
+    app.evaluate(
+      () =>
+        document.querySelector('[data-testid="rule"][data-selected]')?.dataset.url ??
+        null,
+    );
+  // A row's first line: what its slot says, the parts out of sight left out; how opaque that and
+  // the slot's actions are; where its name and its slot stand; and the name's weight and colour.
+  const lineOf = (url) =>
+    ruleRow(url).evaluate((row) => {
+      const part = (slot) => row.querySelector(`[data-slot="${slot}"]`);
+      const box = (element) => {
+        const { left, right, top, bottom } = element.getBoundingClientRect();
+        return [left, right, top, bottom].map((edge) => Math.round(edge));
+      };
+      const status = part('item-status');
+      const bottom = status.getBoundingClientRect().bottom;
+      const name = getComputedStyle(part('item-title'));
+      return {
+        says: [...status.children]
+          .filter((said) => said.getBoundingClientRect().top < bottom - 1)
+          .map((said) => said.textContent)
+          .join(' '),
+        status: getComputedStyle(status).opacity,
+        actions: getComputedStyle(part('item-slot-actions')).opacity,
+        name: box(part('item-title')),
+        slot: box(part('item-slot')),
+        weight: name.fontWeight,
+        colour: name.color,
+      };
+    });
+  // The theme's text colours by the kit's names, as a probe with each class draws them.
+  const textColours = () =>
+    app.evaluate(() =>
+      Object.fromEntries(
+        ['strong', 't65', 't50', 'signal'].map((name) => {
+          const probe = document.createElement('span');
+          probe.className = `text-${name}`;
+          document.body.append(probe);
+          const colour = getComputedStyle(probe).color;
+          probe.remove();
+          return [name, colour];
+        }),
+      ),
+    );
+  // What `read` gives once `done` says so, or what it gives after 3 s.
+  const rowSettled = async (read, done) => {
+    const end = Date.now() + 3000;
+    for (;;) {
+      const value = await read();
+      if (done(value) || Date.now() > end) return value;
+      await sleep(50);
+    }
+  };
+  const slotStored = async (url) =>
+    (await worker.evaluate(() => chrome.storage.local.get('rules'))).rules.find(
+      (rule) => rule.match.url === url,
+    );
+  const { rules: beforeSlot } = await worker.evaluate(() =>
+    chrome.storage.local.get('rules'),
+  );
+  await setStorage({ rules: [...SLOT_RULES, ...beforeSlot] });
+  await ruleRow(OFF).waitFor({ timeout: 3000 });
+  const openUrl = await openNow();
+  // What each check after the first starts from, whatever the one before it left: the three rules
+  // at the top of the list as they were made (the same ids, so what they did on the page still
+  // counts), and the rule that was open open.
+  const slotsReady = async () => {
+    const { rules } = await worker.evaluate(() => chrome.storage.local.get('rules'));
+    const top = rules.slice(0, 3).map(({ id, enabled }) => `${id} ${enabled}`);
+    if (`${top}` !== `${SLOT_RULES.map(({ id, enabled }) => `${id} ${enabled}`)}`) {
+      const mine = new Set(SLOT_RULES.map(({ id }) => id));
+      await setStorage({
+        rules: [...SLOT_RULES, ...rules.filter(({ id }) => !mine.has(id))],
+      });
+      await ruleRow(SLOT).waitFor({ timeout: 3000 });
+    }
+    if ((await openNow()) !== openUrl) {
+      await ruleRow(openUrl).click();
+      await rowSettled(openNow, (url) => url === openUrl);
+    }
+  };
+
+  await check(
+    'a rule\'s row says at its right end what the rule did on the page and when, once it has answered there: "1 mocked · now", the count in green and the time in grey; the request draws the row\'s first line again (RuleLine), not the row',
+    async () => {
+      const before = (await lineOf(SLOT)).says;
+      const counts = await draws(async () => {
+        await call(SLOT);
+        await ruleRow(SLOT)
+          .locator('[data-testid="rule-time"]')
+          .waitFor({ timeout: 3000 });
+        await sleep(200);
+      });
+      const theme = await textColours();
+      const drawn = await ruleRow(SLOT).evaluate((row) =>
+        ['rule-signal', 'rule-time'].map(
+          (id) => getComputedStyle(row.querySelector(`[data-testid="${id}"]`)).color,
+        ),
+      );
+      expect(
+        [
+          before,
+          (await lineOf(SLOT)).says,
+          drawn,
+          counts.RuleListItem ?? 0,
+          (counts.RuleLine ?? 0) > 0,
+        ],
+        ['', '1 mocked · now', [theme.signal, theme.t50], 0, true],
+        `drawn: RuleLine ${counts.RuleLine}, RuleTime ${counts.RuleTime}, RuleListItem ${counts.RuleListItem}`,
+      );
+    },
+  );
+  await check(
+    "under the pointer a row's slot shows its actions where it said what the rule did, and nothing in the row moves; its Turn off turns the rule off and Turn on back on, without opening it, and a press on its ⋯ moved away drags nothing",
+    async () => {
+      await slotsReady();
+      await app.mouse.move(1, 1);
+      const rest = await lineOf(SLOT);
+      await ruleRow(SLOT).hover();
+      const shown = await rowSettled(
+        () => lineOf(SLOT),
+        (line) => line.actions === '1' && line.status === '0',
+      );
+      const turn = ruleRow(SLOT).locator('[data-testid="row-switch"]');
+      const labels = [await turn.getAttribute('aria-label')];
+      await turn.click();
+      const off = (
+        await rowSettled(
+          () => slotStored(SLOT),
+          (rule) => !rule.enabled,
+        )
+      ).enabled;
+      labels.push(await turn.getAttribute('aria-label'));
+      await turn.click();
+      const on = (
+        await rowSettled(
+          () => slotStored(SLOT),
+          (rule) => rule.enabled,
+        )
+      ).enabled;
+      // The ⋯ pressed, the pointer moved 120 px left over the row's name, and let go: no drag
+      // starts (the row is draggable), though the press opens its menu.
+      await app.evaluate(() => {
+        window.slotDrags = 0;
+        document.addEventListener('dragstart', () => (window.slotDrags += 1), true);
+      });
+      const at = await ruleRow(SLOT).locator('[data-testid="row-menu"]').boundingBox();
+      await app.mouse.move(at.x + at.width / 2, at.y + at.height / 2);
+      await app.mouse.down();
+      await app.mouse.move(at.x - 120, at.y + at.height / 2, { steps: 8 });
+      await app.mouse.up();
+      const drags = await app.evaluate(() => window.slotDrags);
+      if (await app.locator('[data-slot="dropdown-menu-content"]').count())
+        await app.keyboard.press('Escape');
+      const order = (await worker.evaluate(() => chrome.storage.local.get('rules'))).rules
+        .slice(0, 3)
+        .map((rule) => rule.match.url);
+      expect(
+        [
+          [rest.status, rest.actions],
+          [shown.status, shown.actions, shown.name, shown.slot],
+          labels,
+          [off, on],
+          drags,
+          order,
+          await openNow(),
+        ],
+        [
+          ['1', '0'],
+          ['0', '1', rest.name, rest.slot],
+          ['Turn off “Slot check”', 'Turn on “Slot check”'],
+          [false, true],
+          0,
+          [SLOT, NEVER, OFF],
+          openUrl,
+        ],
+      );
+    },
+  );
+  await check(
+    "a row's ⋯ has the open rule's menu, item for item, and the row's actions stay while it's open; its Delete deletes that rule, the open one staying open, and Undo puts it back",
+    async () => {
+      await slotsReady();
+      // The open menu's items, once it's there; and the menu shut.
+      const menu = app.locator('[data-slot="dropdown-menu-content"]');
+      const items = async () => {
+        await menu.locator('[role^="menuitem"]').first().waitFor({ timeout: 3000 });
+        return menu.locator('[role^="menuitem"]').allTextContents();
+      };
+      await app.click('[data-testid="rule-menu"]');
+      const header = await items();
+      await app.keyboard.press('Escape');
+      await menu.waitFor({ state: 'detached', timeout: 3000 });
+      await ruleRow(SLOT).hover();
+      await ruleRow(SLOT).locator('[data-testid="row-menu"]').click();
+      const row = await items();
+      // The pointer away from the row, over the open rule.
+      await app.mouse.move(900, 700);
+      await sleep(300);
+      const whileOpen = await lineOf(SLOT);
+      await app.click('[data-testid="delete-rule"]');
+      await ruleRow(SLOT).waitFor({ state: 'detached', timeout: 3000 });
+      const gone = await ruleRow(SLOT).count();
+      const stayed = await openNow();
+      await app.click('[data-slot="toast"] button:has-text("Undo")');
+      await ruleRow(SLOT).waitFor({ timeout: 3000 });
+      expect(
+        [
+          row,
+          [whileOpen.status, whileOpen.actions],
+          gone,
+          stayed,
+          await openNow(),
+          await ruleRow(SLOT).getAttribute('data-selected'),
+        ],
+        [header, ['0', '1'], 0, openUrl, openUrl, null],
+        `the open rule's menu: ${header.join(', ')}`,
+      );
+    },
+  );
+  await check(
+    "a rule that's on but hasn't answered on the page steps back, its name at normal weight in a quieter grey; one that answered, and the open one, stay at medium weight in the text colour, and one that's off fades as before; while Recording is off, none steps back",
+    async () => {
+      await slotsReady();
+      const theme = await textColours();
+      const look = async (url) => {
+        const { weight, colour } = await lineOf(url);
+        return [weight, colour];
+      };
+      const seen = async () => [
+        await look(SLOT),
+        await look(NEVER),
+        await look(OFF),
+        await look(openUrl),
+      ];
+      const recording = await seen();
+      await setStorage({ record: false });
+      const notRecording = await rowSettled(seen, (rows) => rows[1][0] === '500');
+      await setStorage({ record: true });
+      const again = await rowSettled(seen, (rows) => rows[1][0] === '400');
+      // Opened, the rule that hasn't answered stands out as well.
+      await ruleRow(NEVER).click();
+      const opened = await rowSettled(
+        () => look(NEVER),
+        ([weight]) => weight === '500',
+      );
+      await ruleRow(openUrl).click();
+      await rowSettled(openNow, (url) => url === openUrl);
+      const BRIGHT = ['500', theme.strong];
+      const QUIET = ['400', theme.t65];
+      const FADED = ['500', theme.t50];
+      expect(
+        [recording, notRecording, again, opened],
+        [
+          [BRIGHT, QUIET, FADED, BRIGHT],
+          [BRIGHT, BRIGHT, FADED, BRIGHT],
+          [BRIGHT, QUIET, FADED, BRIGHT],
+          BRIGHT,
+        ],
+      );
+    },
+  );
+  await check(
+    "in Commit Mono at Larger, nothing in a rule's row reaches past its edge: in a 420 px panel its slot says it all, and beside an open rule, where the sidebar is narrow, what it says gives way, the time first, then the count, as the name keeps 7 letters' room",
+    async () => {
+      // The rows that say what their rule did: whether the slot ends inside the row's padding and
+      // nothing in the row overflows it; whether the name has 7 letters' room, or 60% of the line;
+      // and each part of what the slot says, whole, cut, or out of sight.
+      const rows = () =>
+        app.evaluate(() =>
+          [...document.querySelectorAll('[data-testid="rule"]')]
+            .filter((row) => row.querySelector('[data-testid="rule-signal"]'))
+            .map((row) => {
+              const edge =
+                row.getBoundingClientRect().right -
+                parseFloat(getComputedStyle(row).paddingRight);
+              const slot = row
+                .querySelector('[data-slot="item-slot"]')
+                .getBoundingClientRect();
+              const title = row.querySelector('[data-slot="item-title"]');
+              const line = title.parentElement.getBoundingClientRect().width;
+              const em = parseFloat(getComputedStyle(title).fontSize);
+              const status = row.querySelector('[data-slot="item-status"]');
+              const bottom = status.getBoundingClientRect().bottom;
+              return {
+                inside: slot.right <= edge + 0.5 && row.scrollWidth <= row.clientWidth,
+                room:
+                  title.getBoundingClientRect().width >=
+                  Math.min(7 * em, 0.6 * line) - 0.5,
+                says: [...status.children].map((said) =>
+                  said.getBoundingClientRect().top >= bottom - 1
+                    ? 'gone'
+                    : said.scrollWidth > said.clientWidth
+                      ? 'cut'
+                      : 'whole',
+                ),
+              };
+            }),
+        );
+      // The time goes first, then the count: what the slot may say.
+      const GIVES_WAY = ['whole,whole', 'whole,gone', 'cut,gone'];
+      await slotsReady();
+      try {
+        await app.evaluate(() =>
+          Object.assign(document.documentElement.dataset, {
+            font: 'mono',
+            size: 'larger',
+          }),
+        );
+        await app.setViewportSize({ width: 420, height: 760 });
+        // In a narrow panel the list is a screen of its own once the open rule is closed.
+        await app.locator('[data-testid="rule-back"]').click({ timeout: 3000 });
+        await ruleRow(SLOT).waitFor({ state: 'visible' });
+        await app.evaluate(() => document.fonts.ready);
+        const narrow = await rows();
+        await app.setViewportSize({ width: 1280, height: 820 });
+        await ruleRow(openUrl).click();
+        await app.evaluate(() => document.fonts.ready);
+        const beside = await rows();
+        expect(
+          [
+            narrow.length > 0,
+            narrow.every(
+              (row) => row.inside && row.room && `${row.says}` === 'whole,whole',
+            ),
+            beside.every(
+              (row) => row.inside && row.room && GIVES_WAY.includes(`${row.says}`),
+            ),
+            beside.some((row) => row.says[1] === 'gone'),
+          ],
+          [true, true, true, true],
+          JSON.stringify({ narrow, beside }),
+        );
+      } finally {
+        await app.evaluate(() => {
+          delete document.documentElement.dataset.font;
+          delete document.documentElement.dataset.size;
+        });
+        await app.setViewportSize({ width: 1280, height: 820 });
+        if ((await openNow()) !== openUrl) await ruleRow(openUrl).click();
+      }
+    },
+  );
+  await setStorage({ rules: beforeSlot });
+  await ruleRow(SLOT).waitFor({ state: 'detached', timeout: 3000 });
+
   await check('delete with undo', async () => {
     const before = await app.locator('[data-testid="rule"]').count();
     await app.click('[data-testid="rule-menu"]');

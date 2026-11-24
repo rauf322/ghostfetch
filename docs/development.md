@@ -176,7 +176,7 @@ src/bounded-contexts/            the six bounded contexts of GLOSSARY-MAP.md, a 
     contract.ts                  the message that asks the background to register them again
   traffic/                       Traffic, what the page asked for and what each rule did (index.ts, with no React, and ui/index.ts); its words are in glossary/traffic.md
     domain/                      a request in a tab's traffic log (log-entry.ts); which of them the Traffic view lists (filter-entries.ts), in groups by how long ago they were made (time-groups.ts)
-    application/                 the editor's live log of the tab it watches (traffic-log.ts: Traffic, how often a rule fired, New rule's recent requests); Keep on reload, whether that log keeps what it has when the page reloads (preserve.ts); the screens' copy of Recording, whether requests are added to the logs at all, which only the popup changes (recording.ts); what each rule did on a tab's page, as the page counts it for the popup's This page, and in words, as the popup and the editor's rule list say it (page-counts.ts)
+    application/                 the editor's live log of the tab it watches (traffic-log.ts: Traffic, how often a rule fired, New rule's recent requests); Keep on reload, whether that log keeps what it has when the page reloads (preserve.ts); the screens' copy of Recording, whether requests are added to the logs at all, which only the popup changes (recording.ts); what each rule did on a tab's page, as the page counts it for the popup's This page, and in words, as the popup and the editor's rule list say it, and when it last did, as the rule list says too (page-counts.ts)
     infrastructure/              the tab's own log, which the bridge starts in each page (tab-log.ts): it rebuilds what the page reports and keeps it, an iframe's by way of the top frame, counts it for the popup, and gives it to the Traffic view over a port
     contract.ts                  the messages Traffic's parts send each other: the interceptor's report of a request, an iframe's entry, the popup's question and the counts that answer it, and what goes over the log's port
     ui/                          the Traffic view: a tab's live log grouped by time, a request's drawer (request-detail/), Mock this response; and the hooks that run the editor's live log and read it (use-traffic-log.ts)
@@ -207,13 +207,16 @@ src/ui/                          the components that know nothing of rules, site
     kbd.tsx                      a key's badge, and the one place that writes a key for this platform (⌘B on a Mac, Ctrl+B elsewhere), says it in words for a screen reader, and reads it from a key event
     middle-truncate.tsx          a URL cut short in its middle, so its end stays, with CSS only; copied whole, and read whole by a screen reader
     copy-button.tsx              a button that copies and says so in itself for a second ("Copied", told to a screen reader once), and useCopied() for a control of another shape; a refused copy gets a toast
+    item.tsx                     list rows, a rule's and a request's: a row's one slot at its end (ItemSlot), what it says at rest, and in its place its actions (ItemAction) under the pointer, with focus in the row or a menu of its own open; and a name that steps back
   list-detail.tsx                the editor's layout: the sidebar, as wide as its edge was dragged, and what's open beside it, in a row (a flexbox: Firefox lays a grid's items out again from scratch)
   sidebar.tsx                    the sidebar's width and whether it's hidden, the edge that resizes it (and what keeps its width meanwhile), and the button (and ⌘B) that hides it
   theme.ts                       the themes and Appearance's three settings (contrast, font, text size), and the ones in use; theme-menu.tsx, the ⋯ menus' Theme and Appearance rows
   use-store.ts                   useStore(), which redraws a screen when a store changes
+  use-now.ts                     the screens' clock: the time now, every 15 s, on one timer for every component that reads it (Traffic's groups by time, a rule row's "4m"), and a value worked out from it that redraws only when it changes
   cn.ts                          cn(), which joins the kit's class names
-src/lib/                         small libraries, a file each (index.ts): JSON, HTML, URLs, durations, status names, cURL
-                                 commands, icons, file names, a download, the stores' base, untrusted data, a line diff,
+src/lib/                         small libraries, a file each (index.ts): JSON, HTML, URLs, durations, how long ago in a
+                                 few letters ("4m", time-ago.ts), status names, cURL commands, icons, file names, a
+                                 download, the stores' base, a clock to share (clock.ts), untrusted data, a line diff,
                                  the shape of the clipboard the body editor's vim keys read, and a random id that a page
                                  which isn't a secure context can make too (random-id.ts)
 wxt.config.ts                    the manifest (permissions, content scripts, CSP, Firefox ID) and the build settings
@@ -231,6 +234,7 @@ test/diff.mjs                    the body's Diff without a browser: the lines ke
 test/matching.mjs                which URLs a rule's pattern matches, that the rule editor's Try a URL says what the page does, and that Diff keeps responses from the same requests
 test/order.mjs                   the order without a browser: every operation on it (rules and groups put, moved, deleted and put back, a group renamed), and that no two groups come to share a name
 test/curl.mjs                    cURL commands both ways: Copy as cURL (nothing the page sent breaks out of its quotes), New rule's reading of one
+test/time.mjs                    short times ("now", "4m", "2h", "3d") and the screens' clock, one timer however many listen
 test/e2e.mjs                     end-to-end test in Chromium (Playwright)
 test/firefox.mjs                 end-to-end test in Zen or Firefox (puppeteer-core)
 test/agent.mjs                   Agent access end to end in Chromium: which hosts are dev hosts, then ghostfetch-mcp started as an agent starts it, and the editor paired with it
@@ -301,6 +305,21 @@ region tells a screen reader once ("Copied the URL"). Pressed again, it copies a
 the second over; it stays pressable, so the keyboard keeps its focus. A copy the browser refuses
 (Firefox's sidebar while it hasn't the focus) leaves it as it was and shows an error toast saying
 what to do. `useCopied()` is the same for a control of another shape.
+
+A list row has one slot at the end of its first line, after T3 Code's thread rows: `<ItemSlot>`
+(`item.tsx`), as the editor's rule rows have it. At rest it says what the row has to say ("1
+mocked · 4m": a rule's count in green, how long ago in grey); under the pointer, with keyboard
+focus anywhere in the row, and while a menu one of its actions opened is open, its actions
+(`<ItemAction>`, 24 px squares, each with an `aria-label` and a `<Tooltip>`) take the same place.
+The slot is as wide as what it says and at least as its actions (two by default), so nothing in
+the row moves as they come and go. Short of room, it gives way down to that, and what it says goes
+from its end: its later parts wrap onto a line out of sight, then its first part truncates; the
+name before it keeps 7 letters' room (`min-w-[min(7em,60%)]`), or 60% of the line where that's
+less. A press on an action doesn't start dragging the row and leaves focus where it was. Where
+nothing can hover (`touch:`, `@media (any-hover: none)`), the actions aren't there and no room is
+kept for them: the row's own controls (a rule's dot, the open rule's ⋯) do what they do. A row
+that has less to say can step back: `<ItemTitle quiet>`, at normal weight in `--t65`, for a rule
+that's on but hasn't answered on the page.
 
 ### Adding a UI component
 
@@ -422,6 +441,14 @@ options that take a value, known to it or not), that every command Copy as cURL 
 from a URL (a bare origin keeps its host) or from "POST /path", which Accept values become the
 Content-Type, and the rule it makes. `npm test` runs it after `test/order.mjs`.
 
+`test/time.mjs` checks the short times a rule's row says of when the rule last answered
+(`timeAgo`, `src/lib/time-ago.ts`): "now" under a minute, a time a little ahead of the clock too,
+then whole minutes, hours and days, rounded down, at each step's edges. And the screens' clock
+(`createClock`, `src/lib/clock.ts`), with the timers and the time faked: one timer for a hundred
+listeners, each told at every tick, stopped with the last of them gone and started again by the
+next; and what it says between two ticks (the same), at a tick, and once it has been stopped a
+while (the time now). It needs no browser, and `npm test` runs it after `test/curl.mjs`.
+
 `test/e2e.mjs` loads the built extension into Chromium, runs a local API and checks the rules
 against fetch and XHR (that rules saved by older versions do what they should; that a rule stored
 by hand whose name is a number, and one whose headers are an object, answer fetch and XHR as the
@@ -488,8 +515,16 @@ keeps typing in one quick: only the piece typed into redrawn, a new line only ad
 the editor's sizes its own, the boxes around it changing only in size between its two layouts,
 and vim's cursor on a layer of one line), a rule's dot in the list (it turns the rule off and on,
 saved, without opening it; one that's off is greyed and its chip says Off; Traffic only says
-whether it's recording), a long URL cut in its middle, its end in sight inside the row, a row's
-tooltip only for a name or URL it cuts short, a theme picked
+whether it's recording), a rule row's slot ("1 mocked · now" once the rule has answered, the count
+green and the time grey, the request drawing the row's first line again and not the row; under
+the pointer its Turn off and ⋯ in the same place, nothing in the row moving, Turn off saved
+without opening the rule, and a press on ⋯ moved away dragging nothing; its ⋯ the open rule's
+menu item for item, staying while it's open, its Delete leaving the open rule open and Undo
+putting the rule back; and in Commit Mono at Larger nothing past the row's edge, in a 420 px panel
+and beside an open rule, where what the slot says gives way, the time first), a rule that's on
+but hasn't answered stepping back (not the open one, and none while Recording is off), a long URL
+cut in its middle, its end in sight inside the row, a row's tooltip only for a name or URL it cuts
+short, a theme picked
 in the `⋯` menu (the editor and the open popup
 recoloured, and set before a page draws), the `⋯` menu's Appearance (its contrast, font and text
 size on the editor and the open popup at once, on a page opened afterwards before any of its
@@ -622,8 +657,14 @@ clipboard as the text it is, in one piece; and a screen reader names it once, wh
 button: a press copies (read back from the clipboard), and for a second it says "Copied" with a
 check in the signal's colour, as wide as before and named as before, its live region saying it
 once and then nothing; pressed again it starts the second over; Enter copies and it keeps the
-focus; and a copy the browser refuses shows the error toast and leaves it as it was. Two
-self-checks make sure it can fail: a `<style>` tag added on purpose has to be caught, and so does
+focus; and a copy the browser refuses shows the error toast and leaves it as it was. And a rule
+row's slot: at rest it says what the rule did and when; under the pointer, with Tab from the
+row's dot to its first action, and with its ⋯ menu open and the pointer gone, its actions are
+there instead, the name and the slot not moving; narrowed 10 px at a time from 420 px to 220 px,
+what it says gives way, the time out of sight first, then the count cut, the name keeping its
+room and nothing past the row's edge; and in Chromium, where nothing can hover (DevTools'
+emulation of `any-hover: none`), no actions and no room kept for them, what the slot says staying
+under the pointer. Two self-checks make sure it can fail: a `<style>` tag added on purpose has to be caught, and so does
 Base UI's own when `CSPProvider`'s setting is off.
 
 ```sh

@@ -32,7 +32,7 @@ export function GroupBlock({
   selectedId: string | null;
   drag: ListDrag;
   log: TrafficLog;
-  onSelect: (id: string) => void;
+  onSelect: (id: string | null) => void;
   onCreate: (group: string) => void;
   onFold: () => void;
   onRename: (id: string) => void;

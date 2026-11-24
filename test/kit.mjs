@@ -158,6 +158,10 @@ function driver(page, problems, cdp) {
       page.setViewportSize ? page.setViewportSize(size) : page.setViewport(size),
     clickPoint: ({ x, y }) => page.mouse.click(x, y),
     pointTo: ({ x, y }) => page.mouse.move(x, y),
+    // A touch screen with nothing that hovers, as DevTools' device mode has it, on or off: the
+    // page's (any-hover: none) matches while it's on (Chromium alone).
+    touch:
+      cdp && ((on) => cdp.send('Emulation.setTouchEmulationEnabled', { enabled: on })),
     async until(fn, arg, what) {
       for (let tries = 0; tries < 50; tries++) {
         if (await page.evaluate(fn, arg)) return;
@@ -264,6 +268,62 @@ const tooltipControls = (kit) =>
   });
 // Somewhere with no control, to move the pointer off one.
 const NOWHERE = { x: 2, y: 2 };
+// The middle of what `selector` finds, in the page.
+const MIDDLE = (selector) => {
+  const { x, y, width, height } = document
+    .querySelector(selector)
+    .getBoundingClientRect();
+  return { x: x + width / 2, y: y + height / 2 };
+};
+// The kit's first rule row (Item; its slot says "2 mocked · 1 failed · 4m"), in the page: how
+// opaque what its slot says and its actions are; where its name and its slot stand; each part of
+// what the slot says, whole, cut, or out of sight; whether the slot ends inside the row's padding,
+// nothing in the row overflowing it; and whether the name has 7 letters' room, or 60% of its line.
+const KIT_RULE = '[data-testid=kit-rules] > li';
+const SLOT_LOOK = () => {
+  const row = document.querySelector('[data-testid=kit-rules] > li');
+  const part = (slot) => row.querySelector(`[data-slot=${slot}]`);
+  const box = (element) => {
+    const { left, right, top, bottom } = element.getBoundingClientRect();
+    return [left, right, top, bottom].map((edge) => Math.round(edge));
+  };
+  const status = part('item-status');
+  const bottom = status.getBoundingClientRect().bottom;
+  const title = part('item-title');
+  const em = parseFloat(getComputedStyle(title).fontSize);
+  const line = title.parentElement.getBoundingClientRect().width;
+  const edge =
+    row.getBoundingClientRect().right - parseFloat(getComputedStyle(row).paddingRight);
+  return {
+    status: getComputedStyle(status).opacity,
+    actions: getComputedStyle(part('item-slot-actions')).opacity,
+    name: box(title),
+    slot: box(part('item-slot')),
+    says: [...status.children].map((said) =>
+      said.getBoundingClientRect().top >= bottom - 1
+        ? 'gone'
+        : said.scrollWidth > said.clientWidth
+          ? 'cut'
+          : 'whole',
+    ),
+    inside:
+      part('item-slot').getBoundingClientRect().right <= edge + 0.5 &&
+      row.scrollWidth <= row.clientWidth,
+    room: title.getBoundingClientRect().width >= Math.min(7 * em, 0.6 * line) - 0.5,
+  };
+};
+// SLOT_LOOK once `done` says so (an opacity takes 100 ms to change), or after 3 s.
+async function slotLook(kit, done) {
+  let look;
+  for (let tries = 0; tries < 30; tries++) {
+    look = await kit.run(SLOT_LOOK);
+    if (done(look)) break;
+    await sleep(100);
+  }
+  return look;
+}
+const atRest = (look) => look.status === '1' && look.actions === '0';
+const actionsShown = (look) => look.status === '0' && look.actions === '1';
 // Focus in an open menu: on the menu itself (opened with a click) or on an item (with a key).
 const INSIDE_MENU = '[role=menu], [role=menu] *';
 
@@ -1375,6 +1435,149 @@ async function runChecks(browser, open) {
       );
     },
   );
+
+  await check(
+    `${browser}: item: a rule row's slot says what the rule did and when; under the pointer, with keyboard focus in the row, and while its ⋯ menu is open, the row's actions are there instead, and nothing in the row moves`,
+    async () => {
+      await kit.run(() =>
+        document
+          .querySelector('[data-testid=kit-rules]')
+          .scrollIntoView({ block: 'center' }),
+      );
+      await kit.pointTo(NOWHERE);
+      const rest = await slotLook(kit, atRest);
+      await kit.pointTo(await kit.run(MIDDLE, KIT_RULE));
+      const hovered = await slotLook(kit, actionsShown);
+      await kit.pointTo(NOWHERE);
+      const left = await slotLook(kit, atRest);
+      // Tab from the row's dot to its first action.
+      await kit.focus(`${KIT_RULE} [data-slot=switch]`);
+      await kit.press('Tab');
+      const focusedOn = await kit.run(() =>
+        document.activeElement?.getAttribute('aria-label'),
+      );
+      const keyed = await slotLook(kit, actionsShown);
+      await kit.run(() => document.activeElement.blur());
+      const blurred = await slotLook(kit, atRest);
+      // Its ⋯ clicked, and the pointer gone from the row while the menu is open.
+      await kit.pointTo(await kit.run(MIDDLE, KIT_RULE));
+      await slotLook(kit, actionsShown);
+      await kit.clickPoint(await kit.run(MIDDLE, `${KIT_RULE} [aria-haspopup=menu]`));
+      await menuOpen(kit);
+      await kit.pointTo(NOWHERE);
+      await sleep(300);
+      const menu = await kit.run(SLOT_LOOK);
+      // Esc gives focus back to the ⋯, from the keyboard, so they stay; with focus gone, they go.
+      await kit.press('Escape');
+      await menuClosed(kit);
+      await focusOn(kit, `${KIT_RULE} [aria-haspopup=menu]`);
+      const back = await slotLook(kit, actionsShown);
+      await kit.run(() => document.activeElement.blur());
+      const shut = await slotLook(kit, atRest);
+      const parts = (look) => [look.status, look.actions, look.name, look.slot];
+      const RESTING = ['1', '0', rest.name, rest.slot];
+      const SHOWN = ['0', '1', rest.name, rest.slot];
+      expect(
+        [
+          rest.says,
+          parts(rest),
+          parts(hovered),
+          parts(left),
+          focusedOn,
+          parts(keyed),
+          parts(blurred),
+          parts(menu),
+          parts(back),
+          parts(shut),
+        ],
+        [
+          ['whole', 'whole'],
+          RESTING,
+          SHOWN,
+          RESTING,
+          'Turn off “Logged-in admin user”',
+          SHOWN,
+          RESTING,
+          SHOWN,
+          SHOWN,
+          RESTING,
+        ],
+      );
+    },
+  );
+
+  await check(
+    `${browser}: item: short of room, what a rule row's slot says gives way, its time going out of sight first, then its count cut, as the name keeps 7 letters' room and nothing reaches past the row's edge`,
+    async () => {
+      // The list from 420 px down to 220 px, 10 px at a time (the editor's sidebar is 260 px at
+      // the least): what the slot says at each width, and whether the row held at each.
+      const says = [];
+      const held = [];
+      try {
+        for (let width = 420; width >= 220; width -= 10) {
+          await kit.run((wanted) => {
+            document.querySelector('[data-testid=kit-rules]').style.width = `${wanted}px`;
+          }, width);
+          const look = await kit.run(SLOT_LOOK);
+          says.push(`${look.says}`);
+          held.push(look.inside && look.room);
+        }
+      } finally {
+        await kit.run(() => {
+          document.querySelector('[data-testid=kit-rules]').style.width = '';
+        });
+      }
+      expect(
+        [says.filter((said, index) => said !== says[index - 1]), held.every(Boolean)],
+        [['whole,whole', 'whole,gone', 'cut,gone'], true],
+        says.join(' | '),
+      );
+    },
+  );
+
+  // Where nothing can hover (DevTools' touch emulation; Chromium alone has it).
+  if (kit.touch)
+    await check(
+      `${browser}: item: where nothing can hover, a rule row has no actions and its slot keeps no room for them; under the pointer it still says what the rule did`,
+      async () => {
+        // The second rule's slot (it says nothing: room for the actions alone), and the first's
+        // under the pointer.
+        const looks = () =>
+          kit.run(() => {
+            const rows = document.querySelectorAll('[data-testid=kit-rules] > li');
+            const part = (row, slot) => rows[row].querySelector(`[data-slot=${slot}]`);
+            return [
+              matchMedia('(any-hover: none)').matches,
+              Math.round(part(1, 'item-slot').getBoundingClientRect().width),
+              getComputedStyle(part(0, 'item-status')).opacity,
+              getComputedStyle(part(0, 'item-slot-actions')).display,
+            ];
+          });
+        // Under the pointer, the pointer moved there again for the page to see it there.
+        const pointed = async () => {
+          await kit.pointTo(NOWHERE);
+          await kit.pointTo(await kit.run(MIDDLE, KIT_RULE));
+          await sleep(300);
+          return looks();
+        };
+        try {
+          await kit.touch(true);
+          const touch = await pointed();
+          await kit.touch(false);
+          const hover = await pointed();
+          expect(
+            [touch, hover],
+            [
+              [true, 0, '1', 'none'],
+              [false, 48, '0', 'flex'],
+            ],
+          );
+        } finally {
+          await kit.touch(false);
+          await kit.pointTo(NOWHERE);
+        }
+      },
+    );
 
   await check(`${browser}: icons: the same shapes as src/lib/icons.ts`, async () => {
     const differences = await kit.run((expected) => {

@@ -1,8 +1,8 @@
 // How often each rule has answered on a tab's page, which the popup shows ("2 mocked"), as does
-// the editor's rule list for the page it watches. The tab's log in its top frame
-// (infrastructure/tab-log.ts, which the bridge starts) counts what it holds and answers the popup
-// with the counts alone, none of the log's URLs or bodies, so the popup opens as quickly however
-// long the log is.
+// the editor's rule list for the page it watches, with when it last did ("· 4m"). The tab's log
+// in its top frame (infrastructure/tab-log.ts, which the bridge starts) counts what it holds and
+// answers the popup with the counts alone, none of the log's URLs or bodies, so the popup opens as
+// quickly however long the log is.
 import type { LogEntry } from '../domain/log-entry.ts';
 import type { CountsMessage, PageCounts, RuleCount } from '../contract.ts';
 
@@ -28,6 +28,15 @@ export function countRule(entries: readonly LogEntry[], ruleId: string): RuleCou
     count[action === 'error' ? 'failed' : action] += 1;
   }
   return count;
+}
+
+// When one rule last answered among a page's requests, of those countRule() counts: when the page
+// sent the request (ms since 1970); 0 when it hasn't answered.
+export function lastAnswered(entries: readonly LogEntry[], ruleId: string) {
+  let last = 0;
+  for (const { ruleId: id, action, time } of entries)
+    if (id === ruleId && action && time > last) last = time;
+  return last;
 }
 
 // null when Ghostfetch isn't running on the page: not a site it runs on, or a page that loaded

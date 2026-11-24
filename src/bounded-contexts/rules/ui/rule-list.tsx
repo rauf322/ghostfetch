@@ -32,7 +32,8 @@ import { RuleListItem } from './rule-list-item.tsx';
 interface RuleListProps {
   selectedId: string | null;
   query: string;
-  onSelect: (id: string) => void;
+  // A rule picked: open it; null: close the open one (deleted from its row's ⋯ menu).
+  onSelect: (id: string | null) => void;
   // New rule: the + (in the group New rule offers), or a group's + (in that group).
   onCreate: (group?: string) => void;
   // The editor's log of the page it watches: what each rule did there.

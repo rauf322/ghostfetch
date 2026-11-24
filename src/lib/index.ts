@@ -2,6 +2,8 @@
 // React, and nothing runs when it's imported: the background, the page scripts, the body editor's
 // engine (which the Zen test serves straight from src/) and the tests can use any of it.
 export type { ClipboardRead, SystemClipboard } from './clipboard.ts';
+export { createClock } from './clock.ts';
+export type { Clock } from './clock.ts';
 export { createStore } from './create-store.ts';
 export type { Store } from './create-store.ts';
 export { curlCommand, parseCurl } from './curl.ts';
@@ -18,4 +20,5 @@ export { randomId } from './random-id.ts';
 export { slug } from './slug.ts';
 export { splitUrl } from './split-url.ts';
 export { statusLabel, statusName } from './status-names.ts';
+export { timeAgo } from './time-ago.ts';
 export type { Untrusted } from './untrusted.ts';

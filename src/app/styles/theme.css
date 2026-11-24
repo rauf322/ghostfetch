@@ -4,7 +4,7 @@
    inverted white instead of red.
 
    These are its values, in plain CSS: kit.css makes them Tailwind's theme for the screens, and the
-   body editor's own stylesheet (src/shared/ui/code-editor/code-editor.css) uses them as they
+   body editor's own stylesheet (src/bounded-contexts/body-editor/code-editor.css) uses them as they
    are. Both fonts ship with the extension (public/fonts/), so no page loads one from the web.
    The other themes (themes.css) give the same values under [data-theme=…], which
    public/theme.js puts on <html>; a swatch in the theme menu puts one on itself. */

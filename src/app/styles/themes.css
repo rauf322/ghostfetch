@@ -5,7 +5,7 @@
    The code colours are its JSON ones: keys, strings, numbers, and true, false and null. Text
    that's quieter is the theme's text, fainter, unless the theme has a step for it.
 
-   src/shared/ui/theme.ts lists them by name; public/theme.js puts the one you picked on <html>
+   src/ui/theme.ts lists them by name; public/theme.js puts the one you picked on <html>
    before the page draws. */
 
 /* Rosé Pine: surfaces from base up (surface, overlay, highlight low, med and high); foam, its

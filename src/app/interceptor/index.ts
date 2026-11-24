@@ -4,14 +4,18 @@
 // Built as interceptor.js: WXT's wrapper runs this function at once, before any page script,
 // and adds no globals of its own. All of it is strict mode (see wxt.config.ts).
 //
-// The files beside this one only declare things, and take copies of the browser's own functions
-// as the script starts. This function decides whether the interceptor runs on this page, then
-// opens the channel to the bridge (page-channel.ts) and wraps fetch (fetch.ts) and
-// XMLHttpRequest (xhr.ts). Which rule a request gets is matching.ts, what it gets apply-rule.ts.
+// The rest of it is Interception, in src/bounded-contexts/interception/, whose files only declare
+// things, and take copies of the browser's own functions as the script starts. This function
+// decides whether the interceptor runs on this page, then opens the channel to the bridge
+// (interception/page-channel.ts) and wraps fetch (interception/fetch.ts) and XMLHttpRequest
+// (interception/xhr.ts). Which rule a request gets is interception/matching.ts, what it gets
+// interception/apply-rule.ts.
 import { defineUnlistedScript } from 'wxt/utils/define-unlisted-script';
-import { wrapFetch } from './fetch.ts';
-import { openChannel } from './page-channel.ts';
-import { wrapXhr } from './xhr.ts';
+import {
+  openChannel,
+  wrapFetch,
+  wrapXhr,
+} from '../../bounded-contexts/interception/index.ts';
 
 export default defineUnlistedScript(() => {
   // The manifest's local.* entry matches the start of the URL, which a URL with credentials

@@ -22,8 +22,8 @@ const relativePaths = {
 const ARTIFACTS = fileURLToPath(new URL('web-ext-artifacts/', import.meta.url));
 
 // The extension pages' Content-Security-Policy. They connect to nothing but ghostfetch-mcp, Agent
-// access's companion, over a WebSocket on 127.0.0.1 (pages/agent): at any port, as the pairing code
-// names it. test/release.mjs checks both built manifests against it.
+// access's companion, over a WebSocket on 127.0.0.1 (src/bounded-contexts/agent-access/): at any
+// port, as the pairing code names it. test/release.mjs checks both built manifests against it.
 export const CSP =
   "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src ws://127.0.0.1:*; object-src 'none'; form-action 'none'; base-uri 'none'";
 
@@ -48,10 +48,10 @@ const ICONS = {
 };
 
 // Ghostfetch always runs on localhost, *.localhost, 127.0.0.1 and hosts starting with "local."
-// (see src/shared/api/sites/); these are their content scripts. The sites you add get the same two
-// scripts registered at runtime by the background. Both are WXT "unlisted scripts" rather than
-// content script entrypoints, whose isolated-world wrapper announces itself to the page with a
-// postMessage and a DOM event.
+// (see src/bounded-contexts/sites/); these are their content scripts. The sites you add get the
+// same two scripts registered at runtime by the background. Both are WXT "unlisted scripts"
+// rather than content script entrypoints, whose isolated-world wrapper announces itself to the
+// page with a postMessage and a DOM event.
 const LOCALHOST = {
   matches: ['*://localhost/*', '*://*.localhost/*', '*://127.0.0.1/*'],
 };
@@ -70,12 +70,13 @@ const BRIDGE = { js: ['bridge.js'], run_at: 'document_start' as const, all_frame
 
 export default defineConfig({
   srcDir: 'src',
-  // The code is laid out in Feature-Sliced Design's layers (docs/development.md, "Files"), the app
-  // layer on top: a folder for each part of the extension (the background, the two page scripts,
-  // the popup, the side panel, the kit page), which is what WXT builds. WXT takes every app/<name>/index.* as an
-  // entrypoint, so the folder for anything else in app/ (styles/) has no index file.
+  // The code is cut by bounded context (docs/development.md, "Files"), and app/ puts the contexts
+  // together: a folder for each part of the extension (the background, the two page scripts, the
+  // popup, the side panel, the kit page), which is what WXT builds. WXT takes an app/<name>/index.*
+  // as an entrypoint, one a part, so a part has one index file and the folder for anything else in
+  // app/ (styles/) none (scripts/oxlint-rules.mjs checks both).
   entrypointsDir: 'app',
-  // React for the .tsx files: the UI kit (src/shared/ui/kit/) and the pages built from it.
+  // React for the .tsx files: the UI kit (src/ui/kit/) and the pages built from it.
   modules: ['@wxt-dev/module-react'],
   // Every import is written out, so a reader can see where each name comes from.
   imports: false,
@@ -108,7 +109,7 @@ export default defineConfig({
         // Nothing unless the user turns on Agent access, which gives a coding agent on their
         // computer (through ghostfetch-mcp) the rules and a dev page's requests: Mozilla counts
         // that as data the extension transmits, so Firefox asks for consent to it then
-        // (pages/agent/model/agent-connection.ts).
+        // (src/bounded-contexts/agent-access/infrastructure/agent-connection.ts).
         data_collection_permissions: {
           required: ['none'],
           optional: ['browsingActivity', 'websiteContent'],
@@ -120,10 +121,11 @@ export default defineConfig({
     // Firefox alike: if it ever comes back, remove them first (updateDynamicRules with every
     // getDynamicRules() id), or the old rules apply again.
     permissions: ['storage', 'unlimitedStorage', 'sidePanel', 'scripting'],
-    // Asked for only when vim's p first pastes the clipboard (pages/rules/model/clipboard.ts), so
-    // it adds nothing to what installing or updating asks. Chrome 121 has the permission but
-    // doesn't let a page read with it yet (122 does): p puts what was yanked there instead, and
-    // says it couldn't read the clipboard.
+    // Asked for only when vim's p first pastes the clipboard
+    // (src/bounded-contexts/rules/infrastructure/clipboard.ts), so it adds nothing to what
+    // installing or updating asks. Chrome 121 has the permission but doesn't let a page read with
+    // it yet (122 does): p puts what was yanked there instead, and says it couldn't read the
+    // clipboard.
     optional_permissions: ['clipboardRead'],
     host_permissions: ['<all_urls>'],
     content_security_policy: { extension_pages: command === 'serve' ? DEV_CSP : CSP },
@@ -133,10 +135,10 @@ export default defineConfig({
     icons: ICONS,
   }),
   hooks: {
-    // The kit page (src/app/kit/, drawing src/pages/kit/) shows every UI kit component. It's built
-    // for `npm run dev` and for test/kit.mjs (`wxt build --mode kit`, into .output/*-kit), never
-    // into the extension you install. `npm run test:kit` sets NODE_ENV=production for that build:
-    // left unset, WXT makes it the mode's name, and React then builds its development version.
+    // The kit page (src/app/kit/) shows every UI kit component. It's built for `npm run dev` and
+    // for test/kit.mjs (`wxt build --mode kit`, into .output/*-kit), never into the extension you
+    // install. `npm run test:kit` sets NODE_ENV=production for that build: left unset, WXT makes
+    // it the mode's name, and React then builds its development version.
     'entrypoints:resolved': (wxt, entrypoints) => {
       if (wxt.config.command === 'serve' || wxt.config.mode === 'kit') return;
       const kit = entrypoints.findIndex((entrypoint) => entrypoint.name === 'kit');

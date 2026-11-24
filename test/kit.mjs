@@ -1,7 +1,7 @@
-// UI kit check: the kit page (src/pages/kit/, every component of src/shared/ui/kit/) under the
+// UI kit check: the kit page (src/app/kit/, every component of src/ui/kit/) under the
 // extension pages' real CSP, in Chromium and in Zen. It fails on any CSP violation, uncaught
 // error or console error, drives each component with the keyboard and the mouse, and checks the
-// kit's icons against src/shared/lib/icons.ts. Two self-checks make sure a pass means something: a
+// kit's icons against src/lib/icons.ts. Two self-checks make sure a pass means something: a
 // <style> tag added on purpose has to be caught, and so does Base UI's own when its CSPProvider
 // setting is off (every page built on the kit keeps it on).
 //
@@ -17,7 +17,7 @@ import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
 import { launch } from 'puppeteer-core';
-import { icon } from '../src/shared/lib/index.ts';
+import { icon } from '../src/lib/index.ts';
 import { ROOT, check, expect, finish, requireBuild, sleep } from './fixtures.mjs';
 
 const require = createRequire(import.meta.url);
@@ -32,7 +32,7 @@ const VIEWPORT = { width: 1280, height: 900 };
 
 // The data-slot names each component file gives its parts; the kit page has to show at least one
 // from every file, so a new component can't be left off it.
-const UI = path.join(ROOT, 'src', 'shared', 'ui', 'kit');
+const UI = path.join(ROOT, 'src', 'ui', 'kit');
 const SLOTS = Object.fromEntries(
   fs
     .readdirSync(UI)
@@ -47,12 +47,12 @@ const SLOTS = Object.fromEntries(
       ];
     }),
 );
-// The icons as src/shared/lib/icons.ts draws them as HTML, for the body editor's find bar. The
+// The icons as src/lib/icons.ts draws them as HTML, for the body editor's find bar. The
 // names come from its list of shapes, whose long ones oxfmt moves onto the line after the name.
 const ICONS = Object.fromEntries(
   [
     ...fs
-      .readFileSync(path.join(ROOT, 'src', 'shared', 'lib', 'icons.ts'), 'utf8')
+      .readFileSync(path.join(ROOT, 'src', 'lib', 'icons.ts'), 'utf8')
       .matchAll(/^ {2}(\w+):\s*'/gm),
   ].map(([, name]) => [name, icon(name, 18)]),
 );
@@ -139,7 +139,7 @@ async function runChecks(browser, open) {
   await ready(kit);
 
   await check(
-    `${browser}: the kit page shows every component of src/shared/ui/kit/, with no <style> tag`,
+    `${browser}: the kit page shows every component of src/ui/kit/, with no <style> tag`,
     async () => {
       const shown = await kit.run(() => [
         ...new Set(
@@ -543,42 +543,39 @@ async function runChecks(browser, open) {
     );
   });
 
-  await check(
-    `${browser}: icons: the same shapes as src/shared/lib/icons.ts`,
-    async () => {
-      const differences = await kit.run((expected) => {
-        const shown = Object.fromEntries(
-          [...document.querySelectorAll('[data-testid=kit-icons] svg[data-icon]')].map(
-            (svg) => [svg.dataset.icon, svg],
-          ),
-        );
-        const parse = (markup) => {
-          const holder = document.createElement('div');
-          holder.innerHTML = markup;
-          return holder.firstElementChild;
-        };
-        const drawing = (svg) =>
-          JSON.stringify([
-            ...[
-              'viewBox',
-              'fill',
-              'stroke',
-              'stroke-width',
-              'stroke-linecap',
-              'stroke-linejoin',
-            ].map((name) => svg.getAttribute(name)),
-            svg.innerHTML,
-          ]);
-        return [...new Set([...Object.keys(expected), ...Object.keys(shown)])].filter(
-          (name) =>
-            !expected[name] ||
-            !shown[name] ||
-            drawing(parse(expected[name])) !== drawing(shown[name]),
-        );
-      }, ICONS);
-      expect(differences, []);
-    },
-  );
+  await check(`${browser}: icons: the same shapes as src/lib/icons.ts`, async () => {
+    const differences = await kit.run((expected) => {
+      const shown = Object.fromEntries(
+        [...document.querySelectorAll('[data-testid=kit-icons] svg[data-icon]')].map(
+          (svg) => [svg.dataset.icon, svg],
+        ),
+      );
+      const parse = (markup) => {
+        const holder = document.createElement('div');
+        holder.innerHTML = markup;
+        return holder.firstElementChild;
+      };
+      const drawing = (svg) =>
+        JSON.stringify([
+          ...[
+            'viewBox',
+            'fill',
+            'stroke',
+            'stroke-width',
+            'stroke-linecap',
+            'stroke-linejoin',
+          ].map((name) => svg.getAttribute(name)),
+          svg.innerHTML,
+        ]);
+      return [...new Set([...Object.keys(expected), ...Object.keys(shown)])].filter(
+        (name) =>
+          !expected[name] ||
+          !shown[name] ||
+          drawing(parse(expected[name])) !== drawing(shown[name]),
+      );
+    }, ICONS);
+    expect(differences, []);
+  });
 
   await check(
     `${browser}: no CSP violations, uncaught errors or console errors after all of that`,

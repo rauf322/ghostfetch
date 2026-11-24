@@ -3,14 +3,14 @@
 // command is pasted. New rule: what it reads from a command (as the browsers' Copy as cURL writes
 // one, or as people type one), from a URL or from "GET /path", and the rule it makes.
 //
-//   node test/curl.mjs      (npm test runs it after test/matching.mjs)
+//   node test/curl.mjs      (npm test runs it after test/order.mjs)
 import { execFileSync } from 'node:child_process';
 import {
   NEW_DRAFT,
   readTyped,
   ruleFromDraft,
-} from '../src/pages/rules/lib/rule-draft.ts';
-import { curlCommand, parseCurl } from '../src/shared/lib/curl.ts';
+} from '../src/bounded-contexts/rules/application/rule-draft.ts';
+import { curlCommand, parseCurl } from '../src/lib/curl.ts';
 import { check, expect, finish } from './fixtures.mjs';
 
 const URL = 'https://api.example.test/api/users?page=2';

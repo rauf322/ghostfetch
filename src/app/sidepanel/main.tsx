@@ -4,18 +4,19 @@ import { StrictMode } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import {
+  initPaused,
   initRules,
   initServerResponses,
-  initSettings,
-  initSites,
-} from '../../shared/api/index.ts';
-import { Toaster } from '../../shared/ui/kit/toast.tsx';
+} from '../../bounded-contexts/rules/index.ts';
+import { initSites } from '../../bounded-contexts/sites/index.ts';
+import { initRecording } from '../../bounded-contexts/traffic/index.ts';
+import { Toaster } from '../../ui/kit/toast.tsx';
 import { Editor } from './editor.tsx';
 import { moveLegacySettings } from './legacy-settings.ts';
 import '../styles/kit.css';
 
 moveLegacySettings();
-await Promise.all([initSettings(), initSites(), initRules()]);
+await Promise.all([initPaused(), initRecording(), initSites(), initRules()]);
 // After the rules: it drops the responses of rules that are gone.
 await initServerResponses();
 const inTab = Boolean(await chrome.tabs.getCurrent());

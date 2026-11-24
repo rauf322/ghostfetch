@@ -6,11 +6,11 @@
 // Traffic, one made by New rule or from a captured response, the first of an import, and one the
 // popup asks for. A rule it makes goes into the group New rule and Mock this response offer, at its
 // top: the one the last rule made went into, or the group whose + was clicked. While Agent access
-// is on, it does what a coding agent's tools ask (pages/agent).
+// is on, it does what a coding agent's tools ask (bounded-contexts/agent-access/).
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useAgentAccess } from '../../pages/agent/index.ts';
-import { RulesPage } from '../../pages/rules/index.ts';
-import { TrafficPage } from '../../pages/traffic/index.ts';
+import { useAgentAccess } from '../../bounded-contexts/agent-access/ui/index.ts';
+import { RulesPage } from '../../bounded-contexts/rules/ui/index.ts';
+import { TrafficPage, useTrafficLog } from '../../bounded-contexts/traffic/ui/index.ts';
 import {
   addRule,
   createResponseCapture,
@@ -18,22 +18,29 @@ import {
   fromServer,
   keepServerResponse,
   normalizeRule,
+  pausedStore,
   responseFromEntry,
   ruleStore,
-  settingsStore,
-  watchRuleRequests,
-} from '../../shared/api/index.ts';
-import type { LogEntry, Rule } from '../../shared/api/index.ts';
-import { useStore, useTrafficLog } from '../../shared/react/index.ts';
-import { cn } from '../../shared/ui/cn.ts';
-import { diffPreferred, rememberDiff } from '../../shared/ui/code-editor/index.ts';
-import { Alert } from '../../shared/ui/kit/alert.tsx';
-import { Tabs, TabsContent } from '../../shared/ui/kit/tabs.tsx';
-import { notify } from '../../shared/ui/kit/toast.tsx';
-import { Split } from '../../shared/ui/list-detail.tsx';
-import { lastRuleGroup, rememberRuleGroup } from '../../shared/ui/new-rule-group.ts';
-import { ImportRulesInput, exportRules } from '../../shared/ui/rules-file.tsx';
-import { SidebarHandle } from '../../shared/ui/sidebar.tsx';
+} from '../../bounded-contexts/rules/index.ts';
+import type { Rule } from '../../bounded-contexts/rules/index.ts';
+import type { LogEntry } from '../../bounded-contexts/traffic/index.ts';
+import { watchRuleRequests } from '../../platform/index.ts';
+import { useStore } from '../../ui/use-store.ts';
+import { cn } from '../../ui/cn.ts';
+import { diffPreferred, rememberDiff } from '../../bounded-contexts/body-editor/index.ts';
+import { Alert } from '../../ui/kit/alert.tsx';
+import { Tabs, TabsContent } from '../../ui/kit/tabs.tsx';
+import { notify } from '../../ui/kit/toast.tsx';
+import { Split } from '../../ui/list-detail.tsx';
+import {
+  lastRuleGroup,
+  rememberRuleGroup,
+} from '../../bounded-contexts/rules/ui/new-rule-group.ts';
+import {
+  ImportRulesInput,
+  exportRules,
+} from '../../bounded-contexts/rules/ui/rules-file.tsx';
+import { SidebarHandle } from '../../ui/sidebar.tsx';
 import { Sidebar } from './sidebar.tsx';
 import type { View } from './sidebar.tsx';
 import { TopBar } from './top-bar.tsx';
@@ -42,7 +49,7 @@ import { TopBar } from './top-bar.tsx';
 const VIEW = 'ghostfetch.view';
 
 export function Editor({ inTab, windowId }: { inTab: boolean; windowId: number }) {
-  const { enabled } = useStore(settingsStore);
+  const { paused } = useStore(pausedStore);
   // Draws again when the rules change: whether the open rule is still there decides what a narrow
   // panel shows.
   useStore(ruleStore);
@@ -177,7 +184,7 @@ export function Editor({ inTab, windowId }: { inTab: boolean; windowId: number }
       className="h-screen flex-col overflow-hidden"
     >
       <TopBar log={log} inTab={inTab} windowId={windowId} onImport={chooseFile} />
-      {!enabled && (
+      {paused && (
         <Alert variant="paused" className="flex-none">
           Ghostfetch is off. Rules aren't applied until you turn it on from its toolbar
           icon.

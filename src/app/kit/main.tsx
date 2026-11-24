@@ -1,11 +1,11 @@
-// The UI kit page: every component of src/shared/ui/kit/ in its states, to look at while working on
+// The UI kit page: every component of src/ui/kit/ in its states, to look at while working on
 // the kit (`npm run dev`, then open kit.html) and for test/kit.mjs. Built only for those two, never
 // into the extension you install (see wxt.config.ts).
 import { CSPProvider } from '@base-ui/react/csp-provider';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { KitSheet } from '../../pages/kit/index.ts';
-import { Toaster } from '../../shared/ui/kit/toast.tsx';
+import { KitSheet } from './ui/kit-sheet.tsx';
+import { Toaster } from '../../ui/kit/toast.tsx';
 import '../styles/kit.css';
 
 // For test/kit.mjs: every CSP violation on this page, recorded from the start, so a component that
@@ -37,7 +37,7 @@ createRoot(document.getElementById('root')!).render(
             <img src="/icons/icon32.png" width={20} height={20} alt="" />
             <h1 className="text-title font-medium text-foreground">Ghostfetch UI kit</h1>
             <span className="text-meta text-t40">
-              src/shared/ui/kit · every component, in its states
+              src/ui/kit · every component, in its states
             </span>
           </header>
           <KitSheet open={params.has('open')} />

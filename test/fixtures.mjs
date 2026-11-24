@@ -8,7 +8,7 @@ import { createRequire, stripTypeScriptTypes } from 'node:module';
 import net from 'node:net';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createRule } from '../src/shared/api/index.ts';
+import { createRule } from '../src/bounded-contexts/rules/index.ts';
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 // The built extension under test; `npm test` and `npm run test:firefox` build it first.
@@ -244,6 +244,14 @@ export async function startServer() {
           res.writeHead(200, { 'content-type': 'image/gif' });
           res.end();
         }, 400);
+      } else if (url.pathname === '/framed') {
+        // A page with an iframe on another host Ghostfetch runs on, this server's local.* name
+        // (LOCAL_ORIGIN): a blank page there, in which a test makes requests. The page itself
+        // asks for nothing.
+        res.writeHead(200, { 'content-type': 'text/html' });
+        res.end(
+          `<!doctype html><title>Framed app on ${req.headers.host}</title><iframe src="http://local.ghostfetch.test:${server.address().port}/__control?in-frame"></iframe>`,
+        );
       } else if (url.pathname === '/__control') {
         // A blank page the Firefox test drives its storage hook from.
         res.writeHead(200, { 'content-type': 'text/html' });
@@ -252,10 +260,10 @@ export async function startServer() {
         // The body editor with the Vim switch on, on a plain page, for the Firefox test: Firefox's
         // automation can't open extension pages, but it can load the same code from /src/.
         res.writeHead(200, { 'content-type': 'text/html' });
-        res.end(`<!doctype html><title>editor</title><link rel="stylesheet" href="/src/app/styles/theme.css"><link rel="stylesheet" href="/src/shared/ui/code-editor/code-editor.css"><div style="width:640px"></div>
+        res.end(`<!doctype html><title>editor</title><link rel="stylesheet" href="/src/app/styles/theme.css"><link rel="stylesheet" href="/src/bounded-contexts/body-editor/code-editor.css"><div style="width:640px"></div>
           <script type="module">
-            import { createCodeEditor } from '/src/shared/ui/code-editor/engine/code-editor.ts';
-            import { checkJson, formatJson } from '/src/shared/lib/json.ts';
+            import { createCodeEditor } from '/src/bounded-contexts/body-editor/engine/code-editor.ts';
+            import { checkJson, formatJson } from '/src/lib/json.ts';
             localStorage.setItem('ghostfetch.vim', '1');
             window.createCodeEditor = createCodeEditor;
             window.checkJson = checkJson;

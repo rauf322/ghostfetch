@@ -98,7 +98,7 @@
    place. The view names itself with @container/traffic. */
 @custom-variant beside (@container traffic (min-width: 700px));
 
-/* The sidebar's width (ListPane, in shared/ui/list-detail.tsx), which changes on every frame while
+/* The sidebar's width (ListPane, in ui/list-detail.tsx), which changes on every frame while
    its edge is dragged. Not inherited: a custom property normally is, and then every element under
    the one it's set on had its style worked out again on every frame (each coloured token of a long
    body, while it was set around both panes). */

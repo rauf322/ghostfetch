@@ -1,4 +1,4 @@
-// JSON in the body editor, without a browser. The JSON check: checkJson (src/shared/lib/json.ts),
+// JSON in the body editor, without a browser. The JSON check: checkJson (src/lib/json.ts),
 // which the editor marks mistakes with, agrees with JSON.parse on what's valid, for mistakes
 // picked by hand and for thousands of valid bodies broken at random, and says where each mistake
 // is and what it is. The pieces chunks() cuts a long body into, which the editor colours one
@@ -8,13 +8,13 @@
 // character it was on.
 //
 //   node test/json.mjs      (npm test runs it first)
-import { checkJson, formatJson } from '../src/shared/lib/index.ts';
+import { checkJson, formatJson } from '../src/lib/index.ts';
 import {
   chunks,
   rechunk,
   tokens,
-} from '../src/shared/ui/code-editor/engine/highlight.ts';
-import { keepOffset } from '../src/shared/ui/code-editor/engine/keep-offset.ts';
+} from '../src/bounded-contexts/body-editor/engine/highlight.ts';
+import { keepOffset } from '../src/bounded-contexts/body-editor/engine/keep-offset.ts';
 import { check, expect, finish } from './fixtures.mjs';
 
 const parses = (text) => {

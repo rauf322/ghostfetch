@@ -1,12 +1,16 @@
 // End-to-end test of Agent access (docs/agent-access.md), in Chromium: ghostfetch-mcp started as an
 // agent starts it, with a real MCP client calling its tools, and Ghostfetch's editor paired with it
-// through its own panel, doing what each tool asks on a real page of the test server.
+// through its own panel, doing what each tool asks on a real page of the test server. First, with
+// no browser, which hosts are dev hosts, whose pages' requests the agent may see (isDevHost), and
+// that each is a host Ghostfetch runs on (Sites' isBuiltInHost).
 //
 //   npm run test:agent      builds, then runs this (`npm install --prefix mcp` first, once)
 import { createRequire } from 'node:module';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { isDevHost } from '../src/bounded-contexts/agent-access/domain/dev-host.ts';
+import { isBuiltInHost } from '../src/bounded-contexts/sites/site.ts';
 import {
   AGENT_READY,
   CHROME_BUILD,
@@ -28,6 +32,111 @@ if (!AGENT_READY) {
   console.error('ghostfetch-mcp has no packages yet: run npm install --prefix mcp');
   process.exit(1);
 }
+
+// Before anything starts: the hosts whose pages' requests the agent may see, and some that only
+// look like them.
+await check(
+  'a dev host is localhost, a name under .localhost, 127.0.0.1 or a local. name, and not a lookalike, another site or an IPv6 address',
+  async () => {
+    const hosts = [
+      'localhost',
+      'app.localhost',
+      '127.0.0.1',
+      'local.myapp.com',
+      'localhost.example.com',
+      'local-app.test',
+      'example.com',
+      '[::1]',
+    ];
+    expect(
+      hosts.map((host) => [host, isDevHost(host)]),
+      [
+        ['localhost', true],
+        ['app.localhost', true],
+        ['127.0.0.1', true],
+        ['local.myapp.com', true],
+        ['localhost.example.com', false],
+        ['local-app.test', false],
+        ['example.com', false],
+        ['[::1]', false],
+      ],
+    );
+  },
+);
+
+// Before anything starts too: every dev host is a host Ghostfetch runs on, a built-in host of
+// Sites' (docs/glossary/sites.md). An agent told a page is on a dev host waits for its requests,
+// which never come from a page Ghostfetch doesn't run on. The two lists are free to differ the
+// other way: Ghostfetch can come to run on more hosts without an agent seeing more.
+await check(
+  "every dev host is a host Ghostfetch runs on: of hundreds of hosts (names under .localhost, local. names with every printable character after the dot, lookalikes, addresses, upper case, a trailing dot), each one isDevHost says yes to, Sites' isBuiltInHost says yes to",
+  async () => {
+    // The check before's own hosts, and more of each kind.
+    const named = [
+      'localhost',
+      'app.localhost',
+      '127.0.0.1',
+      'local.myapp.com',
+      'localhost.example.com',
+      'local-app.test',
+      'example.com',
+      '[::1]',
+      // Names under .localhost, and names that only start or end like one.
+      'a.b.localhost',
+      'my_app.localhost',
+      'local.localhost',
+      'localhost.localhost',
+      '.localhost',
+      'xlocalhost',
+      'notlocalhost',
+      'localhostx',
+      'localhost.evil.com',
+      // local. names, and names that only look like one.
+      'local.a',
+      'local.7',
+      'local.app.test',
+      'local.7-app.test',
+      'local.',
+      'local',
+      'local..test',
+      'locals.app',
+      'xlocal.app',
+      'my.local.com',
+      'myapp.local',
+      // Addresses.
+      '127.0.0.2',
+      '127.1',
+      '127.0.0.1.evil.com',
+      '0.0.0.0',
+      '::1',
+      '[::ffff:127.0.0.1]',
+      '10.0.0.5',
+      '',
+    ];
+    // Every printable ASCII character: after "local." on its own and before a name, in place of
+    // that dot, before ".localhost", and in place of that dot.
+    const characters = Array.from({ length: 94 }, (_, at) =>
+      String.fromCharCode(33 + at),
+    );
+    const hosts = [
+      ...named,
+      ...characters.flatMap((character) => [
+        `local.${character}`,
+        `local.${character}app.test`,
+        `local${character}app.test`,
+        `${character}.localhost`,
+        `app${character}localhost`,
+      ]),
+      ...named.map((host) => host.toUpperCase()),
+      ...named.map((host) => `${host}.`),
+    ];
+    expect(
+      hosts.filter((host) => isDevHost(host) && !isBuiltInHost(host)),
+      [],
+      `of ${hosts.length} hosts, the dev hosts that aren't built-in hosts`,
+    );
+  },
+);
 
 // ghostfetch-mcp on a port nothing listens on, with a token file of the test's own.
 const PORT = await freePort();
@@ -512,6 +621,58 @@ try {
             ['feat/checkout-2', 1],
           ],
           ['Agent made', 'Real user'],
+        ],
+      );
+    },
+  );
+
+  await check(
+    "a group save_rule makes is named in the panel's activity as it's made, though its name was taken and it got the next number: a name cut at 100 characters that ends in a space, asked for twice",
+    async () => {
+      // 99 letters, a space and more: cut at 100 characters, the name ends in the space, which
+      // the look-up by name passes by, so the second ask makes a group of its own, which takes
+      // the next free name.
+      const letters = 'g'.repeat(99);
+      const wanted = `${letters} tail`;
+      const first = await tool('save_rule', {
+        name: 'Long group, 1',
+        group: wanted,
+        match: { url: '/api/agent-long-group-1' },
+        response: { body: { long: 1 } },
+      });
+      const second = await tool('save_rule', {
+        name: 'Long group, 2',
+        group: wanted,
+        match: { url: '/api/agent-long-group-2' },
+        response: { body: { long: 2 } },
+      });
+      await app.waitForFunction(
+        () =>
+          document
+            .querySelector('[data-testid="agent-activity"] li > :first-child')
+            ?.textContent?.includes('Long group, 2') ?? false,
+        null,
+        { timeout: 3000 },
+      );
+      // The newest four of what the agent did, the newest first: each rule, after its group.
+      const activity = (
+        await app
+          .locator('[data-testid="agent-activity"] li > :first-child')
+          .allTextContents()
+      ).slice(0, 4);
+      for (const group of (await tool('list_rules')).groups ?? [])
+        if (group.name.startsWith(letters)) await tool('delete_group', { id: group.id });
+      expect(
+        [first.group, second.group, activity],
+        [
+          `${letters} `,
+          `${letters}  (2)`,
+          [
+            'Created “Long group, 2”',
+            `Created the group “${letters}  (2)”`,
+            'Created “Long group, 1”',
+            `Created the group “${letters} ”`,
+          ],
         ],
       );
     },

@@ -1,7 +1,8 @@
 // The editor's own settings (the Vim switch, Preserve, and the tab it last showed) were saved
 // under "mocktail." names up to 0.6.0. They move to their "ghostfetch." names once. And from
 // 0.15.0 to 0.16.2 the Rules and Traffic tabs' lists each had a width of their own; the Rules
-// tab's becomes the sidebar's, and the Traffic tab's goes.
+// tab's becomes the sidebar's, and the Traffic tab's goes. An anticorruption layer of the
+// editor's own, against what older versions left (docs/development.md, "Files").
 export function moveLegacySettings() {
   for (const name of ['vim', 'view', 'preserveLog']) {
     const saved = localStorage.getItem(`mocktail.${name}`);

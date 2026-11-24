@@ -2,9 +2,11 @@
 // ghostfetch-mcp: lets a coding agent read and change Ghostfetch's rules and see what the page the
 // editor watches asked for. The agent starts it, as an MCP server over stdio. Ghostfetch's editor,
 // with Agent access on, connects to it over a WebSocket on 127.0.0.1 and does what each tool asks
-// with the extension's own code (src/pages/agent/), so a rule the agent saves is in the editor's
-// list and answers on the page at once. The editor has to be open: Chrome's side panel, Firefox's
-// sidebar or a tab. See ../docs/agent-access.md.
+// with the extension's own code (src/bounded-contexts/agent-access/), so a rule the agent saves is
+// in the editor's list and answers on the page at once. The editor has to be open: Chrome's side
+// panel, Firefox's sidebar or a tab. See ../docs/agent-access.md. The tools' names and fields are
+// Agent access's published language (GLOSSARY-MAP.md): an agent's instructions name them, so
+// they're kept from version to version.
 //
 // Pairing: on its first run this makes a token, kept in ~/.config/ghostfetch/agent-token (or
 // GHOSTFETCH_AGENT_TOKEN_FILE), and the pairing code the user pastes into the editor is the port

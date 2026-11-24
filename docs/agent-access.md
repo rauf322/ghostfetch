@@ -153,16 +153,18 @@ The editor shows the agent that asked last.
 - `mcp/ghostfetch-mcp.mjs`: the MCP server, with its own `package.json` (the SDK, `ws` and
   `zod`), so none of them enters the extension's packages, its lockfile or the sources zip
   (which takes only what rebuilds the extension).
-- `src/pages/agent/`: the editor's side. `model/agent-connection.ts` is the connection (pairing,
-  Firefox's consent, trying again while `ghostfetch-mcp` isn't there, one setting for every
-  editor), `model/agent-tools.ts` what each tool does, `ui/` the panel and the **Agent** button.
+- `src/bounded-contexts/agent-access/`: the editor's side. `infrastructure/agent-connection.ts`
+  is the connection (pairing, Firefox's consent, trying again while `ghostfetch-mcp` isn't there,
+  one setting for every editor), `application/agent-tools.ts` what each tool does,
+  `domain/dev-host.ts` the hosts whose pages' requests the agent may see, `ui/` the panel and the
+  **Agent** button.
 - Between them, JSON over the WebSocket: the editor says `{ type: 'hello', token }` and gets
   `welcome` (with the agent's name) or `refused` and a close with code 4001. Then
   `ghostfetch-mcp` sends `{ type: 'call', id, method, params }` and the editor answers
   `{ type: 'result', id, value }` or `{ type: 'result', id, error }`. A second `ghostfetch-mcp`
   says `{ type: 'peer', token }`, with no Origin, gets `welcome-peer`, and sends its calls the
   same way.
-- `npm run test:agent` builds, starts `ghostfetch-mcp` as an agent does, with the SDK's own
-  client, pairs the editor through its panel in Chromium and drives every tool against the test
-  server's pages. `npm run test:firefox` connects Zen's editor too, its test copy given the data
-  consent at install (a prompt automation can't answer).
+- `npm run test:agent` builds, checks which hosts are dev hosts, starts `ghostfetch-mcp` as an
+  agent does, with the SDK's own client, pairs the editor through its panel in Chromium and drives
+  every tool against the test server's pages. `npm run test:firefox` connects Zen's editor too,
+  its test copy given the data consent at install (a prompt automation can't answer).

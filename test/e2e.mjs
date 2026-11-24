@@ -12,14 +12,14 @@ import fs from 'node:fs';
 import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
+import { headerProblem } from '../src/shared-kernel/index.ts';
+import { createRule } from '../src/bounded-contexts/rules/index.ts';
 import {
-  createRule,
-  headerProblem,
   isSiteEnabled,
   normalizeSites,
   siteMatchPatterns,
-} from '../src/shared/api/index.ts';
-import { diffLines, formatJson } from '../src/shared/lib/index.ts';
+} from '../src/bounded-contexts/sites/index.ts';
+import { diffLines, formatJson } from '../src/lib/index.ts';
 import {
   CHROME_BUILD,
   VIM_START,
@@ -715,6 +715,94 @@ try {
     );
   });
 
+  // Rules stored by hand, as a person or a script editing storage can leave them: one whose name
+  // is a number, and one whose headers are an object, not a list. The editor reads them as a rule
+  // with no name and one with no headers, and the page gets each rule as the editor reads it
+  // (src/bounded-contexts/rules/application/page-state.ts), so both answer the page's fetch and
+  // XMLHttpRequest as the editor shows them, and the page counts each answer under the rule. Up to
+  // 0.25.1 the page got them as they were stored: the first broke every fetch it answered (the log
+  // couldn't name it), and the second failed every request it matched.
+  const storedByHand = async (id, change) => {
+    const { rules } = await worker.evaluate(() => chrome.storage.local.get('rules'));
+    const tab = (await worker.evaluate(() => chrome.tabs.query({}))).find(
+      (candidate) => candidate.url === page.url(),
+    );
+    // What `read` gives once `done` says it's there, or what it gives after 3 s.
+    const until = async (read, done) => {
+      for (const end = Date.now() + 3000; ; await sleep(100)) {
+        const value = await read();
+        if (done(value) || Date.now() > end) return value;
+      }
+    };
+    const target = `/api/user?case=${id}`;
+    const byHand = createRule();
+    byHand.id = id;
+    byHand.match.url = `case=${id}`;
+    byHand.response.body = JSON.stringify({ byHand: id });
+    change(byHand);
+    try {
+      await setStorage({ rules: [byHand, ...rules] });
+      // The server answers until the page has the rule.
+      const fetched = await until(
+        () => call(target),
+        (got) => got.body?.name !== 'Real',
+      );
+      const overXhr = await xhr(target);
+      const counted = await until(
+        async () =>
+          (
+            await worker.evaluate(
+              (tabId) =>
+                chrome.tabs.sendMessage(
+                  tabId,
+                  { type: 'ghostfetch:counts' },
+                  { frameId: 0 },
+                ),
+              tab.id,
+            )
+          ).rules[id] ?? null,
+        (count) => count && count.mocked + count.failed >= 2,
+      );
+      return {
+        fetch: fetched.error ?? [
+          fetched.status,
+          fetched.headers['content-type'],
+          fetched.body,
+        ],
+        xhr: [overXhr.status, overXhr.text],
+        counted,
+      };
+    } finally {
+      await setStorage({ rules });
+      await sleep(300);
+    }
+  };
+  const answeredByHand = (id) => ({
+    fetch: [200, 'application/json', { byHand: id }],
+    xhr: [200, JSON.stringify({ byHand: id })],
+    counted: { mocked: 2, modified: 0, failed: 0 },
+  });
+  await check(
+    "a rule stored by hand whose name is a number answers the page's fetch and XMLHttpRequest, and the page counts both under it",
+    async () => {
+      const id = 'by-hand-name';
+      const got = await storedByHand(id, (rule) => {
+        rule.name = 5;
+      });
+      expect(got, answeredByHand(id));
+    },
+  );
+  await check(
+    "a rule stored by hand whose headers are an object, not a list, answers the page's fetch and XMLHttpRequest, and the page counts both under it",
+    async () => {
+      const id = 'by-hand-headers';
+      const got = await storedByHand(id, (rule) => {
+        rule.response.headers = { 'X-By-Hand': 'yes' };
+      });
+      expect(got, answeredByHand(id));
+    },
+  );
+
   console.log('switches');
   await check('master switch off disables every rule', async () => {
     await setStorage({ enabled: false });
@@ -1364,7 +1452,8 @@ try {
         textarea.blur();
       });
       // Once the body is saved: a change from elsewhere takes the place of a save still waiting
-      // (store.ts), and would bring the body back as it was.
+      // (src/bounded-contexts/rules/infrastructure/order-storage.ts), and would bring the body
+      // back as it was.
       await worker.evaluate(
         async (body) => {
           for (let tries = 0; tries < 60; tries++) {
@@ -3831,6 +3920,365 @@ try {
       }
     },
   );
+
+  // The popup's Pause, Resume and Recording, clicked as a user does, and what the views, the
+  // toolbar badge and the page then do (Paused, docs/glossary/rules.md; Recording,
+  // docs/glossary/traffic.md). Each check leaves Ghostfetch on and recording, as the checks after
+  // them expect, one that fails half way too; only Pause, once it has passed, leaves it paused, for
+  // Resume.
+  const PAUSED_BAR =
+    "Ghostfetch is off. Rules aren't applied until you turn it on from its toolbar icon.";
+  const NOT_RECORDING_NOTICE =
+    'Recording is off, so new requests aren’t captured. Rules still apply. Start recording in the toolbar popup.';
+  const GREEN = [52, 211, 153, 255];
+  const GREY = [107, 114, 128, 255];
+  // What `read` gives once `done` says it's there, or what it gives after 3 s: for what follows a
+  // switch a moment later (another view, the badge, the page).
+  const settled = async (read, done) => {
+    const end = Date.now() + 3000;
+    for (;;) {
+      const value = await read();
+      if (done(value) || Date.now() > end) return value;
+      await sleep(50);
+    }
+  };
+  // Whether a value is `wanted`, as expect() compares them.
+  const same = (wanted) => (value) => JSON.stringify(value) === JSON.stringify(wanted);
+  // The two switches as they're stored.
+  const switches = async () => {
+    const { enabled, record } = await worker.evaluate(() =>
+      chrome.storage.local.get(['enabled', 'record']),
+    );
+    return { enabled, record };
+  };
+  // The toolbar badge: its text and its colour.
+  const badgeShown = () =>
+    worker.evaluate(async () => [
+      await chrome.action.getBadgeText({}),
+      await chrome.action.getBadgeBackgroundColor({}),
+    ]);
+  // Ghostfetch on and recording again, whatever a check left.
+  const switchOn = () => setStorage({ enabled: true, record: true });
+  // What a view says of the two switches, as it is or (`first`) as it first drew it (openView()):
+  // the popup's Pause or Resume, the words of its Recording or of Traffic's, and the editor's bar.
+  const says = (view, first = false) =>
+    view.evaluate((atFirst) => {
+      const root = atFirst ? window.firstDrawn : document;
+      return {
+        switch: ['pause', 'resume'].filter((id) =>
+          root.querySelector(`[data-testid="${id}"]`),
+        ),
+        recording: root.querySelector('[data-testid="record"]')?.textContent ?? null,
+        bar: [...root.querySelectorAll('[data-slot="alert"]')]
+          .map((alert) => alert.textContent)
+          .filter((text) => text.startsWith('Ghostfetch is off.')),
+      };
+    }, first);
+  // The rule that answers /api/user?case=replace (a 404 and { name: "Mocked" }): its row in the
+  // editor's list and in the popup's All rules.
+  const replaceRow = app.locator(
+    '[data-testid="rule"][data-url="/api/user?case=replace"]',
+  );
+  const replaceInPopup = popup.locator('[data-testid="popup-rule"]', {
+    hasText: '/api/user?case=replace',
+  });
+  // A row's dot: whether it says on, and whether it pulses.
+  const rowDot = (row) =>
+    row
+      .locator('[role="switch"]')
+      .evaluate((element) => [
+        element.getAttribute('aria-checked'),
+        element.firstElementChild
+          .getAnimations()
+          .some((animation) => animation.animationName === 'signal-pulse'),
+      ]);
+  // Ghostfetch's switch as the popup and the editor show it, and the rule open in the editor: its
+  // chip's words (before what it did on the page), and its dots in the two lists.
+  const pauseShown = async () => ({
+    popup: (await says(popup)).switch,
+    bar: (await says(app)).bar,
+    chip: (await app.textContent('[data-testid="rule-state"]')).split(' · ')[0],
+    dots: [await rowDot(replaceRow), await rowDot(replaceInPopup)],
+  });
+  const ON = {
+    popup: ['pause'],
+    bar: [],
+    chip: 'Mocking',
+    dots: [
+      ['true', true],
+      ['true', true],
+    ],
+  };
+  const PAUSED = {
+    popup: ['resume'],
+    bar: [PAUSED_BAR],
+    chip: 'Paused while Ghostfetch is off',
+    dots: [
+      ['true', false],
+      ['true', false],
+    ],
+  };
+  // What the page gets from /api/user?case=replace: the status and the name.
+  const replaced = async () => {
+    const { status, body: got } = await call('/api/user?case=replace');
+    return [status, got?.name];
+  };
+  // The badge as Pause found it, which Resume puts back.
+  let badgeOn;
+  await check(
+    "the popup's Pause: it offers Resume, the toolbar badge says off in grey, the editor's bar says Ghostfetch is off, an answering rule's chip says it's paused while Ghostfetch is off and its dots are still, the page gets the server's response, and enabled is stored false",
+    async () => {
+      try {
+        await show('rules');
+        await replaceRow.click();
+        await app
+          .locator(
+            '[data-testid="rule"][data-url="/api/user?case=replace"][data-selected]',
+          )
+          .waitFor({ timeout: 3000 });
+        badgeOn = await badgeShown();
+        expect(
+          [await settled(pauseShown, same(ON)), Number(badgeOn[0]) > 0, badgeOn[1]],
+          [ON, true, GREEN],
+          'before Pause',
+        );
+        await popup.click('[data-testid="pause"]');
+        // The page asks again until it has heard; the rule answers it until then.
+        expect(
+          [
+            await settled(pauseShown, same(PAUSED)),
+            await settled(badgeShown, same(['off', GREY])),
+            await settled(replaced, same([200, 'Real'])),
+            (await switches()).enabled,
+          ],
+          [PAUSED, ['off', GREY], [200, 'Real'], false],
+        );
+      } catch (error) {
+        await switchOn();
+        throw error;
+      }
+    },
+  );
+  await check(
+    "the popup's Resume: the popup, the badge, the editor's bar and the rule's chip and dots as they were before Pause, the page's request answered by the rule again, and enabled stored true",
+    async () => {
+      try {
+        await popup.click('[data-testid="resume"]');
+        expect(
+          [
+            await settled(pauseShown, same(ON)),
+            await settled(badgeShown, same(badgeOn)),
+            await settled(replaced, same([404, 'Mocked'])),
+            (await switches()).enabled,
+          ],
+          [ON, badgeOn, [404, 'Mocked'], true],
+        );
+      } finally {
+        await switchOn();
+      }
+    },
+  );
+  await check(
+    "the popup's Recording, off: the popup and Traffic say so, a request made meanwhile isn't listed and its rule's row says nothing of what it did, though the rule answers it, and record is stored false; on again, the next request is listed",
+    async () => {
+      // Whether the page's own log records, as it tells the popup with its counts.
+      const tab = (await worker.evaluate(() => chrome.tabs.query({}))).find(
+        (candidate) => candidate.url === page.url(),
+      );
+      const pageRecords = () =>
+        worker.evaluate(
+          (id) =>
+            chrome.tabs
+              .sendMessage(id, { type: 'ghostfetch:counts' }, { frameId: 0 })
+              .then((counts) => counts.record),
+          tab.id,
+        );
+      // The rule that answers /api/early, as it's stored, and its row in the editor's list.
+      const { rules } = await worker.evaluate(() => chrome.storage.local.get('rules'));
+      const earlyRule = rules.find((rule) => rule.match.url === '/api/early');
+      const early = app.locator('[data-testid="rule"][data-url="/api/early"]');
+      // What the popup and Traffic say of Recording, whether the row of the rule that answers
+      // /api/early says what it did on the page, and which of this check's requests are listed.
+      const heard = async () => ({
+        popup: await popup
+          .locator('[data-testid="record"]')
+          .evaluate((button) => [
+            button.textContent,
+            button.getAttribute('aria-pressed'),
+          ]),
+        traffic: await app.evaluate(() => [
+          document.querySelector('[data-testid="record"]').textContent,
+          document.querySelector('[data-testid="traffic-notice"]')?.textContent ?? null,
+        ]),
+        did: (await early.locator('[data-testid="rule-signal"]').count()) > 0,
+        listed: await app.evaluate(() =>
+          ['before', 'meanwhile', 'after'].filter((when) =>
+            [...document.querySelectorAll('[data-testid="request"]')].some((row) =>
+              row.textContent.includes(`recording=${when}`),
+            ),
+          ),
+        ),
+      });
+      const recordingWith = (requests) => ({
+        popup: ['Recording', 'true'],
+        traffic: ['Recording', null],
+        did: true,
+        listed: requests,
+      });
+      const NOT_RECORDING = {
+        popup: ['Not recording', 'false'],
+        traffic: ['Not recording', NOT_RECORDING_NOTICE],
+        did: false,
+        listed: ['before'],
+      };
+      try {
+        await show('traffic');
+        await call('/api/early?recording=before');
+        const before = await settled(heard, same(recordingWith(['before'])));
+        await popup.click('[data-testid="record"]');
+        const off = await settled(heard, same(NOT_RECORDING));
+        // The page's log stops a moment after the views say so.
+        const stopped = await settled(pageRecords, (on) => on === false);
+        const answered = await page.evaluate(() =>
+          fetch('/api/early?recording=meanwhile').then((response) => response.text()),
+        );
+        const stored = (await switches()).record;
+        await popup.click('[data-testid="record"]');
+        // The page's bridge passes the switch on to the page as it starts its log again, so the
+        // next request is recorded. A page's requests are listed in the order it made them, so
+        // once that one is, the one made meanwhile would be too, had it been recorded.
+        const started = await settled(pageRecords, (on) => on === true);
+        await call('/api/early?recording=after');
+        const after = await settled(heard, same(recordingWith(['before', 'after'])));
+        await show('rules');
+        expect(
+          [
+            before,
+            off,
+            stopped,
+            answered,
+            stored,
+            started,
+            after,
+            (await switches()).record,
+          ],
+          [
+            recordingWith(['before']),
+            NOT_RECORDING,
+            false,
+            earlyRule.response.body,
+            false,
+            true,
+            recordingWith(['before', 'after']),
+            true,
+          ],
+        );
+      } finally {
+        await switchOn();
+      }
+    },
+  );
+  // A view in a tab of its own, as the toolbar's popup or the editor opens, which keeps what it
+  // first drew (window.firstDrawn, for says()): its root as it was the moment its script drew it,
+  // before anything after could change it.
+  const openView = async (file) => {
+    const view = await context.newPage();
+    view.on('pageerror', (error) => errors.push(`${file}: ${error.message}`));
+    view.on(
+      'console',
+      (message) =>
+        message.type() === 'error' && errors.push(`${file} console: ${message.text()}`),
+    );
+    await view.addInitScript(() => {
+      new MutationObserver((_, observer) => {
+        const root = document.getElementById('root');
+        if (!root?.firstChild) return;
+        observer.disconnect();
+        window.firstDrawn = root.cloneNode(true);
+      }).observe(document, { childList: true, subtree: true });
+    });
+    await view.goto(`chrome-extension://${extensionId}/${file}`);
+    await view.waitForFunction(() => window.firstDrawn);
+    return view;
+  };
+  // What a popup and an editor show of the two switches (says()): on and recording, paused, and
+  // not recording. One switch at a time, so a view that read the other's key would be caught.
+  const VIEWS_ON = [
+    { switch: ['pause'], recording: 'Recording', bar: [] },
+    { switch: [], recording: 'Recording', bar: [] },
+  ];
+  const VIEWS_PAUSED = [
+    { switch: ['resume'], recording: 'Recording', bar: [] },
+    { switch: [], recording: 'Recording', bar: [PAUSED_BAR] },
+  ];
+  const VIEWS_NOT_RECORDING = [
+    { switch: ['pause'], recording: 'Not recording', bar: [] },
+    { switch: [], recording: 'Not recording', bar: [] },
+  ];
+  await check(
+    "a popup and an editor opened while Ghostfetch is paused, or while it isn't recording, show it in the first thing they draw, as a popup opened while it's on and recording shows that, and follow that popup's Resume and Recording",
+    async () => {
+      const views = [];
+      // A popup and an editor opened now, and what each first drew.
+      const openTwo = async () => {
+        const two = [await openView('popup.html'), await openView('sidepanel.html')];
+        views.push(...two);
+        return [two, [await says(two[0], true), await says(two[1], true)]];
+      };
+      // What the two show, once it's `wanted` (or after 3 s).
+      const showing = (two, wanted) =>
+        settled(async () => [await says(two[0]), await says(two[1])], same(wanted));
+      try {
+        // A popup opened while on and recording, which pauses Ghostfetch, then closes, as a popup
+        // does.
+        const first = await openView('popup.html');
+        views.push(first);
+        expect(
+          await says(first, true),
+          VIEWS_ON[0],
+          'a popup opened while on and recording',
+        );
+        await first.click('[data-testid="pause"]');
+        const paused = await settled(switches, same({ enabled: false, record: true }));
+        await first.close();
+        // Opened while paused: their popup resumes Ghostfetch and stops recording.
+        const [whilePaused, drawnPaused] = await openTwo();
+        await whilePaused[0].click('[data-testid="resume"]');
+        await whilePaused[0].click('[data-testid="record"]');
+        const followed = await showing(whilePaused, VIEWS_NOT_RECORDING);
+        const unrecorded = await settled(
+          switches,
+          same({ enabled: true, record: false }),
+        );
+        for (const view of whilePaused) await view.close();
+        // Opened while not recording: their popup starts recording again.
+        const [whileUnrecorded, drawnUnrecorded] = await openTwo();
+        await whileUnrecorded[0].click('[data-testid="record"]');
+        expect(
+          [
+            paused,
+            drawnPaused,
+            followed,
+            unrecorded,
+            drawnUnrecorded,
+            await showing(whileUnrecorded, VIEWS_ON),
+          ],
+          [
+            { enabled: false, record: true },
+            VIEWS_PAUSED,
+            VIEWS_NOT_RECORDING,
+            { enabled: true, record: false },
+            VIEWS_NOT_RECORDING,
+            VIEWS_ON,
+          ],
+        );
+      } finally {
+        for (const view of views) if (!view.isClosed()) await view.close();
+        await popup.bringToFront();
+        await switchOn();
+      }
+    },
+  );
   await check(
     "the ⋯ menu's Theme recolours the editor and the open popup at once, a page draws in it from the start, and Ghostfetch's own comes back",
     async () => {
@@ -4881,6 +5329,84 @@ try {
       if (was !== 'true') await keep.click();
       await burst.close();
       expect(listed, 500, 'requests listed, of the 900 the page made');
+    },
+  );
+  await check(
+    "an iframe's requests reach the tab's log: one a rule answers and one no rule answers are both in Traffic for the tab, and the popup's counts for the tab include the one answered",
+    async () => {
+      // An iframe's bridge sends each request it logs to the background, which passes it on to
+      // the tab's top frame (src/app/background/on-message.ts), whose log is the tab's
+      // (src/bounded-contexts/traffic/infrastructure/tab-log.ts): the log Traffic reads and the
+      // popup's counts come from. The test server's /framed asks for nothing itself, and its
+      // iframe is on another host Ghostfetch runs on (LOCAL_ORIGIN), so all the tab has is the
+      // iframe's.
+      const framed = await context.newPage();
+      try {
+        await framed.goto(`${ORIGIN}/framed`);
+        const frame = await (await framed.waitForSelector('iframe')).contentFrame();
+        const tab = (await worker.evaluate(() => chrome.tabs.query({}))).find(
+          (candidate) => candidate.url === framed.url(),
+        );
+        // The rule that answers /api/early, as it's stored.
+        const early = (await storedRules()).find(
+          (rule) => rule.match.url === '/api/early',
+        );
+        // In the iframe, one after the other: a request that rule answers, and one no rule does.
+        const [answered, unanswered] = await frame.evaluate(async () => {
+          const got = [];
+          for (const target of [
+            '/api/early?in-frame=answered',
+            '/api/user?in-frame=unanswered',
+          ]) {
+            const response = await fetch(target);
+            got.push([response.status, await response.text()]);
+          }
+          return got;
+        });
+        await watch('Framed app');
+        // The requests Traffic lists for the tab: each one's URL, and what a rule did to it.
+        const listed = () =>
+          app.evaluate(() =>
+            [...document.querySelectorAll('[data-testid="request"]')]
+              .map((row) => [
+                row.title,
+                row.querySelector('[data-testid="request-action"]')?.textContent ?? '',
+              ])
+              .toSorted(),
+          );
+        // What the popup is told of the tab: how often each rule answered there.
+        const counted = () =>
+          worker.evaluate(
+            (id) =>
+              chrome.tabs.sendMessage(id, { type: 'ghostfetch:counts' }, { frameId: 0 }),
+            tab.id,
+          );
+        const LISTED = [
+          [`${LOCAL_ORIGIN}/api/early?in-frame=answered`, 'Mocked'],
+          [`${LOCAL_ORIGIN}/api/user?in-frame=unanswered`, ''],
+        ];
+        const COUNTED = {
+          record: true,
+          rules: { [early.id]: { mocked: 1, modified: 0, failed: 0 } },
+        };
+        expect(
+          [
+            [answered, [unanswered[0], JSON.parse(unanswered[1]).name]],
+            await settled(listed, same(LISTED)),
+            await settled(counted, same(COUNTED)),
+          ],
+          [
+            [
+              [200, early.response.body],
+              [200, 'Real'],
+            ],
+            LISTED,
+            COUNTED,
+          ],
+        );
+      } finally {
+        await framed.close();
+      }
     },
   );
   await check(

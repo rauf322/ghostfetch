@@ -428,7 +428,10 @@ character under it, the same lines on screen after a change of layout, and none 
 this response on a request a rule answered), the
 traffic view (its filters, Keep on reload, which stops at 500 requests however a page that asks
 for a lot as it starts reloads, Clear, a request's Sent time, when it was sent and not when its
-response ended, and the page it watches: the one used last
+response ended, an iframe's requests, which the background passes on to its tab's log (one a
+rule answers and one no rule does, made in an iframe on another host Ghostfetch runs on, both
+listed for the tab, and the one answered in the popup's counts for the tab), and the page it
+watches: the one used last
 once its own closes or leaves the web, and, opened as the side panel has it, its tab's page from
 the moment that opens one, with a page picked by hand kept), the sidebar beside a rule and beside
 Traffic (hidden with the button and the key, its edge dragged to its narrowest, its widest, shut
@@ -520,7 +523,11 @@ sees the request.
 `test/agent.mjs` is [Agent access](agent-access.md) end to end in Chromium. Before it starts
 anything it checks which hosts are dev hosts, whose pages' requests the agent may see
 (`isDevHost`): `localhost`, a name under `.localhost`, `127.0.0.1` and a `local.` name, but no
-lookalike (`localhost.example.com`, `local-app.test`), other site or IPv6 address. Then it starts
+lookalike (`localhost.example.com`, `local-app.test`), other site or IPv6 address. And that every
+dev host is a host Ghostfetch runs on, as an agent told a page is on a dev host waits for its
+requests: of hundreds of hosts (names under `.localhost`, `local.` names with every printable
+character after the dot, lookalikes, addresses, upper case, a trailing dot), each one `isDevHost`
+says yes to, Sites' `isBuiltInHost` says yes to. Then it starts
 ghostfetch-mcp as an agent starts it, with the MCP SDK's own client, pairs the editor through its
 panel (a wrong code turned down first), and drives every tool against the test server's pages:
 a rule saved answers at once and shows in the editor's list and in the panel's list of what the

@@ -244,6 +244,14 @@ export async function startServer() {
           res.writeHead(200, { 'content-type': 'image/gif' });
           res.end();
         }, 400);
+      } else if (url.pathname === '/framed') {
+        // A page with an iframe on another host Ghostfetch runs on, this server's local.* name
+        // (LOCAL_ORIGIN): a blank page there, in which a test makes requests. The page itself
+        // asks for nothing.
+        res.writeHead(200, { 'content-type': 'text/html' });
+        res.end(
+          `<!doctype html><title>Framed app on ${req.headers.host}</title><iframe src="http://local.ghostfetch.test:${server.address().port}/__control?in-frame"></iframe>`,
+        );
       } else if (url.pathname === '/__control') {
         // A blank page the Firefox test drives its storage hook from.
         res.writeHead(200, { 'content-type': 'text/html' });

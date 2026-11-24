@@ -1,7 +1,8 @@
 // End-to-end test of Agent access (docs/agent-access.md), in Chromium: ghostfetch-mcp started as an
 // agent starts it, with a real MCP client calling its tools, and Ghostfetch's editor paired with it
 // through its own panel, doing what each tool asks on a real page of the test server. First, with
-// no browser, which hosts are dev hosts, whose pages' requests the agent may see (isDevHost).
+// no browser, which hosts are dev hosts, whose pages' requests the agent may see (isDevHost), and
+// that each is a host Ghostfetch runs on (Sites' isBuiltInHost).
 //
 //   npm run test:agent      builds, then runs this (`npm install --prefix mcp` first, once)
 import { createRequire } from 'node:module';
@@ -9,6 +10,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { isDevHost } from '../src/bounded-contexts/agent-access/domain/dev-host.ts';
+import { isBuiltInHost } from '../src/bounded-contexts/sites/site.ts';
 import {
   AGENT_READY,
   CHROME_BUILD,
@@ -58,6 +60,80 @@ await check(
         ['example.com', false],
         ['[::1]', false],
       ],
+    );
+  },
+);
+
+// Before anything starts too: every dev host is a host Ghostfetch runs on, a built-in host of
+// Sites' (docs/glossary/sites.md). An agent told a page is on a dev host waits for its requests,
+// which never come from a page Ghostfetch doesn't run on. The two lists are free to differ the
+// other way: Ghostfetch can come to run on more hosts without an agent seeing more.
+await check(
+  "every dev host is a host Ghostfetch runs on: of hundreds of hosts (names under .localhost, local. names with every printable character after the dot, lookalikes, addresses, upper case, a trailing dot), each one isDevHost says yes to, Sites' isBuiltInHost says yes to",
+  async () => {
+    // The check before's own hosts, and more of each kind.
+    const named = [
+      'localhost',
+      'app.localhost',
+      '127.0.0.1',
+      'local.myapp.com',
+      'localhost.example.com',
+      'local-app.test',
+      'example.com',
+      '[::1]',
+      // Names under .localhost, and names that only start or end like one.
+      'a.b.localhost',
+      'my_app.localhost',
+      'local.localhost',
+      'localhost.localhost',
+      '.localhost',
+      'xlocalhost',
+      'notlocalhost',
+      'localhostx',
+      'localhost.evil.com',
+      // local. names, and names that only look like one.
+      'local.a',
+      'local.7',
+      'local.app.test',
+      'local.7-app.test',
+      'local.',
+      'local',
+      'local..test',
+      'locals.app',
+      'xlocal.app',
+      'my.local.com',
+      'myapp.local',
+      // Addresses.
+      '127.0.0.2',
+      '127.1',
+      '127.0.0.1.evil.com',
+      '0.0.0.0',
+      '::1',
+      '[::ffff:127.0.0.1]',
+      '10.0.0.5',
+      '',
+    ];
+    // Every printable ASCII character: after "local." on its own and before a name, in place of
+    // that dot, before ".localhost", and in place of that dot.
+    const characters = Array.from({ length: 94 }, (_, at) =>
+      String.fromCharCode(33 + at),
+    );
+    const hosts = [
+      ...named,
+      ...characters.flatMap((character) => [
+        `local.${character}`,
+        `local.${character}app.test`,
+        `local${character}app.test`,
+        `${character}.localhost`,
+        `app${character}localhost`,
+      ]),
+      ...named.map((host) => host.toUpperCase()),
+      ...named.map((host) => `${host}.`),
+    ];
+    expect(
+      hosts.filter((host) => isDevHost(host) && !isBuiltInHost(host)),
+      [],
+      `of ${hosts.length} hosts, the dev hosts that aren't built-in hosts`,
     );
   },
 );

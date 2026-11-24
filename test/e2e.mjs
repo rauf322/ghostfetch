@@ -5332,6 +5332,84 @@ try {
     },
   );
   await check(
+    "an iframe's requests reach the tab's log: one a rule answers and one no rule answers are both in Traffic for the tab, and the popup's counts for the tab include the one answered",
+    async () => {
+      // An iframe's bridge sends each request it logs to the background, which passes it on to
+      // the tab's top frame (src/app/background/on-message.ts), whose log is the tab's
+      // (src/bounded-contexts/traffic/infrastructure/tab-log.ts): the log Traffic reads and the
+      // popup's counts come from. The test server's /framed asks for nothing itself, and its
+      // iframe is on another host Ghostfetch runs on (LOCAL_ORIGIN), so all the tab has is the
+      // iframe's.
+      const framed = await context.newPage();
+      try {
+        await framed.goto(`${ORIGIN}/framed`);
+        const frame = await (await framed.waitForSelector('iframe')).contentFrame();
+        const tab = (await worker.evaluate(() => chrome.tabs.query({}))).find(
+          (candidate) => candidate.url === framed.url(),
+        );
+        // The rule that answers /api/early, as it's stored.
+        const early = (await storedRules()).find(
+          (rule) => rule.match.url === '/api/early',
+        );
+        // In the iframe, one after the other: a request that rule answers, and one no rule does.
+        const [answered, unanswered] = await frame.evaluate(async () => {
+          const got = [];
+          for (const target of [
+            '/api/early?in-frame=answered',
+            '/api/user?in-frame=unanswered',
+          ]) {
+            const response = await fetch(target);
+            got.push([response.status, await response.text()]);
+          }
+          return got;
+        });
+        await watch('Framed app');
+        // The requests Traffic lists for the tab: each one's URL, and what a rule did to it.
+        const listed = () =>
+          app.evaluate(() =>
+            [...document.querySelectorAll('[data-testid="request"]')]
+              .map((row) => [
+                row.title,
+                row.querySelector('[data-testid="request-action"]')?.textContent ?? '',
+              ])
+              .toSorted(),
+          );
+        // What the popup is told of the tab: how often each rule answered there.
+        const counted = () =>
+          worker.evaluate(
+            (id) =>
+              chrome.tabs.sendMessage(id, { type: 'ghostfetch:counts' }, { frameId: 0 }),
+            tab.id,
+          );
+        const LISTED = [
+          [`${LOCAL_ORIGIN}/api/early?in-frame=answered`, 'Mocked'],
+          [`${LOCAL_ORIGIN}/api/user?in-frame=unanswered`, ''],
+        ];
+        const COUNTED = {
+          record: true,
+          rules: { [early.id]: { mocked: 1, modified: 0, failed: 0 } },
+        };
+        expect(
+          [
+            [answered, [unanswered[0], JSON.parse(unanswered[1]).name]],
+            await settled(listed, same(LISTED)),
+            await settled(counted, same(COUNTED)),
+          ],
+          [
+            [
+              [200, early.response.body],
+              [200, 'Real'],
+            ],
+            LISTED,
+            COUNTED,
+          ],
+        );
+      } finally {
+        await framed.close();
+      }
+    },
+  );
+  await check(
     'when the page Traffic watches is closed, it watches the page used last and lists its requests',
     async () => {
       // Up to 0.20.1 the page picker took its list's own reset (its page gone from the list) for a

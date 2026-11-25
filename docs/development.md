@@ -164,7 +164,7 @@ src/bounded-contexts/            the six bounded contexts of GLOSSARY-MAP.md, a 
     application/                 the screens' copy of the order, which saves and redraws after each operation (store.ts), and of whether Ghostfetch is paused, which only the popup changes (paused.ts); a copy of a group or a rule (duplicate-group.ts, duplicate-rule.ts); a rule made from a request in the log (rule-from-entry.ts), the requests New rule offers to mock (recent-requests.ts), and New rule's draft, what's typed there read and the rule made from it (rule-draft.ts); rules files, writing one and reading one into the order, its rules and groups turned off (rules-file.ts); apart from the rules, the server's responses their bodies' Diff compares with (server-responses.ts); and what the page is given of what's stored, which the bridge posts (page-state.ts)
     infrastructure/              how the order is kept, as the rules, each naming its group, and the groups, each with its place (order-storage.ts); the toolbar badge, which the background keeps in sync (badge.ts); and the clipboard a rule's body editor's vim keys paste from, with the permission that takes (clipboard.ts)
     contract.ts                  what the bridge sends the interceptor: the rules that answer, with the two switches
-    ui/                          the Rules view (index.ts, for the editor): the sidebar's rule list, New rule (new-rule/) and the rule editor (rule-editor/, a component per part); and the widgets other screens show, a public file each
+    ui/                          the Rules view (index.ts, for the editor): the sidebar's rule list, a tree for the keyboard and a screen reader, with its right-click menu (rule-list.tsx), the tooltips and the ⋯ menu its rows share (row-tools.ts), and the field a name is renamed in (rename-field.tsx); New rule (new-rule/) and the rule editor (rule-editor/, a component per part); and the widgets other screens show, a public file each
       rule-switch.tsx            a rule's switch, the green dot (the kit's SignalSwitch), in the editor's rule list and the popup; group-switch.tsx, a group's
       group-folds.ts             which groups are folded, in the editor's list and the popup alike
       group-picker.tsx           the group a new rule goes into, where New rule and Mock this response make one; new-rule-group.ts, the one it starts on
@@ -203,11 +203,12 @@ src/platform/                    what differs between the browsers, and opening 
   open-editor.ts                 the editor in the side panel or a tab, and on a rule the popup picked
 src/ui/                          the components that know nothing of rules, sites or requests, a public file each
   kit/                           the UI kit: React components on Base UI, styled with Tailwind (see UI kit)
-    tooltip.tsx                  the tooltip a control explains itself with, rather than a title: its words, its key, or why it's off; and the provider each page has one of
+    tooltip.tsx                  the tooltip a control explains itself with, rather than a title: its words, its key, or why it's off; one many controls share (SharedTooltip, TooltipTrigger); and the provider each page has one of
+    context-menu.tsx             right-click menus, which the ContextMenu key and Shift+F10 open too, leaving fields and selected text the browser's own
     kbd.tsx                      a key's badge, and the one place that writes a key for this platform (⌘B on a Mac, Ctrl+B elsewhere), says it in words for a screen reader, and reads it from a key event
     middle-truncate.tsx          a URL cut short in its middle, so its end stays, with CSS only; copied whole, and read whole by a screen reader
     copy-button.tsx              a button that copies and says so in itself for a second ("Copied", told to a screen reader once), and useCopied() for a control of another shape; a refused copy gets a toast
-    item.tsx                     list rows, a rule's and a request's: a row's one slot at its end (ItemSlot), what it says at rest, and in its place its actions (ItemAction) under the pointer, with focus in the row or a menu of its own open; and a name that steps back
+    item.tsx                     list rows, a rule's and a request's: a row's one slot at its end (ItemSlot), what it says at rest, and in its place its actions (ItemAction) under the pointer, with focus in the row or a menu of its own open; a name that steps back; and a ring inside the edge of a row that takes focus
   list-detail.tsx                the editor's layout: the sidebar, as wide as its edge was dragged, and what's open beside it, in a row (a flexbox: Firefox lays a grid's items out again from scratch)
   sidebar.tsx                    the sidebar's width and whether it's hidden, the edge that resizes it (and what keeps its width meanwhile), and the button (and ⌘B) that hides it
   theme.ts                       the themes and Appearance's three settings (contrast, font, text size), and the ones in use; theme-menu.tsx, the ⋯ menus' Theme and Appearance rows
@@ -277,15 +278,19 @@ inside the window, the popup's 330 px too. Give it the key that does the same (`
 with `modKey()` from `kbd.tsx`, so ⌘B on a Mac and Ctrl+B elsewhere), or why a control is off
 (`reason`, which puts the tooltip on a wrapper around it, as a control that's off takes no
 pointer). A screen reader hears its words as the control's description, as it heard a `title`:
-the tooltip keeps a hidden copy of them in the page, the key in words ("Command B"), and adds it
-to the control's `aria-describedby`, after any description the control has of its own; not where
-its words are the control's name already. A description isn't a name, so a control that's only
-an icon keeps its `aria-label`. A control that opens a menu of its own (`aria-haspopup`) shows
-no tooltip while the menu is open, nor as it closes and gives the control focus back, until the
-pointer or focus leaves the control and comes back. The popup, the editor and the kit page each
-wrap their root in one `<TooltipProvider>`. A `title` is left only where it shows the whole of a
-text cut short (a long rule name, a request's URL), and on the body editor's find bar, which is
-plain DOM.
+the page keeps a hidden copy of them, the key in words ("Command B"), one for each set of words
+however many controls have them, and the tooltip adds it to the control's `aria-describedby`,
+after any description the control has of its own; not where its words are the control's name
+already. A description isn't a name, so a control that's only an icon keeps its `aria-label`. A
+control that opens a menu of its own (`aria-haspopup`) shows no tooltip while the menu is open,
+nor as it closes and gives the control focus back, until the pointer or focus leaves the control
+and comes back (one watcher for the page, which `<TooltipProvider>` starts). The popup, the
+editor and the kit page each wrap their root in one `<TooltipProvider>`. Many controls of one
+kind, as each row's in a long list, share one tooltip rather than mount one each: one
+`<SharedTooltip>`, with a handle from `createTooltipHandle()`, and a `<TooltipTrigger>` around
+each control, with its own words; Base UI's detached triggers. A `title` is left only where it
+shows the whole of a text cut short (a long rule name, a request's URL), and on the body editor's
+find bar, which is plain DOM.
 
 A URL with no room is cut in its middle with `<MiddleTruncate>` (`middle-truncate.tsx`), as the
 rule rows, the popup's rows, Traffic's rows and open request and New rule's recent requests do,
@@ -319,7 +324,19 @@ less. A press on an action doesn't start dragging the row and leaves focus where
 nothing can hover (`touch:`, `@media (any-hover: none)`), the actions aren't there and no room is
 kept for them: the row's own controls (a rule's dot, the open rule's ⋯) do what they do. A row
 that has less to say can step back: `<ItemTitle quiet>`, at normal weight in `--t65`, for a rule
-that's on but hasn't answered on the page.
+that's on but hasn't answered on the page. A row that takes focus has a ring inside its edge,
+which its neighbours don't cover, and with focus on it its actions show too. The editor's rule
+list draws its rows' actions as plain buttons until the pointer or focus comes near a row, and
+then as triggers of a tooltip and a ⋯ menu the list draws once for all of them
+(`rules/ui/row-tools.ts`), so 300 rules mount about as fast as they did before the slot.
+
+A right-click menu is `<ContextMenu>` (`context-menu.tsx`): the menus' card at the pointer, over
+the elements of its `<ContextMenuTrigger>`, whose `onContextMenu` finds what was right-clicked
+from the event's target; its items are a menu's (`DropdownMenuItem` and the rest). The
+ContextMenu key and Shift+F10 open it for what has focus, at its bottom left (or at its part
+marked `data-menu-anchor`'s, as a group's header), on the key's release; it gives that focus back
+as it shuts. A right-click in a text field, or on text selected in the trigger, gets the
+browser's own menu.
 
 ### Adding a UI component
 
@@ -522,9 +539,19 @@ without opening the rule, and a press on ⋯ moved away dragging nothing; its �
 menu item for item, staying while it's open, its Delete leaving the open rule open and Undo
 putting the rule back; and in Commit Mono at Larger nothing past the row's edge, in a 420 px panel
 and beside an open rule, where what the slot says gives way, the time first), a rule that's on
-but hasn't answered stepping back (not the open one, and none while Recording is off), a long URL
-cut in its middle, its end in sight inside the row, a row's tooltip only for a name or URL it cuts
-short, a theme picked
+but hasn't answered stepping back (not the open one, and none while Recording is off), the list
+as a tree (one Tab stop, the open rule's row, then its Turn off and ⋯, then out of the list, no
+other row's controls Tab stops; each item's level, place among its own and, for a group,
+expanded or not, the open rule selected, and Chromium's names for a row and a group; ↑ ↓ Home End
+passing a folded group's rules, → ← folding, unfolding and going into a group and out to it,
+Space and Enter folding a group and opening a rule, "/" still going to the search field; F2
+renaming a rule in its row, Enter keeping the name and giving the row focus back, Esc keeping the
+old one, an empty one refused, leaving the field keeping it, and a group by F2 too), its
+right-click menu (a rule's and a group's, by the pointer at the pointer, by the ContextMenu key
+and Shift+F10 at the item's bottom left, the same items as their ⋯ menus, each item working, and
+the rename field and selected text keeping the browser's own menu), a long URL cut in its middle,
+its end in sight inside the row, a row's tooltip only for a name or URL it cuts short, a theme
+picked
 in the `⋯` menu (the editor and the open popup
 recoloured, and set before a page draws), the `⋯` menu's Appearance (its contrast, font and text
 size on the editor and the open popup at once, on a page opened afterwards before any of its
@@ -664,7 +691,14 @@ there instead, the name and the slot not moving; narrowed 10 px at a time from 4
 what it says gives way, the time out of sight first, then the count cut, the name keeping its
 room and nothing past the row's edge; and in Chromium, where nothing can hover (DevTools'
 emulation of `any-hover: none`), no actions and no room kept for them, what the slot says staying
-under the pointer. Two self-checks make sure it can fail: a `<style>` tag added on purpose has to be caught, and so does
+under the pointer. And a shared tooltip: the rule rows' dots share one, which says each dot's
+words under the pointer, the two that say the same described by one hidden copy of the words and
+the third by another, and a screen reader gets each its words. And a right-click menu: at the
+pointer on a rule row, Esc shutting it; the ContextMenu key (in Zen, as key events the page gets,
+as its automation has no such key) and Shift+F10 opening it at the focused row's bottom left, Esc
+giving the row focus back; its item working; the search field over the rows and text selected in
+one getting the browser's own menu; and a row Tab reaches showing its ring. Two self-checks make
+sure it can fail: a `<style>` tag added on purpose has to be caught, and so does
 Base UI's own when `CSPProvider`'s setting is off.
 
 ```sh

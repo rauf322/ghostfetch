@@ -11,7 +11,15 @@ import { Kbd } from './kbd.tsx';
 // left arrow closes it.
 export const DropdownMenu = MenuPrimitive.Root;
 
-const POPUP =
+// One menu for many buttons (each row's ⋯ in a long list): one root and one popup, with the
+// handle on the root and on each <DropdownMenuTrigger>, which passes the menu what it's for
+// (`payload`); the root's children can be a function of it.
+export type MenuHandle<Payload> = MenuPrimitive.Handle<Payload>;
+export const createMenuHandle = <Payload,>(): MenuHandle<Payload> =>
+  MenuPrimitive.createHandle<Payload>();
+
+// The menus' card, the right-click menu's too (context-menu.tsx).
+export const MENU_POPUP =
   'max-h-(--available-height) min-w-[210px] overflow-y-auto rounded-lg border border-border bg-popover p-1 shadow-menu outline-none';
 const ITEM =
   'flex w-full items-center gap-[9px] rounded-md px-2.5 py-2 text-left text-small text-t80 outline-none select-none data-highlighted:bg-raised data-highlighted:text-strong data-disabled:opacity-45 [&_[data-slot=icon]]:text-t40';
@@ -43,7 +51,7 @@ export function DropdownMenuContent({
       >
         <MenuPrimitive.Popup
           data-slot="dropdown-menu-content"
-          className={cn(POPUP, className)}
+          className={cn(MENU_POPUP, className)}
           {...props}
         />
       </MenuPrimitive.Positioner>
@@ -134,7 +142,7 @@ export function DropdownMenuSubContent({
       >
         <MenuPrimitive.Popup
           data-slot="dropdown-menu-sub-content"
-          className={cn(POPUP, className)}
+          className={cn(MENU_POPUP, className)}
           {...props}
         />
       </MenuPrimitive.Positioner>

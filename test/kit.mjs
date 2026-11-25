@@ -131,7 +131,20 @@ function driver(page, problems, cdp) {
     problems,
     run: (fn, arg) => page.evaluate(fn, arg),
     // Puppeteer only knows the space bar as " ", which Playwright takes too, and no Shift+ keys.
+    // Firefox's automation (WebDriver BiDi) has no ContextMenu key: in Zen the page gets it as key
+    // events of its own, on what has focus.
     async press(key) {
+      if (key === 'ContextMenu' && !cdp)
+        return page.evaluate(() => {
+          for (const type of ['keydown', 'keyup'])
+            document.activeElement.dispatchEvent(
+              new KeyboardEvent(type, {
+                key: 'ContextMenu',
+                bubbles: true,
+                cancelable: true,
+              }),
+            );
+        });
       if (!key.startsWith('Shift+'))
         return page.keyboard.press(key === 'Space' ? ' ' : key);
       await page.keyboard.down('Shift');
@@ -157,6 +170,7 @@ function driver(page, problems, cdp) {
     resize: (size) =>
       page.setViewportSize ? page.setViewportSize(size) : page.setViewport(size),
     clickPoint: ({ x, y }) => page.mouse.click(x, y),
+    rightClick: ({ x, y }) => page.mouse.click(x, y, { button: 'right' }),
     pointTo: ({ x, y }) => page.mouse.move(x, y),
     // A touch screen with nothing that hovers, as DevTools' device mode has it, on or off: the
     // page's (any-hover: none) matches while it's on (Chromium alone).
@@ -222,6 +236,8 @@ const selectOpen = popupOpen('select-content');
 const selectClosed = popupClosed('select-content');
 const menuOpen = popupOpen('dropdown-menu-content');
 const menuClosed = popupClosed('dropdown-menu-content');
+const contextOpen = popupOpen('context-menu-content');
+const contextClosed = popupClosed('context-menu-content');
 
 // The tooltip open now, as [its lines (the label, then why the control is off), its key, its box
 // as [left, top, right, bottom], the window's width and height], or null. `within` ms: the first
@@ -1578,6 +1594,168 @@ async function runChecks(browser, open) {
         }
       },
     );
+
+  await check(
+    `${browser}: shared tooltip: the rule rows' dots share one tooltip, which says each one's words under the pointer; the two that say the same are described by one hidden copy of the words, the third by another, and a screen reader gets each its words`,
+    async () => {
+      const dot = (n) => `${KIT_RULE}:nth-child(${n}) [data-slot=switch]`;
+      await kit.run(() =>
+        document
+          .querySelector('[data-testid=kit-rules]')
+          .scrollIntoView({ block: 'center' }),
+      );
+      // Each dot's copies (aria-describedby), and how many copies of each set of words there are.
+      const copies = await kit.run(() => {
+        const ids = [
+          ...document.querySelectorAll('[data-testid=kit-rules] > li [data-slot=switch]'),
+        ].map((each) =>
+          (each.getAttribute('aria-describedby') ?? '')
+            .split(/\s+/)
+            .filter((id) => id.startsWith('tooltip-words-')),
+        );
+        const texts = [
+          ...document.querySelectorAll('[data-slot=tooltip-description]'),
+        ].map((copy) => copy.textContent);
+        return [
+          ids.map((each) => each.length),
+          ids[0][0] === ids[1][0],
+          ids[0][0] !== ids[2][0],
+          ['On. Click to turn this rule off', 'Off. Click to turn this rule on'].map(
+            (words) => texts.filter((text) => text === words).length,
+          ),
+        ];
+      });
+      const described = [await kit.description(dot(1)), await kit.description(dot(3))];
+      // Under the pointer, the first dot's words, then the third's, in the one popup.
+      await kit.pointTo(NOWHERE);
+      await kit.pointTo(await kit.run(MIDDLE, dot(1)));
+      const first = await tooltip(kit, 3000);
+      await kit.pointTo(await kit.run(MIDDLE, dot(3)));
+      await sleep(400);
+      const third = await tooltip(kit, 3000);
+      const popups = await kit.run(
+        () => document.querySelectorAll('[data-slot=tooltip][data-open]').length,
+      );
+      await kit.pointTo(NOWHERE);
+      expect(
+        [copies, described, first?.[0][0], third?.[0][0], popups],
+        [
+          [[1, 1, 1], true, true, [1, 1]],
+          ['On. Click to turn this rule off', 'Off. Click to turn this rule on'],
+          'On. Click to turn this rule off',
+          'Off. Click to turn this rule on',
+          1,
+        ],
+      );
+    },
+  );
+
+  await check(
+    `${browser}: right-click menu: on a rule row it opens at the pointer, and Esc shuts it; the ContextMenu key and Shift+F10 on the row with focus open it at the row's bottom left, Esc giving the row focus back; its items work; a right-click in the search field over the rows, or on text selected in one, gets the browser's own menu; a row Tab reaches has a ring inside its edge`,
+    async () => {
+      const row = (n) => `${KIT_RULE}:nth-child(${n})`;
+      await kit.run(() => {
+        document
+          .querySelector('[data-testid=kit-rules]')
+          .scrollIntoView({ block: 'center' });
+        // Whether each right-click's event was kept from the browser, once it's been handled.
+        window.kitMenus = [];
+        addEventListener(
+          'contextmenu',
+          (event) => setTimeout(() => window.kitMenus.push(event.defaultPrevented)),
+          true,
+        );
+      });
+      // The open menu's top left, or null.
+      const where = () =>
+        kit.run(() => {
+          const popup = document.querySelector(
+            '[data-slot=context-menu-content][data-open]',
+          );
+          if (!popup) return null;
+          const { left, top } = popup.getBoundingClientRect();
+          return [left, top];
+        });
+      const near = (a, b) =>
+        Boolean(a && b) && Math.hypot(a[0] - b[0], a[1] - b[1]) <= 12;
+      const corner = (selector) =>
+        kit.run((wanted) => {
+          const { left, bottom } = document.querySelector(wanted).getBoundingClientRect();
+          return [left, bottom];
+        }, selector);
+      const menus = () => kit.run(() => window.kitMenus.length);
+      // A row Tab reaches from the search field, and the row after it: their rings.
+      await kit.focus('[data-testid=kit-rules-search]');
+      await kit.press('Tab');
+      const rings = await kit.run(() =>
+        [1, 2].map(
+          (n) =>
+            getComputedStyle(
+              document.querySelector(`[data-testid=kit-rules] > li:nth-child(${n})`),
+            ).boxShadow !== 'none',
+        ),
+      );
+      // The pointer's right-click on the second row.
+      const point = await kit.run(MIDDLE, row(2));
+      await kit.rightClick(point);
+      await contextOpen(kit);
+      const byPointer = near(await where(), [point.x, point.y]);
+      await kit.press('Escape');
+      await contextClosed(kit);
+      // The keys on the first row, focused.
+      await kit.focus(row(1));
+      await kit.press('ContextMenu');
+      await contextOpen(kit);
+      const byKey = near(await where(), await corner(row(1)));
+      await kit.press('Escape');
+      await contextClosed(kit);
+      await focusOn(kit, row(1));
+      await kit.press('Shift+F10');
+      await contextOpen(kit);
+      const byShiftF10 = near(await where(), await corner(row(1)));
+      await kit.press('Escape');
+      await contextClosed(kit);
+      // Its item: Turn on, in the third row's menu, then Turn off again.
+      const third = () =>
+        kit.run(() =>
+          document
+            .querySelector('[data-testid=kit-rules] > li:nth-child(3) [data-slot=switch]')
+            .getAttribute('aria-checked'),
+        );
+      const turned = [];
+      for (let time = 0; time < 2; time++) {
+        await kit.rightClick(await kit.run(MIDDLE, row(3)));
+        await contextOpen(kit);
+        await kit.click('[data-testid=kit-row-menu-turn]');
+        await contextClosed(kit);
+        turned.push(await third());
+      }
+      // The search field, then text selected in the second row: no menu of ours, and nothing kept
+      // from the browser.
+      const mine = await menus();
+      await kit.rightClick(await kit.run(MIDDLE, '[data-testid=kit-rules-search]'));
+      await sleep(300);
+      const inField = await where();
+      await kit.press('Escape');
+      await kit.run(() =>
+        getSelection().selectAllChildren(
+          document.querySelector(
+            '[data-testid=kit-rules] > li:nth-child(2) [data-slot=item-title]',
+          ),
+        ),
+      );
+      await kit.rightClick(await kit.run(MIDDLE, `${row(2)} [data-slot=item-title]`));
+      await sleep(300);
+      const onSelection = await where();
+      await kit.press('Escape');
+      await kit.run(() => getSelection().removeAllRanges());
+      const kept = await kit.run((from) => window.kitMenus.slice(from), mine);
+      expect(
+        [rings, byPointer, byKey, byShiftF10, turned, inField, onSelection, kept],
+        [[true, false], true, true, true, ['true', 'false'], null, null, [false, false]],
+      );
+    },
+  );
 
   await check(`${browser}: icons: the same shapes as src/lib/icons.ts`, async () => {
     const differences = await kit.run((expected) => {

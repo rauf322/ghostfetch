@@ -71,8 +71,11 @@ What's different in Firefox-based browsers:
     editor watches says what it did there at the right of its name, and how long ago it last
     did ("2 mocked · 4m"); one that's on but hasn't answered there steps back, its name in a
     quieter grey. Under the pointer, the same place has the rule's **Turn off** (or **Turn on**)
-    and its **⋯** menu, the one an open rule has in its header. **Duplicate**, in an open rule's
-    header, copies it.
+    and its **⋯** menu, the one an open rule has in its header. A right-click on a rule or a
+    group's header (or the menu key, or Shift+F10) opens the same menu as its **⋯**. From the
+    keyboard the list is one Tab stop: ↑ and ↓ move between rules and groups, → and ← unfold and
+    fold a group, Enter opens a rule, F2 renames it, and Tab goes on to the rule's **Turn off**
+    and **⋯**. **Duplicate**, in an open rule's header, copies it.
 
     <a id="groups"></a>**Groups** keep the rules for one piece of work together, a PR's, say,
     to turn on and off as one. **New group** (beside **+**) makes one at the top of the list,

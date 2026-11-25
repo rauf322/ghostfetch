@@ -7,7 +7,12 @@
 // does, as it doesn't answer, and its dot stays as its own switch is. A URL the row has no room for
 // is cut in its middle, so its end stays; under the pointer, a name or URL the row cuts short shows
 // whole in a tooltip.
-import { memo } from 'react';
+//
+// In the list's tree (rule-list.tsx) the row is an item that takes focus, by the list's keys, with
+// its name for its own and what it did, what it matches and does, and whether it's off as its
+// description. F2 makes its name a field. Its dot is never a Tab stop, its actions only while the
+// row is the list's Tab stop (Turn off does from the keyboard what the dot does).
+import { memo, useEffect, useId, useRef, useState } from 'react';
 import type { PointerEvent } from 'react';
 import { timeAgo } from '../../../lib/index.ts';
 import { editRule, pausedStore, ruleTitle, wouldAnswer } from '../index.ts';
@@ -23,11 +28,7 @@ import { useStore } from '../../../ui/use-store.ts';
 import { useNowValue } from '../../../ui/use-now.ts';
 import { useTrafficValue } from '../../traffic/ui/index.ts';
 import { cn } from '../../../ui/cn.ts';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from '../../../ui/kit/dropdown-menu.tsx';
+import { DropdownMenuTrigger } from '../../../ui/kit/dropdown-menu.tsx';
 import { Icon } from '../../../ui/kit/icon.tsx';
 import {
   Item,
@@ -38,10 +39,11 @@ import {
   ItemTitle,
 } from '../../../ui/kit/item.tsx';
 import { MiddleTruncate, isCut } from '../../../ui/kit/middle-truncate.tsx';
-import { Tooltip } from '../../../ui/kit/tooltip.tsx';
+import { TooltipTrigger } from '../../../ui/kit/tooltip.tsx';
 import { RuleSwitch } from './rule-switch.tsx';
 import { ruleSummary } from './rule-summary.ts';
-import { RuleMenuItems } from './rule-editor/rule-menu.tsx';
+import { RenameField } from './rename-field.tsx';
+import { useRowTools } from './row-tools.ts';
 import type { RowDrag } from './use-rule-drag.ts';
 import { DROP_MARK, GROUPED_DROP_MARK } from './drop-marks.ts';
 
@@ -57,15 +59,24 @@ interface RuleListItemProps {
   groupOff: string;
   // The editor's log of the page it watches, for what the rule did there.
   log: TrafficLog;
+  // The list's Tab stop: the one row the keyboard enters the list at, whose actions are Tab stops.
+  tabbable: boolean;
+  // Its name is a field, to type a new one in (F2).
+  renaming: boolean;
+  // Where it stands among the rows at its level (in its group, or at the list's top), from 1.
+  position: number;
+  count: number;
   // Open a rule (the row's, or its copy); null closes the open one (the row's, deleted).
   onSelect: (id: string | null) => void;
+  // Done renaming it: by Enter or Esc (byKey), or by leaving the field.
+  onRenamed: (id: string, byKey: boolean) => void;
 }
 
 // Whether a row would draw the same: its rule unchanged (the same copy at the same revision), as
-// selected as it was, in the same group in the same state, and where it stands in a drag too.
-// Its first line draws again by itself as the rule answers on the page, and as Ghostfetch or
-// recording is turned on or off (RuleLine), its time as the clock moves (RuleTime), and its
-// switch as Ghostfetch is turned on or off (RuleSwitch).
+// selected as it was, in the same group in the same state, where it stands in a drag and in the
+// tree, and as it was for the keyboard. Its first line draws again by itself as the rule answers
+// on the page, and as Ghostfetch or recording is turned on or off (RuleLine), its time as the
+// clock moves (RuleTime), and its switch as Ghostfetch is turned on or off (RuleSwitch).
 function drawsTheSame(before: RuleListItemProps, after: RuleListItemProps) {
   return (
     before.rule === after.rule &&
@@ -77,7 +88,12 @@ function drawsTheSame(before: RuleListItemProps, after: RuleListItemProps) {
     before.drag.dragging === after.drag.dragging &&
     before.drag.handlers === after.drag.handlers &&
     before.log === after.log &&
-    before.onSelect === after.onSelect
+    before.tabbable === after.tabbable &&
+    before.renaming === after.renaming &&
+    before.position === after.position &&
+    before.count === after.count &&
+    before.onSelect === after.onSelect &&
+    before.onRenamed === after.onRenamed
   );
 }
 
@@ -90,8 +106,26 @@ export const RuleListItem = memo(function RuleListItem({
   inGroup,
   groupOff,
   log,
+  tabbable,
+  renaming,
+  position,
+  count,
   onSelect,
+  onRenamed,
 }: RuleListItemProps) {
+  const tools = useRowTools();
+  // Its actions are the shared tooltips' and menu's triggers (row-tools.ts) once the pointer or
+  // focus has come near the row, or the row is the list's Tab stop: plain buttons until then, so a
+  // long list mounts quickly. Told once: a state set again to what it is can still draw the row.
+  const [near, setNear] = useState(false);
+  const told = useRef(false);
+  const approach = () => {
+    if (told.current) return;
+    told.current = true;
+    setNear(true);
+  };
+  const ids = useId();
+  const off = !wouldAnswer(rule, !groupOff);
   // An unnamed rule already shows its URL as the title.
   const pattern = rule.name.trim()
     ? [rule.match.url, rule.match.graphqlOperation].filter(Boolean).join(' ')
@@ -100,12 +134,21 @@ export const RuleListItem = memo(function RuleListItem({
     <Item
       variant="rule"
       data-testid="rule"
+      data-item={rule.id}
       // What the rule matches, for the tests to find it by.
       data-url={rule.match.url}
       data-group-off={groupOff ? '' : undefined}
       selected={selected}
-      off={!wouldAnswer(rule, !groupOff)}
-      draggable
+      off={off}
+      role="treeitem"
+      aria-level={inGroup ? 2 : 1}
+      aria-posinset={position}
+      aria-setsize={count}
+      aria-selected={selected || undefined}
+      aria-labelledby={`${ids}name`}
+      aria-describedby={`${ids}off ${ids}did ${ids}match`}
+      tabIndex={tabbable ? 0 : -1}
+      draggable={!renaming}
       data-drop={drag.drop}
       // Set in under its group's header: its dot under the group's name, and a line where a drop
       // would land set in with it.
@@ -115,9 +158,9 @@ export const RuleListItem = memo(function RuleListItem({
         drag.dragging && 'opacity-40',
       )}
       // A click on one of the row's own controls (its switch, or the hidden checkbox Base UI clicks
-      // for it, and the actions in its slot) is theirs, and so is one in the ⋯ menu it opened,
-      // which React passes up to the row from the menu's portal, outside it: neither opens the
-      // rule.
+      // for it, the actions in its slot, the field its name is while it's renamed) is theirs, and so
+      // is one in a menu it opened, which React passes up to the row from the menu's portal,
+      // outside it: neither opens the rule.
       onClick={(event) => {
         const target = event.target as Element;
         if (
@@ -126,13 +169,19 @@ export const RuleListItem = memo(function RuleListItem({
         )
           onSelect(rule.id);
       }}
-      onPointerEnter={tipWhenCut}
+      onPointerEnter={(event) => {
+        tipWhenCut(event);
+        approach();
+      }}
+      onFocus={approach}
       {...drag.handlers}
     >
       {/* The dot lines up with the row's text, 12 px in, and with the name's line. */}
       <RuleSwitch
         rule={rule}
         groupOff={groupOff}
+        tip={tools.dot}
+        tabIndex={-1}
         className="-my-0.5 -ml-[9px] self-start"
       />
       <ItemContent>
@@ -141,9 +190,14 @@ export const RuleListItem = memo(function RuleListItem({
           selected={selected}
           groupOff={groupOff}
           log={log}
-          onSelect={onSelect}
+          live={near || tabbable}
+          tabbable={tabbable}
+          renaming={renaming}
+          ids={ids}
+          onNear={approach}
+          onRenamed={(byKey) => onRenamed(rule.id, byKey)}
         />
-        <ItemDescription>
+        <ItemDescription id={`${ids}match`}>
           {rule.match.method !== 'ANY' && (
             <span className="flex-none font-mono font-medium text-t80">
               {rule.match.method}
@@ -161,6 +215,12 @@ export const RuleListItem = memo(function RuleListItem({
           </span>
         </ItemDescription>
       </ItemContent>
+      {/* For a screen reader: that it's off, as the faded row shows. */}
+      {off && (
+        <span id={`${ids}off`} hidden>
+          {rule.enabled ? `Off, as its group ${groupOff} is off.` : 'Off.'}
+        </span>
+      )}
     </Item>
   );
 }, drawsTheSame);
@@ -177,26 +237,37 @@ function tipWhenCut(event: PointerEvent<HTMLElement>) {
   else row.removeAttribute('title');
 }
 
-// The row's first line: the rule's name, which keeps at least a few letters, and its slot at the
-// end. In the slot, what the rule did on the page and when ("1 mocked · 4m"), while it's on (in a
-// group that's on) and Ghostfetch is recording: the count in green, or grey while Ghostfetch is
-// paused, the time in grey; nothing for a rule that hasn't answered there, or is off (its dot says
-// so). A rule that's on but hasn't answered steps back, unless it's the open one; while recording
-// is off, which rules answered isn't known, so none does. This line draws again by itself when
-// Ghostfetch or recording is turned on or off and when the rule answers on the page, so the row
-// doesn't have to.
+// The row's first line: the rule's name, which keeps at least a few letters, or the field it is
+// while it's renamed, and its slot at the end. In the slot, what the rule did on the page and when
+// ("1 mocked · 4m"), while it's on (in a group that's on) and Ghostfetch is recording: the count in
+// green, or grey while Ghostfetch is paused, the time in grey; nothing for a rule that hasn't
+// answered there, or is off (its dot says so). A rule that's on but hasn't answered steps back,
+// unless it's the open one; while recording is off, which rules answered isn't known, so none
+// does. This line draws again by itself when Ghostfetch or recording is turned on or off and when
+// the rule answers on the page, so the row doesn't have to.
 function RuleLine({
   rule,
   selected,
   groupOff,
   log,
-  onSelect,
+  live,
+  tabbable,
+  renaming,
+  ids,
+  onNear,
+  onRenamed,
 }: {
   rule: Rule;
   selected: boolean;
   groupOff: string;
   log: TrafficLog;
-  onSelect: (id: string | null) => void;
+  live: boolean;
+  tabbable: boolean;
+  renaming: boolean;
+  // The row's prefix for its parts' ids.
+  ids: string;
+  onNear: () => void;
+  onRenamed: (byKey: boolean) => void;
 }) {
   const { paused } = useStore(pausedStore);
   const { recording } = useStore(recordingStore);
@@ -205,26 +276,44 @@ function RuleLine({
   );
   const last = useTrafficValue(log, (traffic) => lastAnswered(traffic.entries, rule.id));
   const title = ruleTitle(rule);
-  const live = rule.enabled && !groupOff && recording;
-  const quiet = live && !did && !selected;
+  const answering = rule.enabled && !groupOff && recording;
+  const quiet = answering && !did && !selected;
   // Its name keeps 7 letters' room, or 60% of the line where that's less.
   const name = 'min-w-[min(7em,60%)] flex-1';
   return (
     <div className="flex min-w-0 items-center gap-2">
-      {rule.name.trim() ? (
-        <ItemTitle quiet={quiet} className={name} data-full={title}>
+      {renaming ? (
+        <RenameField
+          name={rule.name}
+          label="Rule name"
+          testId="rule-name-input"
+          rename={(next) => {
+            editRule(rule.id, (current) => {
+              current.name = next;
+            });
+            return true;
+          }}
+          onDone={onRenamed}
+          // The name's own line high, so the row doesn't grow while it's renamed.
+          className={cn(name, 'h-[1.5em] font-medium')}
+        />
+      ) : rule.name.trim() ? (
+        <ItemTitle id={`${ids}name`} quiet={quiet} className={name} data-full={title}>
           {title}
         </ItemTitle>
       ) : (
         // An unnamed rule's title is its URL (or its GraphQL operation), cut in its middle.
-        <ItemTitle quiet={quiet} className={name}>
+        <ItemTitle id={`${ids}name`} quiet={quiet} className={name}>
           <MiddleTruncate text={title} />
         </ItemTitle>
       )}
       <ItemSlot
-        actions={<RuleActions rule={rule} selected={selected} onSelect={onSelect} />}
+        statusId={`${ids}did`}
+        actions={
+          <RuleActions rule={rule} live={live} tabbable={tabbable} onNear={onNear} />
+        }
       >
-        {live && did && (
+        {answering && did && (
           <>
             <span
               data-testid="rule-signal"
@@ -252,50 +341,85 @@ function RuleTime({ last }: { last: number }) {
 }
 
 // The slot's actions: turn the rule on or off, as its dot does, and the ⋯ menu the open rule has
-// in its header, with the same items.
+// in its header, with the same items (the list's one menu, row-tools.ts). Plain buttons until the
+// row is `live`: Turn off works as one; a ⋯ pressed then (by a screen reader, which moves no
+// pointer) makes the row live and opens the menu once its trigger is there.
 function RuleActions({
   rule,
-  selected,
-  onSelect,
+  live,
+  tabbable,
+  onNear,
 }: {
   rule: Rule;
-  selected: boolean;
-  onSelect: (id: string | null) => void;
+  live: boolean;
+  tabbable: boolean;
+  onNear: () => void;
 }) {
+  const tools = useRowTools();
   const title = ruleTitle(rule);
   const turn = rule.enabled ? 'Turn off' : 'Turn on';
+  const tabIndex = tabbable ? 0 : -1;
+  const menuId = `row-menu-${rule.id}`;
+  const openOnceLive = useRef(false);
+  useEffect(() => {
+    if (!live || !openOnceLive.current) return;
+    openOnceLive.current = false;
+    tools.menu.open(menuId);
+  }, [live, menuId, tools]);
+  const turnButton = (
+    <ItemAction
+      data-testid="row-switch"
+      aria-label={`${turn} “${title}”`}
+      tabIndex={tabIndex}
+      onClick={() =>
+        editRule(rule.id, (current) => {
+          current.enabled = !current.enabled;
+        })
+      }
+    >
+      <Icon name="power" size={14} />
+    </ItemAction>
+  );
+  const more = <Icon name="more" size={15} />;
+  if (!live)
+    return (
+      <>
+        {turnButton}
+        <ItemAction
+          data-testid="row-menu"
+          aria-label={`More actions for “${title}”`}
+          aria-haspopup="menu"
+          tabIndex={tabIndex}
+          onClick={() => {
+            openOnceLive.current = true;
+            onNear();
+          }}
+        >
+          {more}
+        </ItemAction>
+      </>
+    );
   return (
     <>
-      <Tooltip label={turn}>
-        <ItemAction
-          data-testid="row-switch"
-          aria-label={`${turn} “${title}”`}
-          onClick={() =>
-            editRule(rule.id, (current) => {
-              current.enabled = !current.enabled;
-            })
+      <TooltipTrigger handle={tools.turn} label={turn}>
+        {turnButton}
+      </TooltipTrigger>
+      <TooltipTrigger handle={tools.more} label="More actions">
+        <DropdownMenuTrigger
+          id={menuId}
+          handle={tools.menu}
+          payload={rule.id}
+          render={
+            <ItemAction
+              data-testid="row-menu"
+              aria-label={`More actions for “${title}”`}
+              tabIndex={tabIndex}
+            />
           }
         >
-          <Icon name="power" size={14} />
-        </ItemAction>
-      </Tooltip>
-      <DropdownMenu>
-        <Tooltip label="More actions">
-          <DropdownMenuTrigger
-            render={
-              <ItemAction
-                data-testid="row-menu"
-                aria-label={`More actions for “${title}”`}
-              />
-            }
-          >
-            <Icon name="more" size={15} />
-          </DropdownMenuTrigger>
-        </Tooltip>
-        <DropdownMenuContent>
-          <RuleMenuItems rule={rule} open={selected} onSelect={onSelect} />
-        </DropdownMenuContent>
-      </DropdownMenu>
+          {more}
+        </DropdownMenuTrigger>
+      </TooltipTrigger>
     </>
   );
 }

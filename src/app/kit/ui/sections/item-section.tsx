@@ -1,13 +1,22 @@
 // Items: rows of rules and of requests, as the two lists show them, one of each selected. A rule
 // starts with its switch, the green dot, and its slot at the right of its name (ItemSlot) says
 // what it did on the page and when, and nothing while it hasn't answered, when its name steps
-// back (quiet); under the pointer, with keyboard focus in the row or while its ⋯ menu is open, the
-// slot shows its actions (ItemAction): turn it on or off, as its dot does, and the menu. The
-// requests sit in a card (ItemList), as Traffic's groups do. A URL that doesn't fit is cut in its
-// middle, so its end stays (MiddleTruncate).
+// back (quiet); under the pointer, with keyboard focus on the row or in it, or while its ⋯ menu is
+// open, the slot shows its actions (ItemAction): turn it on or off, as its dot does, and the menu.
+// The rule rows take focus, with a ring inside their edge, and a right-click on one (or the
+// ContextMenu key, or Shift+F10, on the one with focus) opens its menu (ContextMenu); the search
+// field over them keeps the browser's. Their dots share one tooltip (SharedTooltip), and the two
+// that say the same are described by one hidden copy of the words. The requests sit in a card
+// (ItemList), as Traffic's groups do. A URL that doesn't fit is cut in its middle, so its end
+// stays (MiddleTruncate).
 import { useState } from 'react';
 import { formatDuration } from '../../../../lib/index.ts';
 import { Badge, StatusCode } from '../../../../ui/kit/badge.tsx';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuTrigger,
+} from '../../../../ui/kit/context-menu.tsx';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,6 +24,7 @@ import {
   DropdownMenuTrigger,
 } from '../../../../ui/kit/dropdown-menu.tsx';
 import { Icon } from '../../../../ui/kit/icon.tsx';
+import { Input } from '../../../../ui/kit/input.tsx';
 import {
   Item,
   ItemAction,
@@ -26,9 +36,17 @@ import {
 } from '../../../../ui/kit/item.tsx';
 import { MiddleTruncate } from '../../../../ui/kit/middle-truncate.tsx';
 import { SignalSwitch } from '../../../../ui/kit/signal-switch.tsx';
-import { Tooltip } from '../../../../ui/kit/tooltip.tsx';
+import {
+  SharedTooltip,
+  Tooltip,
+  TooltipTrigger,
+  createTooltipHandle,
+} from '../../../../ui/kit/tooltip.tsx';
 import { Method } from '../../../../ui/list-detail.tsx';
 import { Cell } from '../cell.tsx';
+
+// The tooltip the rule rows' dots share.
+const DOTS = createTooltipHandle();
 
 const RULES: {
   name: string;
@@ -118,70 +136,120 @@ export function ItemSection() {
   // Which rules are on: their dots switch them, as in the editor's list, and so do their rows'
   // Turn off and Turn on.
   const [on, setOn] = useState(() => RULES.map((rule) => rule.on));
+  // The row whose right-click menu is open.
+  const [menuFor, setMenuFor] = useState(0);
   const turn = (position: number, next: boolean) =>
     setOn((was) => was.map((value, index) => (index === position ? next : value)));
   return (
     <Cell title="Item" note="rule rows, and request rows in a card" wide>
       <div className="grid grid-cols-2 gap-6">
-        <ul data-testid="kit-rules" className="m-0 list-none py-1">
-          {RULES.map((rule, position) => (
-            <Item
-              key={rule.name}
-              variant="rule"
-              selected={position === 0}
-              off={!on[position]}
-            >
-              <SignalSwitch
-                aria-label={`Turn “${rule.name}” on or off`}
-                checked={on[position]}
-                onCheckedChange={(next) => turn(position, next)}
-                className="-my-0.5 -ml-[9px] self-start"
-              />
-              <ItemContent>
-                <div className="flex min-w-0 items-center gap-2">
-                  {/* As in the editor's list: the name keeps 7 letters' room, or 60% of the
-                      line, and one that's on but hasn't answered steps back. */}
-                  <ItemTitle
-                    quiet={on[position] && !rule.did && position !== 0}
-                    className="min-w-[min(7em,60%)] flex-1"
-                  >
-                    {rule.name}
-                  </ItemTitle>
-                  <ItemSlot
-                    actions={
-                      <RuleActions
-                        name={rule.name}
-                        on={on[position]}
-                        onTurn={(next) => turn(position, next)}
-                      />
+        <ContextMenu>
+          <ContextMenuTrigger
+            data-testid="kit-rules-area"
+            className="flex flex-col gap-2"
+            onContextMenu={(event) => {
+              const row = (event.target as Element).closest(
+                '[data-testid=kit-rules] > li',
+              );
+              if (!row) {
+                event.preventBaseUIHandler();
+                return;
+              }
+              setMenuFor([...row.parentElement!.children].indexOf(row));
+            }}
+          >
+            <Input
+              data-testid="kit-rules-search"
+              aria-label="Search the rules"
+              placeholder="Search the rules"
+              className="mx-1.5 w-auto"
+            />
+            <ul data-testid="kit-rules" className="m-0 list-none py-1">
+              {RULES.map((rule, position) => (
+                <Item
+                  key={rule.name}
+                  variant="rule"
+                  selected={position === 0}
+                  off={!on[position]}
+                  tabIndex={0}
+                >
+                  <TooltipTrigger
+                    handle={DOTS}
+                    label={
+                      on[position]
+                        ? 'On. Click to turn this rule off'
+                        : 'Off. Click to turn this rule on'
                     }
                   >
-                    {on[position] && rule.did && (
-                      <>
-                        <span className="text-signal">{rule.did}</span>{' '}
-                        <span className="text-t50">{`· ${rule.ago}`}</span>
-                      </>
-                    )}
-                  </ItemSlot>
-                </div>
-                <ItemDescription>
-                  {rule.method !== 'ANY' && (
-                    <span className="flex-none font-mono font-medium text-t80">
-                      {rule.method}
-                    </span>
-                  )}
-                  <MiddleTruncate
-                    text={rule.url}
-                    className="max-w-[62%] flex-none font-mono text-t65"
-                  />
-                  <span className="min-w-0 flex-[0_10_auto] truncate text-t40">
-                    {rule.summary}
-                  </span>
-                </ItemDescription>
-              </ItemContent>
-            </Item>
-          ))}
-        </ul>
+                    <SignalSwitch
+                      aria-label={`Turn “${rule.name}” on or off`}
+                      checked={on[position]}
+                      onCheckedChange={(next) => turn(position, next)}
+                      className="-my-0.5 -ml-[9px] self-start"
+                    />
+                  </TooltipTrigger>
+                  <ItemContent>
+                    <div className="flex min-w-0 items-center gap-2">
+                      {/* As in the editor's list: the name keeps 7 letters' room, or 60% of the
+                      line, and one that's on but hasn't answered steps back. */}
+                      <ItemTitle
+                        quiet={on[position] && !rule.did && position !== 0}
+                        className="min-w-[min(7em,60%)] flex-1"
+                      >
+                        {rule.name}
+                      </ItemTitle>
+                      <ItemSlot
+                        actions={
+                          <RuleActions
+                            name={rule.name}
+                            on={on[position]}
+                            onTurn={(next) => turn(position, next)}
+                          />
+                        }
+                      >
+                        {on[position] && rule.did && (
+                          <>
+                            <span className="text-signal">{rule.did}</span>{' '}
+                            <span className="text-t50">{`· ${rule.ago}`}</span>
+                          </>
+                        )}
+                      </ItemSlot>
+                    </div>
+                    <ItemDescription>
+                      {rule.method !== 'ANY' && (
+                        <span className="flex-none font-mono font-medium text-t80">
+                          {rule.method}
+                        </span>
+                      )}
+                      <MiddleTruncate
+                        text={rule.url}
+                        className="max-w-[62%] flex-none font-mono text-t65"
+                      />
+                      <span className="min-w-0 flex-[0_10_auto] truncate text-t40">
+                        {rule.summary}
+                      </span>
+                    </ItemDescription>
+                  </ItemContent>
+                </Item>
+              ))}
+            </ul>
+          </ContextMenuTrigger>
+          <ContextMenuContent>
+            <DropdownMenuItem
+              data-testid="kit-row-menu-turn"
+              onClick={() => turn(menuFor, !on[menuFor])}
+            >
+              <Icon name="power" /> {on[menuFor] ? 'Turn off' : 'Turn on'}
+            </DropdownMenuItem>
+            <DropdownMenuItem>
+              <Icon name="copy" /> Duplicate
+            </DropdownMenuItem>
+            <DropdownMenuItem variant="destructive">
+              <Icon name="close" /> Delete
+            </DropdownMenuItem>
+          </ContextMenuContent>
+        </ContextMenu>
+        <SharedTooltip handle={DOTS} />
         <ItemList>
           {REQUESTS.map((entry, position) => (
             <Item

@@ -7,12 +7,16 @@ import { cn } from '../cn.ts';
 import { CARD } from './card.tsx';
 
 // List rows: a rule, or a request in Traffic. Rounded and inset from the list's edges, filled
-// under the pointer and while a menu of its own is open; the selected row is a filled pill, and a
-// rule that's off fades. A rule's row starts with its switch (the green dot), then its name, with
+// under the pointer and while a menu of its own is open (its ⋯'s, or its right-click menu, which
+// marks it data-context-open); the selected row is a filled pill, and a rule that's off fades. A
+// row that takes focus (a rule's, in the editor's list) has a ring inside its edge, which the rows
+// around it don't cover. A rule's row starts with its switch (the green dot), then its name, with
 // its slot at the right end (ItemSlot: what it did on the page, or its actions), over what it
 // matches; a request's starts with its method, and its status and duration sit at its right end.
+export const ROW_FOCUS =
+  'focus-visible:outline-none focus-visible:ring-[1.5px] focus-visible:ring-t65 focus-visible:ring-inset';
 const itemVariants = cva(
-  'group/item relative mx-1.5 grid cursor-pointer items-center rounded-md hover:bg-hover has-[[aria-haspopup=menu][data-popup-open]]:bg-hover data-selected:bg-pressed',
+  `group/item relative mx-1.5 grid cursor-pointer items-center rounded-md hover:bg-hover has-[[aria-haspopup=menu][data-popup-open]]:bg-hover data-context-open:bg-hover data-selected:bg-pressed ${ROW_FOCUS}`,
   {
     variants: {
       variant: {
@@ -88,14 +92,14 @@ export function ItemTitle({
   );
 }
 
-// Under the pointer, with keyboard focus anywhere in the row, or while a menu one of its actions
-// opened is open: a slot's actions show, and what it says doesn't, unless nothing can hover
-// (touch:), where there are no actions. Base UI marks an open menu's trigger data-popup-open, and
-// a tooltip's trigger too, so the menu's is the one with aria-haspopup.
+// Under the pointer, with keyboard focus on the row or anywhere in it, or while a menu one of its
+// actions opened is open: a slot's actions show, and what it says doesn't, unless nothing can
+// hover (touch:), where there are no actions. Base UI marks an open menu's trigger
+// data-popup-open, and a tooltip's trigger too, so the menu's is the one with aria-haspopup.
 const ACTIONS_SHOWN =
-  'group-hover/item:pointer-events-auto group-hover/item:opacity-100 group-has-[:focus-visible]/item:pointer-events-auto group-has-[:focus-visible]/item:opacity-100 group-has-[[aria-haspopup=menu][data-popup-open]]/item:pointer-events-auto group-has-[[aria-haspopup=menu][data-popup-open]]/item:opacity-100';
+  'group-hover/item:pointer-events-auto group-hover/item:opacity-100 group-focus-visible/item:pointer-events-auto group-focus-visible/item:opacity-100 group-has-[:focus-visible]/item:pointer-events-auto group-has-[:focus-visible]/item:opacity-100 group-has-[[aria-haspopup=menu][data-popup-open]]/item:pointer-events-auto group-has-[[aria-haspopup=menu][data-popup-open]]/item:opacity-100';
 const STATUS_HIDDEN =
-  'group-hover/item:opacity-0 group-has-[:focus-visible]/item:opacity-0 group-has-[[aria-haspopup=menu][data-popup-open]]/item:opacity-0 touch:opacity-100';
+  'group-hover/item:opacity-0 group-focus-visible/item:opacity-0 group-has-[:focus-visible]/item:opacity-0 group-has-[[aria-haspopup=menu][data-popup-open]]/item:opacity-0 touch:opacity-100';
 
 // A row's one slot, at the end of its first line (after T3 Code's thread rows): what the row says
 // at rest (children: "2 mocked", "· 4m"), and in the same place its actions (ItemAction), as
@@ -105,13 +109,15 @@ const STATUS_HIDDEN =
 // first, its later parts wrapping onto a line out of sight, then its first part truncates. Where
 // nothing can hover (touch:) there are no actions and no room kept for them: the row's own
 // controls do what they do. The row's tooltip, its title (the name in full), doesn't show over
-// the actions, which have their own.
+// the actions, which have their own. `statusId`: what it says, for a row to be described by.
 export function ItemSlot({
   actions,
+  statusId,
   className,
   children,
 }: {
   actions?: ReactNode;
+  statusId?: string;
   className?: string;
   children?: ReactNode;
 }) {
@@ -125,6 +131,7 @@ export function ItemSlot({
       )}
     >
       <span
+        id={statusId}
         data-slot="item-status"
         className={cn(
           'flex h-[1.5em] min-w-0 flex-wrap content-start items-center justify-end gap-x-1 overflow-hidden text-label whitespace-nowrap tabular-nums transition-opacity duration-100 [&>*:first-child]:min-w-0 [&>*:first-child]:truncate',

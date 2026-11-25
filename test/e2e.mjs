@@ -3030,8 +3030,8 @@ try {
         : active.dataset.url;
     });
   // The role and the name Chromium gives the element `selector` finds, as a screen reader gets: in
-  // the editor, or in another page by its CDP session.
-  const axOf = async (selector, session = editorSession) => {
+  // the editor, or in another page by its CDP session; with `described`, its description too.
+  const axOf = async (selector, session = editorSession, described = false) => {
     const { root } = await session.send('DOM.getDocument', { depth: 0 });
     const { nodeId } = await session.send('DOM.querySelector', {
       nodeId: root.nodeId,
@@ -3041,7 +3041,10 @@ try {
       nodeId,
       fetchRelatives: false,
     });
-    return [nodes[0]?.role?.value, nodes[0]?.name?.value];
+    const [node] = nodes;
+    return described
+      ? [node?.role?.value, node?.name?.value, node?.description?.value]
+      : [node?.role?.value, node?.name?.value];
   };
   // What each of these checks starts from, whatever the one before left: the three rules and Keys
   // with its two as they were made, Keys unfolded, and the rule that was open open.
@@ -3795,6 +3798,601 @@ try {
       );
     },
   );
+  // Traffic's rows (3c): a request's slot, its status over its duration, or under the pointer its
+  // actions (Mock this response, Copy URL, Copy as cURL); how long ago the page sent it; the list
+  // as a list of buttons for the keyboard, one Tab stop, with Esc; and a row's right-click menu.
+  // On requests of their own, marked rows=…, which the search shows alone. The rules as they were
+  // after, the server's response a rule made here keeps gone with it, the search empty.
+  const { rules: beforeRows } = await worker.evaluate(() =>
+    chrome.storage.local.get('rules'),
+  );
+  const trafficRow = (mark) => app.locator('[data-testid="request"]', { hasText: mark });
+  const searchRequests = (text) => app.fill('[aria-label="Search requests"]', text);
+  // A request the page makes, `ago` ms back by its own clock, which its log keeps as when it was
+  // sent.
+  const callAgo = (url, ago) =>
+    page.evaluate(
+      async ([target, back]) => {
+        const real = Date.now;
+        Date.now = () => real() - back;
+        try {
+          await (await fetch(target)).text();
+          // The interceptor logs the request a moment after it ends.
+          await new Promise((resolve) => setTimeout(resolve, 200));
+        } finally {
+          Date.now = real;
+        }
+      },
+      [url, ago],
+    );
+  // A row's slot: how opaque what it says and its actions are; where the row's path and its slot
+  // stand; and the icons of its actions.
+  const requestSlot = (mark) =>
+    trafficRow(mark).evaluate((row) => {
+      const part = (slot) => row.querySelector(`[data-slot="${slot}"]`);
+      const box = (element) => {
+        const { left, right, top, bottom } = element.getBoundingClientRect();
+        return [left, right, top, bottom].map((edge) => Math.round(edge));
+      };
+      return {
+        status: getComputedStyle(part('item-status')).opacity,
+        actions: getComputedStyle(part('item-slot-actions')).opacity,
+        path: box(row.querySelector('[data-testid="request-path"]')),
+        slot: box(part('item-slot')),
+        icons: [...row.querySelectorAll('[data-action] [data-icon]')].map(
+          (icon) => icon.dataset.icon,
+        ),
+      };
+    });
+  // What has focus: a row's button (its path), or what it's called.
+  const requestFocus = () =>
+    app.evaluate(() => {
+      const active = document.activeElement;
+      if (active?.matches('[data-row-open]'))
+        return active
+          .closest('[data-testid="request"]')
+          .querySelector('[data-testid="request-path"]').textContent;
+      return `not a row: ${active?.getAttribute('aria-label') ?? active?.tagName}`;
+    });
+  // What the page writes to the clipboard, kept as it's written, and the clipboard as it was.
+  const watchClipboard = () =>
+    app.evaluate(() => {
+      window.copiedTexts = [];
+      navigator.clipboard.writeText = async (text) => {
+        window.copiedTexts.push(text);
+      };
+    });
+  const unwatchClipboard = () => app.evaluate(() => delete navigator.clipboard.writeText);
+  // How many tooltips are open, and how many controls still say they copied (each does for a
+  // second).
+  const tipsOpen = () => app.locator('[data-slot="tooltip"][data-open]').count();
+  const sayingCopied = () => app.locator('[data-copied]').count();
+  // Esc for the open request, once no tooltip is open: an open tooltip takes the first Esc, as a
+  // tooltip does, and one that focus opened shuts a moment after focus has left its control (Base
+  // UI waits a turn of the page's tasks to see where focus went), a moment that keys pressed back
+  // to back can fall in.
+  const escapeRequest = async () => {
+    await rowSettled(tipsOpen, (count) => count === 0);
+    await app.keyboard.press('Escape');
+  };
+  // What each check starts from, whatever the one before left: no right-click menu open (it keeps
+  // the pointer from the page), Traffic showing, no request open, the pointer away from the rows
+  // (resting on an action, its tooltip would take the first Esc, as a tooltip does), and no copy
+  // still saying it copied (a row's icon a check for its second).
+  const rowsReady = async () => {
+    const menu = app.locator('[data-slot="context-menu-content"]');
+    if (await menu.count()) {
+      await app.keyboard.press('Escape');
+      await menu.waitFor({ state: 'detached', timeout: 3000 });
+    }
+    await show('traffic');
+    const back = app.locator('[data-testid="request-back"]');
+    if (await back.isVisible()) await back.click();
+    await app.mouse.move(900, 780);
+    await rowSettled(sayingCopied, (count) => count === 0);
+  };
+  await show('traffic');
+  // 4½ minutes back: the screens' clock reads up to 15 s behind between its ticks, so the row says
+  // "4m" for the next half minute.
+  await callAgo('/api/user?rows=old', 270_000);
+  await call('/api/user?rows=plain');
+  await call('/api/early?rows=answered');
+  await trafficRow('rows=answered').waitFor({ timeout: 3000 });
+
+  await check(
+    'a request\'s row says how long ago the page sent it, after what happened ("· 4m"), from its first minute on; under "Just now" it doesn\'t, as that says it',
+    async () => {
+      await rowsReady();
+      await searchRequests('rows=');
+      await trafficRow('rows=old').waitFor({ timeout: 3000 });
+      const listed = await app.evaluate(() =>
+        [...document.querySelectorAll('[data-testid="traffic-list"] section')].map(
+          (section) => [
+            section.querySelector('h2').textContent,
+            [...section.querySelectorAll('[data-testid="request"]')].map((row) => {
+              const time = row.querySelector(
+                '[data-testid="request-path"] + span [data-testid="request-time"]',
+              );
+              return [
+                row.querySelector('[data-testid="request-path"]').textContent,
+                time?.textContent ?? null,
+              ];
+            }),
+          ],
+        ),
+      );
+      expect(listed, [
+        [
+          'Just now',
+          [
+            ['/api/early?rows=answered', null],
+            ['/api/user?rows=plain', null],
+          ],
+        ],
+        ['A few minutes ago', [['/api/user?rows=old', '· 4m']]],
+      ]);
+    },
+  );
+  await check(
+    'a row\'s time moves on with the screens\' clock by itself: a request made 1 min 57 s back says "· 1m", then "· 2m" from a tick of the clock, which draws the time again (RequestTime) and not the row (RequestRow)',
+    async () => {
+      await rowsReady();
+      await callAgo('/api/user?rows=tick', 117_000);
+      await searchRequests('rows=tick');
+      const time = trafficRow('rows=tick').locator('[data-testid="request-time"]');
+      await time.waitFor({ timeout: 3000 });
+      const before = await time.textContent();
+      const counts = await draws(async () => {
+        await app.waitForFunction(
+          () =>
+            document.querySelector('[data-testid="request"] [data-testid="request-time"]')
+              ?.textContent === '· 2m',
+          null,
+          { timeout: 35_000 },
+        );
+        await sleep(200);
+      });
+      expect(
+        [
+          before,
+          await time.textContent(),
+          (counts.RequestTime ?? 0) > 0,
+          counts.RequestRow ?? 0,
+        ],
+        ['· 1m', '· 2m', true, 0],
+        `drawn: RequestTime ${counts.RequestTime}, RequestRow ${counts.RequestRow}`,
+      );
+    },
+  );
+  await check(
+    "under the pointer a request's row shows Mock this response, Copy URL and Copy as cURL where its status and duration were, and nothing in the row moves; Copy URL copies the URL, its icon a check for a second, the actions staying that second with the pointer gone, a polite live region saying so; Copy as cURL copies the command",
+    async () => {
+      await rowsReady();
+      await searchRequests('rows=');
+      await app.mouse.move(900, 780);
+      const rest = await requestSlot('rows=plain');
+      await trafficRow('rows=plain').hover();
+      const shown = await rowSettled(
+        () => requestSlot('rows=plain'),
+        (slot) => slot.actions === '1' && slot.status === '0',
+      );
+      await watchClipboard();
+      try {
+        await trafficRow('rows=plain').locator('[data-testid="row-copy-url"]').click();
+        await app.mouse.move(900, 780);
+        const copying = await rowSettled(
+          () => requestSlot('rows=plain'),
+          (slot) => slot.icons.includes('check'),
+        );
+        await sleep(300);
+        const held = await requestSlot('rows=plain');
+        const said = await trafficRow('rows=plain')
+          .locator('[data-testid="row-copy-url"]')
+          .evaluate((button) => [
+            button.nextElementSibling.getAttribute('aria-live'),
+            button.nextElementSibling.textContent,
+          ]);
+        const after = await rowSettled(
+          () => requestSlot('rows=plain'),
+          (slot) => slot.status === '1' && !slot.icons.includes('check'),
+        );
+        await trafficRow('rows=plain').hover();
+        await trafficRow('rows=plain').locator('[data-testid="row-copy-curl"]').click();
+        await rowSettled(
+          () => app.evaluate(() => window.copiedTexts.length),
+          (count) => count === 2,
+        );
+        const url = `${ORIGIN}/api/user?rows=plain`;
+        const parts = (slot) => [slot.status, slot.actions, slot.path, slot.slot];
+        expect(
+          [
+            parts(rest),
+            [...parts(shown), shown.icons],
+            [held.status, held.actions, held.icons],
+            said,
+            parts(after),
+            await app.evaluate(() => window.copiedTexts),
+          ],
+          [
+            ['1', '0', rest.path, rest.slot],
+            ['0', '1', rest.path, rest.slot, ['wand', 'link', 'terminal']],
+            ['0', '1', ['wand', 'check', 'terminal']],
+            ['polite', 'Copied the URL'],
+            ['1', '0', rest.path, rest.slot],
+            [url, curlCommand({ method: 'GET', url, body: '' })],
+          ],
+          JSON.stringify({ copying }),
+        );
+      } finally {
+        await unwatchClipboard();
+      }
+    },
+  );
+  await check(
+    "Traffic's list is a list of buttons that's one Tab stop: Tab from the search lands on its row's button, then on that row's three actions, which show, then out of the list, the last one's tooltip shutting; ↑ ↓ Home End move between requests, from one stretch of time to the next; Enter opens one, its button marked the current one, focus staying on its row beside it; Esc shuts it, focus on its row; a screen reader names a row's button by its method, path and what happened, and describes it by its status and duration",
+    async () => {
+      await rowsReady();
+      await searchRequests('rows=');
+      await trafficRow('rows=old').waitFor({ timeout: 3000 });
+      const list = await app.evaluate(() => {
+        const rows = [...document.querySelectorAll('[data-testid="request"]')];
+        const pathOf = (row) =>
+          row.querySelector('[data-testid="request-path"]').textContent;
+        return {
+          order: rows.map(pathOf),
+          stops: [...document.querySelectorAll('[data-testid="traffic-list"] *')]
+            .filter(
+              (element) =>
+                element.tabIndex >= 0 && element.closest('[data-testid="request"]'),
+            )
+            .map((element) =>
+              element.matches('[data-row-open]')
+                ? pathOf(element.closest('[data-testid="request"]'))
+                : element.getAttribute('aria-label'),
+            ),
+        };
+      });
+      const stop = list.stops[0];
+      await app.locator('[aria-label="Search requests"]').focus();
+      const tabs = [];
+      let actions = '';
+      for (let time = 0; time < 5; time++) {
+        await app.keyboard.press('Tab');
+        tabs.push(await requestFocus());
+        // With focus on the row's first action, once the actions have faded in.
+        if (time === 1)
+          actions = (
+            await rowSettled(
+              () => requestSlot(stop),
+              (slot) => slot.actions === '1',
+            )
+          ).actions;
+      }
+      const left = await app.evaluate(
+        () => !document.activeElement?.closest('[data-testid="traffic-list"]'),
+      );
+      // The last action's tooltip, which focus opened, shuts with focus gone from it.
+      const tipsLeft = await rowSettled(tipsOpen, (count) => count === 0);
+      await trafficRow(stop).locator('[data-row-open]').focus();
+      const keys = [];
+      for (const key of [
+        'Home',
+        'ArrowDown',
+        'ArrowDown',
+        'ArrowDown',
+        'End',
+        'ArrowUp',
+      ]) {
+        await app.keyboard.press(key);
+        keys.push(await requestFocus());
+      }
+      // Enter on the one focused now (the third), and Esc.
+      await app.keyboard.press('Enter');
+      const detail = app.locator('[data-testid="request-detail"]');
+      await detail.waitFor({ timeout: 3000 });
+      const opened = [
+        await detail.locator('h2').textContent(),
+        await app.locator('[data-row-open][aria-current="true"]').count(),
+        await requestFocus(),
+      ];
+      await escapeRequest();
+      await detail.waitFor({ state: 'detached', timeout: 3000 });
+      const shut = await requestFocus();
+      // The button of /api/user?rows=plain, as a screen reader gets it.
+      const [role, name, description] = await axOf(
+        '[data-testid="request"]:has([data-full="/api/user?rows=plain"]) [data-row-open]',
+        editorSession,
+        true,
+      );
+      const { order } = list;
+      expect(
+        [
+          list.stops.slice(1),
+          tabs.slice(0, 4),
+          tabs[4].startsWith('not a row'),
+          left,
+          tipsLeft,
+          actions,
+          keys,
+          opened,
+          shut,
+          role,
+          name.startsWith('GET /api/user?rows=plain ') && name.includes(' · fetch()'),
+          /^200 \d+ ms$/.test(description),
+        ],
+        [
+          [
+            `Mock this response: GET ${stop}`,
+            `Copy URL: GET ${stop}`,
+            `Copy as cURL: GET ${stop}`,
+          ],
+          [
+            stop,
+            `not a row: Mock this response: GET ${stop}`,
+            `not a row: Copy URL: GET ${stop}`,
+            `not a row: Copy as cURL: GET ${stop}`,
+          ],
+          true,
+          true,
+          0,
+          '1',
+          [
+            order[0],
+            order[1],
+            order[2],
+            order[3] ?? order[2],
+            order.at(-1),
+            order.at(-2),
+          ],
+          [`GET${order[2]}`, 1, order[2]],
+          order[2],
+          'button',
+          true,
+          true,
+        ],
+        JSON.stringify({ name, description }),
+      );
+    },
+  );
+  await check(
+    "in a 420 px panel an open request takes the list's place: Enter on a row puts focus on the request's name at its top; Esc shuts it, the list back with focus on the row, and so does Close",
+    async () => {
+      await rowsReady();
+      await searchRequests('rows=');
+      const detail = app.locator('[data-testid="request-detail"]');
+      // What has focus: a row's button (its path), something in the open request, or else.
+      const where = () =>
+        app.evaluate(() => {
+          const active = document.activeElement;
+          if (active?.matches('[data-row-open]'))
+            return active
+              .closest('[data-testid="request"]')
+              .querySelector('[data-testid="request-path"]').textContent;
+          if (active?.closest('[data-testid="request-detail"]'))
+            return `in the request: ${active.tagName}`;
+          return `elsewhere: ${active?.tagName}`;
+        });
+      const listShows = () => app.locator('[data-testid="traffic-list"]').isVisible();
+      try {
+        await app.setViewportSize({ width: 420, height: 760 });
+        await trafficRow('rows=plain').waitFor({ state: 'visible', timeout: 3000 });
+        await trafficRow('rows=plain').locator('[data-row-open]').focus();
+        await app.keyboard.press('Enter');
+        await detail.waitFor({ timeout: 3000 });
+        const opened = [await listShows(), await where()];
+        await escapeRequest();
+        await detail.waitFor({ state: 'detached', timeout: 3000 });
+        const byEsc = [await listShows(), await where()];
+        await app.keyboard.press('Enter');
+        await detail.waitFor({ timeout: 3000 });
+        await app.locator('[data-testid="request-back"]').click();
+        await detail.waitFor({ state: 'detached', timeout: 3000 });
+        const byClose = [await listShows(), await where()];
+        expect(
+          [opened, byEsc, byClose],
+          [
+            [false, 'in the request: H2'],
+            [true, '/api/user?rows=plain'],
+            [true, '/api/user?rows=plain'],
+          ],
+        );
+      } finally {
+        await app.setViewportSize({ width: 1280, height: 820 });
+      }
+    },
+  );
+  await check(
+    "a right-click on a request's row opens its menu at the pointer: Mock this response, Copy URL and Copy as cURL, and Open the rule where a rule answered it, the row showing its actions while it's open; the ContextMenu key and Shift+F10 on the focused row open it at the row's bottom left, Esc giving focus back; its Copy URL copies and the row says so; its Open the rule opens the rule; elsewhere in the list, the browser's menu",
+    async () => {
+      await rowsReady();
+      await searchRequests('rows=');
+      const menu = app.locator('[data-slot="context-menu-content"]');
+      const items = async () => {
+        await menu.locator('[role="menuitem"]').first().waitFor({ timeout: 3000 });
+        return (await menu.locator('[role="menuitem"]').allTextContents()).map((text) =>
+          text.trim(),
+        );
+      };
+      const near = async (point) => {
+        const box = await menu.boundingBox();
+        return Boolean(box) && Math.hypot(box.x - point[0], box.y - point[1]) <= 12;
+      };
+      const shut = async () => {
+        await app.keyboard.press('Escape');
+        await menu.waitFor({ state: 'detached', timeout: 3000 });
+      };
+      const pointOn = async (mark) => {
+        const box = await trafficRow(mark).boundingBox();
+        return [box.x + 120, box.y + box.height / 2];
+      };
+      const ROW_ITEMS = ['Mock this response', 'Copy URL', 'Copy as cURL'];
+      // By the pointer, on the request a rule answered, the pointer then gone from its row; and
+      // on one no rule answered.
+      const onAnswered = await pointOn('rows=answered');
+      await app.mouse.click(...onAnswered, { button: 'right' });
+      const answered = [await items(), await near(onAnswered)];
+      await app.mouse.move(900, 780);
+      await sleep(300);
+      const whileOpen = (await requestSlot('rows=answered')).actions;
+      await shut();
+      await app.mouse.click(...(await pointOn('rows=plain')), { button: 'right' });
+      const plain = await items();
+      await shut();
+      // The keys, on the row with focus.
+      await trafficRow('rows=plain').locator('[data-row-open]').focus();
+      await app.keyboard.press('ContextMenu');
+      const box = await trafficRow('rows=plain').boundingBox();
+      const byKey = [await items(), await near([box.x, box.y + box.height])];
+      await shut();
+      const back = await rowSettled(
+        requestFocus,
+        (focused) => focused === '/api/user?rows=plain',
+      );
+      await app.keyboard.press('Shift+F10');
+      const byShift = await items();
+      // Its Copy URL: the row's own button copies, and its icon says so.
+      await watchClipboard();
+      let copied;
+      try {
+        await menu.locator('[data-testid="request-menu-copy-url"]').click();
+        await menu.waitFor({ state: 'detached', timeout: 3000 });
+        const slot = await rowSettled(
+          () => requestSlot('rows=plain'),
+          (look) => look.icons.includes('check') && look.actions === '1',
+        );
+        copied = [slot.actions, slot.icons, await app.evaluate(() => window.copiedTexts)];
+      } finally {
+        await unwatchClipboard();
+      }
+      // Its Open the rule, on the request a rule answered.
+      await app.mouse.click(...(await pointOn('rows=answered')), { button: 'right' });
+      await items();
+      await menu.locator('[data-testid="request-menu-open-rule"]').click();
+      const opened = await rowSettled(openNow, (url) => url === '/api/early');
+      await show('traffic');
+      // A stretch of time's label: no menu of ours, and nothing kept from the browser.
+      await app.evaluate(() => {
+        window.trafficMenus = [];
+        addEventListener('contextmenu', (event) => window.trafficMenus.push(event), true);
+      });
+      await app
+        .locator('[data-testid="traffic-list"] h2', { hasText: 'Just now' })
+        .click({ button: 'right' });
+      await sleep(300);
+      const elsewhere = [
+        await menu.count(),
+        await app.evaluate(() =>
+          window.trafficMenus.map((event) => event.defaultPrevented),
+        ),
+      ];
+      expect(
+        [answered, whileOpen, plain, byKey, back, byShift, copied, opened, elsewhere],
+        [
+          [[...ROW_ITEMS, 'Open the rule'], true],
+          '1',
+          ROW_ITEMS,
+          [ROW_ITEMS, true],
+          '/api/user?rows=plain',
+          ROW_ITEMS,
+          ['1', ['wand', 'check', 'terminal'], [`${ORIGIN}/api/user?rows=plain`]],
+          '/api/early',
+          [0, [false]],
+        ],
+      );
+    },
+  );
+  await check(
+    "Mock this response on a request's row makes a rule of its response, as the open request's button does: the rule opens, with the server's body",
+    async () => {
+      await rowsReady();
+      await searchRequests('rows=');
+      await trafficRow('rows=plain').hover();
+      await trafficRow('rows=plain').locator('[data-testid="row-mock"]').click();
+      await app.waitForSelector('[data-testid="view-rules"]:not([hidden])');
+      expect(
+        [
+          JSON.parse(await body.inputValue()).name,
+          await app.locator('[data-testid="row-url-value"]').textContent(),
+        ],
+        ['Real', '/api/user?rows=plain'],
+      );
+    },
+  );
+  await check(
+    "in Commit Mono at Larger, in a 420 px panel, nothing in a request's row reaches past its edge: its slot ends inside the row, and what happened gives way before its time",
+    async () => {
+      await rowsReady();
+      await searchRequests('');
+      try {
+        await app.evaluate(() =>
+          Object.assign(document.documentElement.dataset, {
+            font: 'mono',
+            size: 'larger',
+          }),
+        );
+        await app.setViewportSize({ width: 420, height: 760 });
+        await app.evaluate(() => document.fonts.ready);
+        await app
+          .locator('[data-testid="request"]')
+          .first()
+          .waitFor({ state: 'visible' });
+        const rows = await app.evaluate(() =>
+          [...document.querySelectorAll('[data-testid="request"]')].map((row) => {
+            const edge =
+              row.getBoundingClientRect().right -
+              parseFloat(getComputedStyle(row).paddingRight);
+            const slot = row
+              .querySelector('[data-slot="item-slot"]')
+              .getBoundingClientRect();
+            const open = row.querySelector('[data-row-open]');
+            const second = row.querySelector('[data-testid="request-path"] + span');
+            const time = second.querySelector('[data-testid="request-time"]');
+            return {
+              inside:
+                slot.right <= edge + 0.5 &&
+                row.scrollWidth <= row.clientWidth &&
+                open.scrollWidth <= open.clientWidth,
+              time: Boolean(time),
+              timeWhole:
+                !time ||
+                (time.getBoundingClientRect().right <=
+                  second.getBoundingClientRect().right + 0.5 &&
+                  time.scrollWidth <= time.clientWidth),
+            };
+          }),
+        );
+        expect(
+          [
+            rows.length > 3,
+            rows.every((row) => row.inside),
+            rows.some((row) => row.time),
+            rows.every((row) => row.timeWhole),
+          ],
+          [true, true, true, true],
+          JSON.stringify(rows.filter((row) => !row.inside || !row.timeWhole)),
+        );
+      } finally {
+        await app.evaluate(() => {
+          delete document.documentElement.dataset.font;
+          delete document.documentElement.dataset.size;
+        });
+        await app.setViewportSize({ width: 1280, height: 820 });
+      }
+    },
+  );
+  {
+    const { rules: afterRows } = await worker.evaluate(() =>
+      chrome.storage.local.get('rules'),
+    );
+    const made = afterRows
+      .filter((rule) => !beforeRows.some(({ id }) => id === rule.id))
+      .map(({ id }) => `serverResponse:${id}`);
+    await setStorage({ rules: beforeRows });
+    await worker.evaluate((keys) => chrome.storage.local.remove(keys), made);
+    await show('traffic');
+    await searchRequests('');
+  }
+
   await check('"Mock this response" turns a request into a rule', async () => {
     await app
       .locator('[data-testid="request"]', { hasText: 'case=live-check' })

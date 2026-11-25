@@ -7,11 +7,15 @@
 // ContextMenu key, or Shift+F10, on the one with focus) opens its menu (ContextMenu); the search
 // field over them keeps the browser's. Their dots share one tooltip (SharedTooltip), and the two
 // that say the same are described by one hidden copy of the words. The requests sit in a card
-// (ItemList), as Traffic's groups do. A URL that doesn't fit is cut in its middle, so its end
-// stays (MiddleTruncate).
-import { useState } from 'react';
+// (ItemList), as Traffic's groups do, each with its slot on two lines (ItemSlot stacked): its
+// status over how long it took, and in their place, under the pointer, while its right-click menu
+// is open, and for the second one of them says it copied, its actions: Mock this response, Copy
+// URL and Copy as cURL, the two copies a check for that second (useCopied). A URL that doesn't fit
+// is cut in its middle, so its end stays (MiddleTruncate).
+import { useRef, useState } from 'react';
 import { formatDuration } from '../../../../lib/index.ts';
 import { Badge, StatusCode } from '../../../../ui/kit/badge.tsx';
+import { useCopied } from '../../../../ui/kit/copy-button.tsx';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -250,43 +254,139 @@ export function ItemSection() {
           </ContextMenuContent>
         </ContextMenu>
         <SharedTooltip handle={DOTS} />
-        <ItemList>
-          {REQUESTS.map((entry, position) => (
-            <Item
-              key={entry.path + entry.method}
-              variant="request"
-              selected={position === 2}
-              className="mx-0"
-            >
-              <Method matched={Boolean(entry.action)}>{entry.method}</Method>
-              <span className="flex min-w-0 flex-col gap-0.5">
-                <MiddleTruncate
-                  text={entry.path}
-                  className="font-mono text-body text-foreground"
-                />
-                <span className="flex min-w-0 items-center gap-1 overflow-hidden text-label whitespace-nowrap text-t40">
-                  {entry.action ? (
-                    <>
-                      <Badge variant="fired">{entry.action}</Badge>
-                      <span className="flex-none text-signal">by</span>
-                      <span className="truncate pl-0.5 text-t65">{entry.rule}</span>
-                    </>
-                  ) : (
-                    `${entry.host} · fetch()`
-                  )}
-                </span>
-              </span>
-              <span className="flex flex-col items-end gap-0.5">
-                <StatusCode status={entry.status} />
-                <span className="font-mono text-label text-t40 tabular-nums">
-                  {entry.ms != null ? formatDuration(entry.ms) : ''}
-                </span>
-              </span>
-            </Item>
-          ))}
-        </ItemList>
+        <RequestRows />
       </div>
     </Cell>
+  );
+}
+
+// The requests, in a card, with a right-click menu that marks its row as having it open, as
+// Traffic's list does (its items here do nothing).
+function RequestRows() {
+  const marked = useRef<HTMLElement | null>(null);
+  return (
+    <ContextMenu
+      onOpenChange={(open) => {
+        if (open) return;
+        marked.current?.removeAttribute('data-context-open');
+        marked.current = null;
+      }}
+    >
+      <ContextMenuTrigger
+        render={<ItemList data-testid="kit-requests" />}
+        onContextMenu={(event) => {
+          const row = (event.target as Element).closest<HTMLElement>(
+            '[data-testid=kit-requests] > li',
+          );
+          if (!row) {
+            event.preventBaseUIHandler();
+            return;
+          }
+          marked.current?.removeAttribute('data-context-open');
+          row.setAttribute('data-context-open', '');
+          marked.current = row;
+        }}
+      >
+        {REQUESTS.map((entry, position) => (
+          <Item
+            key={entry.path + entry.method}
+            variant="request"
+            selected={position === 2}
+            className="mx-0"
+          >
+            <Method matched={Boolean(entry.action)}>{entry.method}</Method>
+            <span className="flex min-w-0 flex-col gap-0.5">
+              <MiddleTruncate
+                text={entry.path}
+                className="font-mono text-body text-foreground"
+              />
+              <span className="flex min-w-0 items-center gap-1 overflow-hidden text-label whitespace-nowrap text-t40">
+                {entry.action ? (
+                  <>
+                    <Badge variant="fired">{entry.action}</Badge>
+                    <span className="flex-none text-signal">by</span>
+                    <span className="truncate pl-0.5 text-t65">{entry.rule}</span>
+                  </>
+                ) : (
+                  `${entry.host} · fetch()`
+                )}
+              </span>
+            </span>
+            <ItemSlot
+              stacked
+              className="min-w-19"
+              actions={<RequestActions url={`https://${entry.host}${entry.path}`} />}
+            >
+              <StatusCode status={entry.status} />
+              <span className="font-mono text-label text-t40 tabular-nums">
+                {entry.ms != null ? formatDuration(entry.ms) : ''}
+              </span>
+            </ItemSlot>
+          </Item>
+        ))}
+      </ContextMenuTrigger>
+      <ContextMenuContent>
+        <DropdownMenuItem>
+          <Icon name="wand" /> Mock this response
+        </DropdownMenuItem>
+        <DropdownMenuItem>
+          <Icon name="link" /> Copy URL
+        </DropdownMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
+  );
+}
+
+// A request row's actions, in its slot: Mock this response (here it does nothing), and two copies,
+// each a check for the second after it copied.
+function RequestActions({ url }: { url: string }) {
+  return (
+    <>
+      <Tooltip label="Mock this response">
+        <ItemAction aria-label="Mock this response">
+          <Icon name="wand" size={14} />
+        </ItemAction>
+      </Tooltip>
+      <CopyAction label="Copy URL" icon="link" what="the URL" text={url} />
+      <CopyAction
+        label="Copy as cURL"
+        icon="terminal"
+        what="the cURL command"
+        text={`curl '${url}'`}
+      />
+    </>
+  );
+}
+
+function CopyAction({
+  label,
+  icon,
+  what,
+  text,
+}: {
+  label: string;
+  icon: 'link' | 'terminal';
+  what: string;
+  text: string;
+}) {
+  const { copied, copy, live } = useCopied(what);
+  return (
+    <>
+      <Tooltip label={label}>
+        <ItemAction
+          aria-label={label}
+          data-copied={copied || undefined}
+          onClick={() => copy(text)}
+        >
+          <Icon
+            name={copied ? 'check' : icon}
+            size={14}
+            className={copied ? 'text-signal' : undefined}
+          />
+        </ItemAction>
+      </Tooltip>
+      {live}
+    </>
   );
 }
 

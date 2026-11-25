@@ -181,7 +181,7 @@ src/bounded-contexts/            the six bounded contexts of GLOSSARY-MAP.md, a 
     application/                 the editor's live log of the tab it watches (traffic-log.ts: Traffic, how often a rule fired, New rule's recent requests); Keep on reload, whether that log keeps what it has when the page reloads (preserve.ts); the screens' copy of Recording, whether requests are added to the logs at all, which only the popup changes (recording.ts); what each rule did on a tab's page and when it last did, as the page counts it for the popup, and in words, as the popup and the editor's rule list say it (page-counts.ts)
     infrastructure/              the tab's own log, which the bridge starts in each page (tab-log.ts): it rebuilds what the page reports and keeps it, an iframe's by way of the top frame, counts it for the popup, with when each rule last answered, and gives it to the Traffic view over a port
     contract.ts                  the messages Traffic's parts send each other: the interceptor's report of a request, an iframe's entry, the popup's question and the counts that answer it, with when each rule last answered, and what goes over the log's port
-    ui/                          the Traffic view: a tab's live log grouped by time, a request's drawer (request-detail/), Mock this response; and the hooks that run the editor's live log and read it (use-traffic-log.ts)
+    ui/                          the Traffic view: a tab's live log grouped by time, a list of buttons for the keyboard with a request's right-click menu (traffic-list.tsx), a request's row with its slot and how long ago it was sent (request-row.tsx), the tooltips the rows share (row-tools.ts), a request's drawer (request-detail/), and what can be done with a request, once for its row, its menu and its drawer (entry-actions.ts: Mock this response, the copies, Open the rule); and the hooks that run the editor's live log and read it (use-traffic-log.ts)
   interception/                  Interception, what runs in the page's own world (index.ts, for the interceptor alone); its words are in glossary/interception.md
     page-channel.ts              the private channel to the bridge, which offers its port once, before any page script runs: the rules arrive over it, and the page's requests go back over it
     fetch.ts                     window.fetch, wrapped; xhr.ts, XMLHttpRequest, wrapped; simulate-xhr.ts, an XMLHttpRequest a rule answers, its state and events played back in the order a real one fires them
@@ -316,8 +316,12 @@ what to do. `useCopied()` is the same for a control of another shape.
 A list row has one slot at the end of its first line, after T3 Code's thread rows: `<ItemSlot>`
 (`item.tsx`), as the editor's rule rows and the popup's have it. At rest it says what the row has to say ("1
 mocked · 4m": a rule's count in green, how long ago in grey); under the pointer, with keyboard
-focus anywhere in the row, and while a menu one of its actions opened is open, its actions
-(`<ItemAction>`, 24 px squares, each with an `aria-label` and a `<Tooltip>`) take the same place.
+focus anywhere in the row, while a menu of its own is open (one of its actions opened, or its
+right-click menu, which marks the row `data-context-open`), and for the second one of its
+actions says it copied (`data-copied`, `useCopied()`), its actions (`<ItemAction>`, 24 px
+squares, each with an `aria-label` and a `<Tooltip>`) take the same place. `<ItemSlot stacked>`
+is a column of the row's own that says two short things, one over the other, as a request's
+status over its duration in Traffic, its actions across both lines.
 The slot is as wide as what it says and at least as its actions (two by default), so nothing in
 the row moves as they come and go. Short of room, it gives way down to that, and what it says goes
 from its end: its later parts wrap onto a line out of sight, then its first part truncates; the
@@ -331,7 +335,8 @@ which its neighbours don't cover, and with focus on it its actions show too. The
 list draws its rows' actions as plain buttons until the pointer or focus comes near a row, and
 then as triggers of a tooltip and a ⋯ menu the list draws once for all of them
 (`rules/ui/row-tools.ts`), so 300 rules mount about as fast as they did before the slot. The
-popup's rows do the same with their one action, Edit this rule (`app/popup/ui/row-tools.ts`).
+popup's rows do the same with their one action, Edit this rule (`app/popup/ui/row-tools.ts`),
+and Traffic's with their three (`traffic/ui/row-tools.ts`), so 300 requests do too.
 
 A right-click menu is `<ContextMenu>` (`context-menu.tsx`): the menus' card at the pointer, over
 the elements of its `<ContextMenuTrigger>`, whose `onContextMenu` finds what was right-clicked
@@ -518,7 +523,17 @@ this response on a request a rule answered), the
 traffic view (its filters, Keep on reload, which stops at 500 requests however a page that asks
 for a lot as it starts reloads, Clear, an open request's Copy URL, Copy as cURL and Copy body,
 each saying "Copied" in itself with no toast, and an error toast for a copy the browser refuses,
-a request's Sent time, when it was sent and not when its
+a request's row: how long ago it was sent from its first minute on ("· 4m", none under "Just
+now"), that time moving on with the clock and drawing nothing else of the row, its slot's Mock
+this response, Copy URL and Copy as cURL under the pointer with nothing moving, a copy's check
+for a second, the actions staying for it, Mock from a row as from the open request; the list a
+list of buttons that's one Tab stop, Tab going on to the row's actions and out, ↑ ↓ Home End
+across the stretches of time, Enter opening a request with focus on its row, Esc shutting it,
+and a row's button named by its method, path and what happened; in a 420 px panel focus on the
+request's name as it opens and back on its row as Esc or Close shuts it; a row's right-click
+menu by the pointer, the ContextMenu key and Shift+F10, with Open the rule where a rule
+answered, its copy said in the row, and the browser's elsewhere; and nothing past a row's edge
+in Commit Mono at Larger at 420 px), a request's Sent time, when it was sent and not when its
 response ended, an iframe's requests, which the background passes on to its tab's log (one a
 rule answers and one no rule does, made in an iframe on another host Ghostfetch runs on, both
 listed for the tab, and the one answered in the popup's counts for the tab, with when), and the page it
@@ -708,7 +723,10 @@ there instead, the name and the slot not moving; narrowed 10 px at a time from 4
 what it says gives way, the time out of sight first, then the count cut, the name keeping its
 room and nothing past the row's edge; and in Chromium, where nothing can hover (DevTools'
 emulation of `any-hover: none`), no actions and no room kept for them, what the slot says staying
-under the pointer. And a shared tooltip: the rule rows' dots share one, which says each dot's
+under the pointer. And a request row's slot: its status over its duration; under the pointer,
+while the row's right-click menu is open, and for the second a copy says so (its icon a check),
+the pointer gone, its actions there instead, halfway down the row, nothing moving. And a shared
+tooltip: the rule rows' dots share one, which says each dot's
 words under the pointer, the two that say the same described by one hidden copy of the words and
 the third by another, and a screen reader gets each its words. And a right-click menu: at the
 pointer on a rule row, Esc shutting it; the ContextMenu key (in Zen, as key events the page gets,

@@ -92,14 +92,16 @@ export function ItemTitle({
   );
 }
 
-// Under the pointer, with keyboard focus on the row or anywhere in it, or while a menu one of its
-// actions opened is open: a slot's actions show, and what it says doesn't, unless nothing can
-// hover (touch:), where there are no actions. Base UI marks an open menu's trigger
-// data-popup-open, and a tooltip's trigger too, so the menu's is the one with aria-haspopup.
+// Under the pointer, with keyboard focus on the row or anywhere in it, while a menu of its own is
+// open (one of its actions opened, or its right-click menu, which marks the row
+// data-context-open), and for the second one of its actions says it copied (data-copied): a
+// slot's actions show, and what it says doesn't, unless nothing can hover (touch:), where there
+// are no actions. Base UI marks an open menu's trigger data-popup-open, and a tooltip's trigger
+// too, so the menu's is the one with aria-haspopup.
 const ACTIONS_SHOWN =
-  'group-hover/item:pointer-events-auto group-hover/item:opacity-100 group-focus-visible/item:pointer-events-auto group-focus-visible/item:opacity-100 group-has-[:focus-visible]/item:pointer-events-auto group-has-[:focus-visible]/item:opacity-100 group-has-[[aria-haspopup=menu][data-popup-open]]/item:pointer-events-auto group-has-[[aria-haspopup=menu][data-popup-open]]/item:opacity-100';
+  'group-hover/item:pointer-events-auto group-hover/item:opacity-100 group-focus-visible/item:pointer-events-auto group-focus-visible/item:opacity-100 group-has-[:focus-visible]/item:pointer-events-auto group-has-[:focus-visible]/item:opacity-100 group-has-[[aria-haspopup=menu][data-popup-open]]/item:pointer-events-auto group-has-[[aria-haspopup=menu][data-popup-open]]/item:opacity-100 group-data-context-open/item:pointer-events-auto group-data-context-open/item:opacity-100 group-has-[[data-copied]]/item:pointer-events-auto group-has-[[data-copied]]/item:opacity-100';
 const STATUS_HIDDEN =
-  'group-hover/item:opacity-0 group-focus-visible/item:opacity-0 group-has-[:focus-visible]/item:opacity-0 group-has-[[aria-haspopup=menu][data-popup-open]]/item:opacity-0 touch:opacity-100';
+  'group-hover/item:opacity-0 group-focus-visible/item:opacity-0 group-has-[:focus-visible]/item:opacity-0 group-has-[[aria-haspopup=menu][data-popup-open]]/item:opacity-0 group-data-context-open/item:opacity-0 group-has-[[data-copied]]/item:opacity-0 touch:opacity-100';
 
 // A row's one slot, at the end of its first line (after T3 Code's thread rows): what the row says
 // at rest (children: "2 mocked", "· 4m"), and in the same place its actions (ItemAction), as
@@ -110,14 +112,19 @@ const STATUS_HIDDEN =
 // nothing can hover (touch:) there are no actions and no room kept for them: the row's own
 // controls do what they do. The row's tooltip, its title (the name in full), doesn't show over
 // the actions, which have their own. `statusId`: what it says, for a row to be described by.
+// `stacked`: the slot is a column of the row's own, as tall as the row, and what it says is two
+// short things, one over the other (a request's status over how long it took), which keep their
+// width; the actions sit across both lines.
 export function ItemSlot({
   actions,
   statusId,
+  stacked = false,
   className,
   children,
 }: {
   actions?: ReactNode;
   statusId?: string;
+  stacked?: boolean;
   className?: string;
   children?: ReactNode;
 }) {
@@ -134,7 +141,10 @@ export function ItemSlot({
         id={statusId}
         data-slot="item-status"
         className={cn(
-          'flex h-[1.5em] min-w-0 flex-wrap content-start items-center justify-end gap-x-1 overflow-hidden text-label whitespace-nowrap tabular-nums transition-opacity duration-100 [&>*:first-child]:min-w-0 [&>*:first-child]:truncate',
+          'transition-opacity duration-100',
+          stacked
+            ? 'flex flex-col items-end gap-0.5'
+            : 'flex h-[1.5em] min-w-0 flex-wrap content-start items-center justify-end gap-x-1 overflow-hidden text-label whitespace-nowrap tabular-nums [&>*:first-child]:min-w-0 [&>*:first-child]:truncate',
           actions && STATUS_HIDDEN,
         )}
       >

@@ -197,6 +197,12 @@ What's different in Firefox-based browsers:
     pick instead stays until you switch tabs. In a tab of its own it keeps the page you
     picked. Either way, when that page closes or goes somewhere that isn't a web page, it
     moves to the page you used last.
+    A request's row says how long ago it was sent ("· 4m") once it's older than a minute, and
+    its status and duration at the right; under the pointer the same place has **Mock this
+    response**, **Copy URL** and **Copy as cURL** (a copy shows a check for a second). A
+    right-click on a request (or the menu key, or Shift+F10) has the same, and **Open the rule**
+    when a rule answered it. From the keyboard the log is one Tab stop: ↑ and ↓ move between
+    requests, Enter opens one, Esc closes it, and Tab goes on to the request's actions.
     Click a request to open it in a drawer beside the log: its status, time and Content-Type,
     the rule that acted on it, its bodies, **Copy URL**, **Copy as cURL** and **Copy body**,
     and **Mock this response**, which turns it into a rule pre-filled with the method, path,

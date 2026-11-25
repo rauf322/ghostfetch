@@ -2,7 +2,8 @@
 // trigger, which its items are about (the trigger's onContextMenu says which, from the event's
 // target, before it opens). Base UI's, with its items, submenus and keys: the arrows move, Enter
 // runs an item, Esc closes it. From the keyboard, the ContextMenu key or Shift+F10 opens it at the
-// bottom left of what has focus, on the key's release (as VS Code's lists do, and T3 Code's). A
+// bottom left of what has focus (of its row, where it's in one), on the key's release (as VS Code's
+// lists do, and T3 Code's). A
 // right-click in a text field, or on text selected in the trigger, gets the browser's own menu
 // (Copy, Paste, the spelling), and the trigger's onContextMenu doesn't hear it.
 import { ContextMenu as ContextMenuPrimitive } from '@base-ui/react/context-menu';
@@ -47,11 +48,13 @@ const isMenuKey = (event: KeyboardEvent) =>
   !event.metaKey &&
   (event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey));
 
-// Opens the menu for `element` at its bottom left, as a right-click there would: at its own part
-// marked data-menu-anchor's, where it has one (a group's header, the group being its rules too).
+// Opens the menu for `element` at its bottom left, as a right-click there would: at the bottom left
+// of the row it's in, where it's a part of one (a request's button, a row's action), and at the
+// part marked data-menu-anchor, where it has one (a group's header, the group being its rules too).
 export function openContextMenuAt(element: HTMLElement) {
+  const row = element.closest<HTMLElement>('[data-slot="item"]') ?? element;
   const box = (
-    element.querySelector<HTMLElement>(':scope > [data-menu-anchor]') ?? element
+    row.querySelector<HTMLElement>(':scope > [data-menu-anchor]') ?? row
   ).getBoundingClientRect();
   element.dispatchEvent(
     new MouseEvent('contextmenu', {

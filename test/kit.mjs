@@ -340,6 +340,48 @@ async function slotLook(kit, done) {
 }
 const atRest = (look) => look.status === '1' && look.actions === '0';
 const actionsShown = (look) => look.status === '0' && look.actions === '1';
+// The kit's first request row (Item; its slot says "200" over "3 ms"), in the page: how opaque
+// what its slot says and its actions are; where its path and its slot stand; what its slot says,
+// line by line, and whether its second line is under its first; whether its actions sit halfway
+// down the row; and the icons of those of them that say they copied.
+const KIT_REQUEST = '[data-testid=kit-requests] > li';
+const REQUEST_LOOK = () => {
+  const row = document.querySelector('[data-testid=kit-requests] > li');
+  const part = (slot) => row.querySelector(`[data-slot=${slot}]`);
+  const box = (element) => {
+    const { left, right, top, bottom } = element.getBoundingClientRect();
+    return [left, right, top, bottom].map((edge) => Math.round(edge));
+  };
+  const status = part('item-status');
+  const lines = [...status.children];
+  const actions = part('item-slot-actions').getBoundingClientRect();
+  const own = row.getBoundingClientRect();
+  return {
+    status: getComputedStyle(status).opacity,
+    actions: getComputedStyle(part('item-slot-actions')).opacity,
+    path: box(row.querySelector('[data-full]')),
+    slot: box(part('item-slot')),
+    says: lines.map((line) => line.textContent),
+    stacked:
+      lines[1].getBoundingClientRect().top >=
+      lines[0].getBoundingClientRect().bottom - 0.5,
+    across:
+      Math.abs((actions.top + actions.bottom) / 2 - (own.top + own.bottom) / 2) <= 1,
+    copied: [...row.querySelectorAll('[data-copied]')].map(
+      (control) => control.querySelector('[data-icon]').dataset.icon,
+    ),
+  };
+};
+// REQUEST_LOOK once `done` says so, or after 3 s.
+async function requestLook(kit, done) {
+  let look;
+  for (let tries = 0; tries < 30; tries++) {
+    look = await kit.run(REQUEST_LOOK);
+    if (done(look)) break;
+    await sleep(100);
+  }
+  return look;
+}
 // Focus in an open menu: on the menu itself (opened with a click) or on an item (with a key).
 const INSIDE_MENU = '[role=menu], [role=menu] *';
 
@@ -1594,6 +1636,63 @@ async function runChecks(browser, open) {
         }
       },
     );
+
+  await check(
+    `${browser}: item: a request row's slot says its status over how long it took; under the pointer, while the row's right-click menu is open, and for the second one of its copies says it copied (its icon a check), the pointer gone, its actions are there instead, halfway down the row, and nothing in the row moves`,
+    async () => {
+      await kit.run(() =>
+        document
+          .querySelector('[data-testid=kit-requests]')
+          .scrollIntoView({ block: 'center' }),
+      );
+      await kit.pointTo(NOWHERE);
+      const rest = await requestLook(kit, atRest);
+      await kit.pointTo(await kit.run(MIDDLE, KIT_REQUEST));
+      const hovered = await requestLook(kit, actionsShown);
+      // Copy URL pressed, and the pointer gone at once.
+      await kit.clickPoint(
+        await kit.run(MIDDLE, `${KIT_REQUEST} [aria-label="Copy URL"]`),
+      );
+      await kit.pointTo(NOWHERE);
+      const copying = await requestLook(kit, (look) => look.copied.length > 0);
+      const copied = await kit.clipboard();
+      const after = await requestLook(kit, (look) => atRest(look) && !look.copied.length);
+      // Its right-click menu, the pointer gone from the row while it's open.
+      await kit.rightClick(await kit.run(MIDDLE, KIT_REQUEST));
+      await contextOpen(kit);
+      await kit.pointTo(NOWHERE);
+      await sleep(300);
+      const menu = await kit.run(REQUEST_LOOK);
+      await kit.press('Escape');
+      await contextClosed(kit);
+      const shut = await requestLook(kit, atRest);
+      const parts = (look) => [look.status, look.actions, look.path, look.slot];
+      const RESTING = ['1', '0', rest.path, rest.slot];
+      const SHOWN = ['0', '1', rest.path, rest.slot];
+      expect(
+        [
+          [rest.says, rest.stacked, rest.across],
+          parts(rest),
+          parts(hovered),
+          [...parts(copying), copying.copied],
+          copied,
+          parts(after),
+          parts(menu),
+          parts(shut),
+        ],
+        [
+          [['200', '3 ms'], true, true],
+          RESTING,
+          SHOWN,
+          [...SHOWN, ['check']],
+          'https://localhost:3000/api/user',
+          RESTING,
+          SHOWN,
+          RESTING,
+        ],
+      );
+    },
+  );
 
   await check(
     `${browser}: shared tooltip: the rule rows' dots share one tooltip, which says each one's words under the pointer; the two that say the same are described by one hidden copy of the words, the third by another, and a screen reader gets each its words`,

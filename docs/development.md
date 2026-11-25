@@ -244,6 +244,7 @@ test/agent.mjs                   Agent access end to end in Chromium: which host
 test/kit.mjs                     the UI kit under the real CSP, in Chromium and Zen, driven with the keyboard and the mouse
 test/release.mjs                 checks the built manifests, files and zips before an upload
 test/fixtures.mjs                test server, hostile pages and rules shared by the tests
+test/visual/                     the screenshot suite (Playwright Test): its config, the browser and what's in it (extension.mjs), the views (*.spec.mjs), and their pictures, a folder for each platform (baselines/darwin/)
 README.md                        what Ghostfetch does, installing it, and building it from source (it goes in the sources zip)
 GLOSSARY-MAP.md                  the bounded contexts Ghostfetch's words belong to, and how they relate
 docs/                            guide.md, using it in full; security-model.md; agent-access.md; this file
@@ -760,11 +761,46 @@ one getting the browser's own menu; and a row Tab reaches showing its ring. Two 
 sure it can fail: a `<style>` tag added on purpose has to be caught, and so does
 Base UI's own when `CSPProvider`'s setting is off.
 
+`test/visual/` looks at the pages where every other test reads them: Playwright Test's
+`toHaveScreenshot` compares 23 views of the built extension in Chromium with their saved pictures,
+so a colour, a gap, a shadow or a font that changed by accident fails it. The editor at 1280×800:
+a rule open (in Ghostfetch's theme, then in each of the other five), a row under the pointer, a
+focused row, a row's right-click menu, the ⋯ menu with Appearance open, a tooltip with its key, New
+rule, a body's Diff, and Commit Mono at Larger and Most; at 420×800, the list and an open rule;
+Traffic with a request open, at 420 px, and a copy button saying "Copied"; and the popup, 330 wide
+and as tall as it is, on This page, All rules and Sites, and at Commit Mono, Larger and Most.
+Nothing in them is live: the test server is on a fixed port, every page shows the same time
+(Playwright's clock), the page's requests were sent minutes and seconds before it, one after
+another, each taking a set time (its `performance.now()` steps by that time each time the
+interceptor reads it), the pictures are taken at 1x with animations stopped, the caret hidden and
+the fonts loaded, in English and UTC; `extension.mjs` says how. The pictures must match exactly
+(no pixel past a threshold of 0), and eight runs in a row did; Playwright's comparator, though,
+doesn't count a pixel it takes for anti-aliasing, so a change that moves only the edge of a
+shape, a radius 1 px larger on a small chip, can go unseen in a view where nothing else changes.
+Zen isn't covered: Playwright can't load an extension in it, and `test/firefox.mjs` checks it.
+
+A failure leaves `test/visual/test-results/`, each failed view's picture as taken, as saved and
+their difference, and `test/visual/playwright-report/`, the same as a page: open it with
+`npx playwright show-report test/visual/playwright-report`, pick a failed view, and its image
+comparison has the difference marked in red, the two pictures side by side, and a slider between
+them. A change meant to look different takes its new pictures in the same commit: run the suite,
+look at each failure in the report and see that it's the change and only the change, then
+`npm run test:visual -- --update-snapshots` (with `-g` and a view's title for just that one), and
+look at the new pictures in the commit's diff. The pictures are this Mac's: Playwright keeps them
+under the platform's name (`baselines/darwin/`), as fonts and drawing differ between systems and
+can between versions of one. On another platform the suite has no pictures and takes its own the
+first time (`--update-snapshots`, into `baselines/linux/` or `baselines/win32/`), to be looked at
+before they're committed; on another Mac, one with another macOS or display, it can fail on every
+view by a few pixels of text, and the way out is to look at the report and take that Mac's
+pictures, not to loosen the comparison. Either way it needs the Chromium `npm run browsers`
+installs (the one `playwright-core`'s version names), and the port, 47219, free.
+
 ```sh
 npm run test:firefox     # builds, then tests in Zen from /Applications; FIREFOX=/path/to/firefox for another build
 npm run test:kit         # builds the kit page into .output/*-kit, then tests it in Chromium and Zen; SHOTS=dir for screenshots
 npm run test:release     # zips both browsers, then checks the manifests, the release CSP, the built files and the zips
 npm run test:agent       # builds, then tests Agent access in Chromium (npm install --prefix mcp first, once)
+npm run test:visual      # builds, then compares 23 views with their pictures in Chromium; -- --update-snapshots takes new ones
 npm run lint:firefox     # Mozilla's validator: the checks addons.mozilla.org runs on upload
 npm run start:zen        # a fresh Zen profile with the dev build loaded, reloaded on every save
 npm run zip              # the packages and the sources zip in web-ext-artifacts/

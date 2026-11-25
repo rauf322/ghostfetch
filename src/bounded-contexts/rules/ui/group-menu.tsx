@@ -1,7 +1,8 @@
 // A group's ⋯ menu: rename it, duplicate it, export it with its rules, take it away and leave its
-// rules where it was (Ungroup), or delete it with its rules (with Undo in the toast). Its ⋯ in the
-// header (GroupMenu) and its right-click menu in the list (rule-list.tsx) are one list of items
-// (GroupMenuItems), so the two can't drift apart.
+// rules where it was (Ungroup), or delete it with its rules (with Undo, which brings them back
+// where they were: in the sidebar's footer, with ⌘Z, or where that isn't on screen in a toast,
+// undo-delete.ts). Its ⋯ in the header (GroupMenu) and its right-click menu in the list
+// (rule-list.tsx) are one list of items (GroupMenuItems), so the two can't drift apart.
 import { duplicateGroup, removeGroup, restoreGroup, ungroup } from '../index.ts';
 import type { Group } from '../index.ts';
 import { Button } from '../../../ui/kit/button.tsx';
@@ -12,9 +13,9 @@ import {
   DropdownMenuTrigger,
 } from '../../../ui/kit/dropdown-menu.tsx';
 import { Icon } from '../../../ui/kit/icon.tsx';
-import { notify } from '../../../ui/kit/toast.tsx';
 import { Tooltip } from '../../../ui/kit/tooltip.tsx';
 import { exportGroup } from './rules-file.tsx';
+import { offerUndo } from './undo-delete.ts';
 
 export function GroupMenu({
   group,
@@ -63,14 +64,12 @@ export function GroupMenuItems({
     const removed = removeGroup(group.id);
     if (!removed) return;
     const count = removed.rules.length;
-    notify(
-      `Deleted “${group.name}”${count ? ` and its ${count === 1 ? 'rule' : `${count} rules`}` : ''}`,
-      {
-        icon: 'trash',
-        action: 'Undo',
-        onAction: () => restoreGroup(removed),
-      },
-    );
+    offerUndo({
+      said: 'Group deleted',
+      toast: `Deleted “${group.name}”${count ? ` and its ${count === 1 ? 'rule' : `${count} rules`}` : ''}`,
+      item: group.id,
+      undo: () => restoreGroup(removed),
+    });
   }
 
   return (

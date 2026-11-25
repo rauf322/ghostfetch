@@ -165,7 +165,7 @@ src/bounded-contexts/            the six bounded contexts of GLOSSARY-MAP.md, a 
     application/                 the screens' copy of the order, which saves and redraws after each operation (store.ts), and of whether Ghostfetch is paused, which only the popup changes (paused.ts); a copy of a group or a rule (duplicate-group.ts, duplicate-rule.ts); a rule made from a request in the log (rule-from-entry.ts), the requests New rule offers to mock (recent-requests.ts), and New rule's draft, what's typed there read and the rule made from it (rule-draft.ts); rules files, writing one and reading one into the order, its rules and groups turned off (rules-file.ts); apart from the rules, the server's responses their bodies' Diff compares with (server-responses.ts); and what the page is given of what's stored, which the bridge posts (page-state.ts)
     infrastructure/              how the order is kept, as the rules, each naming its group, and the groups, each with its place (order-storage.ts); the toolbar badge, which the background keeps in sync (badge.ts); and the clipboard a rule's body editor's vim keys paste from, with the permission that takes (clipboard.ts)
     contract.ts                  what the bridge sends the interceptor: the rules that answer, with the two switches
-    ui/                          the Rules view (index.ts, for the editor): the sidebar's rule list, a tree for the keyboard and a screen reader, with its right-click menu (rule-list.tsx), the tooltips and the ⋯ menu its rows share (row-tools.ts), and the field a name is renamed in (rename-field.tsx); New rule (new-rule/) and the rule editor (rule-editor/, a component per part: among them the header's crumbs, which are controls, rule-crumbs.tsx, the menu its ⋯ and its name share, rule-menu.tsx, Status's menu of common codes at the end of its split row, status-panel.tsx, and the row over the body that turns Diff on, with how many lines the body adds and takes out, diff-row.tsx); and the widgets other screens show, a public file each
+    ui/                          the Rules view (index.ts, for the editor): the sidebar's rule list, a tree for the keyboard and a screen reader, with its right-click menu (rule-list.tsx), the tooltips and the ⋯ menu its rows share (row-tools.ts), the field a name is renamed in (rename-field.tsx), and the sidebar footer's notice of the latest delete, with its Undo and the editor's one listener for ⌘Z, or a toast where the footer isn't on screen (undo-notice.tsx, undo-delete.ts); New rule (new-rule/) and the rule editor (rule-editor/, a component per part: among them the header's crumbs, which are controls, rule-crumbs.tsx, the menu its ⋯ and its name share, rule-menu.tsx, Status's menu of common codes at the end of its split row, status-panel.tsx, and the row over the body that turns Diff on, with how many lines the body adds and takes out, diff-row.tsx); and the widgets other screens show, a public file each
       rule-switch.tsx            a rule's switch, the green dot (the kit's SignalSwitch), in the editor's rule list and the popup; group-switch.tsx, a group's
       rule-time.tsx              when a rule last answered on a page ("· 4m"), from the screens' clock, in the editor's rule list and the popup
       group-folds.ts             which groups are folded, in the editor's list and the popup alike
@@ -627,7 +627,16 @@ dragged, a mark only where it would land, a line in a group set in under its rul
 out of any as wide as the list, none over the list's label or out of it, and under the list's
 last entry its end; the popup's All rules with a group's dot and fold, This page naming a
 rule's group; and Export group with its import, off and at the top, renamed where its name is
-taken), plus the properties of the
+taken), a delete's undo where the eye is (the sidebar's footer saying "Rule deleted" and "⌘Z to
+undo" over its buttons, the footer as tall, a polite live region saying it once, and no toast;
+its Undo and ⌘Z putting the rule back where it was, focus on its row; ⌘Z in the search field,
+the body, an open menu and a group's name being renamed theirs, the delete staying deleted;
+⌘Z after ↓ and Esc in the list, or a click on a row, still undoing it and taking the key, so the
+browser's own undo, which takes back the page's last edit, acts neither on the press nor on its
+repeats while it's held; a delete meanwhile taking the notice's place and its time starting
+over, the notice gone five seconds on and ⌘Z then undoing nothing of ours; a group back with its
+rules, focus on its header; and a narrow panel's open rule keeping the toast), plus the
+properties of the
 [security model](security-model.md) (channel theft, forged offers, patched built-ins, built-ins
 that try to reach the interceptor through `.caller`, HTML injection, hostile rule files, sites
 that aren't turned on getting nothing, `local.*` hosts and a lookalike URL, turning a site on

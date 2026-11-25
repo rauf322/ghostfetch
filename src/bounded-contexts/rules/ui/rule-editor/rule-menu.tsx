@@ -1,5 +1,6 @@
 // A rule's ⋯ menu: duplicate it, move it to a group or out of one, export it, or delete it (with
-// Undo in the toast, which puts it back where it was, in its group). The open rule's, in its header
+// Undo, which puts it back where it was, in its group: in the sidebar's footer, with ⌘Z, or where
+// that isn't on screen in a toast, undo-delete.ts). The open rule's, in its header
 // (RuleMenu), and its row's in the list (the ⋯ in the row's slot, rule-list-item.tsx) are one list
 // of items (RuleMenuItems), so the two can't drift apart. The open rule's is one menu for two
 // controls, as the list's rows share theirs (row-tools.ts): its ⋯ (RuleMenuButton) at the
@@ -35,9 +36,9 @@ import {
 } from '../../../../ui/kit/dropdown-menu.tsx';
 import type { MenuHandle } from '../../../../ui/kit/dropdown-menu.tsx';
 import { Icon } from '../../../../ui/kit/icon.tsx';
-import { notify } from '../../../../ui/kit/toast.tsx';
 import { Tooltip } from '../../../../ui/kit/tooltip.tsx';
 import { exportRule } from '../rules-file.tsx';
+import { offerUndo } from '../undo-delete.ts';
 import { setRenaming } from '../renaming.ts';
 
 // No group, as the radio group's value: not an id a group can have.
@@ -105,15 +106,17 @@ export function RuleMenuItems({
 
   function remove() {
     const removed = removeRule(rule.id);
-    if (open) onSelect(null);
-    notify(`Deleted “${ruleTitle(rule)}”`, {
-      icon: 'trash',
-      action: 'Undo',
-      onAction: () => {
-        addRule(removed!.rule, removed!.place);
-        if (open) onSelect(removed!.rule.id);
+    if (!removed) return;
+    offerUndo({
+      said: 'Rule deleted',
+      toast: `Deleted “${ruleTitle(rule)}”`,
+      item: removed.rule.id,
+      undo: () => {
+        addRule(removed.rule, removed.place);
+        if (open) onSelect(removed.rule.id);
       },
     });
+    if (open) onSelect(null);
   }
 
   // Into a group, at its top; out of one, just above it, so it's tried about where it was.

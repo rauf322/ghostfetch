@@ -2867,7 +2867,8 @@ try {
       await ruleRow(SLOT).waitFor({ state: 'detached', timeout: 3000 });
       const gone = await ruleRow(SLOT).count();
       const stayed = await openNow();
-      await app.click('[data-slot="toast"] button:has-text("Undo")');
+      // Undo in the sidebar's footer (a toast where the footer isn't on screen).
+      await app.click('[data-testid="undo-notice-undo"]');
       await ruleRow(SLOT).waitFor({ timeout: 3000 });
       expect(
         [
@@ -3418,7 +3419,8 @@ try {
         await menu.locator('[role^="menuitem"]', { hasText: text }).first().click();
         await menu.waitFor({ state: 'detached', timeout: 3000 });
       };
-      const undo = () => app.click('[data-slot="toast"] button:has-text("Undo")');
+      // Undo in the sidebar's footer, which says what was deleted last.
+      const undo = () => app.click('[data-testid="undo-notice-undo"]');
       const groupOf = (locator) =>
         locator.evaluate(
           (row) =>
@@ -3508,15 +3510,11 @@ try {
       await undo();
       await keysItem.waitFor({ timeout: 3000 });
       const back = [await groupOf(ruleRow(K1)), await groupOf(ruleRow(K2))];
-      // The toasts of the two deletes not undone, shut, for the checks after this one.
-      for (const close of await app
-        .locator('[data-slot="toast"] button[aria-label="Close"]')
-        .all())
-        await close.click();
-      await rowSettled(
-        () => app.locator('[data-slot="toast"]').count(),
-        (count) => count === 0,
-      );
+      // Each delete said so in the footer, none in a toast; the last undone, the notice is gone.
+      const said = [
+        await app.locator('[data-slot="toast"]').count(),
+        await app.locator('[data-testid="undo-notice"]').count(),
+      ];
       expect(
         [
           duplicated,
@@ -3533,6 +3531,7 @@ try {
           ungrouped,
           gone,
           back,
+          said,
         ],
         [
           [2, NEVER],
@@ -3546,6 +3545,7 @@ try {
           [0, ''],
           [0, 0],
           ['Keys', 'Keys'],
+          [0, 0],
         ],
       );
     },
@@ -3603,7 +3603,7 @@ try {
     await app.click('[data-testid="rule-menu"]');
     await app.click('[data-testid="delete-rule"]');
     expect(await app.locator('[data-testid="rule"]').count(), before - 1);
-    await app.click('[data-slot="toast"] button:has-text("Undo")');
+    await app.click('[data-testid="undo-notice-undo"]');
     expect(await app.locator('[data-testid="rule"]').count(), before);
   });
   await check('traffic view shows captured requests live', async () => {
@@ -8452,7 +8452,7 @@ try {
           await menu('PR-1 copy', 'delete-group');
           const gone = [(await storedGroups()).length, (await storedRules()).length];
           await app.click(
-            '[data-slot="toast"]:has-text("Deleted “PR-1 copy” and its 2 rules") button:has-text("Undo")',
+            '[data-testid="undo-notice"]:has-text("Group deleted") [data-testid="undo-notice-undo"]',
           );
           await sleep(300);
           const back = [
@@ -9453,6 +9453,553 @@ try {
             });
             await app.setViewportSize({ width: 1280, height: 820 });
             await worker.evaluate(() => chrome.storage.local.remove('serverResponse:m1'));
+          }
+        },
+      );
+    },
+  );
+
+  // Undo where the eye is: a delete says so in the sidebar's footer, with Undo and ⌘Z, or in a
+  // toast where the footer isn't on screen.
+  console.log('undo where the eye is');
+  const undoNotice = app.locator('[data-testid="undo-notice"]');
+  const noticeUndo = app.locator('[data-testid="undo-notice-undo"]');
+  const anyToast = app.locator('[data-slot="toast"]');
+  const searchRules = app.locator('input[aria-label="Search rules"]');
+  // ⌘Z as this platform writes it and says it (kbd.tsx's modKey() and spokenKeys()).
+  const [MOD_Z, SPOKEN_Z] = await app.evaluate(() =>
+    /Mac/.test(navigator.userAgent) ? ['⌘Z', 'Command Z'] : ['Ctrl+Z', 'Control Z'],
+  );
+  const named = (name) => app.locator('[data-testid="rule"]', { hasText: name }).first();
+  // A rule deleted from its row's ⋯, by the pointer.
+  const deleteFromRow = async (name) => {
+    await named(name).hover();
+    await named(name).locator('[data-testid="row-menu"]').click();
+    await app.click('[data-testid="delete-rule"]');
+    await app
+      .locator('[data-slot="dropdown-menu-content"]')
+      .waitFor({ state: 'detached', timeout: 3000 });
+  };
+  // The sidebar's footer: the notice's words and its Undo's (its key, then the rest), or none; how
+  // its own buttons are seen; and how tall it is.
+  const noticeSays = () =>
+    app.evaluate(() => {
+      const footer = document.querySelector('#sidebar footer');
+      const notice = footer.querySelector('[data-testid="undo-notice"]');
+      const undo = notice?.querySelector('[data-testid="undo-notice-undo"]');
+      return {
+        notice: notice && [
+          notice.querySelector('span.truncate').textContent,
+          undo.querySelector('kbd').textContent,
+          undo.textContent.replace(undo.querySelector('kbd').textContent, '').trim(),
+        ],
+        buttons: [...footer.querySelectorAll('button')]
+          .filter((button) => button !== undo && button.getClientRects().length)
+          .map((button) => getComputedStyle(button).visibility),
+        height: footer.offsetHeight,
+      };
+    });
+  // The list's item with focus (its rule's or group's id), or what has it instead.
+  const focusedOn = () =>
+    app.evaluate(
+      () => document.activeElement?.dataset.item ?? document.activeElement?.tagName,
+    );
+  // The rules' ids in their stored order, each with its group and switch.
+  const storedOrder = async () =>
+    (await storedRules()).map((rule) => [rule.id, rule.group, rule.enabled]);
+  // A menu a check before left open, shut: its backdrop would take every click after it.
+  const shutMenus = async () => {
+    for (
+      let tries = 0;
+      tries < 3 && (await app.locator('[role="menu"]').count());
+      tries++
+    ) {
+      await app.keyboard.press('Escape');
+      await sleep(300);
+    }
+  };
+
+  await check(
+    `deleting a rule says so in the sidebar's footer, not in a toast: "Rule deleted" and "${MOD_Z} to undo", a button named "${SPOKEN_Z} to undo" with its keys, said once by a polite live region, the footer's buttons unseen meanwhile and the footer as tall; its Undo puts the rule back where it was, focus on its row, and so does ${MOD_Z} after a delete from the keyboard, from the row focus went back to`,
+    async () => {
+      await withGroups(
+        [grouped('n1', 'one'), grouped('n2', 'two'), grouped('n3', 'three')],
+        [],
+        async () => {
+          await shutMenus();
+          await show('rules');
+          await named('From two').waitFor({ timeout: 3000 });
+          const was = [await listed(), await storedOrder()];
+          const before = await noticeSays();
+          // Everything the live region is given from here on.
+          await app.evaluate(() => {
+            window.announced = [];
+            new MutationObserver((records) => {
+              for (const record of records)
+                for (const node of record.addedNodes)
+                  window.announced.push(node.textContent);
+            }).observe(document.querySelector('[data-slot="undo-announcer"]'), {
+              childList: true,
+              subtree: true,
+              characterData: true,
+            });
+          });
+          await deleteFromRow('From two');
+          await undoNotice.waitFor({ timeout: 3000 });
+          // Long enough for a toast to have come, and for the region to be given anything more.
+          await sleep(500);
+          const shown = [
+            await noticeSays(),
+            await noticeUndo.getAttribute('aria-label'),
+            await noticeUndo.getAttribute('aria-keyshortcuts'),
+            await app.locator('[data-slot="undo-announcer"]').getAttribute('aria-live'),
+            await app.evaluate(() => window.announced),
+            await anyToast.count(),
+            await listed(),
+          ];
+          const rules = was[0];
+          const SEEN = ['visible', 'visible', 'visible', 'visible'];
+          // What the delete shows, before anything is clicked in it.
+          expect(
+            [before, shown],
+            [
+              { notice: null, buttons: SEEN, height: 44 },
+              [
+                {
+                  notice: ['Rule deleted', MOD_Z, 'to undo'],
+                  buttons: ['hidden', 'hidden', 'hidden', 'hidden'],
+                  height: 44,
+                },
+                `${SPOKEN_Z} to undo`,
+                MOD_Z === '⌘Z' ? 'Meta+Z' : 'Control+Z',
+                'polite',
+                [`Rule deleted. Press ${SPOKEN_Z} to undo`],
+                0,
+                rules.filter((name) => name !== 'From two'),
+              ],
+            ],
+            'the delete',
+          );
+          await noticeUndo.click();
+          await undoNotice.waitFor({ state: 'detached', timeout: 3000 });
+          const clicked = [
+            await listed(),
+            await storedOrder(),
+            await rowSettled(focusedOn, (item) => item === 'n2'),
+            (await noticeSays()).buttons,
+          ];
+          // From the keyboard: the row's right-click menu by Shift+F10, its last item, Delete;
+          // focus goes back to the row in its place, and ⌘Z from there.
+          await named('From two').focus();
+          await app.keyboard.press('Shift+F10');
+          const menu = app.locator('[data-slot="context-menu-content"]');
+          // The keys only once the menu has focus: before, End is the list's (its last item).
+          await app.waitForFunction(
+            () => document.activeElement?.closest('[data-slot="context-menu-content"]'),
+            null,
+            { timeout: 3000 },
+          );
+          await app.keyboard.press('End');
+          await menu
+            .locator('[data-testid="delete-rule"][data-highlighted]')
+            .waitFor({ timeout: 3000 });
+          await app.keyboard.press('Enter');
+          await menu.waitFor({ state: 'detached', timeout: 3000 });
+          await undoNotice.waitFor({ timeout: 3000 });
+          const from = await rowSettled(focusedOn, (item) => item === 'n3');
+          await app.keyboard.press('ControlOrMeta+z');
+          await undoNotice.waitFor({ state: 'detached', timeout: 3000 });
+          const keyed = [
+            from,
+            await listed(),
+            await storedOrder(),
+            await rowSettled(focusedOn, (item) => item === 'n2'),
+            await anyToast.count(),
+          ];
+          expect(
+            [clicked, keyed],
+            [
+              [rules, was[1], 'n2', SEEN],
+              ['n3', rules, was[1], 'n2', 0],
+            ],
+            'the undos',
+          );
+        },
+      );
+    },
+  );
+
+  await check(
+    `${MOD_Z} where a field, the body editor or a menu has the keyboard is theirs and doesn't undo the delete the footer shows: in the search field it undoes what was typed there, in the body what was typed there, and in a group's name being renamed and in an open menu it reaches them, not stopped; each delete stays deleted, the notice still there`,
+    async () => {
+      let vimWasOn = false;
+      await withGroups(
+        [
+          grouped('k1', 'one'),
+          grouped('k2', 'two'),
+          grouped('k3', 'three'),
+          grouped('k4', 'four'),
+          grouped('k5', 'five'),
+          grouped('k6', 'six', 'g-1'),
+        ],
+        [PR1()],
+        async () => {
+          try {
+            await shutMenus();
+            // A page of its own: a ⌘Z that isn't the notice's is the browser's undo, which takes
+            // back the page's last edit wherever it was made, as checks before leave some (a
+            // search typed and cleared, which would come back and hide rules).
+            await app.reload();
+            await show('rules');
+            await named('From six').waitFor({ timeout: 3000 });
+            // Each ⌘Z that reaches the document: what it was pressed in.
+            await app.evaluate(() => {
+              window.zKeys = [];
+              document.addEventListener('keydown', (event) => {
+                if (event.key.toLowerCase() === 'z' && (event.metaKey || event.ctrlKey))
+                  window.zKeys.push(event.target.dataset?.testid ?? event.target.tagName);
+              });
+            });
+            const zKeys = () =>
+              app.evaluate(() => window.zKeys.splice(0, window.zKeys.length));
+            // Deleted as stored (saved at once), whatever a search shows.
+            const deleted = async (name) =>
+              !(await storedRules()).some((rule) => rule.name === name);
+            // The search field: typed in before the delete, clicked into after it.
+            await searchRules.click();
+            await app.keyboard.type('From');
+            await deleteFromRow('From one');
+            await undoNotice.waitFor({ timeout: 3000 });
+            await searchRules.click();
+            await app.keyboard.press('ControlOrMeta+z');
+            await sleep(300);
+            const typed = await searchRules.inputValue();
+            const inSearch = [
+              typed !== 'From' && 'From'.startsWith(typed),
+              await deleted('From one'),
+              await undoNotice.count(),
+              await zKeys(),
+            ];
+            await searchRules.fill('');
+            // The body: typed in before the delete (vim's keys off: a check before leaves them
+            // on), clicked into after it.
+            await named('From five').click();
+            await body.waitFor({ timeout: 3000 });
+            vimWasOn = (await vimSwitch.getAttribute('aria-pressed')) === 'true';
+            if (vimWasOn) await vimSwitch.click();
+            const original = await body.inputValue();
+            await body.focus();
+            await body.evaluate((textarea) =>
+              textarea.setSelectionRange(textarea.value.length, textarea.value.length),
+            );
+            await app.keyboard.type('z');
+            await sleep(400);
+            const edited = await body.inputValue();
+            await deleteFromRow('From two');
+            await undoNotice.waitFor({ timeout: 3000 });
+            await body.click();
+            await app.keyboard.press('ControlOrMeta+z');
+            await sleep(400);
+            const inBody = [
+              edited !== original,
+              (await body.inputValue()) === original,
+              await deleted('From two'),
+              await undoNotice.count(),
+            ];
+            // An open menu: a row's ⋯, opened by the pointer. (Before the rename: a double-click
+            // on a group's name also clicks it twice, folding it and unfolding it.)
+            await deleteFromRow('From three');
+            await undoNotice.waitFor({ timeout: 3000 });
+            await named('From six').hover();
+            await named('From six').locator('[data-testid="row-menu"]').click();
+            const menu = app.locator('[data-slot="dropdown-menu-content"]');
+            // Focus goes into a menu the pointer opened a moment after its items are there.
+            await app.waitForFunction(
+              () =>
+                document.activeElement?.closest('[data-slot="dropdown-menu-content"]'),
+              null,
+              { timeout: 3000 },
+            );
+            await app.keyboard.press('ControlOrMeta+z');
+            await sleep(300);
+            const inMenu = [
+              await menu.count(),
+              await deleted('From three'),
+              await undoNotice.count(),
+            ];
+            await app.keyboard.press('Escape');
+            await menu.waitFor({ state: 'detached', timeout: 3000 });
+            await zKeys();
+            // A group's name being renamed, by a double-click.
+            await deleteFromRow('From four');
+            await undoNotice.waitFor({ timeout: 3000 });
+            const field = app.locator('[data-testid="group-name-input"]');
+            await app
+              .locator(
+                '[data-testid="group"][data-group="PR-1"] [data-testid="group-name"]',
+              )
+              .dblclick();
+            await field.waitFor({ timeout: 3000 });
+            await app.keyboard.press('ControlOrMeta+z');
+            await sleep(300);
+            // (A ⌘Z taken from the field would undo the delete and give the row focus, and the
+            // field, left, would go.)
+            const stillThere = (await field.count()) === 1;
+            const inRename = [
+              stillThere && (await field.inputValue()),
+              stillThere &&
+                (await field.evaluate((input) => input === document.activeElement)),
+              await deleted('From four'),
+              await undoNotice.count(),
+              await zKeys(),
+            ];
+            if (stillThere) await app.keyboard.press('Escape');
+            await field.waitFor({ state: 'detached', timeout: 3000 });
+            expect(
+              [inSearch, inBody, inMenu, inRename],
+              [
+                [true, true, 1, ['INPUT']],
+                [true, true, true, 1],
+                [1, true, 1],
+                ['PR-1', true, true, 1, ['group-name-input']],
+              ],
+            );
+          } finally {
+            if (vimWasOn)
+              await app.evaluate(() => localStorage.setItem('ghostfetch.vim', '1'));
+          }
+        },
+      );
+    },
+  );
+
+  await check(
+    `while the notice shows, ${MOD_Z} outside a field undoes the delete whatever came before it, ↓ and Esc in the list or a click on a row, and takes the key: the browser's own undo, which would take back a search cleared before, acts neither on the press nor on its repeats while it's held; a delete meanwhile takes the notice's place and starts its time over; it goes five seconds after that, the footer's buttons back, and ${MOD_Z} then undoes nothing of ours`,
+    async () => {
+      await withGroups(
+        [
+          grouped('t1', 'one'),
+          grouped('t2', 'two'),
+          grouped('t4', 'four'),
+          grouped('t5', 'five'),
+          grouped('t3', 'three', 'g-1'),
+        ],
+        [PR1()],
+        async () => {
+          await shutMenus();
+          await show('rules');
+          await named('From three').waitFor({ timeout: 3000 });
+          // Deleted as stored (saved at once), whatever a search shows.
+          const deleted = async (name) =>
+            !(await storedRules()).some((rule) => rule.name === name);
+          // The page's undo history, which the browser's own ⌘Z takes back from wherever focus
+          // is: three steps in the search field, so that one taken back shows, and so do two
+          // ('' back to 'Fr', then 'From'); every rule matches each.
+          await searchRules.fill('From');
+          await searchRules.fill('Fr');
+          await searchRules.fill('');
+          // ↓ and Esc on the list, then ⌘Z held down: its press and a repeat. Each part notes
+          // what it finds rather than stopping the check, so that what's wrong shows, part by
+          // part.
+          await deleteFromRow('From one');
+          await undoNotice.waitFor({ timeout: 3000 });
+          await named('From two').focus();
+          await app.keyboard.press('ArrowDown');
+          await app.keyboard.press('Escape');
+          await app.keyboard.down('ControlOrMeta');
+          await app.keyboard.down('z');
+          await app.keyboard.down('z');
+          await app.keyboard.up('z');
+          await app.keyboard.up('ControlOrMeta');
+          await sleep(300);
+          const afterKeys = [
+            await deleted('From one'),
+            await undoNotice.count(),
+            await searchRules.inputValue(),
+          ];
+          // A click on a row, then ⌘Z.
+          await deleteFromRow('From four');
+          await undoNotice.waitFor({ timeout: 3000 });
+          await named('From two').click({ position: { x: 60, y: 12 } });
+          await app.keyboard.press('ControlOrMeta+z');
+          await sleep(300);
+          const afterClick = [
+            await deleted('From four'),
+            await undoNotice.count(),
+            await searchRules.inputValue(),
+          ];
+          // A delete, and the group 2 s on: it takes the notice's place, and the time starts
+          // over.
+          await deleteFromRow('From five');
+          await undoNotice.waitFor({ timeout: 3000 });
+          await sleep(2000);
+          await app
+            .locator('[data-testid="group"][data-group="PR-1"]')
+            .click({ button: 'right', position: { x: 60, y: 12 } });
+          await app.click(
+            '[data-slot="context-menu-content"] [data-testid="delete-group"]',
+          );
+          await app
+            .locator('[data-slot="context-menu-content"]')
+            .waitFor({ state: 'detached', timeout: 3000 });
+          const takenOver = (await noticeSays()).notice;
+          const from = Date.now();
+          // Past five seconds from the delete before, under five from this one: still there.
+          await sleep(3500);
+          const stays = await undoNotice.count();
+          const gone = await rowSettled(
+            () => undoNotice.count(),
+            (count) => count === 0,
+          );
+          const went = Date.now() - from;
+          const after = await noticeSays();
+          // ⌘Z now undoes nothing of ours (the browser's own undo may take the search back).
+          await named('From two').focus();
+          await app.keyboard.press('ControlOrMeta+z');
+          await sleep(400);
+          const last = [
+            await deleted('From five'),
+            (await storedGroups()).length,
+            (await storedRules()).map((rule) => rule.name),
+          ];
+          await searchRules.fill('');
+          expect(
+            [
+              afterKeys,
+              afterClick,
+              takenOver,
+              [stays, gone, went > 4000 && went < 6500],
+              after,
+              last,
+              await anyToast.count(),
+            ],
+            [
+              [false, 0, ''],
+              [false, 0, ''],
+              ['Group deleted', MOD_Z, 'to undo'],
+              [1, 0, true],
+              {
+                notice: null,
+                buttons: ['visible', 'visible', 'visible', 'visible'],
+                height: 44,
+              },
+              [true, 0, ['From one', 'From two', 'From four']],
+              0,
+            ],
+            `gone ${went} ms after the group's delete`,
+          );
+        },
+      );
+    },
+  );
+
+  await check(
+    `a group deleted says "Group deleted" in the footer, and ${MOD_Z} brings it back where it was with its rules, in their order and with their switches, focus on its header`,
+    async () => {
+      await withGroups(
+        [
+          grouped('p1', 'one'),
+          grouped('p2', 'A1', 'g-1'),
+          grouped('p3', 'A2', 'g-1', { enabled: false }),
+          grouped('p4', 'two'),
+        ],
+        [PR1()],
+        async () => {
+          await shutMenus();
+          await show('rules');
+          await named('From A2').waitFor({ timeout: 3000 });
+          const was = [
+            await listed(),
+            await storedOrder(),
+            (await storedGroups()).map((group) => [group.id, group.at, group.enabled]),
+          ];
+          await app.click(
+            '[data-testid="group"][data-group="PR-1"] [data-testid="group-menu"]',
+          );
+          await app.click('[data-testid="delete-group"]');
+          await undoNotice.waitFor({ timeout: 3000 });
+          await sleep(300);
+          const gone = [
+            (await noticeSays()).notice,
+            await listed(),
+            (await storedGroups()).length,
+            await anyToast.count(),
+          ];
+          await app.keyboard.press('ControlOrMeta+z');
+          await undoNotice.waitFor({ state: 'detached', timeout: 3000 });
+          const back = [
+            await listed(),
+            await storedOrder(),
+            (await storedGroups()).map((group) => [group.id, group.at, group.enabled]),
+            await rowSettled(focusedOn, (item) => item === 'g-1'),
+          ];
+          expect(
+            [gone, back],
+            [
+              [['Group deleted', MOD_Z, 'to undo'], ['From one', 'From two'], 0, 0],
+              [...was, 'g-1'],
+            ],
+          );
+        },
+      );
+    },
+  );
+
+  await check(
+    "in a narrow panel a rule deleted from its own screen, where there's no footer, says so in a toast with Undo, as before: the list comes back with no notice in its footer, its buttons there, ⌘Z doesn't undo it, and the toast's Undo brings the rule back where it was and opens it again",
+    async () => {
+      await withGroups(
+        [grouped('w1', 'one'), grouped('w2', 'two'), grouped('w3', 'three')],
+        [],
+        async () => {
+          try {
+            await shutMenus();
+            await show('rules');
+            await app.setViewportSize({ width: 420, height: 760 });
+            const back = app.locator('[data-testid="rule-back"]');
+            if (await back.isVisible()) await back.click();
+            await named('From two').click();
+            await app.locator('[data-testid="rule-name"]').waitFor({ timeout: 3000 });
+            const was = await storedOrder();
+            await app.click('[data-testid="rule-menu"]');
+            await app.click('[data-testid="delete-rule"]');
+            const toast = app.locator('[data-slot="toast"]', {
+              hasText: 'Deleted “From two”',
+            });
+            await toast.waitFor({ timeout: 3000 });
+            await named('From one').waitFor({ timeout: 3000 });
+            await sleep(300);
+            const shown = [await noticeSays(), await listed()];
+            await app.keyboard.press('ControlOrMeta+z');
+            await sleep(300);
+            // As stored: a ⌘Z that isn't ours is the browser's undo, which may bring back a
+            // search a check before cleared.
+            const keyed = (await storedRules()).map((rule) => rule.name);
+            await toast.locator('button', { hasText: 'Undo' }).click();
+            await app.locator('[data-testid="rule-name"]').waitFor({ timeout: 3000 });
+            expect(
+              [
+                shown,
+                keyed,
+                await app.locator('[data-testid="rule-name"]').inputValue(),
+                await storedOrder(),
+              ],
+              [
+                [
+                  {
+                    notice: null,
+                    buttons: ['visible', 'visible', 'visible'],
+                    height: 44,
+                  },
+                  ['From one', 'From three'],
+                ],
+                ['From one', 'From three'],
+                'From two',
+                was,
+              ],
+            );
+          } finally {
+            await app.setViewportSize({ width: 1280, height: 820 });
           }
         },
       );

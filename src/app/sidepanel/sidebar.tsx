@@ -5,10 +5,15 @@
 // its edge was dragged, or hidden (ui/sidebar.tsx); in a narrow side panel it's the Rules view's
 // own screen, under the top bar, which then has the name and the two views. A rule's dot turns it
 // on or off; Ghostfetch's own switch and recording's are in the toolbar popup. The footer's Agent
-// opens Agent access over it (bounded-contexts/agent-access/).
+// opens Agent access over it (bounded-contexts/agent-access/). For five seconds after a rule or a
+// group is deleted the footer says so instead, with Undo, which ⌘Z does too (UndoNotice).
 import { useEffect, useRef, useState } from 'react';
 import { AgentButton, AgentPanel } from '../../bounded-contexts/agent-access/ui/index.ts';
-import { RuleList } from '../../bounded-contexts/rules/ui/index.ts';
+import {
+  RuleList,
+  UndoNotice,
+  listenForUndoKey,
+} from '../../bounded-contexts/rules/ui/index.ts';
 import { ruleStore } from '../../bounded-contexts/rules/index.ts';
 import type { TrafficLog } from '../../bounded-contexts/traffic/index.ts';
 import { useStore } from '../../ui/use-store.ts';
@@ -88,6 +93,10 @@ export function Sidebar({
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
+  // ⌘Z (Ctrl+Z elsewhere) undoes the delete the footer says was made, for as long as it says so,
+  // from anywhere a field, the body editor or a menu doesn't have the keyboard (undo-delete.ts).
+  useEffect(listenForUndoKey, []);
+
   return (
     <ListPane
       id="sidebar"
@@ -148,23 +157,25 @@ export function Sidebar({
       )}
       {/* A container: Agent shows its name where there's room for it. */}
       <PaneFooter className="@container">
-        <EditorMenu
-          inTab={inTab}
-          windowId={windowId}
-          onImport={onImport}
-          files={false}
-          testId="sidebar-menu"
-          className="max-wide:hidden"
-        />
-        <Button variant="cell" size="cell" onClick={onImport}>
-          <Icon name="import" size={14} />
-          Import
-        </Button>
-        <Button variant="cell" size="cell" onClick={onExport}>
-          <Icon name="export" size={14} />
-          Export
-        </Button>
-        <AgentButton open={agentOpen} onToggle={() => setAgentOpen(!agentOpen)} />
+        <UndoNotice>
+          <EditorMenu
+            inTab={inTab}
+            windowId={windowId}
+            onImport={onImport}
+            files={false}
+            testId="sidebar-menu"
+            className="max-wide:hidden"
+          />
+          <Button variant="cell" size="cell" onClick={onImport}>
+            <Icon name="import" size={14} />
+            Import
+          </Button>
+          <Button variant="cell" size="cell" onClick={onExport}>
+            <Icon name="export" size={14} />
+            Export
+          </Button>
+          <AgentButton open={agentOpen} onToggle={() => setAgentOpen(!agentOpen)} />
+        </UndoNotice>
       </PaneFooter>
     </ListPane>
   );

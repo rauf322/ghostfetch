@@ -86,7 +86,14 @@ What's different in Firefox-based browsers:
     no group, then its name. Each opens a menu: the group's has **New rule in this group** and
     the group's own items (**Rename**, **Duplicate**, **Export group**, **Ungroup**,
     **Delete**), **Rules** has **New rule**, and the name's is the rule's **⋯** menu.
-    Double-click the name, or press F2 on it, to rename the rule there.
+    Double-click the name, or press F2 on it, to rename the rule there. A rule or a group you
+    delete is gone at once, and for five seconds the bottom of the sidebar says so, **Rule
+    deleted**, in place of its buttons, with **⌘Z to undo** (Ctrl+Z on Windows and Linux):
+    click it, or press ⌘Z, and it's back where it was, a group with its rules. ⌘Z does it for
+    as long as the notice shows, whatever you pressed or clicked meanwhile, from anywhere but a
+    text field, the body or a menu, which keep their own ⌘Z. Where the sidebar isn't on screen
+    (a narrow side panel with the rule open, or the sidebar hidden), **Undo** is in a toast
+    instead.
 
     <a id="groups"></a>**Groups** keep the rules for one piece of work together, a PR's, say,
     to turn on and off as one. **New group** (beside **+**) makes one at the top of the list,
@@ -109,7 +116,7 @@ What's different in Firefox-based browsers:
     (remembered, and the popup's **All rules** shares it), its **+** makes a rule at its top,
     and its `⋯` menu has **Rename**, **Duplicate** (a copy with the same rules, on, at the top
     of the list, to start another PR from), **Export group**, **Ungroup** (the group goes, its
-    rules stay where they were) and **Delete** (with its rules, and **Undo** in the toast).
+    rules stay where they were) and **Delete** (with its rules, which **Undo** brings back).
     Once there's a group, **New rule** and **Mock this response** say which group the rule
     goes into: the one the last rule made there went into, or the group whose **+** you
     clicked, and you can pick another, or none. **Export group** saves the group and its rules

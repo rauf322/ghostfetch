@@ -295,7 +295,7 @@ try {
     if (r.ms < 580) throw new Error(`only took ${Math.round(r.ms)} ms`);
   });
   await check(
-    'a page counts for the popup what each rule did on it, by rule and by what it did, and nothing of the requests',
+    'a page counts for the popup what each rule did on it, by rule and by what it did, with when each last did, and nothing of the requests',
     async () => {
       const tab = (await worker.evaluate(() => chrome.tabs.query({}))).find((candidate) =>
         candidate.url?.startsWith(ORIGIN),
@@ -321,14 +321,25 @@ try {
       const after = await ask();
       const more = (id, key) =>
         (after.rules[id]?.[key] ?? 0) - (before.rules[id]?.[key] ?? 0);
+      // When each rule counted last answered: a time, and nothing else, for each of them.
+      const times = Object.entries(after.last);
       expect(
         [
           after.record,
           Object.keys(after).toSorted(),
           Object.keys(after.rules[replace]).toSorted(),
           [more(replace, 'mocked'), more(merge, 'modified'), more(unreachable, 'failed')],
+          times.map(([id]) => id).toSorted(),
+          times.every(([, time]) => Number.isInteger(time) && time > 0),
         ],
-        [true, ['record', 'rules'], ['failed', 'mocked', 'modified'], [2, 1, 1]],
+        [
+          true,
+          ['last', 'record', 'rules'],
+          ['failed', 'mocked', 'modified'],
+          [2, 1, 1],
+          Object.keys(after.rules).toSorted(),
+          true,
+        ],
       );
     },
   );
@@ -2551,16 +2562,17 @@ try {
   // counts (precise coverage). The build isn't minified, so a component is counted by its name each
   // time it draws.
   const editorSession = await context.newCDPSession(app);
-  const draws = async (action) => {
-    await editorSession.send('Profiler.enable');
-    await editorSession.send('Profiler.startPreciseCoverage', {
+  // The same in another page, by its CDP session (a popup's).
+  const drawsIn = async (session, action) => {
+    await session.send('Profiler.enable');
+    await session.send('Profiler.startPreciseCoverage', {
       callCount: true,
       detailed: false,
     });
-    await editorSession.send('Profiler.takePreciseCoverage');
+    await session.send('Profiler.takePreciseCoverage');
     await action();
-    const { result } = await editorSession.send('Profiler.takePreciseCoverage');
-    await editorSession.send('Profiler.stopPreciseCoverage');
+    const { result } = await session.send('Profiler.takePreciseCoverage');
+    await session.send('Profiler.stopPreciseCoverage');
     const counts = {};
     for (const script of result) {
       if (!script.url.includes('/chunks/')) continue;
@@ -2571,6 +2583,7 @@ try {
     }
     return counts;
   };
+  const draws = (action) => drawsIn(editorSession, action);
   await check(
     'a request in the watched tab draws its count again, not the editor and its rules',
     async () => {
@@ -2655,32 +2668,34 @@ try {
     );
   // A row's first line: what its slot says, the parts out of sight left out; how opaque that and
   // the slot's actions are; where its name and its slot stand; and the name's weight and colour.
-  const lineOf = (url) =>
-    ruleRow(url).evaluate((row) => {
-      const part = (slot) => row.querySelector(`[data-slot="${slot}"]`);
-      const box = (element) => {
-        const { left, right, top, bottom } = element.getBoundingClientRect();
-        return [left, right, top, bottom].map((edge) => Math.round(edge));
-      };
-      const status = part('item-status');
-      const bottom = status.getBoundingClientRect().bottom;
-      const name = getComputedStyle(part('item-title'));
-      return {
-        says: [...status.children]
-          .filter((said) => said.getBoundingClientRect().top < bottom - 1)
-          .map((said) => said.textContent)
-          .join(' '),
-        status: getComputedStyle(status).opacity,
-        actions: getComputedStyle(part('item-slot-actions')).opacity,
-        name: box(part('item-title')),
-        slot: box(part('item-slot')),
-        weight: name.fontWeight,
-        colour: name.color,
-      };
-    });
-  // The theme's text colours by the kit's names, as a probe with each class draws them.
-  const textColours = () =>
-    app.evaluate(() =>
+  // The editor's, and the popup's (readLine).
+  const readLine = (row) => {
+    const part = (slot) => row.querySelector(`[data-slot="${slot}"]`);
+    const box = (element) => {
+      const { left, right, top, bottom } = element.getBoundingClientRect();
+      return [left, right, top, bottom].map((edge) => Math.round(edge));
+    };
+    const status = part('item-status');
+    const bottom = status.getBoundingClientRect().bottom;
+    const name = getComputedStyle(part('item-title'));
+    return {
+      says: [...status.children]
+        .filter((said) => said.getBoundingClientRect().top < bottom - 1)
+        .map((said) => said.textContent)
+        .join(' '),
+      status: getComputedStyle(status).opacity,
+      actions: getComputedStyle(part('item-slot-actions')).opacity,
+      name: box(part('item-title')),
+      slot: box(part('item-slot')),
+      weight: name.fontWeight,
+      colour: name.color,
+    };
+  };
+  const lineOf = (url) => ruleRow(url).evaluate(readLine);
+  // The theme's text colours by the kit's names, as a probe with each class draws them, in the
+  // editor or another view.
+  const textColours = (view = app) =>
+    view.evaluate(() =>
       Object.fromEntries(
         ['strong', 't65', 't50', 'signal'].map((name) => {
           const probe = document.createElement('span');
@@ -3014,14 +3029,15 @@ try {
         ? `group: ${active.querySelector('[data-testid="group"]').dataset.group}`
         : active.dataset.url;
     });
-  // The role and the name Chromium gives the element `selector` finds, as a screen reader gets.
-  const axOf = async (selector) => {
-    const { root } = await editorSession.send('DOM.getDocument', { depth: 0 });
-    const { nodeId } = await editorSession.send('DOM.querySelector', {
+  // The role and the name Chromium gives the element `selector` finds, as a screen reader gets: in
+  // the editor, or in another page by its CDP session.
+  const axOf = async (selector, session = editorSession) => {
+    const { root } = await session.send('DOM.getDocument', { depth: 0 });
+    const { nodeId } = await session.send('DOM.querySelector', {
       nodeId: root.nodeId,
       selector,
     });
-    const { nodes } = await editorSession.send('Accessibility.getPartialAXTree', {
+    const { nodes } = await session.send('Accessibility.getPartialAXTree', {
       nodeId,
       fetchRelatives: false,
     });
@@ -4795,8 +4811,10 @@ try {
         ),
       ];
       const on = await state();
-      // No Turn off or Turn on, nor any button but the dot and the name.
-      const buttons = await first.locator('button').count();
+      // No Turn off or Turn on: the dot is the switch, and the row's one button is Edit this rule.
+      const buttons = await first
+        .locator('button')
+        .evaluateAll((all) => all.map((button) => button.dataset.testid));
       await dot.click();
       await sleep(200);
       const off = await state();
@@ -4804,7 +4822,12 @@ try {
       await sleep(200);
       expect(
         [on, off, await state(), buttons],
-        [[true, 'true', true], [false, 'false', false], [true, 'true', true], 1],
+        [
+          [true, 'true', true],
+          [false, 'false', false],
+          [true, 'true', true],
+          ['edit-rule'],
+        ],
       );
     },
   );
@@ -4827,14 +4850,14 @@ try {
         const row = popup.locator('[data-testid="popup-rule"]').first();
         await popup.waitForFunction(
           (name) =>
-            document.querySelector('[data-testid="popup-rule"] button')?.textContent ===
-            name,
+            document.querySelector('[data-testid="popup-rule"] [data-slot="item-title"]')
+              ?.textContent === name,
           url,
           { timeout: 3000 },
         );
         const edges = () =>
           row.evaluate((element) => {
-            const name = element.querySelector('button');
+            const name = element.querySelector('[data-slot="item-title"]');
             const box = (target) => target.getBoundingClientRect();
             return [
               name.scrollWidth > name.clientWidth,
@@ -4957,7 +4980,7 @@ try {
                     fold.compareDocumentPosition(row) & Node.DOCUMENT_POSITION_PRECEDING,
                 )
                 .map((row) => [
-                  row.querySelector('button').textContent,
+                  row.querySelector('[data-slot="item-title"]').textContent,
                   row.querySelector('[role="switch"]').getAttribute('aria-checked') ===
                     'true',
                   row.querySelector('[data-testid="rule-did"]')?.textContent ?? '',
@@ -4992,6 +5015,816 @@ try {
       }
     },
   );
+
+  // The popup's rules as the editor's rows (3b): a rule's slot, what it did on the tab's page and
+  // when ("1 mocked · 4m"), from the counts the page sends with when each rule last answered, or
+  // under the pointer and with focus its Edit this rule; the step back in All rules; and the list
+  // as a tree for the keyboard, with a rule's right-click menu. On a blank page of their own, whose
+  // log starts empty (`popPage`), beside which a popup opens as the toolbar's would (`beside`):
+  // five rules at the top of the list, then a group of two, Pops; three of them answer before the
+  // popup opens, one 50 s and one 4 minutes before by the page's clock. The list, the folds and
+  // the rule open in the editor as they were after these checks.
+  const POP_ANSWERS = '/api/pop-answers';
+  const POP_OLD = '/api/pop-old';
+  const POP_NEVER = '/api/pop-never';
+  const POP_OFF = '/api/pop-off';
+  const POP_LATE = '/api/pop-late';
+  const POP_ONE = '/api/pop-one';
+  const POP_TWO = '/api/pop-two';
+  const POPS = createGroup('Pops');
+  const POP_RULES = [
+    slotRule(POP_ANSWERS, 'Pop answers'),
+    slotRule(POP_OLD, 'Pop answered before'),
+    slotRule(POP_NEVER, 'Pop never asked for'),
+    slotRule(POP_OFF, 'Pop switched off', false),
+    slotRule(POP_LATE, 'Pop answers late'),
+    ...[POP_ONE, POP_TWO].map((url, index) =>
+      Object.assign(slotRule(url, `Pop ${index ? 'two' : 'one'}`), { group: POPS.id }),
+    ),
+  ];
+  const popId = (url) => POP_RULES.find((rule) => rule.match.url === url).id;
+  const { rules: beforePop, groups: beforePopGroups = [] } = await worker.evaluate(() =>
+    chrome.storage.local.get(['rules', 'groups']),
+  );
+  const openBeforePop = await openNow();
+  await setStorage({
+    rules: [...POP_RULES, ...beforePop],
+    groups: [{ ...POPS, at: 5 }, ...beforePopGroups],
+  });
+  const popPage = await context.newPage();
+  popPage.on('pageerror', (error) => errors.push(`pop page: ${error.message}`));
+  await popPage.goto(`${ORIGIN}/__control?popup`);
+  const popTab = (await worker.evaluate(() => chrome.tabs.query({}))).find(
+    (candidate) => candidate.url === popPage.url(),
+  );
+  // A request the page makes, `ago` ms back by its own clock, which its log keeps as when the
+  // request was sent; and when (by this clock) it made it.
+  const popCall = async (url, ago = 0) => {
+    const at = Date.now();
+    await popPage.evaluate(
+      async ([target, back]) => {
+        const real = Date.now;
+        Date.now = () => real() - back;
+        try {
+          await (await fetch(target)).text();
+          // The interceptor logs the request a moment after it ends.
+          await new Promise((resolve) => setTimeout(resolve, 200));
+        } finally {
+          Date.now = real;
+        }
+      },
+      [url, ago],
+    );
+    return at - ago;
+  };
+  // POP_OLD answers twice, 6 minutes back and then 4: the last time is the one it says.
+  await popCall(POP_OLD, 6 * 60_000);
+  const sentAt = {
+    [POP_ANSWERS]: await popCall(POP_ANSWERS, 50_000),
+    [POP_OLD]: await popCall(POP_OLD, 4 * 60_000),
+    [POP_ONE]: await popCall(POP_ONE),
+  };
+  // The popup beside the page, as the toolbar's opens: in a background tab, which takes the page's
+  // tab as the one it's about, 330 px wide. The side panel it opens the editor in (Edit this rule,
+  // a row's click, Enter) is stood in for, as one opened here would stay open over the checks
+  // after these: what it's asked for, the window, and whether the click or key that asked is the
+  // user's, which Chrome needs; and the popup's window losing focus, which would close a popup.
+  await popPage.bringToFront();
+  const besideOpened = context.waitForEvent('page', {
+    predicate: (candidate) => candidate.url().includes('popup.html'),
+  });
+  await worker.evaluate(() => chrome.tabs.create({ url: 'popup.html', active: false }));
+  const beside = await besideOpened;
+  beside.on('pageerror', (error) => errors.push(`popup beside: ${error.message}`));
+  beside.on(
+    'console',
+    (message) =>
+      message.type() === 'error' &&
+      errors.push(`popup beside console: ${message.text()}`),
+  );
+  await beside.setViewportSize({ width: 330, height: 600 });
+  await beside.waitForSelector('[data-testid="not-answering"]', { timeout: 5000 });
+  await beside.bringToFront();
+  await beside.evaluate(() => {
+    window.sidePanels = [];
+    chrome.sidePanel.open = (options) => {
+      window.sidePanels.push([options.windowId, navigator.userActivation.isActive]);
+      return new Promise(() => {});
+    };
+    window.blurs = 0;
+    window.addEventListener('blur', () => (window.blurs += 1));
+  });
+  const besideWindow = await beside.evaluate(() =>
+    chrome.windows.getCurrent().then(({ id }) => id),
+  );
+  const besideSession = await context.newCDPSession(beside);
+  const popRow = (url) => beside.locator(`[data-testid="popup-rule"][data-url="${url}"]`);
+  const popLine = (url) => popRow(url).evaluate(readLine);
+  const popFold = beside.locator('[data-testid="not-answering-block"]');
+  const popsItem = beside.locator(
+    `[data-testid="popup-group-block"][data-item="${POPS.id}"]`,
+  );
+  // What has focus in the popup: a rule's row (what it matches), a group's ("group: " its name),
+  // the fold, or else what it's called.
+  const popFocus = () =>
+    beside.evaluate(() => {
+      const active = document.activeElement;
+      if (!active?.matches('[role="treeitem"]'))
+        return `not an item: ${active?.getAttribute('aria-label') ?? active?.textContent?.trim()}`;
+      if (active.dataset.testid === 'not-answering-block') return 'fold';
+      if (active.dataset.testid === 'popup-group-block')
+        return `group: ${active.querySelector('[data-testid="popup-group"]').dataset.group}`;
+      return active.dataset.url;
+    });
+  // Keys pressed one after another, and where focus is after each.
+  const popKeys = async (keys) => {
+    const seen = [];
+    for (const key of keys) {
+      await beside.keyboard.press(key);
+      seen.push(await popFocus());
+    }
+    return seen;
+  };
+  // The list drawn anew: This page, the fold shut, no item focused before, and no menu a check
+  // before left open.
+  const popReset = async () => {
+    if (await beside.locator('[data-slot="context-menu-content"]').count()) {
+      await beside.keyboard.press('Escape');
+      await beside
+        .locator('[data-slot="context-menu-content"]')
+        .waitFor({ state: 'detached', timeout: 3000 });
+    }
+    await beside.click('[data-testid="view-rules"]');
+    await beside.click('[data-testid="view-page"]');
+    await popFold.waitFor({ timeout: 3000 });
+    await beside.mouse.move(1, 1);
+  };
+  const popGroup = async () =>
+    (await worker.evaluate(() => chrome.storage.local.get('groups'))).groups.find(
+      ({ id }) => id === POPS.id,
+    );
+
+  await check(
+    'a popup row says at its right end what its rule did on the page and when, as the editor\'s does: "1 mocked · now", or "2 mocked · 4m" for requests the page made 6 and 4 minutes ago by its clock, the count in green and the time in grey; the page tells the popup when each rule last answered (last), beside its counts as they were',
+    async () => {
+      const theme = await textColours(beside);
+      const said = await beside.evaluate(() =>
+        [...document.querySelectorAll('[data-testid="popup-rule"]')]
+          .filter((row) => !row.closest('[data-testid="not-answering-block"]'))
+          .map((row) => [
+            row.dataset.url,
+            row.querySelector('[data-slot="item-status"]').textContent,
+          ]),
+      );
+      const colours = await popRow(POP_OLD).evaluate((row) =>
+        ['rule-did', 'rule-time'].map(
+          (id) => getComputedStyle(row.querySelector(`[data-testid="${id}"]`)).color,
+        ),
+      );
+      const told = await worker.evaluate(
+        (id) =>
+          chrome.tabs.sendMessage(id, { type: 'ghostfetch:counts' }, { frameId: 0 }),
+        popTab.id,
+      );
+      // When each rule last answered, as the page tells it, against when it asked.
+      const when = [POP_ANSWERS, POP_OLD, POP_ONE].map(
+        (url) => Math.abs(told.last[popId(url)] - sentAt[url]) < 3000,
+      );
+      expect(
+        [
+          said,
+          colours,
+          Object.keys(told),
+          told.record,
+          Object.keys(told.rules).toSorted(),
+          told.rules[popId(POP_OLD)],
+          Object.keys(told.last).toSorted(),
+          when,
+        ],
+        [
+          [
+            [POP_ANSWERS, '1 mocked · now'],
+            [POP_OLD, '2 mocked · 4m'],
+            [POP_ONE, '1 mocked · now'],
+          ],
+          [theme.signal, theme.t50],
+          ['record', 'rules', 'last'],
+          true,
+          [POP_ANSWERS, POP_OLD, POP_ONE].map(popId).toSorted(),
+          { mocked: 2, modified: 0, failed: 0 },
+          [POP_ANSWERS, POP_OLD, POP_ONE].map(popId).toSorted(),
+          [true, true, true],
+        ],
+      );
+    },
+  );
+  await check(
+    "a popup row's time moves on with the screens' clock by itself: the request made 50 s before the popup opened says now, then 1m from the clock's next tick, which draws the time again (RuleTime) and not the row (RuleRow) or the list",
+    async () => {
+      const before = (await popLine(POP_ANSWERS)).says;
+      const counts = await drawsIn(besideSession, async () => {
+        await beside.waitForFunction(
+          (url) =>
+            document.querySelector(
+              `[data-testid="popup-rule"][data-url="${url}"] [data-testid="rule-time"]`,
+            )?.textContent === '· 1m',
+          POP_ANSWERS,
+          { timeout: 20_000 },
+        );
+        await sleep(200);
+      });
+      expect(
+        [
+          before,
+          (await popLine(POP_ANSWERS)).says,
+          (counts.RuleTime ?? 0) > 0,
+          counts.RuleRow ?? 0,
+          counts.RuleList ?? 0,
+        ],
+        ['1 mocked · now', '1 mocked · 1m', true, 0, 0],
+        `drawn: RuleTime ${counts.RuleTime}, RuleRow ${counts.RuleRow}, RuleList ${counts.RuleList}`,
+      );
+    },
+  );
+  await check(
+    "under the pointer a popup row's slot shows its Edit this rule where it said what the rule did, and nothing in the row moves; Edit this rule, a click on the row and Enter on it each open the rule in the editor, in the side panel of the popup's window, asked in the user's click or key; its dot turns it off and on and opens nothing",
+    async () => {
+      await beside.mouse.move(1, 1);
+      const rest = await popLine(POP_OLD);
+      await popRow(POP_OLD).hover();
+      const shown = await rowSettled(
+        () => popLine(POP_OLD),
+        (line) => line.actions === '1' && line.status === '0',
+      );
+      const opened = [];
+      const opens = async (act, url) => {
+        await act();
+        opened.push(await rowSettled(openNow, (now) => now === url));
+      };
+      await opens(
+        () => popRow(POP_OLD).locator('[data-testid="edit-rule"]').click(),
+        POP_OLD,
+      );
+      await opens(
+        () => popRow(POP_ANSWERS).locator('[data-slot="item-title"]').click(),
+        POP_ANSWERS,
+      );
+      await opens(async () => {
+        await popRow(POP_OLD).focus();
+        await beside.keyboard.press('Enter');
+      }, POP_OLD);
+      const dot = popRow(POP_ANSWERS).locator('[role="switch"]');
+      await dot.click();
+      const off = (
+        await rowSettled(
+          () => slotStored(POP_ANSWERS),
+          (rule) => !rule.enabled,
+        )
+      ).enabled;
+      await dot.click();
+      const on = (
+        await rowSettled(
+          () => slotStored(POP_ANSWERS),
+          (rule) => rule.enabled,
+        )
+      ).enabled;
+      await sleep(200);
+      expect(
+        [
+          [rest.status, rest.actions],
+          [shown.status, shown.actions, shown.name, shown.slot],
+          opened,
+          await beside.evaluate(() => window.sidePanels),
+          [off, on],
+          await openNow(),
+        ],
+        [
+          ['1', '0'],
+          ['0', '1', rest.name, rest.slot],
+          [POP_OLD, POP_ANSWERS, POP_OLD],
+          [
+            [besideWindow, true],
+            [besideWindow, true],
+            [besideWindow, true],
+          ],
+          [false, true],
+          POP_OLD,
+        ],
+      );
+    },
+  );
+  await check(
+    "the popup's rule list is a tree that's one Tab stop: Tab from its tabs lands on its first row, then on that row's Edit this rule, which shows, then out of the list; no other row's controls, nor any dot, is a Tab stop; each item says its level and its place among its own, the fold whether it's open; a screen reader names a row by its rule's name, described by what it did and what it matches, and the fold by its own",
+    async () => {
+      await popReset();
+      const tree = await beside.evaluate(() => {
+        const list = document.querySelector('[role="tree"]');
+        const label = (item) =>
+          item.dataset.testid === 'not-answering-block' ? 'fold' : item.dataset.url;
+        return {
+          name: list.getAttribute('aria-label'),
+          items: [...list.querySelectorAll('[role="treeitem"]')].map((item) => [
+            label(item),
+            ...['aria-level', 'aria-posinset', 'aria-setsize', 'aria-expanded'].map(
+              (name) => item.getAttribute(name),
+            ),
+          ]),
+          stops: [...list.querySelectorAll('*')]
+            .filter((element) => element.tabIndex >= 0)
+            .map((element) =>
+              element.matches('[role="treeitem"]')
+                ? label(element)
+                : element.getAttribute('aria-label'),
+            ),
+        };
+      });
+      await beside.locator('[data-testid="view-page"]').focus();
+      const tabs = [];
+      let actions = '';
+      for (let time = 0; time < 3; time++) {
+        await beside.keyboard.press('Tab');
+        tabs.push(await popFocus());
+        // With focus on Edit this rule, once the actions have faded in.
+        if (time === 1)
+          actions = (
+            await rowSettled(
+              () => popLine(POP_ANSWERS),
+              (line) => line.actions === '1',
+            )
+          ).actions;
+      }
+      // Role, name and description, as Chromium gives them a screen reader.
+      const ax = async (selector) => {
+        const { root } = await besideSession.send('DOM.getDocument', { depth: 0 });
+        const { nodeId } = await besideSession.send('DOM.querySelector', {
+          nodeId: root.nodeId,
+          selector,
+        });
+        const { nodes } = await besideSession.send('Accessibility.getPartialAXTree', {
+          nodeId,
+          fetchRelatives: false,
+        });
+        return [
+          nodes[0]?.role?.value,
+          nodes[0]?.name?.value,
+          nodes[0]?.description?.value,
+        ];
+      };
+      const row = await ax(`[data-testid="popup-rule"][data-url="${POP_ANSWERS}"]`);
+      const fold = await ax('[data-testid="not-answering-block"]');
+      const EDIT = 'Edit this rule: “Pop answers”';
+      expect(
+        [
+          tree.name,
+          tree.items,
+          tree.stops,
+          tabs,
+          actions,
+          row.slice(0, 2),
+          /^1 mocked · \d+m\b.*\/api\/pop-answers/.test(row[2]),
+          fold.slice(0, 2),
+          /^\d+ on · \d+ off$/.test(fold[2]),
+        ],
+        [
+          'Rules',
+          [
+            [POP_ANSWERS, '1', '1', '4', null],
+            [POP_OLD, '1', '2', '4', null],
+            [POP_ONE, '1', '3', '4', null],
+            ['fold', '1', '4', '4', 'false'],
+          ],
+          [POP_ANSWERS, EDIT],
+          [POP_ANSWERS, `not an item: ${EDIT}`, 'not an item: Open editor'],
+          '1',
+          ['treeitem', 'Pop answers'],
+          true,
+          ['treeitem', 'Not answering here'],
+          true,
+        ],
+        `described as “${row[2]}” and “${fold[2]}”`,
+      );
+    },
+  );
+  await check(
+    "in the popup's This page ↑ ↓ Home End move between its rows, passing the fold's rules while it's shut; → opens the fold and goes on into it, ← goes from a rule in it back to the fold and shuts it; Enter and Space open and shut it; Space turns a focused rule off and on as its dot does, saved at once, the rule staying where it is with focus",
+    async () => {
+      await popReset();
+      await popRow(POP_ANSWERS).focus();
+      const open = () => popFold.getAttribute('aria-expanded');
+      const shutMoves = await popKeys([
+        'ArrowDown',
+        'ArrowDown',
+        'ArrowDown',
+        'ArrowDown',
+        'ArrowUp',
+        'Home',
+        'End',
+      ]);
+      const shut = await open();
+      const into = await popKeys(['ArrowRight', 'ArrowRight', 'ArrowDown']);
+      const opened = await open();
+      const last = await beside.evaluate(
+        () => [...document.querySelectorAll('[role="treeitem"]')].at(-1).dataset.url,
+      );
+      const out = await popKeys(['End', 'ArrowLeft', 'ArrowLeft']);
+      const shutAgain = await open();
+      const byKeys = [];
+      for (const key of ['Enter', 'Enter', 'Space', 'Space']) {
+        await beside.keyboard.press(key);
+        byKeys.push(await open());
+      }
+      await beside.keyboard.press('Home');
+      await beside.keyboard.press('Space');
+      const off = (
+        await rowSettled(
+          () => slotStored(POP_ANSWERS),
+          (rule) => !rule.enabled,
+        )
+      ).enabled;
+      const stayed = [
+        await popFocus(),
+        await popRow(POP_ANSWERS).getAttribute('aria-posinset'),
+      ];
+      await beside.keyboard.press('Space');
+      const on = (
+        await rowSettled(
+          () => slotStored(POP_ANSWERS),
+          (rule) => rule.enabled,
+        )
+      ).enabled;
+      expect(
+        [shutMoves, shut, into, opened, out, shutAgain, byKeys, [off, on], stayed],
+        [
+          [POP_OLD, POP_ONE, 'fold', 'fold', POP_ONE, POP_ANSWERS, 'fold'],
+          'false',
+          ['fold', POP_NEVER, POP_OFF],
+          'true',
+          [last, 'fold', 'fold'],
+          'false',
+          ['true', 'false', 'true', 'false'],
+          [false, true],
+          [POP_ANSWERS, '1'],
+        ],
+      );
+    },
+  );
+  await check(
+    "in the popup's All rules → and ← unfold and fold a group and step into it and out, as in the editor's list, ↓ passing a folded group's rules; Enter folds and unfolds it too, and Space turns the group off and on as its dot does, saved at once",
+    async () => {
+      await beside.click('[data-testid="view-rules"]');
+      await popsItem.waitFor({ timeout: 3000 });
+      const next = await popsItem.evaluate((item) => {
+        const after = item.nextElementSibling;
+        return after.dataset.testid === 'popup-group-block'
+          ? `group: ${after.querySelector('[data-testid="popup-group"]').dataset.group}`
+          : after.dataset.url;
+      });
+      const expanded = () => popsItem.getAttribute('aria-expanded');
+      await popsItem.focus();
+      const inAndOut = await popKeys(['ArrowRight', 'ArrowLeft', 'ArrowLeft']);
+      const folded = await expanded();
+      const past = await popKeys(['ArrowDown', 'ArrowUp', 'ArrowRight']);
+      const unfolded = await expanded();
+      const byEnter = [];
+      for (const key of ['Enter', 'Enter']) {
+        await beside.keyboard.press(key);
+        byEnter.push(await expanded());
+      }
+      await beside.keyboard.press('Space');
+      const off = (await rowSettled(popGroup, (group) => !group.enabled)).enabled;
+      await beside.keyboard.press('Space');
+      const on = (await rowSettled(popGroup, (group) => group.enabled)).enabled;
+      expect(
+        [inAndOut, folded, past, unfolded, byEnter, [off, on], await popFocus()],
+        [
+          [POP_ONE, 'group: Pops', 'group: Pops'],
+          'false',
+          [next, 'group: Pops', 'group: Pops'],
+          'true',
+          ['false', 'true'],
+          [false, true],
+          'group: Pops',
+        ],
+      );
+    },
+  );
+  await check(
+    "a right-click on a popup rule's row opens its menu at the pointer: Edit this rule, and Turn off, which turns it off; the ContextMenu key, or Shift+F10, on the focused row opens it at the row's bottom left, saying Turn on now; Esc shuts the menu and not the popup (the key's taken, as it isn't with nothing open), focus back on the row; its Edit this rule opens the rule in the editor; a group's row and the fold keep the browser's menu",
+    async () => {
+      await popReset();
+      const menu = beside.locator('[data-slot="context-menu-content"]');
+      const items = async () => {
+        await menu.locator('[role="menuitem"]').first().waitFor({ timeout: 3000 });
+        return (await menu.locator('[role="menuitem"]').allTextContents()).map((text) =>
+          text.trim(),
+        );
+      };
+      const pick = async (testid) => {
+        await menu.locator(`[data-testid="${testid}"]`).click();
+        await menu.waitFor({ state: 'detached', timeout: 3000 });
+      };
+      const near = async (point) => {
+        const box = await menu.boundingBox();
+        return Boolean(box) && Math.hypot(box.x - point[0], box.y - point[1]) <= 12;
+      };
+      const row = popRow(POP_ANSWERS);
+      const box = await row.boundingBox();
+      const point = [box.x + 40, box.y + box.height / 2];
+      await beside.mouse.click(...point, { button: 'right' });
+      const byPointer = [
+        await items(),
+        await near(point),
+        await row.getAttribute('data-context-open'),
+      ];
+      await pick('popup-menu-turn');
+      const off = (
+        await rowSettled(
+          () => slotStored(POP_ANSWERS),
+          (rule) => !rule.enabled,
+        )
+      ).enabled;
+      const afterPick = await rowSettled(popFocus, (item) => item === POP_ANSWERS);
+      await beside.evaluate(() => {
+        window.escapes = [];
+        window.addEventListener(
+          'keydown',
+          (event) => event.key === 'Escape' && window.escapes.push(event),
+          true,
+        );
+      });
+      await row.focus();
+      await beside.keyboard.press('ContextMenu');
+      const byKey = [await items(), await near([box.x, box.y + box.height])];
+      await beside.keyboard.press('Escape');
+      await menu.waitFor({ state: 'detached', timeout: 3000 });
+      const back = await rowSettled(popFocus, (item) => item === POP_ANSWERS);
+      await beside.keyboard.press('Escape');
+      const taken = await beside.evaluate(() =>
+        window.escapes.map((event) => event.defaultPrevented),
+      );
+      await beside.keyboard.press('Shift+F10');
+      const byShift = await items();
+      await pick('popup-menu-turn');
+      const on = (
+        await rowSettled(
+          () => slotStored(POP_ANSWERS),
+          (rule) => rule.enabled,
+        )
+      ).enabled;
+      await row.click({ button: 'right', position: { x: 40, y: 12 } });
+      await items();
+      await pick('popup-menu-edit');
+      const edited = await rowSettled(openNow, (url) => url === POP_ANSWERS);
+      const panels = (await beside.evaluate(() => window.sidePanels)).at(-1);
+      // Elsewhere: the fold's row, and in All rules a group's.
+      await beside.evaluate(() => {
+        window.menus = [];
+        window.addEventListener('contextmenu', (event) => window.menus.push(event), true);
+      });
+      // Whether a right-click there opened a menu of ours, which is then shut so the check goes
+      // on to the next.
+      const ours = async (locator) => {
+        await locator.click({ button: 'right' });
+        await sleep(300);
+        const opened = await menu.count();
+        if (opened) {
+          await beside.keyboard.press('Escape');
+          await menu.waitFor({ state: 'detached', timeout: 3000 });
+        }
+        return opened;
+      };
+      const onFold = await ours(beside.locator('[data-testid="not-answering"]'));
+      await beside.click('[data-testid="view-rules"]');
+      const onGroup = await ours(popsItem.locator('[data-testid="popup-group"]'));
+      const elsewhere = [
+        onFold,
+        onGroup,
+        await beside.evaluate(() => window.menus.map((event) => event.defaultPrevented)),
+      ];
+      expect(
+        [
+          byPointer,
+          off,
+          afterPick,
+          byKey,
+          back,
+          taken,
+          byShift,
+          on,
+          edited,
+          panels,
+          elsewhere,
+        ],
+        [
+          [['Edit this rule', 'Turn off'], true, ''],
+          false,
+          POP_ANSWERS,
+          [['Edit this rule', 'Turn on'], true],
+          POP_ANSWERS,
+          [true, false],
+          ['Edit this rule', 'Turn on'],
+          true,
+          POP_ANSWERS,
+          [besideWindow, true],
+          [0, 0, [false, false]],
+        ],
+      );
+    },
+  );
+  await check(
+    "in the popup's All rules a rule that's on but hasn't answered on the page steps back, as in the editor's list, its name at normal weight in a quieter grey, in a group too; one that answered stays as it was, and one that's off fades; under This page the fold's rules don't step back, the fold saying so already; while Recording is off, none does",
+    async () => {
+      const theme = await textColours(beside);
+      const look = (url) =>
+        popRow(url)
+          .locator('[data-slot="item-title"]')
+          .evaluate((title) => [
+            getComputedStyle(title).fontWeight,
+            getComputedStyle(title).color,
+          ]);
+      const seen = async () => [
+        await look(POP_ANSWERS),
+        await look(POP_NEVER),
+        await look(POP_OFF),
+        await look(POP_ONE),
+        await look(POP_TWO),
+      ];
+      await beside.click('[data-testid="view-rules"]');
+      await popsItem.waitFor({ timeout: 3000 });
+      const all = await seen();
+      await popReset();
+      await beside.locator('[data-testid="not-answering"]').click();
+      const folded = [await look(POP_NEVER), await look(POP_TWO)];
+      let notRecording;
+      try {
+        await setStorage({ record: false });
+        await beside.click('[data-testid="view-rules"]');
+        notRecording = await rowSettled(seen, (rows) => rows[1][0] === '500');
+      } finally {
+        await setStorage({ record: true });
+      }
+      const again = await rowSettled(seen, (rows) => rows[1][0] === '400');
+      const BRIGHT = ['500', theme.strong];
+      const QUIET = ['400', theme.t65];
+      const FADED = ['500', theme.t50];
+      expect(
+        [all, folded, notRecording, again],
+        [
+          [BRIGHT, QUIET, FADED, BRIGHT, QUIET],
+          [BRIGHT, BRIGHT],
+          [BRIGHT, BRIGHT, FADED, BRIGHT, BRIGHT],
+          [BRIGHT, QUIET, FADED, BRIGHT, QUIET],
+        ],
+      );
+    },
+  );
+  await check(
+    "a rule focused in the popup's fold that answers on the page meanwhile goes up under Answering here, and focus goes with it; nothing in these checks took focus from the popup's window",
+    async () => {
+      await popReset();
+      await popFold.focus();
+      await popKeys(['ArrowRight', 'ArrowRight', 'ArrowDown', 'ArrowDown']);
+      const level = () =>
+        beside.evaluate(() => document.activeElement.getAttribute('aria-level'));
+      const before = [await popFocus(), await level()];
+      await popCall(POP_LATE);
+      const after = await rowSettled(
+        async () => [await popFocus(), await level()],
+        ([url, at]) => url === POP_LATE && at === '1',
+      );
+      expect(
+        [before, after, await beside.evaluate(() => window.blurs)],
+        [[POP_LATE, '2'], [POP_LATE, '1'], 0],
+      );
+    },
+  );
+  await check(
+    "in Commit Mono at Larger, at the popup's 330 px, nothing in its rows reaches past their edges: a rule's slot ends inside its row, its name keeps 7 letters' room, and what the slot says gives way, the time first, then the count, as in the editor's list; a group's row and the fold's stay on one line inside theirs",
+    async () => {
+      // Each rule's row: whether its slot ends inside its padding and nothing in it overflows it,
+      // whether its name has its room, and each part of what its slot says, whole, cut, or out of
+      // sight; each group's row and the fold's: whether all of it is on its one line inside it;
+      // and whether the page itself is wider than the popup.
+      const rows = () =>
+        beside.evaluate(() => ({
+          rules: [...document.querySelectorAll('[data-testid="popup-rule"]')].map(
+            (row) => {
+              const edge =
+                row.getBoundingClientRect().right -
+                parseFloat(getComputedStyle(row).paddingRight);
+              const slot = row
+                .querySelector('[data-slot="item-slot"]')
+                .getBoundingClientRect();
+              const title = row.querySelector('[data-slot="item-title"]');
+              const line = title.parentElement.getBoundingClientRect().width;
+              const em = parseFloat(getComputedStyle(title).fontSize);
+              const status = row.querySelector('[data-slot="item-status"]');
+              const bottom = status.getBoundingClientRect().bottom;
+              return {
+                url: row.dataset.url,
+                inside: slot.right <= edge + 0.5 && row.scrollWidth <= row.clientWidth,
+                room:
+                  title.getBoundingClientRect().width >=
+                  Math.min(7 * em, 0.6 * line) - 0.5,
+                says: [...status.children].map((said) =>
+                  said.getBoundingClientRect().top >= bottom - 1
+                    ? 'gone'
+                    : said.scrollWidth > said.clientWidth
+                      ? 'cut'
+                      : 'whole',
+                ),
+              };
+            },
+          ),
+          heads: [
+            ...document.querySelectorAll(
+              '[data-testid="popup-group"], [data-testid="not-answering"]',
+            ),
+          ].map((head) => {
+            const box = head.getBoundingClientRect();
+            // Each of its words' runs on one line: one box each, or boxes at one height.
+            const texts = document.createTreeWalker(head, NodeFilter.SHOW_TEXT);
+            let wraps = false;
+            while (texts.nextNode()) {
+              const range = document.createRange();
+              range.selectNodeContents(texts.currentNode);
+              const tops = new Set(
+                [...range.getClientRects()].map((rect) => Math.round(rect.top)),
+              );
+              if (tops.size > 1) wraps = true;
+            }
+            return (
+              head.scrollWidth <= head.clientWidth &&
+              !wraps &&
+              // What shows: not the hidden checkbox Base UI keeps beside a group's switch.
+              [...head.children].every((part) => {
+                if (part instanceof HTMLInputElement) return true;
+                const at = part.getBoundingClientRect();
+                return (
+                  at.top >= box.top - 0.5 &&
+                  at.bottom <= box.bottom + 0.5 &&
+                  at.right <= box.right + 0.5
+                );
+              })
+            );
+          }),
+          wider: document.documentElement.scrollWidth > 330,
+        }));
+      // The time goes first, then the count: what a slot may say ('' for a rule that hasn't
+      // answered).
+      const GIVES_WAY = ['', 'whole,whole', 'whole,gone', 'cut,gone'];
+      const fits = ({ rules, heads, wider }) =>
+        rules.length > 0 &&
+        rules.every(
+          (row) => row.inside && row.room && GIVES_WAY.includes(`${row.says}`),
+        ) &&
+        heads.length > 0 &&
+        heads.every(Boolean) &&
+        !wider;
+      try {
+        await beside.evaluate(() =>
+          Object.assign(document.documentElement.dataset, {
+            font: 'mono',
+            size: 'larger',
+          }),
+        );
+        await beside.evaluate(() => document.fonts.ready);
+        await popReset();
+        await beside.locator('[data-testid="not-answering"]').click();
+        const thisPage = await rows();
+        await beside.click('[data-testid="view-rules"]');
+        await popsItem.waitFor({ timeout: 3000 });
+        const allRules = await rows();
+        expect(
+          [
+            fits(thisPage),
+            fits(allRules),
+            allRules.rules.some((row) => row.says[1] === 'gone'),
+          ],
+          [true, true, true],
+          JSON.stringify({ thisPage, allRules }),
+        );
+      } finally {
+        await beside.evaluate(() => {
+          delete document.documentElement.dataset.font;
+          delete document.documentElement.dataset.size;
+        });
+      }
+    },
+  );
+  await besideSession.detach();
+  await beside.close();
+  await popPage.close();
+  await setStorage({ rules: beforePop, groups: beforePopGroups });
+  await ruleRow(POP_ANSWERS).waitFor({ state: 'detached', timeout: 3000 });
+  // Pops folded and unfolded left the folds' key behind, which the editor's settings check after
+  // these would find.
+  await app.evaluate(() => localStorage.removeItem('ghostfetch.folded'));
+  if (openBeforePop && (await openNow()) !== openBeforePop) {
+    await ruleRow(openBeforePop).click();
+    await rowSettled(openNow, (url) => url === openBeforePop);
+  }
+  await popup.bringToFront();
 
   // The popup's Pause, Resume and Recording, clicked as a user does, and what the views, the
   // toolbar badge and the page then do (Paused, docs/glossary/rules.md; Recording,
@@ -6496,7 +7329,7 @@ try {
     },
   );
   await check(
-    "an iframe's requests reach the tab's log: one a rule answers and one no rule answers are both in Traffic for the tab, and the popup's counts for the tab include the one answered",
+    "an iframe's requests reach the tab's log: one a rule answers and one no rule answers are both in Traffic for the tab, and the popup's counts for the tab include the one answered, and when",
     async () => {
       // An iframe's bridge sends each request it logs to the background, which passes it on to
       // the tab's top frame (src/app/background/on-message.ts), whose log is the tab's
@@ -6516,6 +7349,7 @@ try {
           (rule) => rule.match.url === '/api/early',
         );
         // In the iframe, one after the other: a request that rule answers, and one no rule does.
+        const sent = Date.now();
         const [answered, unanswered] = await frame.evaluate(async () => {
           const got = [];
           for (const target of [
@@ -6538,13 +7372,28 @@ try {
               ])
               .toSorted(),
           );
-        // What the popup is told of the tab: how often each rule answered there.
+        // What the popup is told of the tab: how often each rule answered there, and when each
+        // last did, here whether that's a time since the iframe's requests were sent.
         const counted = () =>
-          worker.evaluate(
-            (id) =>
-              chrome.tabs.sendMessage(id, { type: 'ghostfetch:counts' }, { frameId: 0 }),
-            tab.id,
-          );
+          worker
+            .evaluate(
+              (id) =>
+                chrome.tabs.sendMessage(
+                  id,
+                  { type: 'ghostfetch:counts' },
+                  { frameId: 0 },
+                ),
+              tab.id,
+            )
+            .then((counts) => ({
+              ...counts,
+              last: Object.fromEntries(
+                Object.entries(counts.last).map(([id, time]) => [
+                  id,
+                  time >= sent && time <= Date.now(),
+                ]),
+              ),
+            }));
         const LISTED = [
           [`${LOCAL_ORIGIN}/api/early?in-frame=answered`, 'Mocked'],
           [`${LOCAL_ORIGIN}/api/user?in-frame=unanswered`, ''],
@@ -6552,6 +7401,7 @@ try {
         const COUNTED = {
           record: true,
           rules: { [early.id]: { mocked: 1, modified: 0, failed: 0 } },
+          last: { [early.id]: true },
         };
         expect(
           [
@@ -7295,7 +8145,7 @@ try {
               ].map((row) =>
                 row.dataset.testid === 'popup-group'
                   ? `group ${row.dataset.group}`
-                  : row.querySelector('button').textContent,
+                  : row.querySelector('[data-slot="item-title"]').textContent,
               ),
             );
           const shown = await rows();

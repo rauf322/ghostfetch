@@ -28,11 +28,13 @@ export interface CountsMessage {
 }
 
 // A tab's bridge to the popup: how often each rule has answered on the page, by what it did, as
-// the tab's traffic log has it (so while recording, since the page loaded or Traffic's Clear).
-// Counts only: none of the log's URLs or bodies.
+// the tab's traffic log has it (so while recording, since the page loaded or Traffic's Clear),
+// and when each of those rules last did (`last`: when the page sent that request, in ms since
+// 1970), which the popup says as "· 4m". Counts and times only: none of the log's URLs or bodies.
 export interface PageCounts {
   record: boolean;
   rules: Record<string, RuleCount>;
+  last: Record<string, number>;
 }
 export interface RuleCount {
   mocked: number;

@@ -83,7 +83,7 @@ export function PopupPage({
           <RuleList
             rules={rules}
             entries={entries}
-            counts={counts?.record ? counts.rules : undefined}
+            counts={counts?.record ? counts : undefined}
             split={false}
             enabled={!paused}
             windowId={windowId}

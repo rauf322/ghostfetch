@@ -83,9 +83,10 @@ From outside, a folder is entered only through its doors. Rules and Traffic have
 `ui/index.ts`, their screens. Sites, Interception and the Body editor have `index.ts`, and Agent
 access `ui/index.ts`. A context's `contract.ts` has the types of what crosses to another part of
 the extension as a message, and its `index.ts` offers them. Rules' `ui` also has a public file for
-each widget other screens show (`rule-switch.tsx`, `group-switch.tsx`, `group-folds.ts`,
-`group-picker.tsx`, `new-rule-group.ts`, `rules-file.tsx`), so the popup, which shows a rule's and
-a group's switch, doesn't load the Rules view with them. Rules' own screens take New rule's draft
+each widget other screens show (`rule-switch.tsx`, `group-switch.tsx`, `rule-time.tsx`,
+`group-folds.ts`, `group-picker.tsx`, `new-rule-group.ts`, `rules-file.tsx`), so the popup, which
+shows a rule's and a group's switch and when a rule last answered, doesn't load the Rules view
+with them. Rules' own screens take New rule's draft
 and the few other things only they use by path: `bounded-contexts/rules/index.ts` doesn't offer
 them, as offering the draft would bring it into the popup (its opening comment says why). `lib`,
 `platform` and the shared kernel have one door, `index.ts`; `ui` has a public file per component or
@@ -154,7 +155,7 @@ src/app/                         the composition root: the extension's parts, on
   background/                    service worker (Chrome) or event page (Firefox): content scripts for added sites, badge
   interceptor/                   page world: the entry WXT builds, which decides whether to run on the page and starts Interception (src/bounded-contexts/interception/)
   bridge/                        isolated world: reads storage and passes in what Rules makes of it (src/bounded-contexts/rules/application/page-state.ts), and starts the tab's traffic log (src/bounded-contexts/traffic/infrastructure/tab-log.ts), which it gives what the page reports
-  popup/                         the toolbar popup: its header, the tab's site, and its tabs, This page, All rules and Sites (ui/); what each rule did on the tab's page, asked every 2 s (model/); what it says a rule matches (lib/)
+  popup/                         the toolbar popup: its header, the tab's site, and its tabs, This page, All rules and Sites (ui/), the rules a tree for the keyboard and a screen reader with a rule's right-click menu (ui/rule-list.tsx), a rule's row with its slot (ui/rule-row.tsx), and the tooltips the rows share (ui/row-tools.ts); what each rule did on the tab's page and when, asked every 2 s (model/); what it says a rule matches (lib/)
   sidepanel/                     the editor (Chrome's side panel, Firefox's sidebar, or a tab): its sidebar, the top bar of a narrow panel, and its menus
   kit/                           the kit page, every kit component in its states (ui/); for npm run dev and the kit test, never in the extension
   styles/                        theme.css, the look's values (colours, the two fonts), and the grey levels and lines made from each theme's bases, lifted by Appearance's Contrast; themes.css, the other themes' colours; and kit.css: those as Tailwind's theme (type sizes, corners), with Appearance's Font and Text size
@@ -166,6 +167,7 @@ src/bounded-contexts/            the six bounded contexts of GLOSSARY-MAP.md, a 
     contract.ts                  what the bridge sends the interceptor: the rules that answer, with the two switches
     ui/                          the Rules view (index.ts, for the editor): the sidebar's rule list, a tree for the keyboard and a screen reader, with its right-click menu (rule-list.tsx), the tooltips and the ⋯ menu its rows share (row-tools.ts), and the field a name is renamed in (rename-field.tsx); New rule (new-rule/) and the rule editor (rule-editor/, a component per part); and the widgets other screens show, a public file each
       rule-switch.tsx            a rule's switch, the green dot (the kit's SignalSwitch), in the editor's rule list and the popup; group-switch.tsx, a group's
+      rule-time.tsx              when a rule last answered on a page ("· 4m"), from the screens' clock, in the editor's rule list and the popup
       group-folds.ts             which groups are folded, in the editor's list and the popup alike
       group-picker.tsx           the group a new rule goes into, where New rule and Mock this response make one; new-rule-group.ts, the one it starts on
       rules-file.tsx             rules files on screen: Export (every rule, a group or one rule), the file picker behind Import rules…, and the toasts that say how an import went
@@ -176,9 +178,9 @@ src/bounded-contexts/            the six bounded contexts of GLOSSARY-MAP.md, a 
     contract.ts                  the message that asks the background to register them again
   traffic/                       Traffic, what the page asked for and what each rule did (index.ts, with no React, and ui/index.ts); its words are in glossary/traffic.md
     domain/                      a request in a tab's traffic log (log-entry.ts); which of them the Traffic view lists (filter-entries.ts), in groups by how long ago they were made (time-groups.ts)
-    application/                 the editor's live log of the tab it watches (traffic-log.ts: Traffic, how often a rule fired, New rule's recent requests); Keep on reload, whether that log keeps what it has when the page reloads (preserve.ts); the screens' copy of Recording, whether requests are added to the logs at all, which only the popup changes (recording.ts); what each rule did on a tab's page, as the page counts it for the popup's This page, and in words, as the popup and the editor's rule list say it, and when it last did, as the rule list says too (page-counts.ts)
-    infrastructure/              the tab's own log, which the bridge starts in each page (tab-log.ts): it rebuilds what the page reports and keeps it, an iframe's by way of the top frame, counts it for the popup, and gives it to the Traffic view over a port
-    contract.ts                  the messages Traffic's parts send each other: the interceptor's report of a request, an iframe's entry, the popup's question and the counts that answer it, and what goes over the log's port
+    application/                 the editor's live log of the tab it watches (traffic-log.ts: Traffic, how often a rule fired, New rule's recent requests); Keep on reload, whether that log keeps what it has when the page reloads (preserve.ts); the screens' copy of Recording, whether requests are added to the logs at all, which only the popup changes (recording.ts); what each rule did on a tab's page and when it last did, as the page counts it for the popup, and in words, as the popup and the editor's rule list say it (page-counts.ts)
+    infrastructure/              the tab's own log, which the bridge starts in each page (tab-log.ts): it rebuilds what the page reports and keeps it, an iframe's by way of the top frame, counts it for the popup, with when each rule last answered, and gives it to the Traffic view over a port
+    contract.ts                  the messages Traffic's parts send each other: the interceptor's report of a request, an iframe's entry, the popup's question and the counts that answer it, with when each rule last answered, and what goes over the log's port
     ui/                          the Traffic view: a tab's live log grouped by time, a request's drawer (request-detail/), Mock this response; and the hooks that run the editor's live log and read it (use-traffic-log.ts)
   interception/                  Interception, what runs in the page's own world (index.ts, for the interceptor alone); its words are in glossary/interception.md
     page-channel.ts              the private channel to the bridge, which offers its port once, before any page script runs: the rules arrive over it, and the page's requests go back over it
@@ -312,7 +314,7 @@ the second over; it stays pressable, so the keyboard keeps its focus. A copy the
 what to do. `useCopied()` is the same for a control of another shape.
 
 A list row has one slot at the end of its first line, after T3 Code's thread rows: `<ItemSlot>`
-(`item.tsx`), as the editor's rule rows have it. At rest it says what the row has to say ("1
+(`item.tsx`), as the editor's rule rows and the popup's have it. At rest it says what the row has to say ("1
 mocked · 4m": a rule's count in green, how long ago in grey); under the pointer, with keyboard
 focus anywhere in the row, and while a menu one of its actions opened is open, its actions
 (`<ItemAction>`, 24 px squares, each with an `aria-label` and a `<Tooltip>`) take the same place.
@@ -328,7 +330,8 @@ that's on but hasn't answered on the page. A row that takes focus has a ring ins
 which its neighbours don't cover, and with focus on it its actions show too. The editor's rule
 list draws its rows' actions as plain buttons until the pointer or focus comes near a row, and
 then as triggers of a tooltip and a ⋯ menu the list draws once for all of them
-(`rules/ui/row-tools.ts`), so 300 rules mount about as fast as they did before the slot.
+(`rules/ui/row-tools.ts`), so 300 rules mount about as fast as they did before the slot. The
+popup's rows do the same with their one action, Edit this rule (`app/popup/ui/row-tools.ts`).
 
 A right-click menu is `<ContextMenu>` (`context-menu.tsx`): the menus' card at the pointer, over
 the elements of its `<ContextMenuTrigger>`, whose `onContextMenu` finds what was right-clicked
@@ -518,7 +521,7 @@ each saying "Copied" in itself with no toast, and an error toast for a copy the 
 a request's Sent time, when it was sent and not when its
 response ended, an iframe's requests, which the background passes on to its tab's log (one a
 rule answers and one no rule does, made in an iframe on another host Ghostfetch runs on, both
-listed for the tab, and the one answered in the popup's counts for the tab), and the page it
+listed for the tab, and the one answered in the popup's counts for the tab, with when), and the page it
 watches: the one used last
 once its own closes or leaves the web, and, opened as the side panel has it, its tab's page from
 the moment that opens one, with a page picked by hand kept), the sidebar beside a rule and beside
@@ -560,7 +563,21 @@ theme's selection colour see-through (the body
 editor's selection lies over its text), the toolbar badge (green with the count, grey with
 "off"), and the popup (each rule's dot, pulsing while it's on, which turns it off and on, saved
 at once, a long name cut short after it, This page keeping a rule where it is when its dot
-turns it off, so the same spot turns it back on, a rule picked in it opening in the editor,
+turns it off, so the same spot turns it back on, a rule picked in it opening in the editor; a
+row's slot saying what its rule did on the page and when, "1 mocked · 4m" for a request made 4
+minutes back by the page's clock, from the counts the page sends with each rule's last time, the
+time moving on with the clock and drawing nothing else of the row; under the pointer its Edit
+this rule, nothing in the row moving, which, a click on the row and Enter each open the rule in
+the side panel, stood in for, in the user's click or key, and the dot opening nothing; the list
+a tree that's one Tab stop, Tab going on to the row's Edit this rule and out, its items' levels
+and places, and a row named by its rule and described by what it did; ↑ ↓ Home End, the fold
+opened and shut by → ←, Enter and Space, Space turning a rule off and on in its place, and a
+group in All rules folded, unfolded and turned by the keys; a rule's right-click menu, Edit this
+rule and Turn off or on, by the pointer, the ContextMenu key and Shift+F10, Esc shutting it and
+not the popup, and a group's row and the fold keeping the browser's; the step back in All rules,
+in a group too, none in the fold or while not recording; focus following a rule that answers
+up out of the fold, the popup's window keeping focus; and nothing past a row's edge in Commit
+Mono at Larger, a slot's time giving way first),
 the sites you added with Remove, its Pause, Resume and Recording clicked as a user does (paused:
 Resume offered, the badge's grey "off", the editor's bar saying Ghostfetch is off, an answering
 rule's chip saying it's paused and its dots still, the page getting the server's response, and

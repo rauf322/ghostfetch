@@ -120,16 +120,19 @@ export function createTabLog({ isTop }: { isTop: boolean }) {
       },
     );
 
-    // The log, counted by rule and by what the rule did. A request the page gave up on before its
-    // rule answered (action '') is none of them, as in the rule editor's count.
+    // The log, counted by rule and by what the rule did, with when each rule last answered. A
+    // request the page gave up on before its rule answered (action '') is none of them, as in the
+    // rule editor's count.
     function counts(): PageCounts {
       const rules: Record<string, RuleCount> = {};
-      for (const { ruleId, action } of log) {
+      const last: Record<string, number> = {};
+      for (const { ruleId, action, time } of log) {
         if (!ruleId || !action) continue;
         const count = (rules[ruleId] ??= { mocked: 0, modified: 0, failed: 0 });
         count[action === 'error' ? 'failed' : action] += 1;
+        last[ruleId] = Math.max(last[ruleId] ?? 0, time);
       }
-      return { record: recording, rules };
+      return { record: recording, rules, last };
     }
 
     // The editor's Traffic view connects here to get the log so far plus live updates.

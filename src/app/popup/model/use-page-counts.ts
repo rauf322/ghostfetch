@@ -1,6 +1,7 @@
-// What each rule did on the tab's page (askPageCounts), asked as the popup opens and every 2 s
-// while it's open, so a rule that answers meanwhile shows up. undefined until the page's first
-// answer, which takes a few milliseconds; null while Ghostfetch isn't running on the page.
+// What each rule did on the tab's page and when it last did (askPageCounts), asked as the popup
+// opens and every 2 s while it's open, so a rule that answers meanwhile shows up. undefined until
+// the page's first answer, which takes a few milliseconds; null while Ghostfetch isn't running on
+// the page.
 import { useEffect, useState } from 'react';
 import { askPageCounts } from '../../../bounded-contexts/traffic/index.ts';
 import type { PageCounts } from '../../../bounded-contexts/traffic/index.ts';

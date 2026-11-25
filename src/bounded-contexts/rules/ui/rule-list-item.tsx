@@ -14,7 +14,6 @@
 // row is the list's Tab stop (Turn off does from the keyboard what the dot does).
 import { memo, useEffect, useId, useRef, useState } from 'react';
 import type { PointerEvent } from 'react';
-import { timeAgo } from '../../../lib/index.ts';
 import { editRule, pausedStore, ruleTitle, wouldAnswer } from '../index.ts';
 import type { Rule } from '../index.ts';
 import {
@@ -25,7 +24,6 @@ import {
 } from '../../traffic/index.ts';
 import type { TrafficLog } from '../../traffic/index.ts';
 import { useStore } from '../../../ui/use-store.ts';
-import { useNowValue } from '../../../ui/use-now.ts';
 import { useTrafficValue } from '../../traffic/ui/index.ts';
 import { cn } from '../../../ui/cn.ts';
 import { DropdownMenuTrigger } from '../../../ui/kit/dropdown-menu.tsx';
@@ -44,6 +42,7 @@ import { RuleSwitch } from './rule-switch.tsx';
 import { ruleSummary } from './rule-summary.ts';
 import { RenameField } from './rename-field.tsx';
 import { useRowTools } from './row-tools.ts';
+import { RuleTime } from './rule-time.tsx';
 import type { RowDrag } from './use-rule-drag.ts';
 import { DROP_MARK, GROUPED_DROP_MARK } from './drop-marks.ts';
 
@@ -326,17 +325,6 @@ function RuleLine({
         )}
       </ItemSlot>
     </div>
-  );
-}
-
-// When the rule last answered ("· now", "· 4m"), from the screens' clock: it draws again by itself
-// only when those words change, at most once a minute, and nothing else of the row does.
-function RuleTime({ last }: { last: number }) {
-  const ago = useNowValue((now) => timeAgo(now - last));
-  return (
-    <span data-testid="rule-time" className="text-t50">
-      {`· ${ago}`}
-    </span>
   );
 }
 

@@ -1,8 +1,8 @@
-// How often each rule has answered on a tab's page, which the popup shows ("2 mocked"), as does
-// the editor's rule list for the page it watches, with when it last did ("· 4m"). The tab's log
-// in its top frame (infrastructure/tab-log.ts, which the bridge starts) counts what it holds and
-// answers the popup with the counts alone, none of the log's URLs or bodies, so the popup opens as
-// quickly however long the log is.
+// How often each rule has answered on a tab's page, and when it last did, which the popup shows
+// ("2 mocked · 4m"), as does the editor's rule list for the page it watches. The tab's log in its
+// top frame (infrastructure/tab-log.ts, which the bridge starts) counts what it holds and answers
+// the popup with the counts and times alone, none of the log's URLs or bodies, so the popup opens
+// as quickly however long the log is.
 import type { LogEntry } from '../domain/log-entry.ts';
 import type { CountsMessage, PageCounts, RuleCount } from '../contract.ts';
 
@@ -40,7 +40,8 @@ export function lastAnswered(entries: readonly LogEntry[], ruleId: string) {
 }
 
 // null when Ghostfetch isn't running on the page: not a site it runs on, or a page that loaded
-// before Ghostfetch was installed or turned on there, until it reloads.
+// before Ghostfetch was installed, updated or turned on there, until it reloads (a bridge of
+// another version, should one answer, sends no times, and counts as none).
 export async function askPageCounts(tabId: number): Promise<PageCounts | null> {
   try {
     const counts: unknown = await chrome.tabs.sendMessage(
@@ -60,6 +61,8 @@ function isPageCounts(value: unknown): value is PageCounts {
   return (
     typeof counts?.record === 'boolean' &&
     typeof counts.rules === 'object' &&
-    counts.rules !== null
+    counts.rules !== null &&
+    typeof counts.last === 'object' &&
+    counts.last !== null
   );
 }

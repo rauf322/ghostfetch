@@ -30,9 +30,14 @@ What's different in Firefox-based browsers:
   (the built-in hosts are **Always on**). At the bottom, **Open editor** opens the side panel
   (the sidebar in Firefox), and the button beside it opens the editor in a tab. In between are
   three tabs; in the first two, a rule's dot is its switch, green and pulsing while it's on
-  (still while its group or Ghostfetch is off) and grey while it's off: click it (or reach it
-  with Tab and press Space) to turn the rule on or off, which saves at once. Click its name to
-  open it in the editor:
+  (still while its group or Ghostfetch is off) and grey while it's off: click it to turn the
+  rule on or off, which saves at once. What a rule did on the tab's page shows at the right of
+  its name, with how long ago it last did ("2 mocked · 4m"); under the pointer the same place
+  has **Edit this rule**. Click a rule (or its **Edit this rule**) to open it in the editor. A
+  right-click on a rule (or the menu key, or Shift+F10) has **Edit this rule** and **Turn off**
+  (or **Turn on**). From the keyboard the list is one Tab stop: ↑ and ↓ move between rows, →
+  and ← open and shut **Not answering here** or a group, Space turns the rule (or the group) on
+  or off, Enter opens the rule in the editor, and Tab goes on to its **Edit this rule**:
   - **This page**: what each rule did on the tab's page, such as **2 mocked** or **1 modified ·
     1 failed**, counted while recording since the page loaded (Traffic's **Clear** starts the
     count over; a page opened before Ghostfetch was installed or updated needs a reload
@@ -43,9 +48,10 @@ What's different in Firefox-based browsers:
     a site Ghostfetch isn't on, **Turn on for …** instead, which reloads the page.
   - **All rules**: every rule in your order, with what it did on the page (in grey once the
     rule is off), and the [groups](#groups) in their place: each with its own dot, which turns
-    the group on or off, its name, which folds it or unfolds it as in the editor, and how many
-    of its rules are on, its rules set in under it. Switching from one PR's mocks to
-    another's is two clicks here.
+    the group on or off, its name, and how many of its rules are on, its rules set in under it;
+    click a group to fold it or unfold it, as in the editor. A rule that's on but hasn't
+    answered on the page steps back, its name in a quieter grey, as in the editor. Switching
+    from one PR's mocks to another's is two clicks here.
   - **Sites**: where Ghostfetch runs: the built-in hosts, then the sites you added, each with
     **Remove**.
 - **Side panel (Chrome), sidebar (Firefox, Zen) or tab**: the full editor. Open it from the

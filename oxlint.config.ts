@@ -47,11 +47,12 @@ const CONTEXT: Record<string, string> = {
 };
 
 // The widgets of Rules' ui/ that other screens show, a public file each: a rule's and a group's
-// switch and the folds (the popup's too), the group picker (Traffic's Mock this response too), the
-// group a new rule starts in, and rules files.
+// switch, when a rule last answered, and the folds (the popup's too), the group picker (Traffic's
+// Mock this response too), the group a new rule starts in, and rules files.
 const RULES_WIDGETS = [
   'rule-switch.tsx',
   'group-switch.tsx',
+  'rule-time.tsx',
   'group-folds.ts',
   'group-picker.tsx',
   'new-rule-group.ts',

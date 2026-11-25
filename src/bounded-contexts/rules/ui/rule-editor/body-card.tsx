@@ -1,20 +1,25 @@
 // The body a rule answers with: Replace (your body, without calling the server) or Keep server's
-// body, and for Replace the Content-Type and the body editor. Under the editor, what the check
-// found (a mistake is marked in the editor too, and clicking it here puts the cursor there), the
-// Diff, Wrap and Vim switches, and Format. The editor sizes its own text, with Cmd/Ctrl and =, -
-// or 0. Wrap shows a long line on as many rows as it takes, as Neovim does, rather than one that
-// scrolls along: the body itself stays as it is.
+// body, and for Replace the Content-Type and the body editor. Over the editor, once there's a
+// server's response to compare the body with, the row that turns Diff on and off, with how many
+// lines the body adds and takes out (diff-row.tsx); under it, what the check found (a mistake is
+// marked in the editor too, and clicking it here puts the cursor there), the Wrap and Vim
+// switches, and Format. The editor sizes its own text, with Cmd/Ctrl and =, - or 0. Wrap shows a
+// long line on as many rows as it takes, as Neovim does, rather than one that scrolls along: the
+// body itself stays as it is.
 //
 // Diff shows, in the editor's place, what your body changes in the server's response (the one the
 // rule was made from, or the editor saw since): side by side, or inline when asked or when the card
-// is narrower than SIDE_BY_SIDE. A rule with no response yet has no Diff switch. It's a view, not
-// an editor: clicking a line, Format, or going to a mistake turns it off and puts you in the body
-// there, and a key that would type says so. The editor stays on the page under it, with its undo
-// history and vim's state.
+// is narrower than SIDE_BY_SIDE. A rule with no response yet has neither the row nor Diff. It's a
+// view, not an editor: clicking a line, Format, or going to a mistake turns it off and puts you in
+// the body there, and a key that would type says so. The editor stays on the page under it, with
+// its undo history and vim's state. The row's counts and Diff are one diff (useTextDiff()): made
+// as the body is while Diff shows, and while it doesn't, again once typing pauses, so a key typed
+// in a long body doesn't diff all of it.
 //
 // How tall the editor is: beside the settings (a pane 760 px wide or more, `pane-wide:`), as tall
 // as the pane has room for, whatever the body; under them, as tall as the body, but never taller
-// than the pane (100cqh: the rule editor's pane is a size container), so all of it is on screen
+// than the pane (100cqh: the rule editor's pane is a size container) less the room the card's
+// controls take (120 px, and 40 more with the row over the editor), so all of it is on screen
 // once you scroll to it. code-editor.css reads both, and code-diff.css the same for Diff.
 import { useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
@@ -38,6 +43,7 @@ import {
   diffPreferred,
   rememberDiff,
   rememberDiffLayout,
+  useTextDiff,
   vimPreferred,
   wrapPreferred,
 } from '../../../body-editor/index.ts';
@@ -52,6 +58,7 @@ import { Toggle } from '../../../../ui/kit/toggle.tsx';
 import { Tooltip } from '../../../../ui/kit/tooltip.tsx';
 import type { CodeStatus } from '../rule-checks.ts';
 import { useWide } from '../use-wide.ts';
+import { DiffRow } from './diff-row.tsx';
 import { ResponseTitle } from './response-title.tsx';
 import { Verdict } from './verdict.tsx';
 
@@ -97,6 +104,12 @@ export function BodyCard({
   const replaces = response.bodyMode === 'replace';
   // Diff, in the editor's place: once there's a server's response to compare the body with.
   const comparing = replaces && diff && server !== null;
+  // What the body changes in it, for the row's counts and Diff.
+  const changes = useTextDiff(
+    replaces && server ? server.body : null,
+    response.body,
+    comparing,
+  );
 
   function switchDiff(on: boolean) {
     if (on) setFromLine(code.current?.topLine ?? 0);
@@ -184,7 +197,10 @@ export function BodyCard({
       aria-label="Response body"
       className={cn(
         'flex flex-col gap-2',
-        '[--code-max:calc(100cqh-120px)] pane-wide:[--code-fill:100%] pane-wide:[--code-max:100%]',
+        replaces && server
+          ? '[--code-max:calc(100cqh-160px)]'
+          : '[--code-max:calc(100cqh-120px)]',
+        'pane-wide:[--code-fill:100%] pane-wide:[--code-max:100%]',
         className,
       )}
     >
@@ -230,6 +246,7 @@ export function BodyCard({
       </div>
       {replaces ? (
         <>
+          {server && <DiffRow diff={changes} on={comparing} onToggle={switchDiff} />}
           <CodeEditor
             key={revision}
             ref={code}
@@ -255,11 +272,10 @@ export function BodyCard({
               comparing && 'hidden',
             )}
           />
-          {comparing && (
+          {comparing && changes && (
             <div className="flex min-h-0 flex-1 flex-col [--code-fill:inherit] [--code-max:inherit]">
               <CodeDiff
-                before={server.body}
-                after={response.body}
+                diff={changes}
                 layout={wide ? layout : 'inline'}
                 beforeTitle={<ResponseTitle server={server} compact={!wide} />}
                 afterTitle={<span className="flex-none text-strong">Your body</span>}
@@ -321,19 +337,6 @@ export function BodyCard({
                   </SegmentedItem>
                 </Tooltip>
               </Segmented>
-            )}
-            {server && (
-              <Tooltip label="Compare the body with the server's response">
-                <Toggle
-                  size="sm"
-                  data-testid="diff-switch"
-                  pressed={diff}
-                  onPressedChange={switchDiff}
-                  className="border-input"
-                >
-                  Diff
-                </Toggle>
-              </Tooltip>
             )}
             <Tooltip label="Long lines on as many rows as they take">
               <Toggle

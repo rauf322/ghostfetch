@@ -165,7 +165,7 @@ src/bounded-contexts/            the six bounded contexts of GLOSSARY-MAP.md, a 
     application/                 the screens' copy of the order, which saves and redraws after each operation (store.ts), and of whether Ghostfetch is paused, which only the popup changes (paused.ts); a copy of a group or a rule (duplicate-group.ts, duplicate-rule.ts); a rule made from a request in the log (rule-from-entry.ts), the requests New rule offers to mock (recent-requests.ts), and New rule's draft, what's typed there read and the rule made from it (rule-draft.ts); rules files, writing one and reading one into the order, its rules and groups turned off (rules-file.ts); apart from the rules, the server's responses their bodies' Diff compares with (server-responses.ts); and what the page is given of what's stored, which the bridge posts (page-state.ts)
     infrastructure/              how the order is kept, as the rules, each naming its group, and the groups, each with its place (order-storage.ts); the toolbar badge, which the background keeps in sync (badge.ts); and the clipboard a rule's body editor's vim keys paste from, with the permission that takes (clipboard.ts)
     contract.ts                  what the bridge sends the interceptor: the rules that answer, with the two switches
-    ui/                          the Rules view (index.ts, for the editor): the sidebar's rule list, a tree for the keyboard and a screen reader, with its right-click menu (rule-list.tsx), the tooltips and the ⋯ menu its rows share (row-tools.ts), and the field a name is renamed in (rename-field.tsx); New rule (new-rule/) and the rule editor (rule-editor/, a component per part); and the widgets other screens show, a public file each
+    ui/                          the Rules view (index.ts, for the editor): the sidebar's rule list, a tree for the keyboard and a screen reader, with its right-click menu (rule-list.tsx), the tooltips and the ⋯ menu its rows share (row-tools.ts), and the field a name is renamed in (rename-field.tsx); New rule (new-rule/) and the rule editor (rule-editor/, a component per part: among them the header's crumbs, which are controls, rule-crumbs.tsx, the menu its ⋯ and its name share, rule-menu.tsx, Status's menu of common codes at the end of its split row, status-panel.tsx, and the row over the body that turns Diff on, with how many lines the body adds and takes out, diff-row.tsx); and the widgets other screens show, a public file each
       rule-switch.tsx            a rule's switch, the green dot (the kit's SignalSwitch), in the editor's rule list and the popup; group-switch.tsx, a group's
       rule-time.tsx              when a rule last answered on a page ("· 4m"), from the screens' clock, in the editor's rule list and the popup
       group-folds.ts             which groups are folded, in the editor's list and the popup alike
@@ -193,7 +193,7 @@ src/bounded-contexts/            the six bounded contexts of GLOSSARY-MAP.md, a 
     infrastructure/              the connection to ghostfetch-mcp: pairing, Firefox's consent, trying again while it isn't there, one setting for every editor (agent-connection.ts)
     ui/                          the Agent button and its panel, and the hook that runs Agent access while the editor is open, giving the tools the kit's toast (use-agent-access.ts)
   body-editor/                   the Body editor, editing, checking and comparing a body of text (index.ts); its words are in glossary/body-editor.md
-    code-editor.tsx              the body editor as a React component, and CodeView, the same colours for a body that's only read; code-diff.tsx, the body's Diff against the server's response (CodeDiff)
+    code-editor.tsx              the body editor as a React component, and CodeView, the same colours for a body that's only read; code-diff.tsx, the body's Diff against the server's response (CodeDiff), and the diff it draws (useTextDiff: made as the body is while Diff shows, and only once typing pauses for what counts it while it doesn't)
     engine/                      the editor itself, plain DOM code: a textarea over the coloured text (code-editor.ts, highlight.ts), its find bar (find-bar.ts), and where Format leaves the cursor (keep-offset.ts)
     vim/                         its vim keys (vim.ts): the keys read as commands, motions, words and text objects
 src/shared-kernel/               the shared kernel: the part of the model that Rules and Interception share, and change only together, so that the editor can't say what the page wouldn't do (index.ts)
@@ -514,12 +514,24 @@ Mock this response keeping the server's response
 apart from the rule and out of an exported file, side by side, inline and inline in a narrow
 panel with the counts and rows the diff makes, a key that would type saying it can't, a click on
 a line, a removed line and Enter going to edit there, a rule that's off getting the server's
-response from the page, a copy keeping it, no Diff switch with Keep server's body or before a
+response from the page, a copy keeping it, no Diff row with Keep server's body or before a
 rule has a response, a body
 of 390,000 characters drawn only where it shows, the last lines once scrolled there, a body with
 Windows line ends compared and clicked as the editor has it, a click on Edit here going to the
 character under it, the same lines on screen after a change of layout, and none kept from Mock
-this response on a request a rule answered), the
+this response on a request a rule answered), the open rule (its crumbs in a wide editor: the
+group's, its dot and name, the / after it a chevron under the pointer with nothing moving, its
+menu's New rule in this group opening New rule offering the group, and the group's own items,
+Rename making its name a field in the list; "Rules", a rule in no group's, with New rule in no
+group; the name's menu the ⋯'s, opened under itself, its Move to group working; a double-click
+or F2 renaming the rule in place, Enter giving the name, Esc keeping it, focus back on the crumb;
+none in a 420 px panel; Status's split row: its chevron's menu of the common codes, the one the
+page gets checked, a pick setting it, both halves Tab stops, the line between them only under
+the pointer or with focus, and with Keep server's body the server's status kept or replaced; the
+Diff row over the body: its counts, green and grey, each only where there are some, its toggle,
+no Diff button in the footer, the counts following typing once it pauses, the body still fitting
+a one-column pane under it, no row without a server's response or with Keep server's body; and
+nothing past their edges at Commit Mono and Larger), the
 traffic view (its filters, Keep on reload, which stops at 500 requests however a page that asks
 for a lot as it starts reloads, Clear, an open request's Copy URL, Copy as cURL and Copy body,
 each saying "Copied" in itself with no toast, and an error toast for a copy the browser refuses,
@@ -725,7 +737,10 @@ room and nothing past the row's edge; and in Chromium, where nothing can hover (
 emulation of `any-hover: none`), no actions and no room kept for them, what the slot says staying
 under the pointer. And a request row's slot: its status over its duration; under the pointer,
 while the row's right-click menu is open, and for the second a copy says so (its icon a check),
-the pointer gone, its actions there instead, halfway down the row, nothing moving. And a shared
+the pointer gone, its actions there instead, halfway down the row, nothing moving. And a split
+row (Status's): its chevron opens a menu of its own, which a pick shuts, and its main part its
+editor; Tab goes from one half to the other; the line between them shows only under the pointer
+or with focus. And a shared
 tooltip: the rule rows' dots share one, which says each dot's
 words under the pointer, the two that say the same described by one hidden copy of the words and
 the third by another, and a screen reader gets each its words. And a right-click menu: at the

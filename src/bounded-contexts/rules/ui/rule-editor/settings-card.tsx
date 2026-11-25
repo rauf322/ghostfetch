@@ -1,7 +1,8 @@
 // A card of a rule's settings, one row each, after T3 Code's settings and Revolut's cards: what the
 // setting is, its value on the right, and a click opens its editor in place, under the row (the
 // kit's accordion). The rule editor gives its two cards one `open` row between them, so one
-// editor is open at a time.
+// editor is open at a time. A row can be split, with a control of its own at its end (Status's
+// menu of common codes).
 import type { ReactNode } from 'react';
 import { cn } from '../../../../ui/cn.ts';
 import {
@@ -40,6 +41,7 @@ export function SettingRow({
   value,
   code = false,
   quiet = false,
+  split,
   children,
 }: {
   id: string;
@@ -50,12 +52,14 @@ export function SettingRow({
   value: ReactNode;
   code?: boolean;
   quiet?: boolean;
+  // A control at the row's end, in its chevron's place (the kit's split row).
+  split?: ReactNode;
   // Its editor, shown under the row while it's open.
   children: ReactNode;
 }) {
   return (
     <AccordionItem value={id}>
-      <AccordionTrigger data-testid={`row-${id}`}>
+      <AccordionTrigger data-testid={`row-${id}`} split={split}>
         <Icon name={icon} size={17} className="flex-none text-t50" />
         <span className="flex-none text-body text-foreground">{label}</span>
         <span

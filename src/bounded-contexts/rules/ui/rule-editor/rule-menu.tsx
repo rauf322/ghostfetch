@@ -1,7 +1,10 @@
 // A rule's ⋯ menu: duplicate it, move it to a group or out of one, export it, or delete it (with
 // Undo in the toast, which puts it back where it was, in its group). The open rule's, in its header
 // (RuleMenu), and its row's in the list (the ⋯ in the row's slot, rule-list-item.tsx) are one list
-// of items (RuleMenuItems), so the two can't drift apart.
+// of items (RuleMenuItems), so the two can't drift apart. The open rule's is one menu for two
+// controls, as the list's rows share theirs (row-tools.ts): its ⋯ (RuleMenuButton) at the
+// header's right end, and its name, a crumb at the header's left (rule-crumbs.tsx), each opening
+// it under itself.
 import {
   NEW_GROUP,
   addGroup,
@@ -30,6 +33,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '../../../../ui/kit/dropdown-menu.tsx';
+import type { MenuHandle } from '../../../../ui/kit/dropdown-menu.tsx';
 import { Icon } from '../../../../ui/kit/icon.tsx';
 import { notify } from '../../../../ui/kit/toast.tsx';
 import { Tooltip } from '../../../../ui/kit/tooltip.tsx';
@@ -39,33 +43,49 @@ import { setRenaming } from '../renaming.ts';
 // No group, as the radio group's value: not an id a group can have.
 const NONE = '*none';
 
+// Which of the open rule's two controls opened its menu: the ⋯, or its name's crumb.
+export type RuleMenuFrom = 'more' | 'name';
+
+// The open rule's menu, drawn once for both: under the ⋯, right edges lined up; under the crumb,
+// left edges.
 export function RuleMenu({
+  handle,
   rule,
   onSelect,
 }: {
+  handle: MenuHandle<RuleMenuFrom>;
   rule: Rule;
   onSelect: (id: string | null) => void;
 }) {
   return (
-    <DropdownMenu>
-      <Tooltip label="More actions">
-        <DropdownMenuTrigger
-          render={
-            <Button
-              size="icon"
-              aria-label="More actions"
-              data-testid="rule-menu"
-              className="border border-input"
-            />
-          }
-        >
-          <Icon name="more" size={18} />
-        </DropdownMenuTrigger>
-      </Tooltip>
-      <DropdownMenuContent>
-        <RuleMenuItems rule={rule} open onSelect={onSelect} />
-      </DropdownMenuContent>
+    <DropdownMenu handle={handle}>
+      {({ payload }) => (
+        <DropdownMenuContent align={payload === 'name' ? 'start' : 'end'}>
+          <RuleMenuItems rule={rule} open onSelect={onSelect} />
+        </DropdownMenuContent>
+      )}
     </DropdownMenu>
+  );
+}
+
+export function RuleMenuButton({ handle }: { handle: MenuHandle<RuleMenuFrom> }) {
+  return (
+    <Tooltip label="More actions">
+      <DropdownMenuTrigger
+        handle={handle}
+        payload="more"
+        render={
+          <Button
+            size="icon"
+            aria-label="More actions"
+            data-testid="rule-menu"
+            className="border border-input"
+          />
+        }
+      >
+        <Icon name="more" size={18} />
+      </DropdownMenuTrigger>
+    </Tooltip>
   );
 }
 

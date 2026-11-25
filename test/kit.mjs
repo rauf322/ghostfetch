@@ -687,6 +687,49 @@ async function runChecks(browser, open) {
     },
   );
 
+  await check(
+    `${browser}: accordion: a split row's chevron opens a menu of its own, which a pick shuts, and the row's main part opens its editor as any row's does; Tab goes from one half to the other; the line between them shows only under the pointer or with focus`,
+    async () => {
+      const lineShows = () =>
+        getComputedStyle(
+          document.querySelector(
+            '[data-testid=kit-accordion] [data-slot=accordion-split-line]',
+          ),
+        ).backgroundColor !== 'rgba(0, 0, 0, 0)';
+      await kit.pointTo(NOWHERE);
+      await settles(kit, lineShows, false, 'no line at rest');
+      const row = await kit.run(() => {
+        const box = document
+          .querySelector('[data-testid=kit-accordion-status]')
+          .getBoundingClientRect();
+        return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+      });
+      await kit.pointTo(row);
+      await settles(kit, lineShows, true, 'the line under the pointer');
+      await kit.pointTo(NOWHERE);
+      await settles(kit, lineShows, false, 'no line once the pointer has gone');
+      await kit.focus('[data-testid=kit-accordion-status]');
+      await kit.press('Tab');
+      await focusOn(kit, '[data-testid=kit-accordion-codes]');
+      await settles(kit, lineShows, true, 'the line with focus on the chevron');
+      await kit.press('Enter');
+      await menuOpen(kit);
+      await kit.click('[data-testid=kit-code-404]');
+      await menuClosed(kit);
+      const picked = [
+        await read(kit, 'kit-accordion-code'),
+        await read(kit, 'kit-accordion-open'),
+      ];
+      await kit.click('[data-testid=kit-accordion-status]');
+      const opened = await read(kit, 'kit-accordion-open');
+      await kit.click('[data-testid=kit-accordion-status]');
+      expect(
+        [picked, opened, await read(kit, 'kit-accordion-open')],
+        [['status: 404 Not Found', 'open: none'], 'open: status', 'open: none'],
+      );
+    },
+  );
+
   await check(`${browser}: input: typing changes its value`, async () => {
     await kit.focus('[data-testid=kit-input]');
     await kit.run(() => document.querySelector('[data-testid=kit-input]').select());

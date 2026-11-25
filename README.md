@@ -37,11 +37,11 @@ ready to edit, as in the recording above.
 
 ![The rule from the recording above, its "Ada" made "Ghost", in the side panel. Diff shows the server's response against the body: the firstName line removed and added, with "Ada" and "Ghost" marked. A click on "free" in the plan line goes back to the body there, "free" becomes "pro", and Diff shows both changes.](docs/media/diff-side-panel.webp)
 
-**Diff**, under a rule's body, compares it with the response the server gave: the one **Mock
-this response** made the rule from, or one Ghostfetch sees while the rule is off. The lines you
-removed are dimmed, with a −, the ones you added are green, with a +, and in a line you changed,
-the part that changed is marked. Click a line to edit the body there. It's inline in a side
-panel, and side by side when there's room:
+**Diff**, the row over a rule's body with how many lines it adds and takes out, compares it with
+the response the server gave: the one **Mock this response** made the rule from, or one
+Ghostfetch sees while the rule is off. The lines you removed are dimmed, with a −, the ones you
+added are green, with a +, and in a line you changed, the part that changed is marked. Click a
+line to edit the body there. It's inline in a side panel, and side by side when there's room:
 
 ![The editor in a tab, the rule "Pro plan user" open. Diff shows its body side by side with the server's response, "plan" changed from "free" to "pro" and "seats" added, with a gap across from the added line; then inline, one column as git shows a diff, and side by side again.](docs/media/diff-side-by-side.webp)
 

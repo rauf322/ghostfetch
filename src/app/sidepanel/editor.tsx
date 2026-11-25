@@ -233,6 +233,7 @@ export function Editor({ inTab, windowId }: { inTab: boolean; windowId: number }
               ruleGroup={ruleGroup}
               onRuleGroupChange={setRuleGroup}
               onSelect={select}
+              onNewRule={compose}
               onCreate={create}
               onBodyFocused={forgetCreated}
               onCancel={cancelCompose}

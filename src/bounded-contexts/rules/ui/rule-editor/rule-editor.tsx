@@ -33,6 +33,8 @@ interface RuleEditorProps {
   // Moves when the rules were changed in another view, so the body editor starts over from them.
   revision: number;
   onSelect: (id: string | null) => void;
+  // New rule, in a group ('' for none), from the header's group crumb.
+  onNewRule: (group: string) => void;
 }
 
 export function RuleEditor({
@@ -42,6 +44,7 @@ export function RuleEditor({
   onBodyFocused,
   revision,
   onSelect,
+  onNewRule,
 }: RuleEditorProps) {
   // The row whose editor is open, in either card.
   const [open, setOpen] = useState<string | null>(null);
@@ -56,7 +59,7 @@ export function RuleEditor({
 
   return (
     <>
-      <RuleHeader rule={rule} onSelect={onSelect} />
+      <RuleHeader rule={rule} onSelect={onSelect} onNewRule={onNewRule} />
       <PaneScroll ref={pane} className="@container-size/pane">
         {/* Between the two layouts, the boxes around the body editor change only in width,
             height and margins: a box whose padding, gap, grid columns or flex change has Firefox

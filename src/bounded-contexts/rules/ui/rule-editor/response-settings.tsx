@@ -1,5 +1,6 @@
 // "Respond with": what a rule changes about the response besides its body. A row each for the
-// status code, the delay and the headers; a click opens the row's editor.
+// status code, the delay and the headers; a click opens the row's editor. Status's row is split:
+// its chevron opens a menu of the common codes (status-panel.tsx).
 import type { Rule } from '../../index.ts';
 import { formatDuration } from '../../../../lib/index.ts';
 import { CardHint } from '../../../../ui/kit/card.tsx';
@@ -7,7 +8,7 @@ import { headersValue, statusValue } from '../rule-summary.ts';
 import { DelayPanel } from './delay-panel.tsx';
 import { HeaderRows } from './header-rows.tsx';
 import { SettingRow, SettingsCard } from './settings-card.tsx';
-import { StatusPanel } from './status-panel.tsx';
+import { StatusMenu, StatusPanel } from './status-panel.tsx';
 
 export function ResponseSettings({
   rule,
@@ -27,6 +28,7 @@ export function ResponseSettings({
         label="Status"
         value={statusValue(rule)}
         quiet={!response.status.trim()}
+        split={<StatusMenu rule={rule} />}
       >
         <StatusPanel rule={rule} />
       </SettingRow>

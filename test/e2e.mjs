@@ -8319,7 +8319,7 @@ try {
                 'true',
                 false,
                 'Paused while PR-1 is off',
-                'Rules / PR-1 / From A1',
+                'PR-1 / From A1',
               ],
               ['From one', 'group PR-1', 'From two'],
               ['From one', 'group PR-1', 'From two'],
@@ -8850,6 +8850,610 @@ try {
               ],
             ],
           );
+        },
+      );
+    },
+  );
+
+  console.log('the open rule');
+  // The open rule (4a): its crumbs in a wide editor, Status's row split in two, the Diff row over
+  // the body, and nothing spilling out of them at Commit Mono and Larger. On rules of their own,
+  // with the suite's put back after.
+  const crumbGroup = app.locator('[data-testid="crumb-group"]');
+  const crumbName = app.locator('[data-testid="crumb-name"]');
+  const menuOpen = app.locator('[data-slot="dropdown-menu-content"]');
+  // A menu's items as they read, once it's open, and which of them are checked.
+  const menuItems = async () => {
+    await menuOpen.locator('[role^="menuitem"]').first().waitFor({ timeout: 3000 });
+    return (await menuOpen.locator('[role^="menuitem"]').allTextContents()).map((text) =>
+      text.replace(/\s+/g, ' ').trim(),
+    );
+  };
+  const menuChecked = async () =>
+    (await menuOpen.locator('[aria-checked="true"]').allTextContents()).map((text) =>
+      text.replace(/\s+/g, ' ').trim(),
+    );
+  const openRule = async (name) => {
+    await show('rules');
+    await app.locator('[data-testid="rule"]', { hasText: name }).first().click();
+    await crumbName.filter({ hasText: name }).waitFor({ timeout: 3000 });
+  };
+  // What has focus: its test id, or what it is.
+  const focusedId = () =>
+    app.evaluate(
+      () => document.activeElement?.dataset.testid ?? document.activeElement?.tagName,
+    );
+  const waitForComposer = () =>
+    app.waitForFunction(
+      () => document.activeElement?.dataset.testid === 'composer-input',
+      null,
+      { timeout: 3000 },
+    );
+
+  await check(
+    "a wide editor's header says where the open rule is in two crumbs that are controls: its group's, the group's dot and name, the / after it a chevron under the pointer with nothing moving, opens New rule in this group, which opens New rule offering the group, and the group's own items, Rename making its name a field in the list; a rule in no group's, \"Rules\", opens New rule, in no group; the rule's name opens the ⋯'s menu, under itself, whose items work; a 420 px panel has its back button instead",
+    async () => {
+      await withGroups(
+        [grouped('c1', 'A1', 'g-1'), grouped('c2', 'loose')],
+        [PR1()],
+        async () => {
+          await openRule('From A1');
+          const said = await app.evaluate(() => {
+            const group = document.querySelector('[data-testid="crumb-group"]');
+            return [
+              group.textContent.replace(/\s+/g, ' ').trim(),
+              Boolean(group.querySelector('[data-slot="signal-dot"][data-on]')),
+              document.querySelector('[data-testid="crumb-name"]').textContent.trim(),
+            ];
+          });
+          // The / and the chevron in its place, the crumb's last part: how opaque each is.
+          const marks = () =>
+            crumbGroup.evaluate((button) =>
+              [...button.lastElementChild.children].map(
+                (mark) => getComputedStyle(mark).opacity,
+              ),
+            );
+          await app.mouse.move(5, 700);
+          const rest = await rowSettled(marks, ([slash]) => slash === '1');
+          const nameAt = await crumbName.boundingBox();
+          await crumbGroup.hover();
+          const hovered = await rowSettled(
+            marks,
+            ([slash, chevron]) => slash === '0' && chevron === '1',
+          );
+          const nameThen = await crumbName.boundingBox();
+          await crumbGroup.click();
+          const groupItems = await menuItems();
+          await menuOpen.locator('[data-testid="crumb-new-rule"]').click();
+          await waitForComposer();
+          const offered = await app.locator('[data-testid="picker-group"]').textContent();
+          // Rename, from the group's crumb: its name a field in the list, as from its ⋯.
+          await openRule('From A1');
+          await crumbGroup.click();
+          await menuOpen.locator('[data-testid="rename-group"]').click();
+          const field = app.locator('[data-testid="group-name-input"]');
+          await field.waitFor({ timeout: 3000 });
+          const renaming = await field.evaluate(
+            (input) => input === document.activeElement && input.value,
+          );
+          await field.press('Escape');
+          await field.waitFor({ state: 'detached', timeout: 3000 });
+          // The name's crumb: the ⋯'s menu, under the crumb, left edges lined up (the ⋯'s, right
+          // edges); its Move to group → No group takes the rule out of PR-1.
+          await crumbName.click();
+          const nameItems = await menuItems();
+          const underName = Math.abs(
+            (await menuOpen.boundingBox()).x - (await crumbName.boundingBox()).x,
+          );
+          await app.keyboard.press('Escape');
+          await menuOpen.waitFor({ state: 'detached', timeout: 3000 });
+          await app.click('[data-testid="rule-menu"]');
+          const moreItems = await menuItems();
+          const more = await app.locator('[data-testid="rule-menu"]').boundingBox();
+          const menu = await menuOpen.boundingBox();
+          const underMore = Math.abs(menu.x + menu.width - (more.x + more.width));
+          await app.keyboard.press('Escape');
+          await menuOpen.waitFor({ state: 'detached', timeout: 3000 });
+          await crumbName.click();
+          await menuOpen.locator('[data-testid="move-to-group"]').click();
+          await app.click('[data-testid="move-to-none"]');
+          await sleep(300);
+          const moved = (await storedRules()).find((rule) => rule.id === 'c1').group;
+          const rulesCrumb = (await crumbGroup.textContent()).replace(/\s+/g, ' ').trim();
+          await crumbGroup.click();
+          const rulesItems = await menuItems();
+          await menuOpen.locator('[data-testid="crumb-new-rule"]').click();
+          await waitForComposer();
+          const inNone = await app.locator('[data-testid="picker-group"]').textContent();
+          // In a 420 px panel: the back button, and no crumbs.
+          await openRule('From A1');
+          let narrow;
+          try {
+            await app.setViewportSize({ width: 420, height: 760 });
+            narrow = [
+              await app.locator('[data-testid="rules-head-path"]').isVisible(),
+              await app.locator('[data-testid="rule-back"]').isVisible(),
+            ];
+          } finally {
+            await app.setViewportSize({ width: 1280, height: 820 });
+          }
+          expect(
+            [
+              said,
+              rest,
+              hovered,
+              nameThen.x === nameAt.x,
+              groupItems,
+              offered,
+              renaming,
+              nameItems,
+              underName < 2,
+              moreItems,
+              underMore < 2,
+              moved,
+              rulesCrumb,
+              rulesItems,
+              inNone,
+              narrow,
+            ],
+            [
+              ['PR-1 /', true, 'From A1'],
+              ['1', '0'],
+              ['0', '1'],
+              true,
+              [
+                'New rule in this group',
+                'Rename',
+                'Duplicate',
+                'Export group',
+                'Ungroup',
+                'Delete',
+              ],
+              'PR-1',
+              'PR-1',
+              ['Duplicate', 'Move to group', 'Export this rule', 'Delete'],
+              true,
+              ['Duplicate', 'Move to group', 'Export this rule', 'Delete'],
+              true,
+              '',
+              'Rules /',
+              ['New rule'],
+              'No group',
+              [false, true],
+            ],
+          );
+        },
+      );
+    },
+  );
+
+  await check(
+    "a double-click on the rule's name crumb, or F2 with focus on it, makes it a field to rename the rule in place, its name selected, the menu the first click opened shut: Enter gives the name typed, in the list too; Esc keeps the one it had; after either, focus is back on the crumb",
+    async () => {
+      await withGroups([grouped('c1', 'A1', 'g-1')], [PR1()], async () => {
+        await openRule('From A1');
+        const field = app.locator('[data-testid="crumb-name-input"]');
+        await crumbName.dblclick();
+        await field.waitFor({ timeout: 3000 });
+        const ready = await field.evaluate((input) => [
+          input === document.activeElement,
+          input.selectionStart === 0 && input.selectionEnd === input.value.length,
+          input.value,
+        ]);
+        const menus = await menuOpen.count();
+        await app.keyboard.type('Renamed');
+        await app.keyboard.press('Enter');
+        await field.waitFor({ state: 'detached', timeout: 3000 });
+        const byEnter = await rowSettled(focusedId, (id) => id === 'crumb-name');
+        await sleep(300);
+        const stored = (await storedRules()).find((rule) => rule.id === 'c1').name;
+        const inList = await app
+          .locator('[data-testid="rule"][data-item="c1"] [data-slot="item-title"]')
+          .textContent();
+        await app.keyboard.press('F2');
+        await field.waitFor({ timeout: 3000 });
+        await app.keyboard.type('Other');
+        await app.keyboard.press('Escape');
+        await field.waitFor({ state: 'detached', timeout: 3000 });
+        const byEsc = await rowSettled(focusedId, (id) => id === 'crumb-name');
+        expect(
+          [
+            ready,
+            menus,
+            byEnter,
+            stored,
+            inList,
+            (await crumbName.textContent()).trim(),
+            byEsc,
+          ],
+          [
+            [true, true, 'From A1'],
+            0,
+            'crumb-name',
+            'Renamed',
+            'Renamed',
+            'Renamed',
+            'crumb-name',
+          ],
+        );
+      });
+    },
+  );
+
+  await check(
+    "Status's row is split: what it says opens its editor as before, and the chevron at its end a menu of the common codes, each with its name, the one the page gets checked, a pick setting it at once; both halves are Tab stops, Enter on the chevron opening its menu; the line between them shows only under the pointer or with focus; for a rule that keeps the server's body, the menu starts with the server's status, checked while it's kept, which keeps it again",
+    async () => {
+      await withGroups(
+        [
+          grouped('s1', 'status'),
+          grouped('s2', 'kept', '', {
+            response: { ...createRule().response, bodyMode: 'original', body: '' },
+          }),
+        ],
+        [],
+        async () => {
+          await openRule('From status');
+          const statusOf = async (id) =>
+            (await storedRules()).find((rule) => rule.id === id).response.status;
+          const value = () =>
+            app.locator('[data-testid="row-status-value"]').textContent();
+          const line = app.locator('[data-slot="accordion-split-line"]');
+          const lineShows = () =>
+            line.evaluate(
+              (element) =>
+                getComputedStyle(element).backgroundColor !== 'rgba(0, 0, 0, 0)',
+            );
+          await app.mouse.move(5, 700);
+          const atRest = await rowSettled(lineShows, (shows) => !shows);
+          await app.locator('[data-testid="row-status"]').hover();
+          const hovered = await rowSettled(lineShows, Boolean);
+          await app.mouse.move(5, 700);
+          await rowSettled(lineShows, (shows) => !shows);
+          // From the keyboard: Tab from the row's main part to its chevron, which shows the line;
+          // Enter opens the menu.
+          await app.locator('[data-testid="row-status"]').focus();
+          await app.keyboard.press('Tab');
+          const next = await focusedId();
+          const focused = await rowSettled(lineShows, Boolean);
+          await app.keyboard.press('Enter');
+          const codes = await menuItems();
+          const checked = await menuChecked();
+          await menuOpen.locator('[data-testid="status-menu-404"]').click();
+          await menuOpen.waitFor({ state: 'detached', timeout: 3000 });
+          await sleep(300);
+          const set = [
+            await statusOf('s1'),
+            await value(),
+            await app.locator('[data-testid="status-code"]').count(),
+          ];
+          await app.click('[data-testid="status-menu"]');
+          await menuItems();
+          const nowChecked = await menuChecked();
+          await app.keyboard.press('Escape');
+          await menuOpen.waitFor({ state: 'detached', timeout: 3000 });
+          // The row's main part still opens Status's editor.
+          await app.click('[data-testid="row-status"]');
+          const editor = await app.locator('[data-testid="status-code"]').inputValue();
+          await app.click('[data-testid="row-status"]');
+          // Keep server's body: the server's status, kept until a code is picked.
+          await openRule('From kept');
+          const keptValue = await value();
+          await app.click('[data-testid="status-menu"]');
+          const keptCodes = await menuItems();
+          const keptChecked = await menuChecked();
+          await menuOpen.locator('[data-testid="status-menu-503"]').click();
+          await menuOpen.waitFor({ state: 'detached', timeout: 3000 });
+          await sleep(300);
+          const forced = [await statusOf('s2'), await value()];
+          await app.click('[data-testid="status-menu"]');
+          await menuOpen.locator('[data-testid="status-menu-server"]').click();
+          await menuOpen.waitFor({ state: 'detached', timeout: 3000 });
+          await sleep(300);
+          const keptAgain = [await statusOf('s2'), await value()];
+          const COMMON = [
+            '200 OK',
+            '201 Created',
+            '204 No Content',
+            '400 Bad Request',
+            '401 Unauthorized',
+            '403 Forbidden',
+            '404 Not Found',
+            '500 Internal Server Error',
+            '503 Service Unavailable',
+          ];
+          expect(
+            [
+              [atRest, hovered, next, focused],
+              codes,
+              checked,
+              set,
+              nowChecked,
+              editor,
+              keptValue,
+              keptCodes,
+              keptChecked,
+              forced,
+              keptAgain,
+            ],
+            [
+              [false, true, 'status-menu', true],
+              COMMON,
+              ['200 OK'],
+              ['404', '404 Not Found', 0],
+              ['404 Not Found'],
+              '404',
+              "Server's",
+              ["Server's status", ...COMMON],
+              ["Server's status"],
+              ['503', '503 Service Unavailable'],
+              ['', "Server's"],
+            ],
+          );
+        },
+      );
+    },
+  );
+
+  await diffCheck(
+    "over the body, the Diff row: what Diff compares the body with, and how many lines the body adds (green) and takes out (grey), each only where there are some; a click shows Diff in the editor's place, the row pressed, another goes back, and the footer has no Diff button of its own; the counts follow the body once typing pauses, not at every key; in one column the body still fits the pane with the row over it; no row for a rule with no server's response, nor for one that keeps the server's body",
+    async () => {
+      const THEIRS = 'a\nb\nc\nd';
+      const text = (id, name, content) =>
+        draftRule(id, name, `/api/never-called?${id}`, content, 'text/plain');
+      const restore = await addRules([
+        [text('d1', 'Changes it', 'a\nB\nc\nd\ne'), THEIRS],
+        [text('d2', 'Only adds', `${THEIRS}\ne\nf`), THEIRS],
+        [text('d3', 'The same', THEIRS), THEIRS],
+      ]);
+      await worker.evaluate(
+        async (rule) => {
+          const { rules } = await chrome.storage.local.get('rules');
+          await chrome.storage.local.set({ rules: [...rules, rule] });
+        },
+        text('d4', 'No response', THEIRS),
+      );
+      let vimWasOn = false;
+      try {
+        const row = app.locator('[data-testid="diff-switch"]');
+        // The row's words, and its counts with their colours.
+        const look = () =>
+          app.evaluate(() => {
+            const button = document.querySelector('[data-testid="diff-switch"]');
+            if (!button) return null;
+            return {
+              words: [
+                ...button.querySelectorAll(
+                  ':scope > span:not([data-testid]):not(.sr-only)',
+                ),
+              ].map((span) => span.textContent),
+              counts: [
+                ...button.querySelectorAll('[data-testid="diff-row-counts"] > span'),
+              ].map((span) => [
+                span.textContent,
+                span.classList.contains('text-signal')
+                  ? 'green'
+                  : span.classList.contains('text-t65')
+                    ? 'grey'
+                    : span.className,
+              ]),
+              pressed: button.getAttribute('aria-pressed'),
+              // Over the body editor, and the footer with no Diff of its own.
+              over:
+                button.getBoundingClientRect().bottom <=
+                document.querySelector('.code').getBoundingClientRect().top,
+              footer: [
+                ...document.querySelectorAll('[data-testid="body-card"] button'),
+              ].filter((other) => other !== button && other.textContent.trim() === 'Diff')
+                .length,
+            };
+          });
+        const counts = async () =>
+          (await look())?.counts.map(([count]) => count).join(' ');
+        await app
+          .locator('[data-testid="rule"]', { hasText: 'Changes it' })
+          .first()
+          .click();
+        await row.waitFor({ timeout: 3000 });
+        // Vim's keys off while the body is typed in (a check before leaves them on), then as
+        // they were.
+        vimWasOn = (await vimSwitch.getAttribute('aria-pressed')) === 'true';
+        if (vimWasOn) await vimSwitch.click();
+        const changes = await look();
+        await row.click();
+        await diffView.waitFor({ timeout: 3000 });
+        const on = [await row.getAttribute('aria-pressed'), await body.isVisible()];
+        await row.click();
+        await diffView.waitFor({ state: 'detached', timeout: 3000 });
+        const off = [await row.getAttribute('aria-pressed'), await body.isVisible()];
+        // A new line typed at the end, a key at a time: the counts as they were until typing
+        // pauses, then the new ones.
+        await body.focus();
+        await body.evaluate((textarea) =>
+          textarea.setSelectionRange(textarea.value.length, textarea.value.length),
+        );
+        await app.keyboard.press('Enter');
+        await app.keyboard.type('zz', { delay: 40 });
+        const whileTyping = await counts();
+        const paused = await rowSettled(counts, (now) => now === '+3 −1');
+        // In one column (400 px), a long body: the editor the pane's height less the room the
+        // card's controls take, the row's with them, so all of the card is on screen.
+        let column;
+        try {
+          await app.setViewportSize({ width: 400, height: 760 });
+          await body.fill(
+            Array.from({ length: 200 }, (_, line) => `line ${line}`).join('\n'),
+          );
+          column = await app.evaluate(() => {
+            const code = document.querySelector('.code');
+            const pane = code.closest('[data-slot="pane-scroll"]');
+            return pane.clientHeight - code.offsetHeight;
+          });
+        } finally {
+          await app.setViewportSize({ width: 1280, height: 820 });
+        }
+        await app
+          .locator('[data-testid="rule"]', { hasText: 'Only adds' })
+          .first()
+          .click();
+        const adds = await rowSettled(look, (seen) => seen?.counts.length === 1);
+        await app
+          .locator('[data-testid="rule"]', { hasText: 'The same' })
+          .first()
+          .click();
+        const unchanged = await rowSettled(look, (seen) => seen?.counts.length === 0);
+        await app
+          .locator('[data-testid="rule"]', { hasText: 'No response' })
+          .first()
+          .click();
+        await body.waitFor();
+        const none = await row.count();
+        await app
+          .locator('[data-testid="rule"]', { hasText: 'Changes it' })
+          .first()
+          .click();
+        await row.waitFor({ timeout: 3000 });
+        await app.click('[data-testid="body-original"]');
+        const kept = await row.count();
+        await app.click('[data-testid="body-replace"]');
+        expect(
+          [
+            changes,
+            on,
+            off,
+            whileTyping,
+            paused,
+            column,
+            adds?.counts,
+            unchanged?.counts,
+            none,
+            kept,
+          ],
+          [
+            {
+              words: ['Diff', "vs server's response"],
+              counts: [
+                ['+2', 'green'],
+                ['−1', 'grey'],
+              ],
+              pressed: 'false',
+              over: true,
+              footer: 0,
+            },
+            ['true', false],
+            ['false', true],
+            '+2 −1',
+            '+3 −1',
+            160,
+            [['+2', 'green']],
+            [],
+            0,
+            0,
+          ],
+        );
+      } finally {
+        if (vimWasOn)
+          await app.evaluate(() => localStorage.setItem('ghostfetch.vim', '1'));
+        await restore();
+      }
+    },
+  );
+
+  await check(
+    "in Commit Mono at Larger nothing spills out of the open rule's header, Status's row or the Diff row: wide, the crumbs stay inside the header and before its buttons, which stay inside the window, a long group name and a long rule name cut short; at 420 px, Status's row with its chevron and the Diff row with its counts stay inside their card and the body's",
+    async () => {
+      const long = 'A rule with a name long enough to be cut short in the header';
+      await withGroups(
+        [grouped('m1', 'X', 'g-1', { name: long })],
+        [PR1({ name: 'A group with a name long enough to be cut short too' })],
+        async () => {
+          await worker.evaluate((values) => chrome.storage.local.set(values), {
+            'serverResponse:m1': keptResponse('{\n  "from": "the server"\n}'),
+          });
+          try {
+            await app.evaluate(() =>
+              Object.assign(document.documentElement.dataset, {
+                font: 'mono',
+                size: 'larger',
+              }),
+            );
+            await app.evaluate(() => document.fonts.ready);
+            await openRule(long);
+            await app.locator('[data-testid="diff-switch"]').waitFor({ timeout: 3000 });
+            const header = await app.evaluate(() => {
+              const box = (selector) =>
+                document.querySelector(selector).getBoundingClientRect().toJSON();
+              const nav = document.querySelector('[data-testid="rules-head-path"]');
+              const cut = (selector) => {
+                const words = document.querySelector(`${selector} span.truncate`);
+                return words.scrollWidth > words.clientWidth;
+              };
+              return {
+                nav: box('[data-testid="rules-head-path"]'),
+                group: box('[data-testid="crumb-group"]'),
+                name: box('[data-testid="crumb-name"]'),
+                duplicate: box('[data-testid="duplicate-rule"]'),
+                // The header's last button, its ⋯, inside the window.
+                buttons:
+                  box('[data-testid="rule-menu"]').right <=
+                  document.documentElement.clientWidth + 0.5,
+                fits: nav.scrollWidth <= nav.clientWidth,
+                cut: [
+                  cut('[data-testid="crumb-group"]'),
+                  cut('[data-testid="crumb-name"]'),
+                ],
+              };
+            });
+            await app.setViewportSize({ width: 420, height: 760 });
+            await sleep(200);
+            const narrow = await app.evaluate(() => {
+              const inside = (selector, within) => {
+                const element = document.querySelector(selector);
+                const outer = element.closest(within).getBoundingClientRect();
+                const box = element.getBoundingClientRect();
+                return (
+                  box.left >= outer.left - 0.5 &&
+                  box.right <= outer.right + 0.5 &&
+                  element.scrollWidth <= element.clientWidth
+                );
+              };
+              return [
+                inside('[data-slot="accordion-split"]', '[data-slot="accordion"]'),
+                inside('[data-testid="status-menu"]', '[data-slot="accordion"]'),
+                inside('[data-testid="diff-switch"]', '[data-testid="body-card"]'),
+                inside('[data-testid="diff-row-counts"]', '[data-testid="diff-switch"]'),
+              ];
+            });
+            expect(
+              [
+                header.group.left >= header.nav.left - 0.5,
+                header.group.right <= header.name.left + 0.5,
+                header.name.right <= header.nav.right + 0.5,
+                header.nav.right <= header.duplicate.left,
+                header.buttons,
+                header.fits,
+                header.cut,
+                narrow,
+              ],
+              [
+                true,
+                true,
+                true,
+                true,
+                true,
+                true,
+                [true, true],
+                [true, true, true, true],
+              ],
+              JSON.stringify(header),
+            );
+          } finally {
+            await app.evaluate(() => {
+              delete document.documentElement.dataset.font;
+              delete document.documentElement.dataset.size;
+            });
+            await app.setViewportSize({ width: 1280, height: 820 });
+            await worker.evaluate(() => chrome.storage.local.remove('serverResponse:m1'));
+          }
         },
       );
     },

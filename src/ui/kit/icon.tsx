@@ -126,6 +126,12 @@ const SHAPES = {
       <path d="M3 12h18" />
     </>
   ),
+  diff: (
+    <>
+      <rect x="5" y="3" width="14" height="18" rx="2" />
+      <path d="M12 7v6M9 10h6M9 16h6" />
+    </>
+  ),
   edit: <path d="M4 20l1.2-4.4L16.5 4.3a2.1 2.1 0 0 1 3 3L8.2 18.6 4 20zM14.5 6.5l3 3" />,
   pause: <path d="M9 5v14M15 5v14" />,
   play: <path d="M8 5.5v13l10.5-6.5z" />,

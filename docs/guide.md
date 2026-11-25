@@ -81,7 +81,12 @@ What's different in Firefox-based browsers:
     group's header (or the menu key, or Shift+F10) opens the same menu as its **⋯**. From the
     keyboard the list is one Tab stop: ↑ and ↓ move between rules and groups, → and ← unfold and
     fold a group, Enter opens a rule, F2 renames it, and Tab goes on to the rule's **Turn off**
-    and **⋯**. **Duplicate**, in an open rule's header, copies it.
+    and **⋯**. **Duplicate**, in an open rule's header, copies it. From 760 px wide the header
+    also says where the rule is: its group (the group's dot and name), or **Rules** for a rule in
+    no group, then its name. Each opens a menu: the group's has **New rule in this group** and
+    the group's own items (**Rename**, **Duplicate**, **Export group**, **Ungroup**,
+    **Delete**), **Rules** has **New rule**, and the name's is the rule's **⋯** menu.
+    Double-click the name, or press F2 on it, to rename the rule there.
 
     <a id="groups"></a>**Groups** keep the rules for one piece of work together, a PR's, say,
     to turn on and off as one. **New group** (beside **+**) makes one at the top of the list,
@@ -128,7 +133,10 @@ What's different in Firefox-based browsers:
     settings, a row each with its value: **When a request matches** (the URL and how it's
     compared, the method, a GraphQL operation) and **Respond with** (the status, with its
     name and the common ones by class; the delay, up to 10 minutes; headers to set or remove).
-    Click a row to edit it in place. A header the page wouldn't get (Set-Cookie, which no page
+    Click a row to edit it in place. Status's row ends in a chevron with a short menu of the
+    most common codes, from 200 to 503, the one the page gets checked: pick one and it's set.
+    For a rule that keeps the server's body, the menu starts with **Server's status**, which
+    keeps the server's own again. A header the page wouldn't get (Set-Cookie, which no page
     sees, a name with a space or a colon, a value that isn't Latin-1 text) says it's skipped,
     and why. **Try a URL** says whether the rule would answer a URL you paste. Then the body: **Replace body** sends yours without calling the server; **Keep
     server's body** makes the real request and keeps its body, so only the status, headers and
@@ -169,7 +177,9 @@ What's different in Firefox-based browsers:
     panel, so is the pane. While the body editor isn't focused, the cursor stays marked,
     outlined in grey, as vim's block is, so you can see where you'll carry on.
 
-    **Diff**, beside Vim keys, shows in the editor's place what your body changes in the
+    **Diff**, the row over the body ("Diff vs server's response +2 −1": how many lines your
+    body adds to the server's response and takes out of it, each where there are some, counted
+    again once you pause typing), shows in the editor's place what your body changes in the
     server's response: the lines you removed dimmed, with a −, the ones you added tinted
     green, with a +, and in a line you changed, the part that changed. Side by side, or
     inline, one column as git shows a diff, from the switch beside it; in a body narrower than
@@ -178,7 +188,7 @@ What's different in Firefox-based browsers:
     answered), or else one the server gives a request the rule matches while no rule answers
     it: the newest Traffic has, or the next one (turn the rule off with its dot and reload the
     page once).
-    Until a rule has one, it has no Diff switch. The response is kept apart from the rule: it
+    Until a rule has one, it has no Diff row. The response is kept apart from the rule: it
     never goes to a page, and an exported rules file doesn't have it. Diff can't be typed in:
     click a line, or press **Enter** for the one at the top, and Diff goes off with the cursor
     there. **Format** and a click on a mistake turn it off too, as they work in the editor, and

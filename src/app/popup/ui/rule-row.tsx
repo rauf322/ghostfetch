@@ -100,6 +100,7 @@ export const RuleRow = memo(function RuleRow({
       variant="rule"
       data-testid="popup-rule"
       data-item={rule.id}
+      data-kind="rule"
       // What the rule matches, for the tests to find it by.
       data-url={rule.match.url}
       off={off}

@@ -134,6 +134,7 @@ export const RuleListItem = memo(function RuleListItem({
       variant="rule"
       data-testid="rule"
       data-item={rule.id}
+      data-kind="rule"
       // What the rule matches, for the tests to find it by.
       data-url={rule.match.url}
       data-group-off={groupOff ? '' : undefined}

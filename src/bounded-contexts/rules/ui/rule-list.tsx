@@ -7,21 +7,21 @@
 // narrows the list, and shows every group in it open: while it does, nothing folds or unfolds one
 // (its name clicked, ←, Enter or Space), for that would show only once the search was cleared.
 //
-// For the keyboard and a screen reader the list is a tree (ARIA's tree view): the rules and the
-// groups at its top level, each group's rules a level under it, a group expanded or not as it's
-// folded. It's one Tab stop, the item the keyboard enters it at: the open rule's row, or else the
-// one focused last, or else the first. From there ↑ ↓ move between rows and group headers (a folded
-// group's rules aren't drawn, so they're passed by), Home and End to the first and the last; → on a
-// group unfolds it, or goes to its first rule, ← folds it, or goes from a rule to its group; Enter
-// and Space open a rule or fold a group; F2 makes a name a field to rename it. Tab goes on from an
-// item to its own controls, then out of the list: other items' controls aren't Tab stops. The keys
-// are the items' alone, never a field's, a control's in a row, or a menu's, and "/" and ⌘B pass
-// through. A right-click on a row or a header, or the ContextMenu key or Shift+F10 on one, opens
-// its menu: the same items as its ⋯. Every row's ⋯ is one menu, and every row's dot and actions
-// share their tooltips (row-tools.ts), drawn here once. A menu whose rule or group goes while it's
-// open shuts.
+// For the keyboard and a screen reader the list is a tree (ARIA's tree view; its Tab stop, keys and
+// right-click menu are src/ui/use-roving-tree.ts's): the rules and the groups at its top level,
+// each group's rules a level under it, a group expanded or not as it's folded. It's one Tab stop,
+// the item the keyboard enters it at: the open rule's row, or else the one focused last, or else
+// the first. From there ↑ ↓ move between rows and group headers (a folded group's rules aren't
+// drawn, so they're passed by), Home and End to the first and the last; → on a group unfolds it,
+// or goes to its first rule, ← folds it, or goes from a rule to its group; Enter and Space open a
+// rule or fold a group; F2 makes a name a field to rename it. Tab goes on from an item to its own
+// controls, then out of the list: other items' controls aren't Tab stops. The keys are the items'
+// alone, never a field's, a control's in a row, or a menu's, and "/" and ⌘B pass through. A
+// right-click on a row or a header, or the ContextMenu key or Shift+F10 on one, opens its menu:
+// the same items as its ⋯. Every row's ⋯ is one menu, and every row's dot and actions share their
+// tooltips (row-tools.ts), drawn here once. A menu whose rule or group goes while it's open shuts;
+// shut, it gives focus back to its item, or where that's gone (Delete), to the one in its place.
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { FocusEvent, KeyboardEvent, MouseEvent } from 'react';
 import {
   NEW_GROUP,
   addGroup,
@@ -45,6 +45,7 @@ import { DropdownMenu, DropdownMenuContent } from '../../../ui/kit/dropdown-menu
 import { Icon } from '../../../ui/kit/icon.tsx';
 import { SharedTooltip, Tooltip } from '../../../ui/kit/tooltip.tsx';
 import { ListEmpty } from '../../../ui/list-detail.tsx';
+import { useRovingTree } from '../../../ui/use-roving-tree.ts';
 import { nameInList, renamingStore, setRenaming } from './renaming.ts';
 import { useRuleDrag } from './use-rule-drag.ts';
 import { GroupBlock } from './group-block.tsx';
@@ -65,30 +66,15 @@ interface RuleListProps {
   log: TrafficLog;
 }
 
-const ITEM = '[role="treeitem"]';
-
-// What a menu was opened from: an item, and where it was among the items, while it or a control
-// in it had focus (else null).
-interface MenuFrom {
-  id: string;
-  index: number;
-}
-
 export function RuleList({ selectedId, query, onSelect, onCreate, log }: RuleListProps) {
   const { entries, groups } = useStore(ruleStore);
   useStore(foldStore);
   const { id: renaming } = useStore(renamingStore);
   const [tools] = useState(createRowTools);
-  const tree = useRef<HTMLUListElement>(null);
-  // The item focus is in now (null while it's outside the list), and the one it was in last.
-  const [focused, setFocused] = useState<string | null>(null);
-  const [lastFocused, setLastFocused] = useState<string | null>(null);
-  // What the right-click menu is for, and the item it's marked open on.
+  // What the right-click menu is for.
   const [menuFor, setMenuFor] = useState<{ kind: 'rule' | 'group'; id: string } | null>(
     null,
   );
-  const marked = useRef<HTMLElement | null>(null);
-  const menuFrom = useRef<MenuFrom | null>(null);
   // The right-click menu, and the two menus' shutting (ShutsWhenGone).
   const contextMenu = useRef<{ close: () => void; unmount: () => void } | null>(null);
   const shutContextMenu = useCallback(() => contextMenu.current?.close(), []);
@@ -109,7 +95,7 @@ export function RuleList({ selectedId, query, onSelect, onCreate, log }: RuleLis
   );
   // A search shows what it found, folded or not.
   const foldedNow = (id: string) => !searching && isFolded(id);
-  // The items as they're drawn, and the one that's the list's Tab stop.
+  // The items as they're drawn: a rule's row (its kind 'rule') or a group's block ('group').
   const order = visible.flatMap((entry) =>
     entry.kind === 'rule'
       ? [entry.rule.id]
@@ -118,10 +104,33 @@ export function RuleList({ selectedId, query, onSelect, onCreate, log }: RuleLis
           ...(foldedNow(entry.group.id) ? [] : entry.rules.map(({ id }) => id)),
         ],
   );
-  const stop =
-    [focused, selectedId, lastFocused].find((id) => id !== null && order.includes(id)) ??
-    order[0] ??
-    null;
+  const { ref, stop, handlers, menu, itemMenu, focusItem } = useRovingTree({
+    ids: order,
+    open: selectedId,
+    back: 'or next',
+    // A search shows every group open, and while it does no key folds one, unseen, for later.
+    onFold: (item, shut) => {
+      if (!shut || !searching) setFolded(item.id, shut);
+    },
+    onKey: (event, item) => {
+      switch (event.key) {
+        case 'Enter':
+        case ' ':
+          if (item.kind !== 'group') onSelect(item.id);
+          else if (!searching) setFolded(item.id, !isFolded(item.id));
+          return true;
+        case 'F2':
+          setRenaming(item.id);
+          return true;
+        default:
+          return false;
+      }
+    },
+    onMenu: (item) => {
+      setMenuFor({ kind: item.kind === 'group' ? 'group' : 'rule', id: item.id });
+      return true;
+    },
+  });
 
   // A rule opened in a folded group (from Traffic, the popup, or just made in it) unfolds it, and
   // so does the open rule moved into one (its ⋯ menu's Move to group, or a drag), so the rule
@@ -139,15 +148,6 @@ export function RuleList({ selectedId, query, onSelect, onCreate, log }: RuleLis
     nameInList(group.id);
   }
 
-  const items = () => [...(tree.current?.querySelectorAll<HTMLElement>(ITEM) ?? [])];
-  // An item, or where a search now hides it, the list's Tab stop.
-  const focusItem = useCallback((id: string) => {
-    (
-      tree.current?.querySelector<HTMLElement>(`[data-item="${CSS.escape(id)}"]`) ??
-      tree.current?.querySelector<HTMLElement>(`${ITEM}[tabindex="0"]`)
-    )?.focus();
-  }, []);
-
   // A name renamed by Enter or Esc gives focus back to its item, or to the list where the name
   // doesn't match the search any more.
   const renamed = useCallback(
@@ -157,119 +157,6 @@ export function RuleList({ selectedId, query, onSelect, onCreate, log }: RuleLis
     },
     [focusItem],
   );
-
-  // A menu opened from an item with focus in it: once the menu's shut, focus goes back to the
-  // item, which Base UI can't do when the item's gone (Delete) or drawn again elsewhere (Move to
-  // group): the item, or the one in its place. Not where focus went on, to a field or the editor.
-  function noteMenuFrom(element: Element | null | undefined) {
-    const item = element?.closest<HTMLElement>(ITEM);
-    const active = document.activeElement;
-    menuFrom.current =
-      item?.dataset.item && active && item.contains(active)
-        ? { id: item.dataset.item, index: items().indexOf(item) }
-        : null;
-  }
-  function backToList() {
-    const from = menuFrom.current;
-    menuFrom.current = null;
-    if (!from || (document.activeElement && document.activeElement !== document.body))
-      return;
-    const now = items();
-    (
-      now.find((item) => item.dataset.item === from.id) ??
-      now[Math.min(from.index, now.length - 1)]
-    )?.focus();
-  }
-
-  function onKeyDown(event: KeyboardEvent<HTMLElement>) {
-    const item = event.target as HTMLElement;
-    if (
-      !item.matches(ITEM) ||
-      !event.currentTarget.contains(item) ||
-      event.altKey ||
-      event.ctrlKey ||
-      event.metaKey ||
-      event.shiftKey
-    )
-      return;
-    const id = item.dataset.item ?? '';
-    const group = item.dataset.testid === 'group-block';
-    const expanded = item.getAttribute('aria-expanded');
-    const now = items();
-    const index = now.indexOf(item);
-    let to: HTMLElement | null | undefined;
-    switch (event.key) {
-      case 'ArrowDown':
-        to = now[index + 1];
-        break;
-      case 'ArrowUp':
-        to = now[index - 1];
-        break;
-      case 'Home':
-        to = now[0];
-        break;
-      case 'End':
-        to = now.at(-1);
-        break;
-      case 'ArrowRight':
-        if (expanded === 'false') setFolded(id, false);
-        else if (expanded === 'true')
-          to = item.querySelector<HTMLElement>(`:scope > [role="group"] > ${ITEM}`);
-        break;
-      // A search shows every group open, and while it does no key folds one, unseen, for later.
-      case 'ArrowLeft':
-        if (expanded === 'true') {
-          if (!searching) setFolded(id, true);
-        } else if (!group) to = item.parentElement?.closest<HTMLElement>(ITEM);
-        break;
-      case 'Enter':
-      case ' ':
-        if (!group) onSelect(id);
-        else if (!searching) setFolded(id, !isFolded(id));
-        break;
-      case 'F2':
-        setRenaming(id);
-        break;
-      default:
-        return;
-    }
-    event.preventDefault();
-    if (!to) return;
-    to.focus();
-    to.scrollIntoView({ block: 'nearest' });
-  }
-
-  function onFocus(event: FocusEvent<HTMLElement>) {
-    const item = (event.target as Element).closest<HTMLElement>(ITEM);
-    if (item && event.currentTarget.contains(item)) setFocused(item.dataset.item ?? null);
-  }
-
-  function onBlur(event: FocusEvent<HTMLElement>) {
-    if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
-    if (focused) setLastFocused(focused);
-    setFocused(null);
-  }
-
-  // A right-click on an item (or the menu key on it): its menu, the item marked as having it open.
-  // Elsewhere in the list (between items), the browser's.
-  function onContextMenu(
-    event: MouseEvent<HTMLElement> & { preventBaseUIHandler: () => void },
-  ) {
-    const item = (event.target as Element).closest<HTMLElement>(ITEM);
-    if (!item?.dataset.item) {
-      event.preventBaseUIHandler();
-      event.stopPropagation();
-      return;
-    }
-    marked.current?.removeAttribute('data-context-open');
-    item.setAttribute('data-context-open', '');
-    marked.current = item;
-    noteMenuFrom(item);
-    setMenuFor({
-      kind: item.dataset.testid === 'group-block' ? 'group' : 'rule',
-      id: item.dataset.item,
-    });
-  }
 
   const menuRule = menuFor?.kind === 'rule' ? findRule(menuFor.id) : undefined;
   const menuGroup =
@@ -321,23 +208,10 @@ export function RuleList({ selectedId, query, onSelect, onCreate, log }: RuleLis
             </div>
           </div>
           <RowToolsContext.Provider value={tools}>
-            <ContextMenu
-              actionsRef={contextMenu}
-              onOpenChange={(open) => {
-                if (open) return;
-                marked.current?.removeAttribute('data-context-open');
-                marked.current = null;
-              }}
-              onOpenChangeComplete={(open) => {
-                if (!open) requestAnimationFrame(backToList);
-              }}
-            >
+            <ContextMenu actionsRef={contextMenu} {...menu}>
               <ContextMenuTrigger
-                render={<ul ref={tree} data-entries role="tree" aria-label="Rules" />}
-                onContextMenu={onContextMenu}
-                onKeyDown={onKeyDown}
-                onFocus={onFocus}
-                onBlur={onBlur}
+                render={<ul ref={ref} data-entries role="tree" aria-label="Rules" />}
+                {...handlers}
               >
                 {visible.map((entry, position) =>
                   entry.kind === 'rule' ? (
@@ -398,15 +272,7 @@ export function RuleList({ selectedId, query, onSelect, onCreate, log }: RuleLis
               </ContextMenuContent>
             </ContextMenu>
             {/* The rows' one ⋯ menu, for the rule whose ⋯ opened it. */}
-            <DropdownMenu
-              handle={tools.menu}
-              onOpenChange={(open, details) => {
-                if (open) noteMenuFrom(details.trigger);
-              }}
-              onOpenChangeComplete={(open) => {
-                if (!open) requestAnimationFrame(backToList);
-              }}
-            >
+            <DropdownMenu handle={tools.menu} {...itemMenu}>
               {({ payload }) => {
                 const rule = payload ? findRule(payload) : undefined;
                 return (

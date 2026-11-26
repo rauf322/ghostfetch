@@ -24,7 +24,7 @@ import { isPreserved, recordingStore, rememberPreserve } from '../index.ts';
 import type { LogEntry, TrafficLog } from '../index.ts';
 import { useTraffic } from './use-traffic-log.ts';
 import { RequestDetail } from './request-detail/request-detail.tsx';
-import { TrafficList } from './traffic-list.tsx';
+import { TrafficList, requestButton } from './traffic-list.tsx';
 import { TrafficToolbar } from './traffic-toolbar.tsx';
 
 interface TrafficPageProps {
@@ -68,13 +68,10 @@ export const TrafficPage = memo(function TrafficPage({
   useLayoutEffect(() => {
     const was = shown.current;
     shown.current = selected ? selected.id : null;
-    const row = (id: string) =>
-      view.current?.querySelector<HTMLElement>(
-        `[data-testid="request"][data-entry="${CSS.escape(id)}"] [data-row-open]`,
-      );
     const active = document.activeElement;
     if (was && !selected) {
-      if (!active || active === document.body || !active.isConnected) row(was)?.focus();
+      if (!active || active === document.body || !active.isConnected)
+        requestButton(view.current, was)?.focus();
     } else if (selected && selected.id !== was) {
       if (active && view.current?.contains(active) && !active.checkVisibility())
         view.current

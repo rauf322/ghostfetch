@@ -68,6 +68,9 @@ export const RequestRow = memo(function RequestRow({
       variant="request"
       data-testid="request"
       data-entry={entry.id}
+      // An item of the list's (traffic-list.tsx).
+      data-item={entry.id}
+      data-kind="request"
       data-context-open={menuOpen || undefined}
       selected={selected}
       title={entry.url}

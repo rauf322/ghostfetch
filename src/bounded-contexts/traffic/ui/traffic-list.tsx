@@ -11,16 +11,10 @@
 // search keep theirs. A right-click on a row, or the ContextMenu key or Shift+F10 on it, opens its
 // menu: its actions (each the row's own, so a copy says so in the row, as the slot shows its
 // actions for that second), and Open the rule where a rule answered it. Every row's actions share
-// their tooltips (row-tools.ts), drawn here once.
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from 'react';
-import type { FocusEvent, KeyboardEvent, MouseEvent, ReactNode } from 'react';
+// their tooltips (row-tools.ts), drawn here once. The Tab stop, the keys and the menu are the hook
+// the rule lists have too (src/ui/use-roving-tree.ts).
+import { useMemo, useState, useSyncExternalStore } from 'react';
+import type { ReactNode } from 'react';
 import type { Rule } from '../../rules/index.ts';
 import { siteStore } from '../../sites/index.ts';
 import type { LogEntry, TrafficSnapshot } from '../index.ts';
@@ -36,6 +30,7 @@ import { ItemList } from '../../../ui/kit/item.tsx';
 import { SharedTooltip } from '../../../ui/kit/tooltip.tsx';
 import { PaneSection } from '../../../ui/list-detail.tsx';
 import { useNow } from '../../../ui/use-now.ts';
+import { findItem, useRovingTree } from '../../../ui/use-roving-tree.ts';
 import { countEntries, filterEntries } from '../domain/filter-entries.ts';
 import type { TrafficFilter } from '../domain/filter-entries.ts';
 import { groupByTime } from '../domain/time-groups.ts';
@@ -58,9 +53,13 @@ interface TrafficListProps {
 
 // What's in the list is a column at most this wide, in the middle of a wide window.
 const COLUMN = 'mx-auto w-full max-w-[880px] px-3';
-// A row, and the button that opens its request, which the keys move between.
-const ROW = '[data-testid="request"]';
+// A row's button, the one that opens its request, which takes the row's focus: the keys move
+// between them.
 const OPEN = '[data-row-open]';
+
+// A request's row's button, as the list in `within` draws it now.
+export const requestButton = (within: ParentNode | null | undefined, id: string) =>
+  findItem(within, id)?.querySelector<HTMLElement>(OPEN) ?? null;
 
 export function TrafficList({
   traffic,
@@ -79,7 +78,6 @@ export function TrafficList({
   const { entries } = traffic;
   const groups = groupByTime(filterEntries(entries, filter, search), now);
   const shown = groups.flatMap((group) => group.entries);
-  const list = useRef<HTMLDivElement>(null);
   // The rows' tooltips, made once, and Mock this response, made again only when the editor's
   // onMock changes (the group a new rule goes into was picked), which draws the rows' actions
   // again, not the rows.
@@ -88,22 +86,33 @@ export function TrafficList({
     () => ({ tips, mock: (entry: LogEntry) => mockEntry(entry, onMock) }),
     [tips, onMock],
   );
-  // The row focus is in now (null while it's outside the list), and the one it was in last; and
-  // whether it showed its ring.
-  const [focused, setFocused] = useState<string | null>(null);
-  const [lastFocused, setLastFocused] = useState<string | null>(null);
-  const ring = useRef(false);
-  // The request the right-click menu is for, while it's open (its row marked so, the row drawn
-  // again elsewhere too), and the row focus was in as it opened.
+  // The request the right-click menu is for.
   const [menuFor, setMenuFor] = useState<LogEntry | null>(null);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuFrom = useRef<string | null>(null);
-  const stop =
-    [focused, selectedId, lastFocused].find(
-      (id) => id !== null && shown.some((entry) => entry.id === id),
-    ) ??
-    shown[0]?.id ??
-    null;
+  // Each row an item of the kind 'request', which its button takes the focus for.
+  const { ref, stop, handlers, menu, menuOpen, itemById } = useRovingTree({
+    ids: shown.map(({ id }) => id),
+    open: selectedId,
+    focusIn: OPEN,
+    // Shut, the menu gives focus back to the row it came from (kit/context-menu.tsx), which Base
+    // UI can't do where a tick has drawn the row again under another time: the row as it's drawn
+    // now, with its ring as it was.
+    back: 'item',
+    refocus: { ring: true },
+    // A request a tick moves under another time is drawn again in that time's list, and focus, in
+    // its row, falls to the page as the old row goes: it comes back to the row once the list is
+    // drawn, before it's painted. The open menu's mark is the row's to draw, so it stays on the
+    // row drawn again.
+    follow: 'blur',
+    drawnMark: true,
+    // A right-click on a row (or the menu key on it): its menu. Elsewhere in the list (a stretch's
+    // label, between the cards), the browser's.
+    onMenu: (item) => {
+      const entry = entries.find((each) => each.id === item.id);
+      if (!entry) return false;
+      setMenuFor(entry);
+      return true;
+    },
+  });
 
   let waiting: ReactNode = null;
   if (entries.length) waiting = 'No requests match.';
@@ -117,119 +126,9 @@ export function TrafficList({
       </>
     );
 
-  function onKeyDown(event: KeyboardEvent<HTMLElement>) {
-    const open = event.target as HTMLElement;
-    if (
-      !open.matches(OPEN) ||
-      event.altKey ||
-      event.ctrlKey ||
-      event.metaKey ||
-      event.shiftKey
-    )
-      return;
-    const rows = [...(list.current?.querySelectorAll<HTMLElement>(OPEN) ?? [])];
-    const index = rows.indexOf(open);
-    let to: HTMLElement | undefined;
-    switch (event.key) {
-      case 'ArrowDown':
-        to = rows[index + 1];
-        break;
-      case 'ArrowUp':
-        to = rows[index - 1];
-        break;
-      case 'Home':
-        to = rows[0];
-        break;
-      case 'End':
-        to = rows.at(-1);
-        break;
-      default:
-        return;
-    }
-    event.preventDefault();
-    if (!to) return;
-    to.focus();
-    to.scrollIntoView({ block: 'nearest' });
-  }
-
-  function onFocus(event: FocusEvent<HTMLElement>) {
-    const row = (event.target as Element).closest<HTMLElement>(ROW);
-    if (!row?.dataset.entry || !event.currentTarget.contains(row)) return;
-    setFocused(row.dataset.entry);
-    ring.current = (event.target as Element).matches(':focus-visible');
-  }
-
-  function onBlur(event: FocusEvent<HTMLElement>) {
-    if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
-    if (focused) setLastFocused(focused);
-    setFocused(null);
-  }
-
-  // A request's row's button, the one that opens it, as the list draws it now.
-  const openButton = useCallback(
-    (id: string) =>
-      list.current?.querySelector<HTMLElement>(
-        `${ROW}[data-entry="${CSS.escape(id)}"] ${OPEN}`,
-      ),
-    [],
-  );
-
-  // A request a tick moves under another time is drawn again in that time's list, and focus, in
-  // its row, falls to the page as the old row goes: it comes back to the row, with its ring as it
-  // was, once the list is drawn, before it's painted. Heard on the element itself: React passes
-  // no handler of its own the blur of an element it's taking away.
-  useEffect(() => {
-    const element = list.current;
-    if (!element) return;
-    function onFocusOut(event: globalThis.FocusEvent) {
-      if (element!.contains(event.relatedTarget as Node | null)) return;
-      const left = event.target as HTMLElement;
-      const id = left.closest<HTMLElement>(ROW)?.dataset.entry;
-      const withRing = ring.current;
-      if (!id) return;
-      queueMicrotask(() => {
-        if (left.isConnected) return;
-        if (document.activeElement && document.activeElement !== document.body) return;
-        openButton(id)?.focus({ focusVisible: withRing });
-      });
-    }
-    element.addEventListener('focusout', onFocusOut);
-    return () => element.removeEventListener('focusout', onFocusOut);
-  }, [openButton]);
-
-  // A right-click on a row (or the menu key on it): its menu, the row marked as having it open.
-  // Elsewhere in the list (a stretch's label, between the cards), the browser's.
-  function onContextMenu(
-    event: MouseEvent<HTMLElement> & { preventBaseUIHandler: () => void },
-  ) {
-    const row = (event.target as Element).closest<HTMLElement>(ROW);
-    const entry = row && entries.find((each) => each.id === row.dataset.entry);
-    if (!row || !entry) {
-      event.preventBaseUIHandler();
-      event.stopPropagation();
-      return;
-    }
-    menuFrom.current = row.contains(document.activeElement) ? entry.id : null;
-    setMenuFor(entry);
-  }
-
-  // Shut, the menu gives focus back to the row it came from (context-menu.tsx), which Base UI can't
-  // do where a tick has drawn the row again under another time: the row as it's drawn now.
-  function backToRow() {
-    const id = menuFrom.current;
-    menuFrom.current = null;
-    if (!id || (document.activeElement && document.activeElement !== document.body))
-      return;
-    openButton(id)?.focus({ focusVisible: ring.current });
-  }
-
   // The menu's actions are the row's own: its button for each, found as the item's picked, does it.
   const rowAction = (entry: LogEntry, id: string) =>
-    list.current
-      ?.querySelector<HTMLElement>(
-        `${ROW}[data-entry="${CSS.escape(entry.id)}"] [data-action="${id}"]`,
-      )
-      ?.click();
+    itemById(entry.id)?.querySelector<HTMLElement>(`[data-action="${id}"]`)?.click();
 
   return (
     <div
@@ -248,18 +147,10 @@ export function TrafficList({
       </div>
       <div className="min-h-0 flex-1 overflow-auto scroll-thin">
         <RowToolsContext.Provider value={tools}>
-          <ContextMenu
-            onOpenChange={setMenuOpen}
-            onOpenChangeComplete={(open) => {
-              if (!open) requestAnimationFrame(backToRow);
-            }}
-          >
+          <ContextMenu {...menu}>
             <ContextMenuTrigger
-              render={<div ref={list} className={`${COLUMN} flex flex-col gap-4 pb-4`} />}
-              onContextMenu={onContextMenu}
-              onKeyDown={onKeyDown}
-              onFocus={onFocus}
-              onBlur={onBlur}
+              render={<div ref={ref} className={`${COLUMN} flex flex-col gap-4 pb-4`} />}
+              {...handlers}
             >
               {groups.length
                 ? groups.map((group) => (

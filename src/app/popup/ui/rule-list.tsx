@@ -28,15 +28,11 @@
 // Shift+F10 on it, opens its menu: Edit this rule, and Turn off (or on). Only opening the editor
 // takes focus from the popup, which closes it: a menu's Esc shuts the menu and not the popup (Base
 // UI takes the key), and a rule that moves as it answers takes focus with it rather than dropping
-// it, while focus is in the list: once it's left, a redraw leaves it where it went.
-import { useId, useLayoutEffect, useRef, useState } from 'react';
-import type {
-  ComponentProps,
-  FocusEvent,
-  KeyboardEvent,
-  MouseEvent,
-  ReactNode,
-} from 'react';
+// it, while focus is in the list: once it's left, a redraw leaves it where it went. The Tab stop,
+// the arrows and the right-click menu are one hook's, as in the editor's list and Traffic's
+// (src/ui/use-roving-tree.ts).
+import { useId, useState } from 'react';
+import type { ComponentProps, MouseEvent, ReactNode } from 'react';
 import {
   editRule,
   groupOf,
@@ -63,15 +59,12 @@ import {
 import { DropdownMenuItem } from '../../../ui/kit/dropdown-menu.tsx';
 import { Icon } from '../../../ui/kit/icon.tsx';
 import { SharedTooltip } from '../../../ui/kit/tooltip.tsx';
+import { useRovingTree } from '../../../ui/use-roving-tree.ts';
 import { RuleRow } from './rule-row.tsx';
 import { RowToolsContext, createRowTools } from './row-tools.ts';
 
-const ITEM = '[role="treeitem"]';
-// The fold's item, by an id no rule or group has.
+// The fold's item, by an id no rule or group has. The items' kinds: 'rule', 'group' and 'fold'.
 const FOLD = '*not-answering';
-// The kinds of item, by their test ids.
-const RULE = 'popup-rule';
-const GROUP = 'popup-group-block';
 // The ring a group's row or the fold's shows while its item has keyboard focus, as a rule's row's.
 const HEAD_FOCUS =
   'group-focus-visible/head:ring-[1.5px] group-focus-visible/head:ring-t65 group-focus-visible/head:ring-inset';
@@ -110,15 +103,8 @@ export function RuleList({
   useStore(foldStore);
   const [open, setOpen] = useState(false);
   const [tools] = useState(createRowTools);
-  const tree = useRef<HTMLUListElement>(null);
-  // The item focus is in now (null while it's outside the list), and the one it was in last.
-  const [focused, setFocused] = useState<string | null>(null);
-  const [lastFocused, setLastFocused] = useState<string | null>(null);
-  // The item focus went to last, as drawn, to follow should it be drawn again elsewhere.
-  const held = useRef<{ id: string; element: HTMLElement } | null>(null);
-  // The rule the right-click menu is for, and the row it's marked open on.
+  // The rule the right-click menu is for.
   const [menuFor, setMenuFor] = useState<string | null>(null);
-  const marked = useRef<HTMLElement | null>(null);
   // What a rule did on the page, in words, which puts it under Answering here or in the fold,
   // whether it's on now or not: a row that left as its dot was clicked would put the next rule
   // under the pointer.
@@ -126,7 +112,7 @@ export function RuleList({
   const here = split ? rules.filter((rule) => did(rule) !== '') : rules;
   const rest = split ? rules.filter((rule) => did(rule) === '') : [];
   const on = rest.filter((rule) => rule.enabled).length;
-  // The items as they're drawn, and the one that's the list's Tab stop.
+  // The items as they're drawn.
   const order = split
     ? [
         ...here.map(({ id }) => id),
@@ -140,21 +126,45 @@ export function RuleList({
               ...(isFolded(entry.group.id) ? [] : entry.rules.map(({ id }) => id)),
             ],
       );
-  const stop =
-    [focused, lastFocused].find((id) => id !== null && order.includes(id)) ??
-    order[0] ??
-    null;
 
-  // The item focus was in, drawn again elsewhere (a rule that answered on the page meanwhile, up
-  // out of the fold): focus follows it rather than falling out of the list.
-  useLayoutEffect(() => {
-    const was = held.current;
-    if (!was || was.element.isConnected || document.activeElement !== document.body)
-      return;
-    held.current = null;
-    tree.current
-      ?.querySelector<HTMLElement>(`[data-item="${CSS.escape(was.id)}"]`)
-      ?.focus({ preventScroll: true });
+  // A group folded or unfolded (as in the editor's list, which shares it), or the fold opened or
+  // shut.
+  function fold(id: string, shut: boolean) {
+    if (id === FOLD) setOpen(!shut);
+    else setFolded(id, shut);
+  }
+
+  const { ref, stop, handlers, menu, itemAt } = useRovingTree({
+    ids: order,
+    // The item focus was in, drawn again elsewhere (a rule that answered on the page meanwhile, up
+    // out of the fold): focus follows it rather than falling out of the list, the list where it
+    // was scrolled.
+    follow: 'draw',
+    refocus: { still: true },
+    onFold: (item, shut) => fold(item.id, shut),
+    onKey: (event, item) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return false;
+      // Once, held down: each repeat would turn the rule or group again, or fold it again.
+      if (event.repeat) return true;
+      if (event.key === 'Enter') {
+        if (item.kind === 'rule') openRuleInEditor(item.id, windowId);
+        else if (item.expanded !== undefined) fold(item.id, item.expanded);
+      } else if (item.kind === 'rule') turnRule(item.id);
+      else if (item.kind === 'group') {
+        const entry = entries.find(
+          (each) => each.kind === 'group' && each.group.id === item.id,
+        );
+        if (entry?.kind === 'group') turnGroup(item.id, !entry.group.enabled);
+      } else if (item.expanded !== undefined) fold(item.id, item.expanded);
+      return true;
+    },
+    // A right-click on a rule's row (or the menu key on it): its menu. On a group's row, the
+    // fold's, or between rows, the browser's.
+    onMenu: (item) => {
+      if (item.kind !== 'rule') return false;
+      setMenuFor(item.id);
+      return true;
+    },
   });
 
   const row = (
@@ -188,130 +198,19 @@ export function RuleList({
     );
   };
 
-  const items = () => [...(tree.current?.querySelectorAll<HTMLElement>(ITEM) ?? [])];
-
-  // A group folded or unfolded (as in the editor's list, which shares it), or the fold opened or
-  // shut.
-  function fold(item: HTMLElement, shut: boolean) {
-    const id = item.dataset.item ?? '';
-    if (id === FOLD) setOpen(!shut);
-    else setFolded(id, shut);
-  }
-
-  function onKeyDown(event: KeyboardEvent<HTMLElement>) {
-    const item = event.target as HTMLElement;
-    if (
-      !item.matches(ITEM) ||
-      !event.currentTarget.contains(item) ||
-      event.altKey ||
-      event.ctrlKey ||
-      event.metaKey ||
-      event.shiftKey
-    )
-      return;
-    const id = item.dataset.item ?? '';
-    const kind = item.dataset.testid;
-    const expanded = item.getAttribute('aria-expanded');
-    const now = items();
-    const index = now.indexOf(item);
-    let to: HTMLElement | null | undefined;
-    switch (event.key) {
-      case 'ArrowDown':
-        to = now[index + 1];
-        break;
-      case 'ArrowUp':
-        to = now[index - 1];
-        break;
-      case 'Home':
-        to = now[0];
-        break;
-      case 'End':
-        to = now.at(-1);
-        break;
-      case 'ArrowRight':
-        if (expanded === 'false') fold(item, false);
-        else if (expanded === 'true')
-          to = item.querySelector<HTMLElement>(`:scope > [role="group"] > ${ITEM}`);
-        break;
-      case 'ArrowLeft':
-        if (expanded === 'true') fold(item, true);
-        else to = item.parentElement?.closest<HTMLElement>(ITEM);
-        break;
-      // Once, held down: each repeat would turn the rule or group again, or fold it again.
-      case 'Enter':
-        if (event.repeat) break;
-        if (kind === RULE) openRuleInEditor(id, windowId);
-        else if (expanded) fold(item, expanded === 'true');
-        break;
-      case ' ':
-        if (event.repeat) break;
-        if (kind === RULE) turnRule(id);
-        else if (kind === GROUP) {
-          const entry = entries.find(
-            (each) => each.kind === 'group' && each.group.id === id,
-          );
-          if (entry?.kind === 'group') turnGroup(id, !entry.group.enabled);
-        } else if (expanded) fold(item, expanded === 'true');
-        break;
-      default:
-        return;
-    }
-    event.preventDefault();
-    if (!to) return;
-    to.focus();
-    to.scrollIntoView({ block: 'nearest' });
-  }
-
   // A click on a rule's row opens it, as Enter does, and one on a group's row or the fold's folds
   // it; not one on a control in it (a dot, or the hidden checkbox Base UI clicks for it, or an
   // action), nor one among a group's rules that's on none of them.
   function onClick(event: MouseEvent<HTMLElement>) {
     const target = event.target as Element;
-    const item = target.closest<HTMLElement>(ITEM);
-    if (
-      !item ||
-      !event.currentTarget.contains(item) ||
-      target.closest('[data-slot="switch"], input, button')
+    const item = itemAt(target);
+    if (!item || target.closest('[data-slot="switch"], input, button')) return;
+    if (item.kind === 'rule') openRuleInEditor(item.id, windowId);
+    else if (
+      item.expanded !== undefined &&
+      !item.element.querySelector(':scope > [role="group"]')?.contains(target)
     )
-      return;
-    const expanded = item.getAttribute('aria-expanded');
-    if (item.dataset.testid === RULE) openRuleInEditor(item.dataset.item ?? '', windowId);
-    else if (expanded && !item.querySelector(':scope > [role="group"]')?.contains(target))
-      fold(item, expanded === 'true');
-  }
-
-  function onFocus(event: FocusEvent<HTMLElement>) {
-    const item = (event.target as Element).closest<HTMLElement>(ITEM);
-    if (!item?.dataset.item || !event.currentTarget.contains(item)) return;
-    held.current = { id: item.dataset.item, element: item };
-    setFocused(item.dataset.item);
-  }
-
-  // Focus gone from the list (a click elsewhere): nothing to follow there any more. An item drawn
-  // again elsewhere, focus in it, says nothing of its going (React passes no handler the blur of an
-  // element it's taking away), so it's still followed.
-  function onBlur(event: FocusEvent<HTMLElement>) {
-    if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
-    held.current = null;
-    if (focused) setLastFocused(focused);
-    setFocused(null);
-  }
-
-  // A right-click on a rule's row (or the menu key on it): its menu, the row marked as having it
-  // open. On a group's row, the fold's, or between rows, the browser's.
-  function onContextMenu(
-    event: MouseEvent<HTMLElement> & { preventBaseUIHandler: () => void },
-  ) {
-    const item = (event.target as Element).closest<HTMLElement>(ITEM);
-    if (item?.dataset.testid !== RULE || !item.dataset.item) {
-      event.preventBaseUIHandler();
-      event.stopPropagation();
-      return;
-    }
-    marked.current?.removeAttribute('data-context-open');
-    item.setAttribute('data-context-open', '');
-    marked.current = item;
-    setMenuFor(item.dataset.item);
+      fold(item.id, item.expanded);
   }
 
   const menuRule = menuFor ? rules.find(({ id }) => id === menuFor) : undefined;
@@ -335,20 +234,11 @@ export function RuleList({
         </p>
       )}
       <RowToolsContext.Provider value={tools}>
-        <ContextMenu
-          onOpenChange={(isOpen) => {
-            if (isOpen) return;
-            marked.current?.removeAttribute('data-context-open');
-            marked.current = null;
-          }}
-        >
+        <ContextMenu {...menu}>
           <ContextMenuTrigger
-            render={<ul ref={tree} role="tree" aria-label={split ? 'Rules' : title} />}
-            onContextMenu={onContextMenu}
-            onKeyDown={onKeyDown}
+            render={<ul ref={ref} role="tree" aria-label={split ? 'Rules' : title} />}
+            {...handlers}
             onClick={onClick}
-            onFocus={onFocus}
-            onBlur={onBlur}
           >
             {split ? (
               <>
@@ -465,8 +355,9 @@ function GroupItem({
   const ids = useId();
   return (
     <li
-      data-testid={GROUP}
+      data-testid="popup-group-block"
       data-item={group.id}
+      data-kind="group"
       role="treeitem"
       aria-level={1}
       aria-posinset={position}
@@ -543,6 +434,7 @@ function FoldItem({
     <li
       data-testid="not-answering-block"
       data-item={FOLD}
+      data-kind="fold"
       role="treeitem"
       aria-level={1}
       aria-posinset={position}

@@ -58,6 +58,7 @@ export function GroupBlock({
     <li
       data-testid="group-block"
       data-item={group.id}
+      data-kind="group"
       data-drop={block.drop}
       role="treeitem"
       aria-level={1}

@@ -114,17 +114,23 @@ const STATUS_HIDDEN =
 // the actions, which have their own. `statusId`: what it says, for a row to be described by.
 // `stacked`: the slot is a column of the row's own, as tall as the row, and what it says is two
 // short things, one over the other (a request's status over how long it took), which keep their
-// width; the actions sit across both lines.
+// width; the actions sit across both lines. In a row that isn't an Item (a group's header, marked
+// group/item), `shown` and `hidden` add the states of what holds it (its group's block, which takes
+// the focus and the right-click menu's mark) to those that show the actions and hide what it says.
 export function ItemSlot({
   actions,
   statusId,
   stacked = false,
+  shown,
+  hidden,
   className,
   children,
 }: {
   actions?: ReactNode;
   statusId?: string;
   stacked?: boolean;
+  shown?: string;
+  hidden?: string;
   className?: string;
   children?: ReactNode;
 }) {
@@ -145,7 +151,7 @@ export function ItemSlot({
           stacked
             ? 'flex flex-col items-end gap-0.5'
             : 'flex h-[1.5em] min-w-0 flex-wrap content-start items-center justify-end gap-x-1 overflow-hidden text-label whitespace-nowrap tabular-nums [&>*:first-child]:min-w-0 [&>*:first-child]:truncate',
-          actions && STATUS_HIDDEN,
+          actions && [hidden, STATUS_HIDDEN],
         )}
       >
         {children}
@@ -157,6 +163,7 @@ export function ItemSlot({
           className={cn(
             'pointer-events-none absolute inset-y-0 right-0 -mr-[5px] flex items-center gap-0.5 opacity-0 transition-opacity duration-100 touch:hidden',
             ACTIONS_SHOWN,
+            shown,
           )}
         >
           {actions}

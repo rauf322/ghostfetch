@@ -67,6 +67,14 @@
   --code-bg: #0e0e10;
   --signal: #34d399;
   --signal-soft: rgba(52, 211, 153, 0.12);
+  /* a group's chip (ui/kit/monogram.tsx): five colours for its letters, which its name picks one
+     of, as T3 Code's project chips (rose, blue, amber, teal, violet); each theme has five of its
+     own, its letters at 4.5:1 or more on its tile (below) */
+  --chip-1: #f59aa1;
+  --chip-2: #87bafd;
+  --chip-3: #e1ad63;
+  --chip-4: #4fccd9;
+  --chip-5: #bca9f7;
   /* a switch that's off: its track and its knob */
   --track: #3a3a3f;
   --knob: #a1a1a6;
@@ -102,6 +110,12 @@
     var(--line-strong-base),
     var(--text) var(--line-lift)
   );
+  /* A chip's tile: its letters' colour at 16% over the page, as T3 Code's. */
+  --chip-1-tile: color-mix(in srgb, var(--chip-1) 16%, var(--bg));
+  --chip-2-tile: color-mix(in srgb, var(--chip-2) 16%, var(--bg));
+  --chip-3-tile: color-mix(in srgb, var(--chip-3) 16%, var(--bg));
+  --chip-4-tile: color-mix(in srgb, var(--chip-4) 16%, var(--bg));
+  --chip-5-tile: color-mix(in srgb, var(--chip-5) 16%, var(--bg));
 }
 
 /* Contrast: Standard leaves every level and line its base. More and Most move the levels 30% and

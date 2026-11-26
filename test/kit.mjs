@@ -2,9 +2,10 @@
 // extension pages' real CSP, in Chromium and in Zen. It fails on any CSP violation, uncaught
 // error or console error, drives each component with the keyboard and the mouse, holds every
 // theme's grey text to its floor at each step of Appearance's Contrast (src/app/styles/theme.css),
-// and checks the kit's icons against src/lib/icons.ts. Two self-checks make sure a pass means
-// something: a <style> tag added on purpose has to be caught, and so does Base UI's own when its
-// CSPProvider setting is off (every page built on the kit keeps it on).
+// and a group's chip's letters to 4.5:1 on its tile in each of them, and checks the kit's icons
+// against src/lib/icons.ts. Two self-checks make sure a pass means something: a <style> tag added
+// on purpose has to be caught, and so does Base UI's own when its CSPProvider setting is off (every
+// page built on the kit keeps it on).
 //
 //   npm run test:kit      builds the kit page (wxt build --mode kit, both browsers), then runs this
 //
@@ -1029,6 +1030,74 @@ async function runChecks(browser, open) {
             }
           }
       expect(faint, [], 'too faint');
+    },
+  );
+
+  await check(
+    `${browser}: a group's chip reads in every theme at each contrast: its letters at 4.5:1 or more on its tile, in each of the theme's five colours, which differ, and on the grey tile of a group that's off`,
+    async () => {
+      // The kit's chips (a name for each colour, and one off), as each theme at each step of
+      // Contrast draws them: their letters' colour and their tile's, and the page under them.
+      const steps = APPEARANCE.contrast.steps.map((step) => step.id);
+      const seen = await kit.run(
+        ([themes, contrasts]) => {
+          const root = document.documentElement;
+          const chips = [
+            ...document.querySelectorAll(
+              '[data-testid="kit-monogram"] [data-slot="monogram"]',
+            ),
+          ];
+          const probe = document.createElement('div');
+          probe.style.backgroundColor = 'var(--bg)';
+          document.body.append(probe);
+          const found = {};
+          try {
+            for (const theme of themes) {
+              root.dataset.theme = theme;
+              for (const [index, step] of contrasts.entries()) {
+                // The first step is the default, which puts no attribute.
+                if (index) root.dataset.contrast = step;
+                else delete root.dataset.contrast;
+                found[`${theme} at ${step}`] = {
+                  page: getComputedStyle(probe).backgroundColor,
+                  chips: chips.map((chip) => [
+                    chip.dataset.letters,
+                    chip.hasAttribute('data-off'),
+                    getComputedStyle(chip).color,
+                    getComputedStyle(chip).backgroundColor,
+                  ]),
+                };
+              }
+            }
+          } finally {
+            probe.remove();
+            delete root.dataset.theme;
+            delete root.dataset.contrast;
+          }
+          return found;
+        },
+        [THEMES.map((theme) => theme.id), steps],
+      );
+      const faint = [];
+      const counted = new Set();
+      for (const [at, { page, chips }] of Object.entries(seen)) {
+        counted.add(chips.length);
+        const under = parseColour(page);
+        const tiles = new Set();
+        for (const [letters, off, colour, tile] of chips) {
+          const back = over(parseColour(tile), under);
+          const ratio = contrast(over(parseColour(colour), back), back);
+          if (!off) tiles.add(back.map((channel) => channel.toFixed(3)).join());
+          if (ratio < 4.5)
+            faint.push(`${at}: ${letters}${off ? ', off,' : ''} ${ratio.toFixed(2)}:1`);
+        }
+        if (tiles.size !== 5) faint.push(`${at}: ${tiles.size} colours, not 5`);
+      }
+      expect(
+        [[...counted], Object.keys(seen).length, faint],
+        [[6], THEMES.length * steps.length, []],
+        'chips',
+      );
     },
   );
 

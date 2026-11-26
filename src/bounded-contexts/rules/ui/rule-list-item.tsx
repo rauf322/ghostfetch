@@ -12,7 +12,7 @@
 // its name for its own and what it did, what it matches and does, and whether it's off as its
 // description. F2 makes its name a field. Its dot is never a Tab stop, its actions only while the
 // row is the list's Tab stop (Turn off does from the keyboard what the dot does).
-import { memo, useEffect, useId, useRef, useState } from 'react';
+import { memo, useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { PointerEvent } from 'react';
 import { editRule, pausedStore, ruleTitle, wouldAnswer } from '../index.ts';
 import type { Rule } from '../index.ts';
@@ -150,11 +150,11 @@ export const RuleListItem = memo(function RuleListItem({
       tabIndex={tabbable ? 0 : -1}
       draggable={!renaming}
       data-drop={drag.drop}
-      // Set in under its group's header: its dot under the group's name, and a line where a drop
-      // would land set in with it.
+      // Set in under its group's header: its dot under the group's chip, its name under the group's
+      // name, and a line where a drop would land set in with it.
       className={cn(
         inGroup ? GROUPED_DROP_MARK : DROP_MARK,
-        inGroup && 'pl-[26px]',
+        inGroup && 'pl-[36px]',
         drag.dragging && 'opacity-40',
       )}
       // A click on one of the row's own controls (its switch, or the hidden checkbox Base UI clicks
@@ -353,6 +353,7 @@ function RuleActions({
   const turn = rule.enabled ? 'Turn off' : 'Turn on';
   const tabIndex = tabbable ? 0 : -1;
   const menuId = `row-menu-${rule.id}`;
+  const menuFor = useMemo(() => ({ kind: 'rule' as const, id: rule.id }), [rule.id]);
   const openOnceLive = useRef(false);
   useEffect(() => {
     if (!live || !openOnceLive.current) return;
@@ -401,7 +402,7 @@ function RuleActions({
         <DropdownMenuTrigger
           id={menuId}
           handle={tools.menu}
-          payload={rule.id}
+          payload={menuFor}
           render={
             <ItemAction
               data-testid="row-menu"

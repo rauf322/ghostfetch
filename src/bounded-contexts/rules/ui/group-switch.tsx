@@ -1,7 +1,8 @@
-// A group's switch, in the editor's rule list and the popup: the same green dot as a rule's,
-// pulsing while the group is on, still while it's on but Ghostfetch is off, grey while it's off.
-// Turned off, its rules stop answering, each keeping its own switch for when it's turned on again.
-// Saved at once: the popup can close at any moment.
+// A group's switch, in the popup's rules: the same green dot as a rule's, pulsing while the group
+// is on, still while it's on but Ghostfetch is off, grey while it's off. Turned off, its rules stop
+// answering, each keeping its own switch for when it's turned on again. Saved at once: the popup
+// can close at any moment. The editor's list has the group's chip there instead, and turns the
+// group off and on from its header's slot and its menus (group-header.tsx, group-menu.tsx).
 import type { ComponentProps } from 'react';
 import { pausedStore, turnGroup } from '../index.ts';
 import type { Group } from '../index.ts';

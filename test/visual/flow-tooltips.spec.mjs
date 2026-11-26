@@ -56,12 +56,31 @@ test('Tooltips: after a short wait, a neighbour’s at once, from Tab, and none 
     // that shows has opened with the focus, on no timer.
     await moveClock(flowShop, 1000);
     await pauseClock(flowShop);
-    for (let press = 0; press < 3; press++) await page.keyboard.press('Tab');
+    // New group is the search field's neighbour, in its row.
+    await page.keyboard.press('Tab');
     const newGroup = page.getByRole('button', { name: 'New group' });
     await expect(newGroup).toBeFocused();
     await expect(tip(page)).toHaveText('New group');
     await resumeClock(flowShop);
     await look(page, [newGroup, tip(page)], shot('from-tab'));
+  });
+
+  await test.step('The footer’s More: lit while its menu is open, the pointer gone from it', async () => {
+    const more = page.getByRole('button', { name: 'More', exact: true });
+    await more.click();
+    const menu = await menuOpen(page);
+    await page.mouse.move(0, 0);
+    const pressed = await page.evaluate(() => {
+      const probe = document.createElement('div');
+      probe.style.backgroundColor = 'var(--pressed)';
+      document.body.append(probe);
+      const colour = getComputedStyle(probe).backgroundColor;
+      probe.remove();
+      return colour;
+    });
+    await expect(more).toHaveCSS('background-color', pressed);
+    await look(page, [more, menu], shot('more-lit-while-open'));
+    await menuShut(page);
   });
 
   await test.step('The footer’s More: its menu, then Esc back onto it, and no tooltip', async () => {

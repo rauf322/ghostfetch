@@ -1,7 +1,8 @@
 // A group in the rule list, as one block: its header, and under it (unless it's folded) its rules
 // in their order, set in, or a line saying it has none yet, which a rule can be dropped on. In the
 // list's tree the block is the group's item: it takes focus (its header shows the ring), named by
-// the group's name, expanded or not as it's folded, with its rules a level under it.
+// the group's name, described by what its header's slot says ("Off", or how many rules it has),
+// expanded or not as it's folded, with its rules a level under it.
 import { useId } from 'react';
 import { ruleRevision } from '../index.ts';
 import type { GroupEntry, Rule } from '../index.ts';
@@ -24,7 +25,6 @@ export function GroupBlock({
   drag,
   log,
   onSelect,
-  onCreate,
   onFold,
   onRename,
   onRenamed,
@@ -45,7 +45,6 @@ export function GroupBlock({
   drag: ListDrag;
   log: TrafficLog;
   onSelect: (id: string | null) => void;
-  onCreate: (group: string) => void;
   onFold: () => void;
   onRename: (id: string) => void;
   onRenamed: (id: string, byKey: boolean) => void;
@@ -66,6 +65,7 @@ export function GroupBlock({
       aria-setsize={count}
       aria-expanded={all.length ? !folded : undefined}
       aria-labelledby={nameId}
+      aria-describedby={`${nameId}state`}
       tabIndex={group.id === stop ? 0 : -1}
       {...block.handlers}
       className={cn(
@@ -85,7 +85,6 @@ export function GroupBlock({
         onFold={onFold}
         onRename={onRename}
         onRenamed={(byKey) => onRenamed(group.id, byKey)}
-        onCreate={onCreate}
       />
       {!folded &&
         (rules.length ? (
@@ -116,7 +115,7 @@ export function GroupBlock({
             {...drag.empty(group)}
             className="mx-1.5 py-2 pr-3 pl-[26px] text-meta text-t40"
           >
-            No rules yet: drag one here, or click +.
+            No rules yet: drag one here, or add one from its ⋯ menu.
           </p>
         ))}
     </li>

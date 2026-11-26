@@ -2,7 +2,8 @@
    each from its theme's palette, as its Neovim plugin has them (rose-pine/neovim,
    catppuccin/nvim, vague2k/vague.nvim). The green that means "on" or "a rule acted" is the
    theme's colour for what's added or fine; errors stay inverted, in the theme's text colour.
-   The code colours are its JSON ones: keys, strings, numbers, and true, false and null. Text
+   The code colours are its JSON ones: keys, strings, numbers, and true, false and null. A
+   group's chip has five of the theme's colours (--chip-1 to --chip-5, as theme.css's). Text
    that's quieter is the theme's text, fainter, unless the theme has a step for it, and never
    fainter than the floor theme.css gives its level. The floor is a contrast, so the less a
    theme's text stands out from its page, the more of it each level keeps (Rosé Pine Dawn's
@@ -37,6 +38,11 @@
   --code-bg: #1f1d2e;
   --signal: #9ccfd8;
   --signal-soft: rgba(156, 207, 216, 0.14);
+  --chip-1: #ebbcba;
+  --chip-2: #eb6f92;
+  --chip-3: #f6c177;
+  --chip-4: #9ccfd8;
+  --chip-5: #c4a7e7;
   --track: #524f67;
   --knob: #908caa;
   --selection: rgba(196, 167, 231, 0.15);
@@ -70,6 +76,12 @@
   --code-bg: #2a273f;
   --signal: #9ccfd8;
   --signal-soft: rgba(156, 207, 216, 0.14);
+  /* love a little toward the text, so it reads on its tile */
+  --chip-1: #ea9a97;
+  --chip-2: #e985a6;
+  --chip-3: #f6c177;
+  --chip-4: #9ccfd8;
+  --chip-5: #c4a7e7;
   --track: #56526e;
   --knob: #908caa;
   --selection: rgba(196, 167, 231, 0.15);
@@ -104,6 +116,12 @@
   --code-bg: #fffaf3;
   --signal: #286983;
   --signal-soft: rgba(40, 105, 131, 0.12);
+  /* rose, love, gold, pine and iris, each darker in its own hue, so it reads on its tile */
+  --chip-1: #924442;
+  --chip-2: #90435b;
+  --chip-3: #83530b;
+  --chip-4: #21637d;
+  --chip-5: #6a5581;
   --track: #cecacd;
   --knob: #fffaf3;
   --selection: rgba(144, 122, 169, 0.2);
@@ -141,6 +159,11 @@
   --code-bg: #1e2030;
   --signal: #a6da95;
   --signal-soft: rgba(166, 218, 149, 0.14);
+  --chip-1: #f5a97f;
+  --chip-2: #8aadf4;
+  --chip-3: #eed49f;
+  --chip-4: #8bd5ca;
+  --chip-5: #c6a0f6;
   --track: #5b6078;
   --knob: #939ab7;
   --selection: rgba(147, 154, 183, 0.25);
@@ -175,6 +198,11 @@
   --code-bg: #141415;
   --signal: #7fa563;
   --signal-soft: rgba(127, 165, 99, 0.14);
+  --chip-1: #c48282;
+  --chip-2: #7e98e8;
+  --chip-3: #e8b589;
+  --chip-4: #9bb4bc;
+  --chip-5: #bb9dbd;
   --track: #333738;
   --knob: #878787;
   /* its selection colour, #333738, see-through: over the page and the body editor (#141415) it's

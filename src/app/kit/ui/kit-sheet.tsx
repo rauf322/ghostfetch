@@ -11,6 +11,7 @@ import { IconsSection } from './sections/icons-section.tsx';
 import { InputSection } from './sections/input-section.tsx';
 import { ItemSection } from './sections/item-section.tsx';
 import { MiddleTruncateSection } from './sections/middle-truncate-section.tsx';
+import { MonogramSection } from './sections/monogram-section.tsx';
 import { SegmentedSection } from './sections/segmented-section.tsx';
 import { SelectSection } from './sections/select-section.tsx';
 import { TabsSection } from './sections/tabs-section.tsx';
@@ -27,6 +28,7 @@ export function KitSheet({ open }: { open: boolean }) {
       <InputSection />
       <SelectSection open={open} />
       <BadgeSection />
+      <MonogramSection />
       <AlertSection />
       <AccordionSection />
       <TooltipSection />

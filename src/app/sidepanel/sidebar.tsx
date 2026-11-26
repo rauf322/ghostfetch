@@ -1,17 +1,19 @@
-// The editor's sidebar, after T3 Code's: Ghostfetch's name, the search field ("/" puts the cursor
-// in it), the two views, Rules and Traffic, with their counts, the rules in their order
-// (bounded-contexts/rules/ui's RuleList: how many are on, and + for a new one), and along the
-// bottom the ⋯ menu, Import and Export. From 760px wide it stands beside the open view, as wide as
-// its edge was dragged, or hidden (ui/sidebar.tsx); in a narrow side panel it's the Rules view's
-// own screen, under the top bar, which then has the name and the two views. A rule's dot turns it
-// on or off; Ghostfetch's own switch and recording's are in the toolbar popup. The footer's Agent
-// opens Agent access over it (bounded-contexts/agent-access/). For five seconds after a rule or a
-// group is deleted the footer says so instead, with Undo, which ⌘Z does too (UndoNotice,
+// The editor's sidebar, after T3 Code's: Ghostfetch's name, the search row (a bare field, which "/"
+// puts the cursor in, then New group and New rule), the two views, Rules and Traffic, with their
+// counts, the rules in their order (bounded-contexts/rules/ui's RuleList, under how many are on),
+// and along the bottom icons, each with its tooltip: the ⋯ menu, lit while it's open, Import,
+// Export and Agent. From 760px wide it stands beside the open view, as wide as its edge was
+// dragged, or hidden (ui/sidebar.tsx); in a narrow side panel it's the Rules view's own screen,
+// under the top bar, which then has the name, the two views and the ⋯. A rule's dot turns it on or
+// off; Ghostfetch's own switch and recording's are in the toolbar popup. The footer's Agent opens
+// Agent access over it (bounded-contexts/agent-access/). For five seconds after a rule or a group
+// is deleted the footer says so instead, with Undo, which ⌘Z does too (UndoNotice,
 // bounded-contexts/rules/ui/undo-notice.tsx).
 import { useEffect, useRef, useState } from 'react';
 import { AgentButton, AgentPanel } from '../../bounded-contexts/agent-access/ui/index.ts';
 import {
   RuleList,
+  RuleListButtons,
   UndoNotice,
   listenForUndoKey,
   setListSearch,
@@ -24,6 +26,7 @@ import { cn } from '../../ui/cn.ts';
 import { Button } from '../../ui/kit/button.tsx';
 import { Icon } from '../../ui/kit/icon.tsx';
 import type { IconName } from '../../ui/kit/icon.tsx';
+import { Tooltip } from '../../ui/kit/tooltip.tsx';
 import { ListPane, PaneFooter, SearchField } from '../../ui/list-detail.tsx';
 import { useSidebarHidden } from '../../ui/sidebar.tsx';
 import { EditorMenu } from './editor-menu.tsx';
@@ -126,15 +129,17 @@ export function Sidebar({
           Ghostfetch
         </span>
       </div>
-      <div className="flex h-12 flex-none items-center px-1.5 wide:h-10">
+      <div className="flex h-12 flex-none items-center gap-0.5 px-1.5 wide:h-10">
         <SearchField
           ref={search}
+          bare
           value={query}
           onChange={(event) => onQueryChange(event.target.value)}
           placeholder="Search rules"
           aria-label="Search rules"
           hint="/"
         />
+        <RuleListButtons onCreate={onNewRule} />
       </div>
       <nav
         aria-label="Views"
@@ -164,8 +169,7 @@ export function Sidebar({
       {agentOpen && (
         <AgentPanel onClose={() => setAgentOpen(false)} onOpenRule={onSelect} />
       )}
-      {/* A container: Agent shows its name where there's room for it. */}
-      <PaneFooter className="@container">
+      <PaneFooter>
         <UndoNotice>
           <EditorMenu
             inTab={inTab}
@@ -173,20 +177,33 @@ export function Sidebar({
             onImport={onImport}
             files={false}
             testId="sidebar-menu"
-            className="max-wide:hidden"
+            className="max-wide:hidden data-popup-open:bg-pressed data-popup-open:text-foreground"
           />
-          <Button variant="cell" size="cell" onClick={onImport}>
-            <Icon name="import" size={14} />
-            Import
-          </Button>
-          <Button variant="cell" size="cell" onClick={onExport}>
-            <Icon name="export" size={14} />
-            Export
-          </Button>
+          <FooterButton icon="import" label="Import rules" onClick={onImport} />
+          <FooterButton icon="export" label="Export all rules" onClick={onExport} />
           <AgentButton open={agentOpen} onToggle={() => setAgentOpen(!agentOpen)} />
         </UndoNotice>
       </PaneFooter>
     </ListPane>
+  );
+}
+
+// One of the footer's icons: its words are its tooltip's, and its name for a screen reader.
+function FooterButton({
+  icon,
+  label,
+  onClick,
+}: {
+  icon: IconName;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <Tooltip label={label}>
+      <Button variant="ghost" size="icon" aria-label={label} onClick={onClick}>
+        <Icon name={icon} size={16} />
+      </Button>
+    </Tooltip>
   );
 }
 

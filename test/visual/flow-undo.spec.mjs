@@ -39,8 +39,8 @@ test('Undo: a rule deleted from its ⋯, put back with ⌘Z, deleted again and l
 }) => {
   const page = await flowEditor({ rule: 'Pro plan user' });
 
-  await test.step('The footer at rest: More, Import, Export, Agent access', async () => {
-    for (const name of ['More', 'Import', 'Export', 'Agent access'])
+  await test.step('The footer at rest, its icons: More, Import rules, Export all rules, Agent access', async () => {
+    for (const name of ['More', 'Import rules', 'Export all rules', 'Agent access'])
       await expect(footer(page).getByRole('button', { name, exact: true })).toBeVisible();
     await expect(undoNotice(page)).toHaveCount(0);
     await look(page, footer(page), shot('footer'));

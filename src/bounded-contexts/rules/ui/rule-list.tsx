@@ -1,11 +1,12 @@
-// The rules in the sidebar, in their order, under how many of them are on ("12 of 14 on"), New
-// group, and the + that makes a new rule. A rule's place in the list is its priority
-// (docs/adr/0001): rules are tried top to bottom, and the first match wins; drag one to move it,
-// into a group or out of one, or a group's header to move the group with its rules. A group is a
-// block in the list: its header, then its rules, set in, unless it's folded. A rule's dot turns it
-// on or off, as a group's does the group; one that's off stays where it is, its dot grey. Search
-// narrows the list, and shows every group in it open: while it does, nothing folds or unfolds one
-// (its name clicked, ←, Enter or Space), for that would show only once the search was cleared.
+// The rules in the sidebar, in their order, under how many of them are on ("12 of 14 on"); New
+// group and the + that makes a new rule are in the search row over them (RuleListButtons, which the
+// sidebar draws there). A rule's place in the list is its priority (docs/adr/0001): rules are tried
+// top to bottom, and the first match wins; drag one to move it, into a group or out of one, or a
+// group's header to move the group with its rules. A group is a block in the list: its header,
+// then its rules, set in, unless it's folded. A rule's dot turns it on or off, as its header's
+// Turn the group off does the group; one that's off stays where it is, its dot grey. Search narrows
+// the list, and shows every group in it open: while it does, nothing folds or unfolds one (its name
+// clicked, ←, Enter or Space), for that would show only once the search was cleared.
 //
 // For the keyboard and a screen reader the list is a tree (ARIA's tree view; its Tab stop, keys and
 // right-click menu are src/ui/use-roving-tree.ts's): the rules and the groups at its top level,
@@ -18,8 +19,8 @@
 // controls, then out of the list: other items' controls aren't Tab stops. The keys are the items'
 // alone, never a field's, a control's in a row, or a menu's, and "/" and ⌘B pass through. A
 // right-click on a row or a header, or the ContextMenu key or Shift+F10 on one, opens its menu:
-// the same items as its ⋯. Every row's ⋯ is one menu, and every row's dot and actions share their
-// tooltips (row-tools.ts), drawn here once. A menu whose rule or group goes while it's open shuts;
+// the same items as its ⋯. Every row's and header's ⋯ is one menu, and every row's dot and actions
+// share their tooltips (row-tools.ts), drawn here once. A menu whose rule or group goes while it's open shuts;
 // shut, it gives focus back to its item, or where that's gone (Delete), to the one in its place.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -142,12 +143,6 @@ export function RuleList({ selectedId, query, onSelect, onCreate, log }: RuleLis
       setFolded(selectedGroup, false);
   }, [selectedId, selectedGroup]);
 
-  // A new group at the top, its name a field in sight: a search that would hide it cleared.
-  function newGroup() {
-    const group = addGroup(createGroup(freeName(NEW_GROUP, ruleStore.state.groups)), 0);
-    nameInList(group.id);
-  }
-
   // A name renamed by Enter or Esc gives focus back to its item, or to the list where the name
   // doesn't match the search any more.
   const renamed = useCallback(
@@ -178,34 +173,10 @@ export function RuleList({ selectedId, query, onSelect, onCreate, log }: RuleLis
       ) : (
         <section className="pb-3">
           {/* The label starts over the rules' dots. */}
-          <div className="flex h-9 items-center justify-between pt-2 pr-2 pl-[22px]">
+          <div className="flex h-9 items-center pt-2 pr-2 pl-[22px]">
             <h2 className="text-label font-medium text-t40 tabular-nums">
               {shown.length ? `${on} of ${shown.length} on` : 'Rules'}
             </h2>
-            <div className="-my-1 -mr-1.5 flex items-center">
-              <Tooltip label="New group">
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  data-testid="new-group"
-                  aria-label="New group"
-                  onClick={newGroup}
-                >
-                  <Icon name="newgroup" size={15} />
-                </Button>
-              </Tooltip>
-              <Tooltip label="New rule">
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  data-testid="new-rule"
-                  aria-label="New rule"
-                  onClick={() => onCreate()}
-                >
-                  <Icon name="plus" size={15} />
-                </Button>
-              </Tooltip>
-            </div>
           </div>
           <RowToolsContext.Provider value={tools}>
             <ContextMenu actionsRef={contextMenu} {...menu}>
@@ -245,7 +216,6 @@ export function RuleList({ selectedId, query, onSelect, onCreate, log }: RuleLis
                       drag={drag}
                       log={log}
                       onSelect={onSelect}
-                      onCreate={onCreate}
                       // Its tooltip's words stay as a search starts: words that change put new
                       // hidden copies in the page (tooltip.tsx), which in Chromium splits what's
                       // typed in the search into more steps of the browser's own undo.
@@ -267,14 +237,24 @@ export function RuleList({ selectedId, query, onSelect, onCreate, log }: RuleLis
                     onSelect={onSelect}
                   />
                 )}
-                {menuGroup && <GroupMenuItems group={menuGroup} onRename={setRenaming} />}
+                {menuGroup && (
+                  <GroupMenuItems
+                    group={menuGroup}
+                    onRename={setRenaming}
+                    onNewRule={onCreate}
+                  />
+                )}
                 {!menuRule && !menuGroup && <ShutsWhenGone shut={shutContextMenu} />}
               </ContextMenuContent>
             </ContextMenu>
-            {/* The rows' one ⋯ menu, for the rule whose ⋯ opened it. */}
+            {/* The rows' and headers' one ⋯ menu, for the rule or group whose ⋯ opened it. */}
             <DropdownMenu handle={tools.menu} {...itemMenu}>
               {({ payload }) => {
-                const rule = payload ? findRule(payload) : undefined;
+                const rule = payload?.kind === 'rule' ? findRule(payload.id) : undefined;
+                const group =
+                  payload?.kind === 'group'
+                    ? groups.find(({ id }) => id === payload.id)
+                    : undefined;
                 return (
                   <DropdownMenuContent>
                     {rule ? (
@@ -282,6 +262,12 @@ export function RuleList({ selectedId, query, onSelect, onCreate, log }: RuleLis
                         rule={rule}
                         open={rule.id === selectedId}
                         onSelect={onSelect}
+                      />
+                    ) : group ? (
+                      <GroupMenuItems
+                        group={group}
+                        onRename={setRenaming}
+                        onNewRule={onCreate}
                       />
                     ) : (
                       <ShutsWhenGone shut={shutRowMenu} />
@@ -306,4 +292,40 @@ export function RuleList({ selectedId, query, onSelect, onCreate, log }: RuleLis
 function ShutsWhenGone({ shut }: { shut: () => void }) {
   useEffect(shut, [shut]);
   return null;
+}
+
+// New group and New rule, which the sidebar puts in its search row, over the list: a new group at
+// the top, its name a field in sight (a search that would hide it cleared), and New rule, in the
+// group New rule offers.
+export function RuleListButtons({ onCreate }: { onCreate: () => void }) {
+  return (
+    <>
+      <Tooltip label="New group">
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          data-testid="new-group"
+          aria-label="New group"
+          onClick={() =>
+            nameInList(
+              addGroup(createGroup(freeName(NEW_GROUP, ruleStore.state.groups)), 0).id,
+            )
+          }
+        >
+          <Icon name="newgroup" size={15} />
+        </Button>
+      </Tooltip>
+      <Tooltip label="New rule">
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          data-testid="new-rule"
+          aria-label="New rule"
+          onClick={() => onCreate()}
+        >
+          <Icon name="plus" size={15} />
+        </Button>
+      </Tooltip>
+    </>
+  );
 }

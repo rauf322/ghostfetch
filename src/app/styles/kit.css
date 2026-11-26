@@ -155,12 +155,25 @@
    for words too. */
 :root[data-font='mono'] {
   --font-sans: var(--font);
+  --font-widen: 1.17;
+}
+
+/* How much wider a line of the screens' words is than in Geist at Default: Commit Mono's ×1.17
+   (a rule row's "1 mocked · 4m", 80 px in Geist and 93.6 in Commit Mono) times the text size's.
+   The sidebar's usual width (ListPane, src/ui/list-detail.tsx) grows by what a row's slot grows
+   by, saying that, so the name beside it keeps the room it has at Geist and Default: 37 px more at
+   Commit Mono with Larger. */
+:root {
+  --font-widen: 1;
+  --size-widen: 1;
+  --sidebar-grow: calc(80px * (var(--font-widen) * var(--size-widen) - 1));
 }
 
 /* Text size: the nine type sizes ×1.125 (Large) and ×1.25 (Larger), each to the nearest half
    pixel. Only text grows: spacing and icons keep their sizes, and the body editor keeps its own
    (code-editor.css). */
 :root[data-size='large'] {
+  --size-widen: 1.125;
   --text-micro: 12.5px;
   --text-label: 13.5px;
   --text-control: 14.5px;
@@ -172,6 +185,7 @@
   --text-hero: 22.5px;
 }
 :root[data-size='larger'] {
+  --size-widen: 1.25;
   --text-micro: 14px;
   --text-label: 15px;
   --text-control: 16.5px;

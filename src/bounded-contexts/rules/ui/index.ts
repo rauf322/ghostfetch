@@ -7,7 +7,7 @@
 // the Rules view; the background and the page scripts take nothing from here. The sidebar's footer
 // says what was deleted last, with its Undo and its ⌘Z (undo-notice.tsx, undo-delete.ts); and the
 // sidebar tells the list's search, for a group's name to type there to be in sight (renaming.ts).
-export { RuleList } from './rule-list.tsx';
+export { RuleList, RuleListButtons } from './rule-list.tsx';
 export { RulesPage } from './rules-page.tsx';
 export { UndoNotice } from './undo-notice.tsx';
 export { listenForUndoKey } from './undo-delete.ts';

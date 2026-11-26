@@ -158,15 +158,15 @@ src/app/                         the composition root: the extension's parts, on
   popup/                         the toolbar popup: its header, the tab's site, and its tabs, This page, All rules and Sites (ui/), the rules a tree for the keyboard and a screen reader with a rule's right-click menu, on src/ui/use-roving-tree.ts (ui/rule-list.tsx), a rule's row with its slot (ui/rule-row.tsx), and the tooltips the rows share (ui/row-tools.ts); what each rule did on the tab's page and when, asked every 2 s (model/); what it says a rule matches (lib/)
   sidepanel/                     the editor (Chrome's side panel, Firefox's sidebar, or a tab): its sidebar, the top bar of a narrow panel, and its menus
   kit/                           the kit page, every kit component in its states (ui/); for npm run dev and the kit test, never in the extension
-  styles/                        theme.css, the look's values (colours, the two fonts), and the grey levels and lines made from each theme's bases, lifted by Appearance's Contrast; themes.css, the other themes' colours; and kit.css: those as Tailwind's theme (type sizes, corners), with Appearance's Font and Text size
+  styles/                        theme.css, the look's values (colours, a group chip's five among them, the two fonts), and the grey levels and lines made from each theme's bases, lifted by Appearance's Contrast; themes.css, the other themes' colours; and kit.css: those as Tailwind's theme (type sizes, corners), with Appearance's Font and Text size, and how much they widen the sidebar's usual width
 src/bounded-contexts/            the six bounded contexts of GLOSSARY-MAP.md, a folder each
   rules/                         Rules, what Ghostfetch should answer and which rule wins (index.ts, with no React, and ui/index.ts); its words are in glossary/rules.md
     domain/                      a rule: its fields (built from the shared kernel's parts, types.ts) and the words the screens show for them (catalog.ts), making one (rule.ts), whether it's answering (answering.ts), what's wrong with it (problems.ts); groups (group.ts); the order and every operation on it, which keeps two groups from sharing a name (order.ts), and what a search shows of it (filter-rules.ts)
     application/                 the screens' copy of the order, which saves and redraws after each operation (store.ts), and of whether Ghostfetch is paused, which only the popup changes (paused.ts); a copy of a group or a rule (duplicate-group.ts, duplicate-rule.ts); a rule made from a request in the log (rule-from-entry.ts), the requests New rule offers to mock (recent-requests.ts), and New rule's draft, what's typed there read and the rule made from it (rule-draft.ts); rules files, writing one and reading one into the order, its rules and groups turned off (rules-file.ts); apart from the rules, the server's responses their bodies' Diff compares with (server-responses.ts); and what the page is given of what's stored, which the bridge posts (page-state.ts)
     infrastructure/              how the order is kept, as the rules, each naming its group, and the groups, each with its place (order-storage.ts); the toolbar badge, which the background keeps in sync (badge.ts); and the clipboard a rule's body editor's vim keys paste from, with the permission that takes (clipboard.ts)
     contract.ts                  what the bridge sends the interceptor: the rules that answer, with the two switches
-    ui/                          the Rules view (index.ts, for the editor): the sidebar's rule list, a tree for the keyboard and a screen reader, with its right-click menu, on src/ui/use-roving-tree.ts (rule-list.tsx), the tooltips and the ⋯ menu its rows share (row-tools.ts), the field a name is renamed in (rename-field.tsx), and the sidebar footer's notice of the latest delete, with its Undo and the editor's one listener for ⌘Z, or a toast where the footer isn't on screen (undo-notice.tsx, undo-delete.ts); New rule (new-rule/) and the rule editor (rule-editor/, a component per part: among them the header's crumbs, which are controls, rule-crumbs.tsx, the menu its ⋯ and its name share, rule-menu.tsx, Status's menu of common codes at the end of its split row, status-panel.tsx, and the row over the body that turns Diff on, with how many lines the body adds and takes out, diff-row.tsx); and the widgets other screens show, a public file each
-      rule-switch.tsx            a rule's switch, the green dot (the kit's SignalSwitch), in the editor's rule list and the popup; group-switch.tsx, a group's
+    ui/                          the Rules view (index.ts, for the editor): the sidebar's rule list, a tree for the keyboard and a screen reader, with its right-click menu, on src/ui/use-roving-tree.ts, and New group and New rule, which the sidebar puts in its search row (rule-list.tsx), a group's header, its chip, name and how many rules it has, with Turn the group off and ⋯ in their place (group-header.tsx), the group's menu, the same from its ⋯, a right-click and the open rule's crumb (group-menu.tsx), the tooltips and the ⋯ menu its rows and headers share (row-tools.ts), the field a name is renamed in (rename-field.tsx), and the sidebar footer's notice of the latest delete, with its Undo and the editor's one listener for ⌘Z, or a toast where the footer isn't on screen (undo-notice.tsx, undo-delete.ts); New rule (new-rule/) and the rule editor (rule-editor/, a component per part: among them the header's crumbs, which are controls, rule-crumbs.tsx, the menu its ⋯ and its name share, rule-menu.tsx, Status's menu of common codes at the end of its split row, status-panel.tsx, and the row over the body that turns Diff on, with how many lines the body adds and takes out, diff-row.tsx); and the widgets other screens show, a public file each
+      rule-switch.tsx            a rule's switch, the green dot (the kit's SignalSwitch), in the editor's rule list and the popup; group-switch.tsx, a group's, in the popup (a group's header in the editor turns it from its slot)
       rule-time.tsx              when a rule last answered on a page ("· 4m"), from the screens' clock, in the editor's rule list and the popup
       group-folds.ts             which groups are folded, in the editor's list and the popup alike
       group-picker.tsx           the group a new rule goes into, where New rule and Mock this response make one; new-rule-group.ts, the one it starts on
@@ -210,8 +210,9 @@ src/ui/                          the components that know nothing of rules, site
     kbd.tsx                      a key's badge, and the one place that writes a key for this platform (⌘B on a Mac, Ctrl+B elsewhere), says it in words for a screen reader, and reads it from a key event
     middle-truncate.tsx          a URL cut short in its middle, so its end stays, with CSS only; copied whole, and read whole by a screen reader
     copy-button.tsx              a button that copies and says so in itself for a second ("Copied", told to a screen reader once), and useCopied() for a control of another shape; a refused copy gets a toast
-    item.tsx                     list rows, a rule's and a request's: a row's one slot at its end (ItemSlot), what it says at rest, and in its place its actions (ItemAction) under the pointer, with focus in the row or a menu of its own open; a name that steps back; and a ring inside the edge of a row that takes focus
-  list-detail.tsx                the editor's layout: the sidebar, as wide as its edge was dragged, and what's open beside it, in a row (a flexbox: Firefox lays a grid's items out again from scratch)
+    monogram.tsx                 a name's chip, a group's: two letters on a tile in one of the theme's five colours, both worked out from the name with nothing stored, stepping back while the group is off
+    item.tsx                     list rows, a rule's, a request's and a group's header: a row's one slot at its end (ItemSlot), what it says at rest, and in its place its actions (ItemAction) under the pointer, with focus in the row or a menu of its own open; a name that steps back; and a ring inside the edge of a row that takes focus
+  list-detail.tsx                the editor's layout: the sidebar, as wide as its edge was dragged, or else its usual width, wider in a wider type, and what's open beside it, in a row (a flexbox: Firefox lays a grid's items out again from scratch); the search field, bare where the sidebar has it
   sidebar.tsx                    the sidebar's width and whether it's hidden, the edge that resizes it (and what keeps its width meanwhile), and the button (and ⌘B) that hides it
   theme.ts                       the themes and Appearance's three settings (contrast, font, text size), and the ones in use; theme-menu.tsx, the ⋯ menus' Theme and Appearance rows
   use-store.ts                   useStore(), which redraws a screen when a store changes
@@ -321,29 +322,40 @@ the second over; it stays pressable, so the keyboard keeps its focus. A copy the
 what to do. `useCopied()` is the same for a control of another shape.
 
 A list row has one slot at the end of its first line, after T3 Code's thread rows: `<ItemSlot>`
-(`item.tsx`), as the editor's rule rows and the popup's have it. At rest it says what the row has to
-say ("1 mocked · 4m": a rule's count in green, how long ago in grey); under the pointer, with
-keyboard focus anywhere in the row, while a menu of its own is open (one of its actions opened, or
-its right-click menu, which marks the row `data-context-open`), and for the second one of its
-actions says it copied (`data-copied`, `useCopied()`), its actions (`<ItemAction>`, 24 px
-squares, each with an `aria-label` and a `<Tooltip>`) take the same place. `<ItemSlot stacked>`
-is a column of the row's own that says two short things, one over the other, as a request's
-status over its duration in Traffic, its actions across both lines.
-The slot is as wide as what it says and at least as its actions (two by default), so nothing in
-the row moves as they come and go. Short of room, it gives way down to that, and what it says goes
-from its end: its later parts wrap onto a line out of sight, then its first part truncates; the
-name before it keeps 7 letters' room (`min-w-[min(7em,60%)]`), or 60% of the line where that's
-less. A press on an action doesn't start dragging the row and leaves focus where it was. Where
-nothing can hover (`touch:`, `@media (any-hover: none)`), the actions aren't there and no room is
-kept for them: the row's own controls (a rule's dot, the open rule's ⋯) do what they do. A row
-that has less to say can step back: `<ItemTitle quiet>`, at normal weight in `--t65`, for a rule
-that's on but hasn't answered on the page. A row that takes focus has a ring inside its edge,
+(`item.tsx`), as the editor's rule rows and group headers and the popup's rows have it. At rest it
+says what the row has to say ("1 mocked · 4m": a rule's count in green, how long ago in grey); under
+the pointer, with keyboard focus anywhere in the row, while a menu of its own is open (one of its
+actions opened, or its right-click menu, which marks the row `data-context-open`), and for the
+second one of its actions says it copied (`data-copied`, `useCopied()`), its actions
+(`<ItemAction>`, 24 px squares, each with an `aria-label` and a `<Tooltip>`) take the same place. A
+group's header isn't the list's item (its block is, with its rules), so its slot takes the block's
+states too: `shown` and `hidden` add them. `<ItemSlot stacked>` is a column of the row's own that
+says two short things, one over the other, as a request's status over its duration in Traffic, its
+actions across both lines. The slot is as wide as what it says and at least as its actions (two by
+default), so nothing in the row moves as they come and go. Short of room, it gives way down to that,
+and what it says goes from its end: its later parts wrap onto a line out of sight, then its first
+part truncates; the name before it keeps 7 letters' room (`min-w-[min(7em,60%)]`), or 60% of the
+line where that's less. A press on an action doesn't start dragging the row and leaves focus where
+it was. Where nothing can hover (`touch:`, `@media (any-hover: none)`), the actions aren't there and
+no room is kept for them: the row's own controls (a rule's dot, the open rule's ⋯) do what they do.
+A row that has less to say can step back: `<ItemTitle quiet>`, at normal weight in `--t65`, for a
+rule that's on but hasn't answered on the page. A row that takes focus has a ring inside its edge,
 which its neighbours don't cover, and with focus on it its actions show too. The editor's rule
 list draws its rows' actions as plain buttons until the pointer or focus comes near a row, and
 then as triggers of a tooltip and a ⋯ menu the list draws once for all of them
 (`rules/ui/row-tools.ts`), so 300 rules mount about as fast as they did before the slot. The
 popup's rows do the same with their one action, Edit this rule (`app/popup/ui/row-tools.ts`),
 and Traffic's with their three (`traffic/ui/row-tools.ts`), so 300 requests do too.
+
+A group is marked by a chip, `<Monogram>` (`monogram.tsx`), after T3 Code's project chips: two
+letters on a 16 px tile, both worked out from the group's name, so nothing is stored or picked. The
+letters are an abbreviation the name starts with ("PR 412 · checkout": PR), else the first letters
+of its first two words ("Billing GraphQL": BG), else its first two ("Payments": PA), drawn by CSS
+from `data-letters`, so a header's or a crumb's text stays the name's alone. The colour is one of
+five each theme sets to suit it (`--chip-1` to `--chip-5`: a rose, a blue, an amber, a teal and a
+violet), the name's by a hash of it (FNV-1a), on a tile of the same colour at 16% over the page;
+`npm run test:kit` holds every one's letters to 4.5:1 on its tile in every theme at every Contrast.
+A group that's off has its chip step back with its name: `--t50` letters on a card's tile.
 
 A right-click menu is `<ContextMenu>` (`context-menu.tsx`): the menus' card at the pointer, over
 the elements of its `<ContextMenuTrigger>`, whose `onContextMenu` finds what was right-clicked
@@ -543,18 +555,18 @@ of 390,000 characters drawn only where it shows, the last lines once scrolled th
 Windows line ends compared and clicked as the editor has it, a click on Edit here going to the
 character under it, the same lines on screen after a change of layout, and none kept from Mock
 this response on a request a rule answered), the open rule (its crumbs in a wide editor: the
-group's, its dot and name, the / after it a chevron under the pointer with nothing moving, its
-menu's New rule in this group opening New rule offering the group, and the group's own items,
-Rename making its name a field in the crumb, as the name's crumb has it, Enter giving it, Esc
-keeping the old one, focus back on the crumb, and a name another group has turned down in a toast,
-the field staying; Duplicate there with the sidebar hidden showing it, the copy's name a field
-with the focus, and Move to group → New group… clearing a search that would hide the new group;
-"Rules", a rule in no group's, with New rule in no group; the name's menu the ⋯'s, opened under
-itself, its Move to group working; a double-click or F2 renaming the rule in place, Enter giving
-the name, Esc keeping it, focus back on the crumb, Enter and Esc an input method's while it's
-putting a character together; none in a 420 px panel; Status's split row: its chevron's menu of
-the common codes, the one the page gets checked, a pick setting it, both halves Tab stops, the
-line between them only under the pointer or with focus, and with Keep server's body the server's
+group's, its chip and name, the / after it a chevron under the pointer with nothing moving, its
+menu's New rule in this group opening New rule offering the group, and the group's own items, Turn
+the group off among them, Rename making its name a field in the crumb, as the name's crumb has it,
+Enter giving it, Esc keeping the old one, focus back on the crumb, and a name another group has
+turned down in a toast, the field staying; Duplicate there with the sidebar hidden showing it, the
+copy's name a field with the focus, and Move to group → New group… clearing a search that would hide
+the new group; "Rules", a rule in no group's, with New rule in no group; the name's menu the ⋯'s,
+opened under itself, its Move to group working; a double-click or F2 renaming the rule in place,
+Enter giving the name, Esc keeping it, focus back on the crumb, Enter and Esc an input method's
+while it's putting a character together; none in a 420 px panel; Status's split row: its chevron's
+menu of the common codes, the one the page gets checked, a pick setting it, both halves Tab stops,
+the line between them only under the pointer or with focus, and with Keep server's body the server's
 status kept or replaced; the Diff row over the body: its counts, green and grey, each only where
 there are some, none past the diff's limit, nor over Diff, which draws the one body replaced by
 the other, its toggle, no Diff button in the footer, the counts following typing once it pauses,
@@ -582,19 +594,22 @@ page it watches: the one used last once its own closes or leaves the web, and, o
 panel has it, its tab's page from the moment that opens one, with a page picked by hand kept), the
 sidebar beside a rule and beside Traffic (hidden with the button and the key, its edge dragged to
 its narrowest, its widest, shut and open again, its keys, its one width after a reload, none in a
-narrow panel, its rules in their order with one turned off kept in its place and counted, "/" to
-its search field, Duplicate, a rule picked in it from Traffic, and what keeps
-a drag beside a long body smooth: the body's text area holding its width until the edge is let
-go, a width only the list itself has, and coloured text laid out the same at any width; and what
-keeps typing in one quick: only the piece typed into redrawn, a new line only adding its number,
-the editor's sizes its own, the boxes around it changing only in size between its two layouts,
-and vim's cursor on a layer of one line), a rule's dot in the list (it turns the rule off and on,
-saved, without opening it; one that's off is greyed and its chip says Off; Traffic only says
-whether it's recording), a rule row's slot ("1 mocked · now" once the rule has answered, the count
-green and the time grey, the request drawing the row's first line again and not the row; under
-the pointer its Turn off and ⋯ in the same place, nothing in the row moving, Turn off saved
-without opening the rule, and a press on ⋯ moved away dragging nothing; its ⋯ the open rule's
-menu item for item, staying while it's open, its Delete leaving the open rule open and Undo
+narrow panel, its usual width growing with Commit Mono and the text size, to 309 px at Larger, and a
+width dragged to staying; its search row bare, with New group and New rule in it, and how many rules
+are on a line of its own; its footer four icons, each named and with its tooltip, on one line at
+Commit Mono and Larger, its ⋯ filled while its menu is open; its rules in their order with one
+turned off kept in its place and counted, "/" to its search field, Duplicate, a rule picked in it
+from Traffic, and what keeps a drag beside a long body smooth: the body's text area holding its
+width until the edge is let go, a width only the list itself has, and coloured text laid out the
+same at any width; and what keeps typing in one quick: only the piece typed into redrawn, a new line
+only adding its number, the editor's sizes its own, the boxes around it changing only in size
+between its two layouts, and vim's cursor on a layer of one line), a rule's dot in the list (it
+turns the rule off and on, saved, without opening it; one that's off is greyed and its chip says
+Off; Traffic only says whether it's recording), a rule row's slot ("1 mocked · now" once the rule
+has answered, the count green and the time grey, the request drawing the row's first line again and
+not the row; under the pointer its Turn off and ⋯ in the same place, nothing in the row moving, Turn
+off saved without opening the rule, and a press on ⋯ moved away dragging nothing; its ⋯ the open
+rule's menu item for item, staying while it's open, its Delete leaving the open rule open and Undo
 putting the rule back; and in Commit Mono at Larger nothing past the row's edge, in a 420 px panel
 and beside an open rule, where what the slot says gives way, the time first), a rule that's on
 but hasn't answered stepping back (not the open one, and none while Recording is off), the list
@@ -660,21 +675,26 @@ and recording shows that, then following that popup's Resume and Recording), and
 what each rule did on a page, which the page counts by rule and by what the rule did, telling
 the popup nothing of the requests themselves), groups (a group's rules answering only while it's
 on, the higher of two groups' rules answering, the page following the order the editor shows,
-the badge counting only the rules that answer; the sidebar's block, its rules set in and
-faded with their dots still while it's off, the open rule's chip and path saying so, a fold
-kept, a search finding a group by its rules or its name; New group with its name ready to type
-and a name that's taken turned down, Move to group, a group's + and New rule's picker on its
-group after; Duplicate, Delete and its Undo, Ungroup; a rule dragged into a group and out of
-one, and a group dragged, with nothing of the drag left once it's dropped; while a rule is
-dragged, a mark only where it would land, a line in a group set in under its rules' dots and one
-out of any as wide as the list, none over the list's label or out of it, and under the list's
-last entry its end; the popup's All rules with a group's dot and fold, This page naming a
-rule's group; and Export group with its import, off and at the top, renamed where its name is
-taken), a delete's undo where the eye is (the sidebar's footer saying "Rule deleted" and "⌘Z to
-undo" over its buttons, the footer as tall, a polite live region saying it once, and no toast;
-its Undo and ⌘Z putting the rule back where it was, focus on its row, with the ring a key gives
-it; ⌘Z and ⌘B by the letter typed on a Latin layout, AZERTY too, and by the key where QWERTY has
-it on a Cyrillic or Greek one; ⌘Z in the search field,
+the badge counting only the rules that answer; the sidebar's block, its header after A's (a chevron
+where a rule's dot is, the group's chip, its name where its rules' names start), its rules set in
+under the chip, and faded with their dots still while it's off, the open rule's chip and path saying
+so; its header's slot saying how many rules it has, or Off, which its item says to a screen reader
+too, and under the pointer Turn the group off and ⋯, named, which turn it and open its menu, that
+menu and its right-click menu with New rule in this group and Turn the group off or on, and the open
+rule's crumb with the group's chip, stepping back while it's off; a chip's letters and colour worked
+out from the name, with nothing stored, the same after a reload; a fold kept, a search finding a
+group by its rules or its name; New group with its name ready to type and a name that's taken turned
+down, Move to group, a group's New rule in this group and New rule's picker on its group after;
+Duplicate, Delete and its Undo, Ungroup; a rule dragged into a group and out of one, and a group
+dragged, with nothing of the drag left once it's dropped; while a rule is dragged, a mark only where
+it would land, a line in a group set in under its rules' dots and one out of any as wide as the
+list, none over the list's label or out of it, and under the list's last entry its end; the popup's
+All rules with a group's dot and fold, This page naming a rule's group; and Export group with its
+import, off and at the top, renamed where its name is taken), a delete's undo where the eye is (the
+sidebar's footer saying "Rule deleted" and "⌘Z to undo" over its buttons, the footer as tall, a
+polite live region saying it once, and no toast; its Undo and ⌘Z putting the rule back where it was,
+focus on its row, with the ring a key gives it; ⌘Z and ⌘B by the letter typed on a Latin layout,
+AZERTY too, and by the key where QWERTY has it on a Cyrillic or Greek one; ⌘Z in the search field,
 the body, an open menu and a group's name being renamed theirs, the delete staying deleted;
 ⌘Z after ↓ and Esc in the list, or a click on a row, still undoing it and taking the key, so the
 browser's own undo, which takes back the page's last edit, acts neither on the press nor on its
@@ -755,8 +775,8 @@ Traffic; the group turned off, which the page, try_url and the rule's report the
 copy made where it's told, a rename, and delete_group, undone in the editor; and a group made
 under a name that's taken, which gets the next number and is named so in the panel's list of
 what the agent did. It also checks
-that the footer's Agent button fits beside ⋯, Import and Export from the sidebar's narrowest width
-up, named only where there's room.
+that the footer's Agent button, an icon with its dot, like the ⋯, Import and Export beside it, fits
+there from the sidebar's narrowest width up, named for a screen reader.
 
 `test/kit.mjs` opens the UI kit page under the extension pages' real CSP, in Chromium and in
 Zen (served with the CSP as a response header there, since Firefox's automation can't open
@@ -766,20 +786,21 @@ restyle the kit page: open it to see every component in every theme, contrast, f
 size), checks every theme's grey text against its floor at each step of Contrast (on the page and
 on a card, `--t40` and `--t30` at 4.5:1 and 3:1 or more at Standard, 5.5:1 and 4:1 at More,
 6.5:1 and 5.5:1 at Most, and each level above the one below, by 1.15 times its contrast at
-Standard; `src/app/styles/theme.css` says what each level is for), and checks that the kit's
-icons draw the same as `src/lib/icons.ts`. And the tooltips: one opens once the pointer rests on
-its control, with its key, the next one at once, and one as soon as Tab brings focus to it; a
-control that's off says why; a click alone opens none, not even a field's; a click or a scroll
-closes one, unless the keyboard put it there; while the page scrolls, a control passing under the
-pointer opens none; in a window as wide as the popup, the pause button's at its top right corner
-stays inside, under it; with every tooltip shut, a screen reader gets each one's words as its
-control's description (Chromium's own accessibility tree; in Zen, from `aria-describedby`), a key
-in words, after a description the control has of its own, and none where the words are the
-control's name; and the ⋯ menu, shut with Esc after the keyboard or a click opened it, gives its
-button focus back with no tooltip, which shows again once focus or the pointer leaves and comes
-back. And a URL cut in the middle: in a narrow box a long one keeps its end whole after its
-head's ellipsis, a short one is whole, one shorter than an end has no head, and in less room than
-its end the head keeps room for its ellipsis and the end gives way at its start, with no
+Standard; `src/app/styles/theme.css` says what each level is for), a group's chip's letters against
+its tile at 4.5:1 or more, in each of every theme's five colours and on the grey of one that's off,
+at each step of Contrast, and checks that the kit's icons draw the same as `src/lib/icons.ts`. And
+the tooltips: one opens once the pointer rests on its control, with its key, the next one at once,
+and one as soon as Tab brings focus to it; a control that's off says why; a click alone opens none,
+not even a field's; a click or a scroll closes one, unless the keyboard put it there; while the page
+scrolls, a control passing under the pointer opens none; in a window as wide as the popup, the pause
+button's at its top right corner stays inside, under it; with every tooltip shut, a screen reader
+gets each one's words as its control's description (Chromium's own accessibility tree; in Zen, from
+`aria-describedby`), a key in words, after a description the control has of its own, and none where
+the words are the control's name; and the ⋯ menu, shut with Esc after the keyboard or a click opened
+it, gives its button focus back with no tooltip, which shows again once focus or the pointer leaves
+and comes back. And a URL cut in the middle: in a narrow box a long one keeps its end whole after
+its head's ellipsis, a short one is whole, one shorter than an end has no head, and in less room
+than its end the head keeps room for its ellipsis and the end gives way at its start, with no
 ellipsis of its own, inside its box; each, selected and copied with the keyboard, is on the
 clipboard as the text it is, in one piece; and a screen reader names it once, whole. And a copy
 button: a press copies (read back from the clipboard), and for a second it says "Copied" with a
@@ -832,28 +853,29 @@ pointer and keys: Appearance picked from the ⋯ menu, its detail whole, kept th
 in a popup opened afterwards (its host keeping its port, its tabs their words on one line), then
 undone, and the ⋯ menu inside a 420 px window at Most, Commit Mono and Larger
 (`flow-appearance`); tooltips after their wait, a neighbour's at once, from Tab, at the popup's
-edge, none as a menu closes onto its control, and an off control saying why, Make the rule and
-the agent's Turn on (`flow-tooltips`); URLs cut in the middle wherever they show, and a wildcard
-pattern's end and a trailing slash's, in two rules that flow adds for itself (`flow-urls`); the
-rule list's slot, the rows that step back, its keys and its right-click menus (`flow-rules`); the
-popup's rules (`flow-popup`); Traffic's rows, its copy buttons saying "Copied" and back, rows
-passing their first minute, and a focused row keeping its focus as it does, an open menu its mark
-(`flow-traffic`); the open rule's crumbs, Status and Diff, and the group renamed in its crumb with
-the sidebar hidden (`flow-open-rule`); undo from the footer and with ⌘Z, the row put back with the
-ring a key gives it, to the pixel, and the notice's time waiting while the pointer is on it, focus
-is in it from the keyboard or the window is in the background (`flow-undo`); and the new parts in
-Rosé Pine Dawn and in a 420 px window in Commit Mono at Larger (`flow-stress`). A flow is one test,
-and each state in it one `test.step`, which first checks the state as a user meets it (a role and
-name, where the focus is, what a list holds, what's stored) and then compares a picture of the part
-it's about, at 2x (`look()`), with its own in `baselines/darwin/<area>/`; a state that must come
-back exactly (the defaults picked again, the notice gone) is compared with the same picture as
-before. The flows have a browser of their own (`flowShop`), with the demo's data (six rules, two
-groups, the page's six requests) and two long URLs, drawn without the GPU, which drew a light
-theme's rounded edges a shade apart from one run to the next; each flow starts with the rules as
-stored and the clock at its time, and moves the clock itself (`moveClock()`: the shared clock's next
-tick, a notice's five seconds, "Copied"'s second) or holds it (`pauseClock()`) while a state that
-lasts a second is checked and pictured. Two things to know when writing one: a menu takes the focus
-a moment after it shows (`menuOpen()` waits for that), and a right-click that misses the app's
+edge, the footer's ⋯ lit while its menu is open and none as that closes onto it, and an off control
+saying why, Make the rule and the agent's Turn on (`flow-tooltips`); URLs cut in the middle wherever
+they show, and a wildcard pattern's end and a trailing slash's, in two rules that flow adds for
+itself (`flow-urls`); the rule list's slot, the rows that step back, a group's header as A has it,
+turned off and on from its slot and its menu, the list's keys and its right-click menus
+(`flow-rules`); the popup's rules (`flow-popup`); Traffic's rows, its copy buttons saying "Copied"
+and back, rows passing their first minute, and a focused row keeping its focus as it does, an open
+menu its mark (`flow-traffic`); the open rule's crumbs, Status and Diff, and the group renamed in
+its crumb with the sidebar hidden (`flow-open-rule`); undo from the footer and with ⌘Z, the row put
+back with the ring a key gives it, to the pixel, and the notice's time waiting while the pointer is
+on it, focus is in it from the keyboard or the window is in the background (`flow-undo`); and the
+new parts in Rosé Pine Dawn and in a 420 px window in Commit Mono at Larger (`flow-stress`). A flow
+is one test, and each state in it one `test.step`, which first checks the state as a user meets it
+(a role and name, where the focus is, what a list holds, what's stored) and then compares a picture
+of the part it's about, at 2x (`look()`), with its own in `baselines/darwin/<area>/`; a state that
+must come back exactly (the defaults picked again, the notice gone) is compared with the same
+picture as before. The flows have a browser of their own (`flowShop`), with the demo's data (six
+rules, two groups, the page's six requests) and two long URLs, drawn without the GPU, which drew a
+light theme's rounded edges a shade apart from one run to the next; each flow starts with the rules
+as stored and the clock at its time, and moves the clock itself (`moveClock()`: the shared clock's
+next tick, a notice's five seconds, "Copied"'s second) or holds it (`pauseClock()`) while a state
+that lasts a second is checked and pictured. Two things to know when writing one: a menu takes the
+focus a moment after it shows (`menuOpen()` waits for that), and a right-click that misses the app's
 menus, on a menu's backdrop or off a row, gets the browser's own, which headless Chromium closes on,
 so a flow right-clicks an element and waits for every menu to go first (`menuShut()`). In the report
 a flow reads as its steps, the one that failed marked, with its picture's difference; a state that
@@ -881,7 +903,7 @@ npm run test:firefox     # builds, then tests in Zen from /Applications; FIREFOX
 npm run test:kit         # builds the kit page into .output/*-kit, then tests it in Chromium and Zen; SHOTS=dir for screenshots
 npm run test:release     # zips both browsers, then checks the manifests, the release CSP, the built files and the zips
 npm run test:agent       # builds, then tests Agent access in Chromium (npm install --prefix mcp first, once)
-npm run test:visual      # builds, then compares 23 views and walks 19 flows (91 pictures) in Chromium; -- --update-snapshots takes new ones
+npm run test:visual      # builds, then compares 23 views and walks 27 flows (111 pictures) in Chromium; -- --update-snapshots takes new ones
 npm run lint:firefox     # Mozilla's validator: the checks addons.mozilla.org runs on upload
 npm run start:zen        # a fresh Zen profile with the dev build loaded, reloaded on every save
 npm run zip              # the packages and the sources zip in web-ext-artifacts/

@@ -49,9 +49,10 @@ function holdWhileSliding(pane: HTMLElement) {
 // The sidebar's column. `screen`: in a narrow panel it's the whole screen (the Rules view, with
 // nothing open in it); otherwise it gives way to what's open there. From 760px wide it's beside
 // what's open, as wide as its edge was dragged (a SidebarHandle) or else its usual width: 272 px,
-// a little more in a wide window. `collapsed`: hidden, its width sliding to nothing, and once it
-// has, it's gone (invisible, so nothing in it takes focus). While its edge is dragged it follows
-// the pointer instead of sliding.
+// a little more in a wide window, and more in a wider type (--sidebar-grow, kit.css: 37 px at
+// Commit Mono with Larger), so a rule's name keeps its room. `collapsed`: hidden, its width
+// sliding to nothing, and once it has, it's gone (invisible, so nothing in it takes focus). While
+// its edge is dragged it follows the pointer instead of sliding.
 export function ListPane({
   screen,
   collapsed = false,
@@ -72,7 +73,7 @@ export function ListPane({
       data-resizing={column.resizing || undefined}
       style={{ ...column.style, ...style }}
       className={cn(
-        'flex min-h-0 min-w-0 flex-1 flex-col [--list-default:clamp(272px,21%,340px)] wide:w-[var(--list-width,var(--list-default))] wide:flex-none wide:overflow-hidden wide:border-r wide:border-border',
+        'flex min-h-0 min-w-0 flex-1 flex-col [--list-default:calc(clamp(272px,21%,340px)_+_var(--sidebar-grow))] wide:w-[var(--list-width,var(--list-default))] wide:flex-none wide:overflow-hidden wide:border-r wide:border-border',
         // Hidden, the hairline lies over what's open rather than beside it, so that starts at the
         // window's edge.
         'wide:data-collapsed:invisible wide:data-collapsed:w-0 wide:data-collapsed:-mr-px',
@@ -172,17 +173,23 @@ export function PaneSection({
 
 // A filled, rounded search field, with the magnifier inside it, and at its right end `hint`, the
 // key that puts the cursor in it ("/"), in a small box. The field covers both, so a click anywhere
-// in it goes to the field.
+// in it goes to the field. `bare`: no fill at rest, as T3 Code's sidebar has it (the sidebar's,
+// in a row of its own buttons): a fill under the pointer, and while it has the cursor a card's,
+// with its edge; the magnifier over the rules' dots below it, the words where their names start.
 export function SearchField({
   hint,
+  bare = false,
   className,
   ...props
-}: ComponentProps<typeof Input> & { hint?: ReactNode }) {
+}: ComponentProps<typeof Input> & { hint?: ReactNode; bare?: boolean }) {
   return (
-    <div className="relative flex min-w-0 flex-1 items-center">
+    <div className="group/search relative flex min-w-0 flex-1 items-center">
       <span
         aria-hidden="true"
-        className="pointer-events-none absolute left-3 flex text-t40"
+        className={cn(
+          'pointer-events-none absolute flex text-t40',
+          bare ? 'left-2' : 'left-3',
+        )}
       >
         <Icon name="search" size={14} />
       </span>
@@ -190,7 +197,10 @@ export function SearchField({
         variant="bare"
         type="search"
         className={cn(
-          'h-8 flex-1 rounded-md bg-card pl-[34px] focus:shadow-[inset_0_0_0_1px_var(--line-strong)]',
+          'h-8 flex-1 rounded-md focus:shadow-[inset_0_0_0_1px_var(--line-strong)]',
+          bare
+            ? 'bg-transparent pl-[31px] transition-colors duration-120 group-hover/search:bg-hover focus:bg-card group-hover/search:focus:bg-card'
+            : 'bg-card pl-[34px]',
           hint && 'pr-8',
           className,
         )}

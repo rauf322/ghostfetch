@@ -49,12 +49,13 @@ test('Open rule: the crumbs at rest, under the pointer, their menus, and renamed
     await look(page, path, shot('crumb-group-pointer'));
   });
 
-  await test.step('Pressed, its menu: the group’s items', async () => {
+  await test.step('Pressed, its menu: the group’s items, as its ⋯ has them, Turn the group off among them', async () => {
     await group.click();
     const menu = await menuOpen(page);
     await expect(menu.getByRole('menuitem')).toHaveText([
       'New rule in this group',
       'Rename',
+      'Turn the group off',
       'Duplicate',
       'Export group',
       'Ungroup',

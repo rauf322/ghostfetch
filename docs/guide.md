@@ -55,21 +55,22 @@ What's different in Firefox-based browsers:
     from one PR's mocks to another's is two clicks here.
   - **Sites**: where Ghostfetch runs: the built-in hosts, then the sites you added, each with
     **Remove**.
-- **Side panel (Chrome), sidebar (Firefox, Zen) or tab**: the full editor. Open it from the
-  popup, or from the `⋯` menu. From 760 px wide a sidebar stands beside what's open: a search
-  field (**/** puts the cursor in it), **Rules** and **Traffic** with their counts, the rules
-  in your order under how many are on (click one to open it, from Traffic too; **+** for a
-  new rule), and the `⋯` menu, **Import** and **Export** along the bottom. Drag its edge to
-  make it wider or narrower (it's at least 260 px wide and leaves what's open at least
-  320), on past half its narrowest to hide it, and back out from the window's left edge to
-  show it again; double-click the edge for its usual width. The edge also takes focus (Tab):
-  the arrow keys move it, and **Enter** hides or shows the sidebar. The button at the top
-  left of a rule or of Traffic (or **⌘B / Ctrl+B**) hides it too, giving its room to what's
-  open, and brings it back. Its width, and whether it's hidden, are remembered. In a
-  narrower panel a top bar has the two views as tabs, and the rules, a rule or Traffic take
-  the whole panel, one at a time. The `⋯` menu's **Theme** picks the [look](#themes). While
-  Ghostfetch is off (the popup's **Pause**), a bar along the top says so; the popup's
-  **Resume** turns it back on.
+- **Side panel (Chrome), sidebar (Firefox, Zen) or tab**: the full editor. Open it from the popup,
+  or from the `⋯` menu. From 760 px wide a sidebar stands beside what's open: a search field (**/**
+  puts the cursor in it) with **New group** and **New rule** (**+**) beside it, **Rules** and
+  **Traffic** with their counts, the rules in your order under how many are on (click one to open
+  it, from Traffic too), and along the bottom four icons, each named under the pointer: the `⋯`
+  menu, **Import rules**, **Export all rules** and **Agent access**. Drag its edge to make it wider
+  or narrower (it's at least 260 px wide and leaves what's open at least 320), on past half its
+  narrowest to hide it, and back out from the window's left edge to show it again; double-click the
+  edge for its usual width: 272 px, more with Commit Mono or larger text (up to 309 px) so that a
+  rule's name keeps its room, though a width you dragged it to stays as it is. The edge also takes
+  focus (Tab): the arrow keys move it, and **Enter** hides or shows the sidebar. The button at the
+  top left of a rule or of Traffic (or **⌘B / Ctrl+B**) hides it too, giving its room to what's
+  open, and brings it back. Its width, and whether it's hidden, are remembered. In a narrower panel
+  a top bar has the two views as tabs, and the rules, a rule or Traffic take the whole panel, one at
+  a time. The `⋯` menu's **Theme** picks the [look](#themes). While Ghostfetch is off (the popup's
+  **Pause**), a bar along the top says so; the popup's **Resume** turns it back on.
   - **Rules**: create and edit rules. Changes save as you type and apply to open tabs
     immediately, without reloading. Rules apply in the list's order and the first match wins;
     drag them to reorder. A rule's dot turns it on or off without opening it, as in the popup:
@@ -84,50 +85,53 @@ What's different in Firefox-based browsers:
     fold a group, Enter opens a rule, F2 renames it (left empty, its URL names it, as in an open
     rule's name field), and Tab goes on to the rule's **Turn off** and **⋯**. **Duplicate**, in an
     open rule's header, copies it. From 760 px wide the header also says where the rule is: its
-    group (the group's dot and name), or **Rules** for a rule in no group, then its name. Each opens
-    a menu: the group's has **New rule in this group** and the group's own items (**Rename**, which
-    renames the group there in the header, **Duplicate**, **Export group**, **Ungroup**,
-    **Delete**), **Rules** has **New rule**, and the name's is the rule's **⋯** menu. Double-click
-    the name, or press F2 on it, to rename the rule there. A rule or a group you delete is gone at
-    once, and for five seconds the bottom of the sidebar says so, **Rule deleted** or
-    **Group deleted**, in place of its buttons, with **⌘Z to undo** (Ctrl+Z on Windows and Linux):
-    click it, or press ⌘Z, and it's back where it was, a group with its rules. The five seconds wait
-    while the pointer is on the notice, while you've tabbed to it, and while the window is in the
-    background. ⌘Z does it for as long as the notice shows, whatever you pressed or clicked
-    meanwhile, from anywhere but a text field, the body or a menu, which keep their own ⌘Z; on a
-    Cyrillic or Greek layout it's the key where Z is. Where the sidebar isn't on screen (a narrow
-    side panel with the rule open, or the sidebar hidden), **Undo** is in a toast instead, and the
-    notice becomes that toast if the sidebar goes while it shows.
+    group (the group's chip and name, which step back while the group is off), or **Rules** for a
+    rule in no group, then its name. Each opens a menu: the group's is the group's own **⋯** menu
+    (**New rule in this group**, **Rename**, which renames the group there in the header,
+    **Turn the group off**, **Duplicate**, **Export group**, **Ungroup**, **Delete**), **Rules** has
+    **New rule**, and the name's is the rule's **⋯** menu. Double-click the name, or press F2 on it,
+    to rename the rule there. A rule or a group you delete is gone at once, and for five seconds the
+    bottom of the sidebar says so, **Rule deleted** or **Group deleted**, in place of its buttons,
+    with **⌘Z to undo** (Ctrl+Z on Windows and Linux): click it, or press ⌘Z, and it's back where it
+    was, a group with its rules. The five seconds wait while the pointer is on the notice, while
+    you've tabbed to it, and while the window is in the background. ⌘Z does it for as long as the
+    notice shows, whatever you pressed or clicked meanwhile, from anywhere but a text field, the
+    body or a menu, which keep their own ⌘Z; on a Cyrillic or Greek layout it's the key where Z is.
+    Where the sidebar isn't on screen (a narrow side panel with the rule open, or the sidebar
+    hidden), **Undo** is in a toast instead, and the notice becomes that toast if the sidebar goes
+    while it shows.
 
-    <a id="groups"></a>**Groups** keep the rules for one piece of work together, a PR's, say,
-    to turn on and off as one. **New group** (beside **+**) makes one at the top of the list,
-    its name ready to type (double-click a group's name to rename it; no two groups share a
-    name). A group stands in the list as a block, its rules set in under its header, which has
-    a dot of its own: turned off, none of its rules answer, and each keeps its own switch, so
-    turning the group on again brings back just the rules that were on. A rule in a group
-    that's off fades, its dot green but still, as under Pause, and its chip says **Paused
-    while PR-1 is off**. Groups and the rules outside them are tried in one order, top to
-    bottom: of the rules that match a request, the highest one that's on, in a group that's
-    on, answers. Where two groups' rules match the same request, then, the higher group wins,
-    and a new group, like a new rule, goes on top; drag one above the other to change that.
-    Drag a rule into a group (onto its header, below its middle), out of one or between them,
-    and a group's header to move the group with its rules; let go under the list's last entry
-    to put either at the end of the list, out of any group. Where it would land shows as you
-    drag: a line set in under a group's rules lands in that group, a line as wide as the list
-    lands out of any group, and a group's header outlined means the top of that group; where
-    nothing shows, letting go leaves it where it was. **Move to group** in a rule's `⋯`
-    menu moves it too, or into a **New group…**. A group's name folds it or unfolds it
-    (remembered, and the popup's **All rules** shares it; a search shows every group open, and
-    leaves the folds as they were), its **+** makes a rule at its top,
-    and its `⋯` menu has **Rename**, **Duplicate** (a copy with the same rules, on, at the top
-    of the list, to start another PR from), **Export group**, **Ungroup** (the group goes, its
-    rules stay where they were) and **Delete** (with its rules, which **Undo** brings back).
-    Once there's a group, **New rule** and **Mock this response** say which group the rule
-    goes into: the one the last rule made there went into, or the group whose **+** you
-    clicked, and you can pick another, or none. **Export group** saves the group and its rules
-    to hand to someone else: importing the file brings the group in at the top of the list,
-    turned off, its rules' own switches as they were, so its dot then turns on just what the
-    sender had on.
+    <a id="groups"></a>**Groups** keep the rules for one piece of work together, a PR's, say, to
+    turn on and off as one. **New group** (beside the search field) makes one at the top of the
+    list, its name ready to type (double-click a group's name to rename it; no two groups share a
+    name). A group stands in the list as a block, its rules set in under its header, which has the
+    group's chip (its initials, in one of five colours that suit the theme, both worked out from its
+    name), its name and how many rules it has. Under the pointer, with focus or with its menu open,
+    the count gives way to **Turn the group off** and **⋯**, as a rule's does. Turned off, from
+    there or from its `⋯` menu, the header says **Off** and its chip and name step back; none of its
+    rules answer, and each keeps its own switch, so turning the group on again brings back just the
+    rules that were on. A rule in a group that's off fades, its dot green but still, as under Pause,
+    and its chip says **Paused while PR-1 is off**. Groups and the rules outside them are tried in
+    one order, top to bottom: of the rules that match a request, the highest one that's on, in a
+    group that's on, answers. Where two groups' rules match the same request, then, the higher group
+    wins, and a new group, like a new rule, goes on top; drag one above the other to change that.
+    Drag a rule into a group (onto its header, below its middle), out of one or between them, and a
+    group's header to move the group with its rules; let go under the list's last entry to put
+    either at the end of the list, out of any group. Where it would land shows as you drag: a line
+    set in under a group's rules lands in that group, a line as wide as the list lands out of any
+    group, and a group's header outlined means the top of that group; where nothing shows, letting
+    go leaves it where it was. **Move to group** in a rule's `⋯` menu moves it too, or into a
+    **New group…**. A group's name folds it or unfolds it (remembered, and the popup's **All rules**
+    shares it; a search shows every group open, and leaves the folds as they were), and its `⋯` menu
+    has **New rule in this group** (a rule at its top), **Rename**, **Turn the group off** (or on),
+    **Duplicate** (a copy with the same rules, on, at the top of the list, to start another PR
+    from), **Export group**, **Ungroup** (the group goes, its rules stay where they were) and
+    **Delete** (with its rules, which **Undo** brings back). Once there's a group, **New rule** and
+    **Mock this response** say which group the rule goes into: the one the last rule made there went
+    into, or the group whose **New rule in this group** you chose, and you can pick another, or
+    none. **Export group** saves the group and its rules to hand to someone else: importing the file
+    brings the group in at the top of the list, turned off, its rules' own switches as they were, so
+    turning it on then brings back just what the sender had on.
 
     **New rule** (the **+**) asks "What should Ghostfetch answer?" (beside the sidebar it's
     also what shows with no rule open). Paste a path, a full URL (it keeps the path and query,

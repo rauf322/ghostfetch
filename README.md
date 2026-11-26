@@ -70,14 +70,14 @@ and in the toolbar popup: green and pulsing while it's on, grey while it's off.
 
 ### Keep each PR's mocks in a group
 
-Working on several PRs at once? Put each one's rules in a **group** (**New group**, beside
-**+**) and turn the whole group on or off with its dot, in the editor or the toolbar popup.
-Turning a group off leaves its rules' own switches as they were, so turning it on again brings
-back just what was on. When two groups' rules match the same request, the higher group in the
-list wins, and a new group goes on top; drag one above the other to change that. **Duplicate**
-starts another PR's group from one you have, and **Export group** hands a PR's mocks to
-whoever reviews it: imported, the group arrives turned off, one click from what you had on.
-[More on groups](docs/guide.md#groups).
+Working on several PRs at once? Put each one's rules in a **group** (**New group**, beside the
+search field), marked by a chip with its initials, and turn the whole group on or off in one click:
+**Turn the group off** on its header in the editor, or its dot in the toolbar popup. Turning a group
+off leaves its rules' own switches as they were, so turning it on again brings back just what was
+on. When two groups' rules match the same request, the higher group in the list wins, and a new
+group goes on top; drag one above the other to change that. **Duplicate** starts another PR's group
+from one you have, and **Export group** hands a PR's mocks to whoever reviews it: imported, the
+group arrives turned off, one click from what you had on. [More on groups](docs/guide.md#groups).
 
 ### See what each request got
 
@@ -94,11 +94,12 @@ command for it.
   <img src="docs/media/popup.png" width="330" alt="The popup on localhost:5173, recording: under This page, the three rules that answered there, each with its green dot, Pro plan user (1 mocked), Slow search (2 modified) and Feature flags (1 mocked), and a folded row for the three that didn't, one on and two off.">
 </p>
 
-**This page** has the rules that answered on the tab's page and what each did there (**1
-mocked**, **2 modified**), and folds the rest away; **All rules** has every rule and group,
-and **Sites** where Ghostfetch runs. A rule's dot turns it on or off, and a group's the group,
-as in the editor's list; click a rule's name to edit it. The header turns recording on or off and pauses Ghostfetch, and a site that isn't
-built in is turned on (**Turn on for …**) or off (**Turn off here**) right there.
+**This page** has the rules that answered on the tab's page and what each did there (**1 mocked**,
+**2 modified**), and folds the rest away; **All rules** has every rule and group, and **Sites**
+where Ghostfetch runs. A rule's dot turns it on or off, as in the editor's list, and a group's dot
+the group; click a rule's name to edit it. The header turns recording on or off and pauses
+Ghostfetch, and a site that isn't built in is turned on (**Turn on for …**) or off
+(**Turn off here**) right there.
 
 ### Let a coding agent write your mocks
 

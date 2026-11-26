@@ -3123,8 +3123,9 @@ try {
       const title = await ruleRow(openUrl)
         .locator('[data-slot="item-title"]')
         .textContent();
-      // Tab from the button before the list, four times.
-      await app.locator('[data-testid="new-rule"]').focus();
+      // Tab from the button before the list (the Traffic view's row: New rule is in the search row
+      // over the views), four times.
+      await app.locator('[data-testid="nav-traffic"]').focus();
       const tabs = [];
       for (let time = 0; time < 4; time++) {
         await app.keyboard.press('Tab');
@@ -3368,6 +3369,8 @@ try {
       await app.click('[data-testid="rule-menu"]');
       const ruleItems = await itemsOf(dropdown);
       await shut(dropdown);
+      // A group's ⋯ is in its header's slot, there under the pointer.
+      await keysItem.locator('[data-testid="group"]').hover();
       await keysItem.locator('[data-testid="group-menu"]').click();
       const groupItems = await itemsOf(dropdown);
       await shut(dropdown);
@@ -8529,7 +8532,7 @@ try {
   );
 
   await check(
-    "the sidebar draws a group as a block: its header, its dot where an ungrouped rule's is, its name and how many of its rules are on, then its rules set in; turned off, it and its rules fade, their dots green but still and the open rule's chip saying so; its name folds it, kept when the editor opens again; a search shows a group with the rules of it that match, or all of them when its name matches",
+    "the sidebar draws a group as a block: its header, after A's: a chevron where an ungrouped rule's dot is, the group's chip (its initials), its name where its rules' names start, and how many rules it has; then its rules set in, their dots under the chip; turned off from its header's slot, it and its rules fade, its slot says Off, their dots green but still and the open rule's chip saying so; its name folds it, kept when the editor opens again; a search shows a group with the rules of it that match, or all of them when its name matches",
     async () => {
       await withGroups(
         [
@@ -8544,23 +8547,43 @@ try {
           const header = app.locator('[data-testid="group"][data-group="PR-1"]');
           await header.waitFor({ timeout: 3000 });
           const order = await listed();
-          const dots = await app.evaluate(() => {
-            const left = (row) =>
-              row.querySelector('[role="switch"]').getBoundingClientRect().left;
+          // Where the header's parts stand against the rules': centres, and where names start.
+          const lined = await app.evaluate(() => {
+            const centre = (element) => {
+              const box = element.getBoundingClientRect();
+              return (box.left + box.right) / 2;
+            };
             const rule = (name) =>
               [...document.querySelectorAll('[data-testid="rule"]')].find((row) =>
                 row.textContent.includes(name),
               );
+            const head = document.querySelector('[data-testid="group"]');
+            const chip = head.querySelector('[data-slot="monogram"]');
             return [
-              left(document.querySelector('[data-testid="group"]')),
-              left(rule('From one')),
-              left(rule('From A1')),
+              Math.abs(
+                centre(head.querySelector('[data-testid="group-name"] svg')) -
+                  centre(rule('From one').querySelector('[role="switch"]')),
+              ) < 1,
+              Math.abs(
+                centre(chip) - centre(rule('From A1').querySelector('[role="switch"]')),
+              ) < 1,
+              Math.abs(
+                head
+                  .querySelector('[data-testid="group-name"] [id]')
+                  .getBoundingClientRect().left -
+                  rule('From A1')
+                    .querySelector('[data-slot="item-title"]')
+                    .getBoundingClientRect().left,
+              ) < 1,
+              chip.dataset.letters,
             ];
           });
           const count = await header.locator('[data-testid="group-count"]').textContent();
           const a1 = app.locator('[data-testid="rule"]', { hasText: 'From A1' });
           await a1.click();
-          await header.locator('[role="switch"]').click();
+          // Its slot's actions are there under the pointer.
+          await header.hover();
+          await header.locator('[data-testid="group-turn"]').click();
           await sleep(300);
           const dot = a1.locator('[role="switch"]');
           const off = [
@@ -8577,8 +8600,9 @@ try {
             (await app.locator('[data-testid="rules-head-path"]').textContent())
               .replace(/\s+/g, ' ')
               .trim(),
+            await header.locator('[data-testid="group-count"]').textContent(),
           ];
-          await header.locator('[role="switch"]').click();
+          await header.locator('[data-testid="group-turn"]').click();
           await sleep(300);
           await header.locator('[data-testid="group-name"]').click();
           const folded = await listed();
@@ -8595,22 +8619,11 @@ try {
           const byName = await listed();
           await search.fill('');
           expect(
-            [
-              order,
-              Math.abs(dots[0] - dots[1]) < 1,
-              Math.round(dots[2] - dots[1]),
-              count,
-              off,
-              folded,
-              reopened,
-              found,
-              byName,
-            ],
+            [order, lined, count, off, folded, reopened, found, byName],
             [
               ['From one', 'group PR-1', 'From A1', 'From A2', 'From two'],
-              true,
-              14,
-              '1 of 2 on',
+              [true, true, true, 'PR'],
+              '2',
               [
                 false,
                 true,
@@ -8619,6 +8632,7 @@ try {
                 false,
                 'Paused while PR-1 is off',
                 'PR-1 / From A1',
+                'Off',
               ],
               ['From one', 'group PR-1', 'From two'],
               ['From one', 'group PR-1', 'From two'],
@@ -8632,7 +8646,7 @@ try {
   );
 
   await check(
-    "New group makes one at the top, its name ready to type; Move to group puts a rule at the group's top; the group's + makes a rule at its top, and New rule then offers that group to the next rule; a name another group has, in any case, is turned down",
+    "New group makes one at the top, its name ready to type; Move to group puts a rule at the group's top; New rule in this group, in the group's ⋯ menu, makes a rule at its top, and New rule then offers that group to the next rule; a name another group has, in any case, is turned down",
     async () => {
       await withGroups([grouped('u1', 'one'), grouped('u2', 'two')], [], async () => {
         await show('rules');
@@ -8660,9 +8674,12 @@ try {
           rule.id,
           rule.group === made.id,
         ]);
+        // Its ⋯ is in its header's slot, there under the pointer.
+        await app.hover('[data-testid="group"][data-group="PR-7"]');
         await app.click(
-          '[data-testid="group"][data-group="PR-7"] [data-testid="group-new-rule"]',
+          '[data-testid="group"][data-group="PR-7"] [data-testid="group-menu"]',
         );
+        await app.click('[data-testid="group-new-rule"]');
         await app.waitForFunction(
           () => document.activeElement?.dataset.testid === 'composer-input',
           null,
@@ -8730,6 +8747,7 @@ try {
         async () => {
           await show('rules');
           const menu = async (name, item) => {
+            await app.hover(`[data-testid="group"][data-group="${name}"]`);
             await app.click(
               `[data-testid="group"][data-group="${name}"] [data-testid="group-menu"]`,
             );
@@ -8945,11 +8963,13 @@ try {
               ),
             ],
             [
+              // A line in the group starts at its rules' dots' left edge (their centre 45, under the
+              // group's chip).
               [
-                [['rule', 'after', 32]],
-                [['rule', 'before', 32]],
+                [['rule', 'after', 42]],
+                [['rule', 'before', 42]],
                 [],
-                [['rule', 'before', 32]],
+                [['rule', 'before', 42]],
                 [],
                 [['group-block', 'after', 6]],
               ],
@@ -9111,6 +9131,7 @@ try {
         [PR1()],
         async () => {
           await show('rules');
+          await app.hover('[data-testid="group"][data-group="PR-1"]');
           await app.click(
             '[data-testid="group"][data-group="PR-1"] [data-testid="group-menu"]',
           );
@@ -9190,7 +9211,7 @@ try {
     );
 
   await check(
-    "a wide editor's header says where the open rule is in two crumbs that are controls: its group's, the group's dot and name, the / after it a chevron under the pointer with nothing moving, opens New rule in this group, which opens New rule offering the group, and the group's own items, Rename making its name a field in the crumb, as the name's crumb has it; a rule in no group's, \"Rules\", opens New rule, in no group; the rule's name opens the ⋯'s menu, under itself, whose items work; a 420 px panel has its back button instead",
+    "a wide editor's header says where the open rule is in two crumbs that are controls: its group's, the group's chip and name, the / after it a chevron under the pointer with nothing moving, opens New rule in this group, which opens New rule offering the group, and the group's own items, Turn the group off among them, Rename making its name a field in the crumb, as the name's crumb has it; a rule in no group's, \"Rules\", opens New rule, in no group; the rule's name opens the ⋯'s menu, under itself, whose items work; a 420 px panel has its back button instead",
     async () => {
       await withGroups(
         [grouped('c1', 'A1', 'g-1'), grouped('c2', 'loose')],
@@ -9199,9 +9220,10 @@ try {
           await openRule('From A1');
           const said = await app.evaluate(() => {
             const group = document.querySelector('[data-testid="crumb-group"]');
+            const chip = group.querySelector('[data-slot="monogram"]');
             return [
               group.textContent.replace(/\s+/g, ' ').trim(),
-              Boolean(group.querySelector('[data-slot="signal-dot"][data-on]')),
+              chip && !chip.dataset.off ? chip.dataset.letters : null,
               document.querySelector('[data-testid="crumb-name"]').textContent.trim(),
             ];
           });
@@ -9296,13 +9318,14 @@ try {
               narrow,
             ],
             [
-              ['PR-1 /', true, 'From A1'],
+              ['PR-1 /', 'PR', 'From A1'],
               ['1', '0'],
               ['0', '1'],
               true,
               [
                 'New rule in this group',
                 'Rename',
+                'Turn the group off',
                 'Duplicate',
                 'Export group',
                 'Ungroup',
@@ -10306,6 +10329,7 @@ try {
             await storedOrder(),
             (await storedGroups()).map((group) => [group.id, group.at, group.enabled]),
           ];
+          await app.hover('[data-testid="group"][data-group="PR-1"]');
           await app.click(
             '[data-testid="group"][data-group="PR-1"] [data-testid="group-menu"]',
           );
@@ -10730,7 +10754,8 @@ try {
                 await app.keyboard.press(key);
                 await note(id, key);
               }
-              await groupName(id).locator('span').click();
+              // Its name, after the chevron and the chip.
+              await groupName(id).locator('span[id]').click();
               await note(id, 'name');
               await groupName(id).locator('svg').click();
               await note(id, 'chevron');
@@ -11165,6 +11190,371 @@ try {
           await app.setViewportSize({ width: 1280, height: 820 });
         }
       });
+    },
+  );
+
+  console.log('the sidebar after variant A (7a)');
+  // A colour as the page computes it: a custom property's, through a probe's background.
+  const computed = (name) =>
+    app.evaluate((property) => {
+      const probe = document.createElement('div');
+      probe.style.backgroundColor = `var(--${property})`;
+      document.body.append(probe);
+      const colour = getComputedStyle(probe).backgroundColor;
+      probe.remove();
+      return colour;
+    }, name);
+  const awayFromTheList = () => app.mouse.move(640, 790);
+  const groupMenuItems = async () => {
+    await menuReady();
+    return (await app.locator('[role="menu"] [role="menuitem"]').allTextContents()).map(
+      (text) => text.replace(/\s+/g, ' ').trim(),
+    );
+  };
+
+  await check(
+    '7a.1: the search row is bare, after A: the field has no fill at rest, one under the pointer and a card\'s with the cursor, its "/" in it, then New group and New rule in the same row; how many rules are on is the list\'s own line, with nothing beside it',
+    async () => {
+      await withGroups(THREE, [], async () => {
+        await shutMenus();
+        await show('rules');
+        await awayFromTheList();
+        await sleep(200);
+        const row = await app.evaluate(() => {
+          const field = document.querySelector('input[aria-label="Search rules"]');
+          const middle = (element) => {
+            const box = element.getBoundingClientRect();
+            return Math.round(box.top + box.height / 2);
+          };
+          const label = document.querySelector('[data-testid="rule-list"] h2');
+          return [
+            ['new-group', 'new-rule'].map((id) => {
+              const button = document.querySelector(`[data-testid="${id}"]`);
+              return (
+                middle(button) === middle(field) &&
+                button.getBoundingClientRect().left >= field.getBoundingClientRect().right
+              );
+            }),
+            /^\d+ of 3 on$/.test(label.textContent),
+            label.parentElement.querySelectorAll('button').length,
+          ];
+        });
+        const fill = () =>
+          searchRules.evaluate((input) => getComputedStyle(input).backgroundColor);
+        const fills = [await fill()];
+        await searchRules.hover();
+        await sleep(200);
+        fills.push(await fill());
+        await searchRules.focus();
+        await sleep(200);
+        fills.push(await fill());
+        await searchRules.blur();
+        await awayFromTheList();
+        expect(
+          [row, fills],
+          [
+            [[true, true], true, 0],
+            ['rgba(0, 0, 0, 0)', await computed('hover'), await computed('card')],
+          ],
+        );
+      });
+    },
+  );
+
+  await check(
+    "7a.2: a group's header's slot says how many rules it has, or Off, which its item says to a screen reader too; under the pointer, Turn the group off (or on) and ⋯, named, which turn it and open its menu; its ⋯'s menu and its right-click menu have New rule in this group and Turn the group off or on; the open rule's crumb shows the group's chip, stepping back while it's off",
+    async () => {
+      await withGroups(
+        [grouped('h1', 'H1', 'g-1'), grouped('h2', 'H2', 'g-1')],
+        [PR1()],
+        async () => {
+          await shutMenus();
+          await show('rules');
+          const block = app.locator('[data-testid="group-block"][data-item="g-1"]');
+          const header = block.locator('[data-testid="group"]');
+          await header.waitFor({ timeout: 3000 });
+          await awayFromTheList();
+          await sleep(200);
+          const said = () =>
+            block.evaluate((element) => [
+              element.querySelector('[data-testid="group-count"]').textContent,
+              document.getElementById(element.getAttribute('aria-describedby'))
+                ?.textContent ?? null,
+            ]);
+          const actions = () =>
+            header.evaluate(
+              (element) =>
+                getComputedStyle(element.querySelector('[data-slot="item-slot-actions"]'))
+                  .opacity,
+            );
+          const rest = [await said(), await actions()];
+          await header.hover();
+          await sleep(200);
+          const labels = await header.evaluate((element) =>
+            [...element.querySelectorAll('[data-slot="item-slot-actions"] button')].map(
+              (button) => button.getAttribute('aria-label'),
+            ),
+          );
+          const under = await actions();
+          // Off from its slot, on from its ⋯'s menu, off from its right-click menu.
+          await header.locator('[data-testid="group-turn"]').click();
+          await sleep(300);
+          const offBySlot = [(await storedGroups())[0].enabled, await said()];
+          await header.locator('[data-testid="group-menu"]').click();
+          const moreItems = await groupMenuItems();
+          await app.click('[role="menu"] [data-testid="turn-group"]');
+          await sleep(300);
+          const onByMore = (await storedGroups())[0].enabled;
+          await header.click({ button: 'right', position: { x: 120, y: 19 } });
+          const rightItems = await groupMenuItems();
+          await app.click('[role="menu"] [data-testid="turn-group"]');
+          await sleep(300);
+          const offByRight = (await storedGroups())[0].enabled;
+          // The crumb, for a rule in it: the group off, then on again from its slot.
+          await app.locator('[data-testid="rule"]', { hasText: 'From H1' }).click();
+          const chip = () =>
+            app
+              .locator('[data-testid="crumb-group"] [data-slot="monogram"]')
+              .evaluate((element) => [
+                element.dataset.letters,
+                element.hasAttribute('data-off'),
+              ]);
+          const crumbOff = await chip();
+          await header.hover();
+          await header.locator('[data-testid="group-turn"]').click();
+          await sleep(300);
+          const crumbOn = await chip();
+          await awayFromTheList();
+          const items = (turn) => [
+            'New rule in this group',
+            'Rename',
+            turn,
+            'Duplicate',
+            'Export group',
+            'Ungroup',
+            'Delete',
+          ];
+          expect(
+            [
+              rest,
+              labels,
+              under,
+              offBySlot,
+              moreItems,
+              onByMore,
+              rightItems,
+              offByRight,
+              crumbOff,
+              crumbOn,
+            ],
+            [
+              [['2', '2 rules.'], '0'],
+              ['Turn the group “PR-1” off', 'More actions for PR-1'],
+              '1',
+              [false, ['Off', 'Off.']],
+              items('Turn the group on'),
+              true,
+              items('Turn the group off'),
+              false,
+              ['PR', true],
+              ['PR', false],
+            ],
+          );
+        },
+      );
+    },
+  );
+
+  await check(
+    "7a.2: a group's chip is worked out from its name, with nothing stored: an abbreviation the name starts with (PR 412 · checkout: PR), else its first two words' first letters (Billing GraphQL: BG, 412 checkout: 4C), else its first two letters (Payments: PA, qa: QA); one of five colours, the same again after a reload",
+    async () => {
+      const names = [
+        'PR 412 · checkout',
+        'Billing GraphQL',
+        'Payments',
+        'qa',
+        '412 checkout',
+      ];
+      await withGroups(
+        [],
+        names.map((name, index) => ({
+          id: `n-${index}`,
+          name,
+          enabled: true,
+          at: index,
+        })),
+        async () => {
+          await shutMenus();
+          await show('rules');
+          const chips = async () => {
+            await app.locator('[data-testid="group"]').first().waitFor({ timeout: 3000 });
+            return app.evaluate(() =>
+              [...document.querySelectorAll('[data-testid="group"]')].map((header) => {
+                const chip = header.querySelector('[data-slot="monogram"]');
+                return [header.dataset.group, chip.dataset.letters, chip.dataset.colour];
+              }),
+            );
+          };
+          const first = await chips();
+          await app.reload();
+          const again = await chips();
+          const stored = (await storedGroups()).map((group) =>
+            Object.keys(group).toSorted().join(),
+          );
+          expect(
+            [
+              first.map(([name, letters]) => [name, letters]),
+              first.every(([, , colour]) => ['1', '2', '3', '4', '5'].includes(colour)),
+              again,
+              [...new Set(stored)],
+            ],
+            [
+              [
+                ['PR 412 · checkout', 'PR'],
+                ['Billing GraphQL', 'BG'],
+                ['Payments', 'PA'],
+                ['qa', 'QA'],
+                ['412 checkout', '4C'],
+              ],
+              true,
+              first,
+              ['at,enabled,id,name'],
+            ],
+          );
+        },
+      );
+    },
+  );
+
+  await check(
+    "7a.6: the sidebar's footer is icons, ⋯, Import, Export and Agent, each named for a screen reader and saying what it does in its tooltip; on one line in Commit Mono at Larger too",
+    async () => {
+      await shutMenus();
+      await show('rules');
+      const footer = () =>
+        app.evaluate(() => {
+          const row = document.querySelector('#sidebar footer');
+          return [
+            [...row.querySelectorAll('button')]
+              .filter((button) => button.checkVisibility())
+              .map((button) => [
+                button.getAttribute('aria-label'),
+                button.textContent.trim(),
+              ]),
+            row.offsetHeight,
+          ];
+        });
+      const tips = [];
+      for (const name of ['More', 'Import rules', 'Export all rules', 'Agent access']) {
+        await app
+          .locator('#sidebar footer')
+          .getByRole('button', { name, exact: true })
+          .hover();
+        const tip = app.locator('[data-slot="tooltip"][data-open]');
+        await tip.waitFor({ timeout: 3000 });
+        tips.push(await tip.textContent());
+      }
+      await awayFromTheList();
+      const atDefault = await footer();
+      await app.evaluate(() => {
+        document.documentElement.dataset.font = 'mono';
+        document.documentElement.dataset.size = 'larger';
+      });
+      await sleep(400);
+      const atLarger = await footer();
+      await app.evaluate(() => {
+        delete document.documentElement.dataset.font;
+        delete document.documentElement.dataset.size;
+      });
+      await sleep(400);
+      const icons = [
+        ['More', ''],
+        ['Import rules', ''],
+        ['Export all rules', ''],
+        ['Agent access', ''],
+      ];
+      expect(
+        [atDefault, atLarger, tips],
+        [
+          [icons, 44],
+          [icons, 44],
+          [
+            'More',
+            'Import rules',
+            'Export all rules',
+            'Agent access: a coding agent reads and changes your rules',
+          ],
+        ],
+      );
+    },
+  );
+
+  await check(
+    "7a.8: the footer's ⋯ stays filled while its menu is open, as under the pointer, and not once it's shut",
+    async () => {
+      await shutMenus();
+      await show('rules');
+      const more = app.locator('[data-testid="sidebar-menu"]');
+      const fill = () =>
+        more.evaluate((button) => getComputedStyle(button).backgroundColor);
+      await more.click();
+      await menuReady();
+      await awayFromTheList();
+      await sleep(250);
+      const open = await fill();
+      await app.keyboard.press('Escape');
+      await app.locator('[role="menu"]').waitFor({ state: 'detached', timeout: 3000 });
+      await awayFromTheList();
+      await sleep(250);
+      const shut = await fill();
+      expect([open, shut], [await computed('pressed'), 'rgba(0, 0, 0, 0)']);
+    },
+  );
+
+  await check(
+    "7a.9: the sidebar's usual width grows with the type, by as much as a rule row's slot does, so a name keeps its room: 272 px at Geist and Default, 282 and 292 at Large and Larger, 286, 297 and 309 in Commit Mono; a width its edge was dragged to stays",
+    async () => {
+      await shutMenus();
+      await show('rules');
+      const sidebar = app.locator('#sidebar');
+      const widthAt = async (font, size) => {
+        await app.evaluate(
+          ([fontNow, sizeNow]) => {
+            const root = document.documentElement;
+            if (fontNow) root.dataset.font = fontNow;
+            else delete root.dataset.font;
+            if (sizeNow) root.dataset.size = sizeNow;
+            else delete root.dataset.size;
+          },
+          [font, size],
+        );
+        // It slides to its new width.
+        await sleep(400);
+        return sidebar.evaluate((element) =>
+          Math.round(element.getBoundingClientRect().width),
+        );
+      };
+      try {
+        const widths = [];
+        for (const font of ['', 'mono'])
+          for (const size of ['', 'large', 'larger'])
+            widths.push(await widthAt(font, size));
+        await widthAt('', '');
+        await app.locator('[data-testid="sidebar-handle"]').focus();
+        await app.keyboard.press('Home');
+        const dragged = [await widthAt('', ''), await widthAt('mono', 'larger')];
+        expect(
+          [widths, dragged],
+          [
+            [272, 282, 292, 286, 297, 309],
+            [260, 260],
+          ],
+        );
+      } finally {
+        await widthAt('', '');
+        await app.locator('[data-testid="sidebar-handle"]').dblclick();
+        await sleep(400);
+      }
     },
   );
 

@@ -1,7 +1,8 @@
-// The rule list, walked as a user would (reports/t3-design-plan.md, 3a): what a row says and
-// when it steps back, its actions under the pointer, with focus and while its menu is open, the
-// time moving on; a long name in the narrowest window and the largest type; the list's keys; its
-// right-click menus. Each step is one state: checked as a user meets it (role and name, focus,
+// The rule list, walked as a user would (reports/t3-design-plan.md, 3a and 7a): what a row says
+// and when it steps back, its actions under the pointer, with focus and while its menu is open, the
+// time moving on; a group's header, as variant A has it, turned off and on from its slot and its
+// menu; a long name in the narrowest window and the largest type; the list's keys; its right-click
+// menus. Each step is one state: checked as a user meets it (role and name, focus,
 // what the list holds, what's stored), then pictured, the part it's about at 2x
 // (baselines/<platform>/rules/). The data is the demo's (extension.mjs, DEMO_STORED).
 import {
@@ -74,11 +75,11 @@ test('Rule list: a row at rest, stepping back, off, a minute on, and as the poin
     await look(page, off, shot('row-off'));
   });
 
-  await test.step('Billing GraphQL is off, and its rule with it, though the rule itself is on', async () => {
+  await test.step('Billing GraphQL is off, and its rule with it, though the rule itself is on: “Off” at its header’s end, and to a screen reader', async () => {
     const billing = item(page, 'Billing GraphQL');
-    await expect(
-      billing.getByRole('switch', { name: 'Turn the group “Billing GraphQL” on or off' }),
-    ).not.toBeChecked();
+    await expect(slot(billing)).toHaveText('Off');
+    await expect(billing).toHaveAccessibleDescription('Off.');
+    await expect(billing.getByTestId('group')).toHaveAttribute('data-off', 'true');
     const invoices = item(page, 'Invoices (GraphQL)');
     await expect(invoices).toHaveAttribute('data-group-off', '');
     await expect(invoices).toHaveAccessibleDescription(
@@ -131,6 +132,96 @@ test('Rule list: a row at rest, stepping back, off, a minute on, and as the poin
     await expect(slotActions(ruleRow(page, 'pro'))).toHaveCSS('opacity', '1');
     await look(page, [ruleRow(page, 'pro'), menu], shot('row-menu-open'));
     await menuShut(page);
+  });
+});
+
+// A group as stored, by its id.
+const storedGroup = async (shop, id) =>
+  (
+    await shop.worker.evaluate(
+      async () => (await chrome.storage.local.get('groups')).groups,
+    )
+  ).find((each) => each.id === id);
+
+test('Rule list: a group’s header, as A has it: its chip and its count, Turn the group off and ⋯ under the pointer, off and on again', async ({
+  flowEditor,
+  flowShop,
+}) => {
+  const page = await flowEditor({ rule: 'Feature flags' });
+  const group = item(page, 'PR 412 · checkout');
+  const header = groupBlock(page, 'pr-412').getByTestId('group');
+
+  await test.step('At rest: the chevron, its chip PR, its name, and how many rules it has, 2', async () => {
+    await expect(header.locator('[data-slot="monogram"]')).toHaveAttribute(
+      'data-letters',
+      'PR',
+    );
+    await expect(slot(group)).toHaveText('2');
+    await expect(group).toHaveAccessibleDescription('2 rules.');
+    await expect(slotActions(group)).toHaveCSS('opacity', '0');
+  });
+
+  await test.step('Under the pointer, the slot gives way to Turn the group off and ⋯', async () => {
+    await header.hover();
+    await expect(slotActions(group)).toHaveCSS('opacity', '1');
+    await expect(slot(group)).toHaveCSS('opacity', '0');
+    await expect(
+      header.getByRole('button', { name: 'Turn the group “PR 412 · checkout” off' }),
+    ).toBeVisible();
+    await expect(
+      header.getByRole('button', { name: 'More actions for PR 412 · checkout' }),
+    ).toBeVisible();
+    await look(page, header, shot('group-pointer'));
+  });
+
+  await test.step('Turned off from its slot: “Off”, its chip and name step back, its rules fade', async () => {
+    await header
+      .getByRole('button', { name: 'Turn the group “PR 412 · checkout” off' })
+      .click();
+    await page.mouse.move(0, 0);
+    await expect(slot(group)).toHaveText('Off');
+    await expect(group).toHaveAccessibleDescription('Off.');
+    await expect(header.locator('[data-slot="monogram"]')).toHaveAttribute(
+      'data-off',
+      'true',
+    );
+    await expect(item(page, 'Checkout fails')).toHaveAttribute('data-group-off', '');
+    expect((await storedGroup(flowShop, 'pr-412')).enabled).toBe(false);
+    await look(page, groupBlock(page, 'pr-412'), shot('group-turned-off'));
+  });
+
+  await test.step('Its ⋯ menu: the group’s items, Turn the group on among them, which turns it back on', async () => {
+    await header.hover();
+    await header
+      .getByRole('button', { name: 'More actions for PR 412 · checkout' })
+      .click();
+    const menu = await menuOpen(page);
+    await expect(menu.getByRole('menuitem')).toHaveText([
+      'New rule in this group',
+      'Rename',
+      'Turn the group on',
+      'Duplicate',
+      'Export group',
+      'Ungroup',
+      'Delete',
+    ]);
+    await look(page, [header, menu], shot('group-menu'));
+    await menu.getByRole('menuitem', { name: 'Turn the group on' }).click();
+    await menuShut(page);
+    await page.mouse.move(0, 0);
+    await expect(slot(group)).toHaveText('2');
+    expect((await storedGroup(flowShop, 'pr-412')).enabled).toBe(true);
+  });
+
+  await test.step('With focus from the keyboard: its ring, and its actions in its slot', async () => {
+    await item(page, 'Feature flags').focus();
+    await page.keyboard.press('Home');
+    await page.keyboard.press('ArrowDown');
+    await expect(group).toBeFocused();
+    expect(await ringed(group)).toBe(true);
+    await expect(slotActions(group)).toHaveCSS('opacity', '1');
+    await expect(slot(group)).toHaveCSS('opacity', '0');
+    await look(page, header, shot('group-focus'));
   });
 });
 
@@ -211,7 +302,7 @@ test('Rule list: from the keyboard, one Tab stop, the arrows, Home and End, F2, 
 
   await test.step('Tab from the search field reaches the list once, at the open rule, ringed', async () => {
     await page.getByPlaceholder('Search rules').click();
-    for (const stop of ['Rules', 'Traffic', 'New group', 'New rule']) {
+    for (const stop of ['New group', 'New rule', 'Rules', 'Traffic']) {
       await page.keyboard.press('Tab');
       await expect(page.locator(':focus')).toHaveAccessibleName(new RegExp(`^${stop}`));
     }
@@ -329,7 +420,9 @@ test('Rule list: the right-click menus, and the same from the keyboard', async (
     await header.click({ button: 'right', position: { x: 120, y: box.height / 2 } });
     const menu = await menuOpen(page);
     await expect(menu.getByRole('menuitem')).toHaveText([
+      'New rule in this group',
       'Rename',
+      'Turn the group off',
       'Duplicate',
       'Export group',
       'Ungroup',

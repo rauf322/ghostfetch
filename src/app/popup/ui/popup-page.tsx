@@ -40,7 +40,7 @@ export function PopupPage({
   const [view, setView] = useState<View>(host ? 'page' : 'rules');
   // How many rules answered on the page, while that's known (recording, and Ghostfetch on there):
   // the ones under "Answering here" (RuleList), on now or not.
-  const answering = counts?.record
+  const answeredHere = counts?.record
     ? rules.filter((rule) => countWords(counts.rules[rule.id])).length
     : null;
 
@@ -54,7 +54,7 @@ export function PopupPage({
         onValueChange={(value) => setView(value as View)}
       >
         <SegmentedItem value="page" data-testid="view-page">
-          <TabLabel count={answering}>This page</TabLabel>
+          <TabLabel count={answeredHere}>This page</TabLabel>
         </SegmentedItem>
         <SegmentedItem value="rules" data-testid="view-rules">
           <TabLabel count={rules.length}>All rules</TabLabel>

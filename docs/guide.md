@@ -82,22 +82,22 @@ What's different in Firefox-based browsers:
     group's header (or the menu key, or Shift+F10) opens the same menu as its **⋯**. From the
     keyboard the list is one Tab stop: ↑ and ↓ move between rules and groups, → and ← unfold and
     fold a group, Enter opens a rule, F2 renames it (left empty, its URL names it, as in an open
-    rule's name field), and Tab goes on to the rule's **Turn off** and **⋯**. **Duplicate**, in an open rule's header, copies it. From 760 px wide the header
-    also says where the rule is: its group (the group's dot and name), or **Rules** for a rule in
-    no group, then its name. Each opens a menu: the group's has **New rule in this group** and
-    the group's own items (**Rename**, which renames the group there in the header,
-    **Duplicate**, **Export group**, **Ungroup**, **Delete**), **Rules** has **New rule**, and
-    the name's is the rule's **⋯** menu. Double-click the name, or press F2 on it, to rename the
-    rule there. A rule or a group you delete is gone at once, and for five seconds the bottom of
-    the sidebar says so, **Rule deleted**, in place of its buttons, with **⌘Z to undo** (Ctrl+Z
-    on Windows and Linux): click it, or press ⌘Z, and it's back where it was, a group with its
-    rules. The five seconds wait while the pointer is on the notice, while you've tabbed to it,
-    and while the window is in the background. ⌘Z does it for as long as the notice shows,
-    whatever you pressed or clicked meanwhile, from anywhere but a text field, the body or a
-    menu, which keep their own ⌘Z; on a Cyrillic or Greek layout it's the key where Z is. Where
-    the sidebar isn't on screen (a narrow side panel with the rule open, or the sidebar hidden),
-    **Undo** is in a toast instead, and the notice becomes that toast if the sidebar goes while
-    it shows.
+    rule's name field), and Tab goes on to the rule's **Turn off** and **⋯**. **Duplicate**, in an
+    open rule's header, copies it. From 760 px wide the header also says where the rule is: its
+    group (the group's dot and name), or **Rules** for a rule in no group, then its name. Each opens
+    a menu: the group's has **New rule in this group** and the group's own items (**Rename**, which
+    renames the group there in the header, **Duplicate**, **Export group**, **Ungroup**,
+    **Delete**), **Rules** has **New rule**, and the name's is the rule's **⋯** menu. Double-click
+    the name, or press F2 on it, to rename the rule there. A rule or a group you delete is gone at
+    once, and for five seconds the bottom of the sidebar says so, **Rule deleted** or
+    **Group deleted**, in place of its buttons, with **⌘Z to undo** (Ctrl+Z on Windows and Linux):
+    click it, or press ⌘Z, and it's back where it was, a group with its rules. The five seconds wait
+    while the pointer is on the notice, while you've tabbed to it, and while the window is in the
+    background. ⌘Z does it for as long as the notice shows, whatever you pressed or clicked
+    meanwhile, from anywhere but a text field, the body or a menu, which keep their own ⌘Z; on a
+    Cyrillic or Greek layout it's the key where Z is. Where the sidebar isn't on screen (a narrow
+    side panel with the rule open, or the sidebar hidden), **Undo** is in a toast instead, and the
+    notice becomes that toast if the sidebar goes while it shows.
 
     <a id="groups"></a>**Groups** keep the rules for one piece of work together, a PR's, say,
     to turn on and off as one. **New group** (beside **+**) makes one at the top of the list,
@@ -189,21 +189,20 @@ What's different in Firefox-based browsers:
     panel, so is the pane. While the body editor isn't focused, the cursor stays marked,
     outlined in grey, as vim's block is, so you can see where you'll carry on.
 
-    **Diff**, the row over the body ("Diff vs server's response +2 −1": how many lines your
-    body adds to the server's response and takes out of it, each where there are some, counted
-    again once you pause typing; none for two bodies more than 1,000 lines apart, which Diff
-    shows as the one replaced by the other), shows in the editor's place what your body changes in the
-    server's response: the lines you removed dimmed, with a −, the ones you added tinted
-    green, with a +, and in a line you changed, the part that changed. Side by side, or
-    inline, one column as git shows a diff, from the switch beside it; in a body narrower than
-    480 px, as in a side panel you haven't widened, it's inline. The response it compares with
-    is the server's the rule was made from (**Mock this response** on a request no rule
-    answered), or else one the server gives a request the rule matches while no rule answers
-    it: the newest Traffic has, or the next one (turn the rule off with its dot and reload the
-    page once).
-    Until a rule has one, it has no Diff row. The response is kept apart from the rule: it
-    never goes to a page, and an exported rules file doesn't have it. Diff can't be typed in:
-    click a line, or press **Enter** for the one at the top, and Diff goes off with the cursor
+    **Diff**, the row over the body ("Diff vs server's response +2 −1": how many lines your body
+    adds to the server's response and takes out of it, each where there are some, counted again once
+    you pause typing; none for two bodies more than 1,000 lines apart, in the row or over Diff,
+    which shows them as the one replaced by the other), shows in the editor's place what your body
+    changes in the server's response: the lines you removed dimmed, with a −, the ones you added
+    tinted green, with a +, and in a line you changed, the part that changed. Side by side, or
+    inline, one column as git shows a diff, from the switch under it, by **Wrap**; in a body
+    narrower than 480 px, as in a side panel you haven't widened, it's inline, with no switch. The
+    response it compares with is the server's the rule was made from (**Mock this response** on a
+    request no rule answered), or else one the server gives a request the rule matches while no rule
+    answers it: the newest Traffic has, or the next one (turn the rule off with its dot and reload
+    the page once). Until a rule has one, it has no Diff row. The response is kept apart from the
+    rule: it never goes to a page, and an exported rules file doesn't have it. Diff can't be typed
+    in: click a line, or press **Enter** for the one at the top, and Diff goes off with the cursor
     there. **Format** and a click on a mistake turn it off too, as they work in the editor, and
     a rule New rule makes opens without it, for typing. With **Keep server's body** there's no
     body of yours to compare, so no Diff. Like Vim keys, it's remembered for every body editor.
@@ -244,12 +243,12 @@ The editor's `⋯` menu has **Theme**: Ghostfetch's own (above, the default), **
 **Rosé Pine Moon**, **Rosé Pine Dawn** (light), **Catppuccin Macchiato** and **Vague**. Each
 takes its colours from its theme's palette as its Neovim plugin has them: the page, the
 cards and the steps on them, quieter text (made strong enough to read on the page and on
-cards), and the body editor's JSON colours. The green is the
-theme's colour for what's added or fine (Catppuccin's green, Vague's; foam in Rosé Pine and
-pine in Dawn, as its own "ok", leaf, is too faint to tell a rule that's on from one that's off),
-and errors stay inverted, in the theme's text colour. A theme recolours every page of
-Ghostfetch's at once, the popup too, and is remembered in this browser. Each page puts it on
-before it first draws (`public/theme.js`), so none flashes Ghostfetch's own colours first.
+cards), and the body editor's JSON colours. The green is the theme's colour for what's added or fine
+(Catppuccin's green, Vague's; foam in Rosé Pine and pine in Dawn, as its own "ok", leaf, is too
+faint to tell a rule that's on from one that's off), and errors stay inverted, in the theme's text
+colour. A theme recolours every page of Ghostfetch's at once, the popup too, and is remembered in
+this browser. Each page puts it on before it first draws (`public/theme.js`), so none flashes
+Ghostfetch's own colours first.
 
 Under Theme, **Appearance** has three settings for every theme, each a few steps; the row says,
 whole, which steps you picked that aren't the defaults (the menu grows for them, within the

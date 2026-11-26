@@ -28,8 +28,9 @@ test('a copy button saying "Copied"', async ({ editor, shop }) => {
     navigator.clipboard.writeText = async () => {};
   });
   const copy = page.locator('[data-testid="copy-url"]');
-  // "Copied" stays a second (COPIED_FOR): with the clock held, until the picture is taken. The
-  // words are always in the button, unseen at rest, so it's its data-copied that says it copied.
+  // "Copied" stays a second (COPIED_FOR, src/ui/kit/copy-button.tsx): with the clock held, until
+  // the picture is taken. The words are always in the button, unseen at rest, so it's its
+  // data-copied that says it copied.
   await pauseClock(shop);
   try {
     await copy.click();

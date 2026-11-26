@@ -6,7 +6,8 @@
 // own screen, under the top bar, which then has the name and the two views. A rule's dot turns it
 // on or off; Ghostfetch's own switch and recording's are in the toolbar popup. The footer's Agent
 // opens Agent access over it (bounded-contexts/agent-access/). For five seconds after a rule or a
-// group is deleted the footer says so instead, with Undo, which ⌘Z does too (UndoNotice).
+// group is deleted the footer says so instead, with Undo, which ⌘Z does too (UndoNotice,
+// bounded-contexts/rules/ui/undo-notice.tsx).
 import { useEffect, useRef, useState } from 'react';
 import { AgentButton, AgentPanel } from '../../bounded-contexts/agent-access/ui/index.ts';
 import {
@@ -95,11 +96,12 @@ export function Sidebar({
   }, []);
 
   // ⌘Z (Ctrl+Z elsewhere) undoes the delete the footer says was made, for as long as it says so,
-  // from anywhere a field, the body editor or a menu doesn't have the keyboard (undo-delete.ts).
+  // from anywhere a field, the body editor or a menu doesn't have the keyboard
+  // (bounded-contexts/rules/ui/undo-delete.ts).
   useEffect(listenForUndoKey, []);
 
   // A group's name to type in the list, a copy's or a new one's, clears a search that would keep
-  // it out of sight, as the field's own clear does (renaming.ts).
+  // it out of sight, as the field's own clear does (bounded-contexts/rules/ui/renaming.ts).
   useEffect(() => {
     setListSearch({ query, clear: () => onQueryChange('') });
   }, [query, onQueryChange]);

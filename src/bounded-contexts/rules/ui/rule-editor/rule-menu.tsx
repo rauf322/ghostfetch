@@ -1,11 +1,11 @@
 // A rule's ⋯ menu: duplicate it, move it to a group or out of one, export it, or delete it (with
 // Undo, which puts it back where it was, in its group: in the sidebar's footer, with ⌘Z, or where
-// that isn't on screen in a toast, undo-delete.ts). The open rule's, in its header
-// (RuleMenu), and its row's in the list (the ⋯ in the row's slot, rule-list-item.tsx) are one list
-// of items (RuleMenuItems), so the two can't drift apart. The open rule's is one menu for two
-// controls, as the list's rows share theirs (row-tools.ts): its ⋯ (RuleMenuButton) at the
-// header's right end, and its name, a crumb at the header's left (rule-crumbs.tsx), each opening
-// it under itself.
+// that isn't on screen in a toast, undo-delete.ts). Three menus are one list of items
+// (RuleMenuItems), so they can't drift apart: the open rule's, in its header (RuleMenu), and its
+// row's two in the list, under the ⋯ in the row's slot (rule-list-item.tsx) and on a right-click,
+// both drawn in rule-list.tsx. The open rule's is one menu for two controls, as the list's rows
+// share theirs (row-tools.ts): its ⋯ (RuleMenuButton) at the header's right end, and its name, a
+// crumb at the header's left (rule-crumbs.tsx), each opening it under itself.
 import {
   NEW_GROUP,
   addGroup,

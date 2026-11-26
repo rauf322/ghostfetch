@@ -355,7 +355,10 @@ export function CodeDiff({
     );
   }
 
-  const counts = (
+  // How many lines were added and removed; none where the diff gave up (two texts more than its
+  // limit of changes apart, src/lib/diff.ts), as the rule editor's row has none: they'd count the
+  // lines shown removed and added whole, not the fewest that changed.
+  const counts = !diff.gaveUp && (
     <span data-testid="diff-counts" className="diff-counts">
       <span className="diff-added">+{diff.added}</span>
       <span className="diff-removed">−{diff.removed}</span>

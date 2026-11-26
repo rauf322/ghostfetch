@@ -68,7 +68,7 @@ const CP1251 = Buffer.from([0xcf, 0xf0, 0xe8, 0xe2, 0xe5, 0xf2]);
 
 // Listens on 127.0.0.1, on a free port or on `port` (the screenshot suite's, whose pictures show
 // it). EVIL_ORIGIN and LOCAL_ORIGIN are the same server under a non-localhost name and under a
-// local.* name; each test maps both to 127.0.0.1 in its own browser.
+// local.* name; a suite that loads one maps its name to 127.0.0.1 in its own browser.
 export async function startServer({ port: wanted = 0 } = {}) {
   const server = http.createServer((req, res) => {
     const url = new URL(req.url, 'http://localhost');

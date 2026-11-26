@@ -9,12 +9,12 @@
 // whole context shares, Date fixed and timers running). The page's requests were sent minutes and
 // seconds before NOW, one after another, each taking a set time: their Date.now() is set back for
 // each, and their performance.now(), which Ghostfetch's interceptor reads as a request is sent and
-// as it ends (interception/fetch.ts, xhr.ts, log-entries.ts), steps by that time at each read. A
-// view opens with localStorage cleared, its theme and Appearance set before it draws, as
-// public/theme.js reads them; and the pointer is moved off whatever a click left it on. A flow
-// starts with the rules as stored and the clock at NOW again, and moves the clock itself
-// (moveClock()). The rest (animations, the caret, fonts) is toHaveScreenshot's, set in
-// playwright.config.mjs.
+// as it ends (fetch.ts, xhr.ts and log-entries.ts in src/bounded-contexts/interception/), steps by
+// that time at each read. A view opens with localStorage cleared, its theme and Appearance set
+// before it draws, as public/theme.js reads them; and the pointer is moved off whatever a click
+// left it on. A flow starts with the rules as stored and the clock at NOW again, and moves the
+// clock itself (moveClock()). The rest (animations, the caret, fonts) is toHaveScreenshot's, set
+// in playwright.config.mjs.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

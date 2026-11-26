@@ -275,8 +275,10 @@ function RuleLine({
   );
   const last = useTrafficValue(log, (traffic) => lastAnswered(traffic.entries, rule.id));
   const title = ruleTitle(rule);
-  const answering = rule.enabled && !groupOff && recording;
-  const quiet = answering && !did && !selected;
+  // On, in no group or a group that's on, while Recording: then the slot says what it did, and it
+  // steps back if that's nothing. Not Answering (docs/glossary/rules.md), which a pause ends.
+  const onWhileRecording = wouldAnswer(rule, !groupOff) && recording;
+  const quiet = onWhileRecording && !did && !selected;
   // Its name keeps 7 letters' room, or 60% of the line where that's less.
   const name = 'min-w-[min(7em,60%)] flex-1';
   return (
@@ -314,7 +316,7 @@ function RuleLine({
           <RuleActions rule={rule} live={live} tabbable={tabbable} onNear={onNear} />
         }
       >
-        {answering && did && (
+        {onWhileRecording && did && (
           <>
             <span
               data-testid="rule-signal"

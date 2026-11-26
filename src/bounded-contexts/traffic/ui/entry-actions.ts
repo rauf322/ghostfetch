@@ -1,8 +1,10 @@
 // What can be done with a request in the log, in one place: its row's slot (as icons), its
-// right-click menu (as items) and the open request (as buttons) say and do these, each in its own
-// way, so the three can't drift apart. Mock this response makes a rule of the response; Copy URL
-// and Copy as cURL copy the request, each saying it copied in its control (useCopied()); Open the
-// rule opens the rule that answered it, where one did. The open request also has Copy body.
+// right-click menu (as items) and the open request (as buttons) take these words, icons and
+// actions from here, each in its own way, so they can't drift apart. Mock this response makes a
+// rule of the response; Copy URL and Copy as cURL copy the request, each saying it copied in its
+// control (useCopied()); Open the rule, in the menu, opens the rule that answered it, where one
+// did. The open request also has Copy body, and no Open the rule: its Open is its own, a link by
+// the rule's name (request-detail/request-facts.tsx).
 import { ruleFromEntry } from '../../rules/index.ts';
 import type { Rule } from '../../rules/index.ts';
 import type { LogEntry } from '../index.ts';

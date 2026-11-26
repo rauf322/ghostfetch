@@ -14,7 +14,7 @@
 //
 // Undoing puts it back where it was, as the toast's Undo does, and gives focus to its row in the
 // list (a group's, its header), with its ring. The agent's deletes keep their own toasts
-// (agent-tools.ts): they aren't where the eye is.
+// (src/bounded-contexts/agent-access/application/agent-tools.ts): they aren't where the eye is.
 import { createStore } from '../../../lib/index.ts';
 import { modPressed, pressedLetter } from '../../../ui/kit/kbd.tsx';
 import { notify } from '../../../ui/kit/toast.tsx';

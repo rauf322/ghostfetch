@@ -60,12 +60,12 @@ function RuleState({ rule, log }: { rule: Rule; log: TrafficLog }) {
   const failures = useTrafficValue(log, (traffic) => times(traffic, rule.id, true));
   const page = useTrafficValue(log, (traffic) => traffic.target?.title ?? '');
   const group = groupOf(rule);
-  const live = isAnswering(rule, group?.enabled !== false, paused);
+  const answering = isAnswering(rule, group?.enabled !== false, paused);
   let words = 'Off';
   if (rule.enabled && paused) words = 'Paused while Ghostfetch is off';
   else if (rule.enabled && group?.enabled === false)
     words = `Paused while ${group.name} is off`;
-  else if (live) {
+  else if (answering) {
     words = rule.response.bodyMode === 'replace' ? 'Mocking' : 'Modifying';
     const fired = [hits && `fired ${hits}×`, failures && `failed ${failures}×`]
       .filter(Boolean)
@@ -77,12 +77,15 @@ function RuleState({ rule, log }: { rule: Rule; log: TrafficLog }) {
       data-testid="rule-state"
       className={cn(
         'inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-1 text-label font-medium',
-        live ? 'bg-signal-soft text-signal' : 'bg-card text-t50',
+        answering ? 'bg-signal-soft text-signal' : 'bg-card text-t50',
       )}
     >
       <span
         aria-hidden
-        className={cn('size-1.5 flex-none rounded-full', live ? 'bg-signal' : 'bg-t30')}
+        className={cn(
+          'size-1.5 flex-none rounded-full',
+          answering ? 'bg-signal' : 'bg-t30',
+        )}
       />
       <span className="truncate">{words}</span>
     </span>

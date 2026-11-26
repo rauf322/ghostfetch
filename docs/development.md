@@ -289,9 +289,9 @@ already. A description isn't a name, so a control that's only an icon keeps its 
 control that opens a menu of its own (`aria-haspopup`) shows no tooltip while the menu is open,
 nor as it closes and gives the control focus back, until the pointer or focus leaves the control
 and comes back (one watcher for the page, which `<TooltipProvider>` starts); one taken off the
-page meanwhile, as a ⋯ by its own Delete, is let go of as the pointer or focus next moves. The popup, the
-editor and the kit page each wrap their root in one `<TooltipProvider>`. Many controls of one
-kind, as each row's in a long list, share one tooltip rather than mount one each: one
+page meanwhile, as a ⋯ by its own Delete, is let go of as the pointer or focus next moves. The
+popup, the editor and the kit page each wrap their root in one `<TooltipProvider>`. Many controls of
+one kind, as each row's in a long list, share one tooltip rather than mount one each: one
 `<SharedTooltip>`, with a handle from `createTooltipHandle()`, and a `<TooltipTrigger>` around
 each control, with its own words; Base UI's detached triggers. A `title` is left only where it
 shows the whole of a text cut short (a long rule name, a request's URL), and on the body editor's
@@ -320,10 +320,10 @@ the second over; it stays pressable, so the keyboard keeps its focus. A copy the
 what to do. `useCopied()` is the same for a control of another shape.
 
 A list row has one slot at the end of its first line, after T3 Code's thread rows: `<ItemSlot>`
-(`item.tsx`), as the editor's rule rows and the popup's have it. At rest it says what the row has to say ("1
-mocked · 4m": a rule's count in green, how long ago in grey); under the pointer, with keyboard
-focus anywhere in the row, while a menu of its own is open (one of its actions opened, or its
-right-click menu, which marks the row `data-context-open`), and for the second one of its
+(`item.tsx`), as the editor's rule rows and the popup's have it. At rest it says what the row has to
+say ("1 mocked · 4m": a rule's count in green, how long ago in grey); under the pointer, with
+keyboard focus anywhere in the row, while a menu of its own is open (one of its actions opened, or
+its right-click menu, which marks the row `data-context-open`), and for the second one of its
 actions says it copied (`data-copied`, `useCopied()`), its actions (`<ItemAction>`, 24 px
 squares, each with an `aria-label` and a `<Tooltip>`) take the same place. `<ItemSlot stacked>`
 is a column of the row's own that says two short things, one over the other, as a request's
@@ -346,10 +346,11 @@ and Traffic's with their three (`traffic/ui/row-tools.ts`), so 300 requests do t
 
 A right-click menu is `<ContextMenu>` (`context-menu.tsx`): the menus' card at the pointer, over
 the elements of its `<ContextMenuTrigger>`, whose `onContextMenu` finds what was right-clicked
-from the event's target; its items are a menu's (`DropdownMenuItem` and the rest). The
-ContextMenu key and Shift+F10 open it for what has focus, at its bottom left (or at its part
-marked `data-menu-anchor`'s, as a group's header), on the key's release; it gives that focus back
-as it shuts. A right-click in a text field, or on text selected in the trigger, gets the
+from the event's target; its items are a menu's (`DropdownMenuItem` and the rest). The ContextMenu
+key and Shift+F10 open it for what has focus, at the bottom left of the row it's in
+(`data-slot="item"`, or of itself where it's in none), or of the row's part marked
+`data-menu-anchor` where it has one (a group's header), on the key's release; it gives that focus
+back as it shuts. A right-click in a text field, or on text selected in the trigger, gets the
 browser's own menu, and the ContextMenu key and Shift+F10 in a text field are the browser's too.
 
 ### Adding a UI component
@@ -546,9 +547,9 @@ putting a character together; none in a 420 px panel; Status's split row: its ch
 the common codes, the one the page gets checked, a pick setting it, both halves Tab stops, the
 line between them only under the pointer or with focus, and with Keep server's body the server's
 status kept or replaced; the Diff row over the body: its counts, green and grey, each only where
-there are some, none past the diff's limit, where Diff draws the one body replaced by the other,
-its toggle, no Diff button in the footer, the counts following typing once it pauses, the body
-still fitting a one-column pane under it, no row without a server's response or with Keep
+there are some, none past the diff's limit, nor over Diff, which draws the one body replaced by
+the other, its toggle, no Diff button in the footer, the counts following typing once it pauses,
+the body still fitting a one-column pane under it, no row without a server's response or with Keep
 server's body; and nothing past their edges at Commit Mono and Larger), the
 traffic view (its filters, Keep on reload, which stops at 500 requests however a page that asks
 for a lot as it starts reloads, Clear, an open request's Copy URL, Copy as cURL and Copy body,
@@ -567,14 +568,13 @@ answered, its copy said in the row, and the browser's elsewhere; and nothing pas
 in Commit Mono at Larger at 420 px), a request's Sent time, when it was sent and not when its
 response ended, an iframe's requests, which the background passes on to its tab's log (one a
 rule answers and one no rule does, made in an iframe on another host Ghostfetch runs on, both
-listed for the tab, and the one answered in the popup's counts for the tab, with when), and the page it
-watches: the one used last
-once its own closes or leaves the web, and, opened as the side panel has it, its tab's page from
-the moment that opens one, with a page picked by hand kept), the sidebar beside a rule and beside
-Traffic (hidden with the button and the key, its edge dragged to its narrowest, its widest, shut
-and open again, its keys, its one width after a reload, none in a narrow panel, its rules in
-their order with one turned off kept in its place and counted, "/" to its search field,
-Duplicate, a rule picked in it from Traffic, and what keeps
+listed for the tab, and the one answered in the popup's counts for the tab, with when), and the
+page it watches: the one used last once its own closes or leaves the web, and, opened as the side
+panel has it, its tab's page from the moment that opens one, with a page picked by hand kept), the
+sidebar beside a rule and beside Traffic (hidden with the button and the key, its edge dragged to
+its narrowest, its widest, shut and open again, its keys, its one width after a reload, none in a
+narrow panel, its rules in their order with one turned off kept in its place and counted, "/" to
+its search field, Duplicate, a rule picked in it from Traffic, and what keeps
 a drag beside a long body smooth: the body's text area holding its width until the edge is let
 go, a width only the list itself has, and coloured text laid out the same at any width; and what
 keeps typing in one quick: only the piece typed into redrawn, a new line only adding its number,
@@ -826,29 +826,29 @@ undone, and the ⋯ menu inside a 420 px window at Most, Commit Mono and Larger
 edge, none as a menu closes onto its control, and an off control saying why, Make the rule and
 the agent's Turn on (`flow-tooltips`); URLs cut in the middle wherever they show, and a wildcard
 pattern's end and a trailing slash's, in two rules that flow adds for itself (`flow-urls`); the
-rule list's slot, the rows that step back, its keys and its right-click menus (`flow-rules`); the popup's rules (`flow-popup`); Traffic's rows,
-its copy buttons saying "Copied" and back, rows passing their first minute, and a focused row
-keeping its focus as it does, an open menu its mark (`flow-traffic`); the open rule's crumbs,
-Status and Diff, and the group renamed in its crumb with the sidebar hidden (`flow-open-rule`);
-undo from the footer and with ⌘Z, the row put back with the ring a key gives it, to the pixel,
-and the notice's time waiting while the pointer is on it, focus is in it from the keyboard or
-the window is in the background (`flow-undo`); and the new parts in Rosé Pine Dawn and in a 420
-px window in Commit Mono at Larger (`flow-stress`). A flow is one test, and each state in it one `test.step`, which first
-checks the state as a user meets it (a role and name, where the focus is, what a list holds,
-what's stored) and then compares a picture of the part it's about, at 2x (`look()`), with its own
-in `baselines/darwin/<area>/`; a state that must come back exactly (the defaults picked again, the
-notice gone) is compared with the same picture as before. The flows have a browser of their own
-(`flowShop`), with the demo's data (six rules, two groups, the page's six requests) and two long
-URLs, drawn without the GPU, which drew a light theme's rounded edges a shade apart from one run to
-the next; each flow starts with the rules as stored and the clock at its time, and moves the clock
-itself (`moveClock()`: the shared clock's next tick, a notice's five seconds, "Copied"'s second) or
-holds it (`pauseClock()`) while a state that lasts a second is checked and pictured. Two things to
-know when writing one: a menu takes the focus a moment after it shows (`menuOpen()` waits for
-that), and a right-click that misses the app's menus, on a menu's backdrop or off a row, gets the
-browser's own, which headless Chromium closes on, so a flow right-clicks an element and waits for
-every menu to go first (`menuShut()`). In the report a flow reads as its steps, the one that failed
-marked, with its picture's difference; a state that can't be walked yet is a `test.fixme` test,
-skipped, whose comment names the finding it waits for.
+rule list's slot, the rows that step back, its keys and its right-click menus (`flow-rules`); the
+popup's rules (`flow-popup`); Traffic's rows, its copy buttons saying "Copied" and back, rows
+passing their first minute, and a focused row keeping its focus as it does, an open menu its mark
+(`flow-traffic`); the open rule's crumbs, Status and Diff, and the group renamed in its crumb with
+the sidebar hidden (`flow-open-rule`); undo from the footer and with ⌘Z, the row put back with the
+ring a key gives it, to the pixel, and the notice's time waiting while the pointer is on it, focus
+is in it from the keyboard or the window is in the background (`flow-undo`); and the new parts in
+Rosé Pine Dawn and in a 420 px window in Commit Mono at Larger (`flow-stress`). A flow is one test,
+and each state in it one `test.step`, which first checks the state as a user meets it (a role and
+name, where the focus is, what a list holds, what's stored) and then compares a picture of the part
+it's about, at 2x (`look()`), with its own in `baselines/darwin/<area>/`; a state that must come
+back exactly (the defaults picked again, the notice gone) is compared with the same picture as
+before. The flows have a browser of their own (`flowShop`), with the demo's data (six rules, two
+groups, the page's six requests) and two long URLs, drawn without the GPU, which drew a light
+theme's rounded edges a shade apart from one run to the next; each flow starts with the rules as
+stored and the clock at its time, and moves the clock itself (`moveClock()`: the shared clock's next
+tick, a notice's five seconds, "Copied"'s second) or holds it (`pauseClock()`) while a state that
+lasts a second is checked and pictured. Two things to know when writing one: a menu takes the focus
+a moment after it shows (`menuOpen()` waits for that), and a right-click that misses the app's
+menus, on a menu's backdrop or off a row, gets the browser's own, which headless Chromium closes on,
+so a flow right-clicks an element and waits for every menu to go first (`menuShut()`). In the report
+a flow reads as its steps, the one that failed marked, with its picture's difference; a state that
+can't be walked yet is a `test.fixme` test, skipped, whose comment names the finding it waits for.
 
 A failure leaves `test/visual/test-results/`, each failed view's picture as taken, as saved and
 their difference, and `test/visual/playwright-report/`, the same as a page: open it with
@@ -857,14 +857,15 @@ comparison has the difference marked in red, the two pictures side by side, and 
 them. A change meant to look different takes its new pictures in the same commit: run the suite,
 look at each failure in the report and see that it's the change and only the change, then
 `npm run test:visual -- --update-snapshots` (with `-g` and a view's title for just that one), and
-look at the new pictures in the commit's diff. The pictures are this Mac's: Playwright keeps them
-under the platform's name (`baselines/darwin/`), as fonts and drawing differ between systems and
-can between versions of one. On another platform the suite has no pictures and takes its own the
-first time (`--update-snapshots`, into `baselines/linux/` or `baselines/win32/`), to be looked at
-before they're committed; on another Mac, one with another macOS or display, it can fail on every
-view by a few pixels of text, and the way out is to look at the report and take that Mac's
-pictures, not to loosen the comparison. Either way it needs the Chromium `npm run browsers`
-installs (the one `playwright-core`'s version names), and the port, 47219, free.
+look at the new pictures in the commit's diff. The pictures were taken on macOS 27.0.1, on Apple
+silicon: Playwright keeps them under the platform's name (`baselines/darwin/`), as fonts and drawing
+differ between systems and can between versions of one. On another platform the suite has no
+pictures and takes its own the first time (`--update-snapshots`, into `baselines/linux/` or
+`baselines/win32/`), to be looked at before they're committed; on another Mac, one with another
+macOS or another display, it can fail on every view by a few pixels of text, and the way out is to
+look at the report and take that Mac's pictures (and name its macOS here), not to loosen the
+comparison. Either way it needs the Chromium `npm run browsers` installs (the one
+`playwright-core`'s version names), and the port, 47219, free.
 
 ```sh
 npm run test:firefox     # builds, then tests in Zen from /Applications; FIREFOX=/path/to/firefox for another build

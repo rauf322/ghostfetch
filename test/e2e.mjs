@@ -9658,7 +9658,7 @@ try {
   );
 
   await diffCheck(
-    "past the diff's limit (bodies more than 1,000 lines apart) the Diff row shows no counts, and says none to a screen reader, rather than every line as added and removed, while Diff itself still draws them; a body within it has its counts as before",
+    "past the diff's limit (bodies more than 1,000 lines apart) the Diff row shows no counts, and says none to a screen reader, rather than every line as added and removed; a body within it has its counts as before",
     async () => {
       const far = (letter) =>
         Array.from({ length: 1500 }, (_, line) => `${letter}${line}`).join('\n');
@@ -9690,11 +9690,61 @@ try {
         await row.waitFor({ timeout: 3000 });
         await sleep(1000);
         const farRow = await counts();
-        await row.click();
-        await diffView.waitFor({ timeout: 3000 });
         expect(
-          [near, farRow, await diffCounts()],
-          [[['+1', '−1'], ', 1 line added, 1 removed'], [[], ''], '+1500 −1500'],
+          [near, farRow],
+          [
+            [['+1', '−1'], ', 1 line added, 1 removed'],
+            [[], ''],
+          ],
+        );
+      } finally {
+        await restore();
+      }
+    },
+  );
+  await diffCheck(
+    "past the diff's limit Diff's own header shows no counts either, as its row doesn't, while Diff still draws the one body replaced by the other; a body within it has its counts there as before",
+    async () => {
+      const far = (letter) =>
+        Array.from({ length: 1500 }, (_, line) => `${letter}${line}`).join('\n');
+      const text = (id, name, content) =>
+        draftRule(id, name, `/api/never-called?${id}`, content, 'text/plain');
+      const restore = await addRules([
+        [text('d10', 'Diff near its server', 'a\nB\nc'), 'a\nb\nc'],
+        [text('d11', 'Diff far from its server', far('b')), far('a')],
+      ]);
+      try {
+        // Diff's header's counts, or none; and the first line Diff draws as removed, in either
+        // layout: what shows which rule's Diff it is.
+        const shown = () =>
+          app.evaluate(() => ({
+            counts: [
+              ...document.querySelectorAll('[data-testid="diff-counts"] > span'),
+            ].map((span) => span.textContent),
+            removed:
+              document.querySelector(
+                '[data-testid="diff-row"][data-kind="del"] [data-code]',
+              )?.textContent ?? null,
+          }));
+        await app
+          .locator('[data-testid="rule"]', { hasText: 'Diff near its server' })
+          .first()
+          .click();
+        await app.locator('[data-testid="diff-switch"]').click();
+        await diffView.waitFor({ timeout: 3000 });
+        const near = await rowSettled(shown, ({ removed }) => removed === 'b');
+        // Diff stays on from one rule to the next, so the far one's opens in it.
+        await app
+          .locator('[data-testid="rule"]', { hasText: 'Diff far from its server' })
+          .first()
+          .click();
+        const farDiff = await rowSettled(shown, ({ removed }) => removed === 'a0');
+        expect(
+          [near, farDiff],
+          [
+            { counts: ['+1', '−1'], removed: 'b' },
+            { counts: [], removed: 'a0' },
+          ],
         );
       } finally {
         await restore();

@@ -39,7 +39,9 @@ import type { RuleMenuFrom } from './rule-menu.tsx';
 
 const CRUMB =
   'inline-flex h-7 min-w-0 items-center rounded-md text-control outline-offset-[-2px] hover:bg-hover data-popup-open:bg-hover';
-// The chevron that shows on a crumb in use, its group named in `group`.
+// What shows a crumb's chevron while the crumb is in use (under the pointer, with focus, its menu
+// open), by the Tailwind group the crumb is marked with: group/crumb on the group's crumb,
+// group/name on the name's.
 const SHOWS = {
   crumb:
     'group-hover/crumb:opacity-100 group-focus-visible/crumb:opacity-100 group-data-popup-open/crumb:opacity-100',

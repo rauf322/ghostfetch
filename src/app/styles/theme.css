@@ -41,12 +41,12 @@
   /* the text, fainter by steps, for what's quieter: --t80 buttons, menu rows and code; --t65 a
      rule's URL, values and the focus ring; --t50 muted text (tabs not picked, a row's second
      line); --t40 labels, section headings, hints and a rule's summary; --t30 placeholders,
-     counts and the dot of a rule that's off. Those five are text, and every theme holds them to
-     a floor on the page (--bg) and on a card (--panel) alike: --t40 at 4.5:1 or more, --t30 at
-     3:1 or more, and each level at least 1.15 times the contrast of the one below it, so they
-     stay apart. --t20, the faintest (a field's border under the pointer, the body editor's line
-     numbers), has no floor. These are each level's base, as Standard contrast has it; the
-     levels the components use are made from them below. */
+     counts and the dot of a rule that's off. Those five are mostly text (a few borders use them
+     too), and every theme holds them to a floor on the page (--bg) and on a card (--panel)
+     alike: --t40 at 4.5:1 or more, --t30 at 3:1 or more, and each level at least 1.15 times the
+     contrast of the one below it, so they stay apart. --t20, the faintest (a field's border under
+     the pointer, the body editor's line numbers), has no floor. These are each level's base, as
+     Standard contrast has it; the levels the components use are made from them below. */
   --t80-base: rgba(255, 255, 255, 0.8);
   --t65-base: rgba(255, 255, 255, 0.65);
   --t50-base: rgba(255, 255, 255, 0.52);

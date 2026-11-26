@@ -1,6 +1,6 @@
 // A copy that says it worked in the control that did it, not in a toast across the window: for a
-// second the icon is a green check and the words say "Copied", and a screen reader is told once
-// ("Copied the URL"). Traffic's Copy URL, Copy as cURL and Copy body.
+// second the icon is a check in the signal's colour and the words say "Copied", and a screen
+// reader is told once ("Copied the URL"). Traffic's Copy URL, Copy as cURL and Copy body.
 //
 // - Pressing it again while it says "Copied" copies again and starts the second over. It stays
 //   pressable throughout, rather than off for that second (as T3 Code's are), which would take

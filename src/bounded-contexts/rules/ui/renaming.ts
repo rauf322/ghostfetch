@@ -23,9 +23,22 @@ export function setListSearch(next: { query: string; clear: () => void }) {
   search = next;
 }
 
-// A group's name to type in the list, where it'll be seen: a copy's (Duplicate) or a new group's
-// (Move to group → New group…), from the list's menus or from the open rule's crumbs. The sidebar
-// shows if ⌘B hid it, and a search that would keep the group out of the list is cleared.
+// What shows the rule list where the open rule has taken its place, in a narrow panel: the rule
+// closed, as its back button does (app/sidepanel/editor.tsx).
+let showList = () => {};
+export function setShowList(show: () => void) {
+  showList = show;
+}
+
+// The rule list's tree, as drawn (rule-list.tsx).
+const TREE = '[role="tree"][data-entries]';
+
+// A group's name to type in the list, where it'll be seen: a new one's (the list's New group, a
+// rule's Move to group → New group…) or a copy's (Duplicate), from the list, its menus, or the open
+// rule's. The sidebar shows if ⌘B hid it; a search that would keep the group out of the list is
+// cleared; and in a narrow panel, where the open rule has the list's place, the list comes back,
+// the name a field a frame on: the menu that asked for it goes with the rule, and gives the focus
+// back to what had it before as it goes, which would take it from the field.
 export function nameInList(id: string) {
   showSidebar();
   const { query } = search;
@@ -36,7 +49,12 @@ export function nameInList(id: string) {
     )
   )
     search.clear();
-  setRenaming(id);
+  if (document.querySelector<HTMLElement>(TREE)?.checkVisibility()) {
+    setRenaming(id);
+    return;
+  }
+  showList();
+  requestAnimationFrame(() => setRenaming(id));
 }
 
 // Gives a group the name typed for it, in the list or in a crumb. Names are each group's own

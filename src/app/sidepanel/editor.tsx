@@ -9,7 +9,7 @@
 // is on, it does what a coding agent's tools ask (bounded-contexts/agent-access/).
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAgentAccess } from '../../bounded-contexts/agent-access/ui/index.ts';
-import { RulesPage } from '../../bounded-contexts/rules/ui/index.ts';
+import { RulesPage, setShowList } from '../../bounded-contexts/rules/ui/index.ts';
 import { TrafficPage, useTrafficLog } from '../../bounded-contexts/traffic/ui/index.ts';
 import {
   addRule,
@@ -151,6 +151,10 @@ export function Editor({ inTab, windowId }: { inTab: boolean; windowId: number }
 
   // "Open this rule" from the popup.
   useEffect(() => watchRuleRequests(openRule), [openRule]);
+
+  // A group's name to type in the list, asked for from the open rule in a narrow panel, where the
+  // rule has the list's place: the rule closed, as its back button does (renaming.ts).
+  useEffect(() => setShowList(() => select(null)), [select]);
 
   // A rule with no server's response to compare its body with gets one from the log: the newest
   // request it matches that no rule answered. As requests arrive, and a moment after the rules

@@ -5,7 +5,7 @@
 // defaults picked again, which bring back exactly the first pictures (the same baselines). Each step
 // is one state, checked as a user meets it, then pictured at 2x, the menus or the whole window
 // (baselines/<platform>/appearance/).
-import { expect, look, menuOpen, test } from './extension.mjs';
+import { NARROW, expect, look, menuOpen, test } from './extension.mjs';
 
 const shot = (name) => ['appearance', `${name}.png`];
 const PICKS = [
@@ -36,9 +36,10 @@ const stored = (page) =>
     ),
   );
 
-// Opens the footer's ⋯ and its Appearance, which stays open beside it.
-async function openAppearance(page) {
-  await page.getByTestId('sidebar-menu').click();
+// Opens a ⋯ menu (the footer's, or in a narrow window the top bar's) and its Appearance, which
+// stays open beside it.
+async function openAppearance(page, menu = 'sidebar-menu') {
+  await page.getByTestId(menu).click();
   await menuOpen(page);
   await page.getByTestId('appearance-menu').click();
   const sub = page.getByRole('menu').last();
@@ -50,6 +51,12 @@ const menus = (page) => [
   page.getByTestId('appearance-menu'),
   page.getByRole('menu').last(),
 ];
+// Appearance's detail, drawn whole: no part of it cut short (6b.7).
+const detailWhole = (page) =>
+  page
+    .getByTestId('appearance-menu')
+    .locator('[data-slot="dropdown-menu-detail"]')
+    .evaluate((detail) => detail.scrollWidth <= detail.clientWidth);
 
 test('Appearance: picked from the ⋯ menu, kept through a reload and in the popup, and undone', async ({
   flowEditor,
@@ -94,6 +101,7 @@ test('Appearance: picked from the ⋯ menu, kept through a reload and in the pop
       const changed = { contrast: 'grey', font: 'font', size: 'size' }[setting];
       expect(now[changed]).not.toBe(was[changed]);
       await expect(page.getByTestId('appearance-menu')).toContainText(detail);
+      expect(await detailWhole(page)).toBe(true);
       await page.getByTestId('appearance-menu').hover();
       await look(page, menus(page), shot(`menu-${setting}-${step}`));
     });
@@ -121,6 +129,36 @@ test('Appearance: picked from the ⋯ menu, kept through a reload and in the pop
     await expect
       .poll(() => popup.evaluate(() => window.firstFrame))
       .toMatchObject({ contrast: 'more', font: 'mono', size: 'larger' });
+    // The site line keeps the host's port, the host cut in its middle; each view tab its label on
+    // one line, its count giving way first (6b.6).
+    const host = popup.getByTestId('site-line').locator('[data-slot="middle-truncate"]');
+    await expect(host).toHaveAttribute('data-full', '127.0.0.1:47219');
+    await expect(host.locator('[data-part="tail"]')).toHaveText(/:47219$/);
+    // The port drawn inside the tail's box, whatever of the tail's start gives way.
+    expect(
+      await host.locator('[data-part="tail"]').evaluate((tail) => {
+        const text = tail.firstChild.firstChild;
+        const range = document.createRange();
+        range.setStart(text, text.length - ':47219'.length);
+        range.setEnd(text, text.length);
+        const port = range.getBoundingClientRect();
+        const box = tail.getBoundingClientRect();
+        return port.left >= box.left - 0.5 && port.right <= box.right + 0.5;
+      }),
+    ).toBe(true);
+    const lines = await popup
+      .locator('[data-slot="segmented-item"]')
+      .evaluateAll((tabs) =>
+        tabs.map((tab) => {
+          const range = document.createRange();
+          range.selectNodeContents(tab.querySelector('[data-part="label"]'));
+          return [
+            tab.textContent,
+            new Set([...range.getClientRects()].map((rect) => rect.top)).size,
+          ];
+        }),
+      );
+    expect(lines.map(([, count]) => count)).toEqual([1, 1, 1]);
     await look(popup, null, shot('popup-picked'));
     await popup.close();
   });
@@ -149,5 +187,41 @@ test('Appearance: picked from the ⋯ menu, kept through a reload and in the pop
     await expect(page.getByRole('menu')).toHaveCount(0);
     await page.mouse.move(0, 0);
     await look(page, null, shot('editor-default'));
+  });
+});
+
+// In a side panel 420 px wide, at Most, Commit Mono and Larger, the editor's ⋯ menu (the top
+// bar's, there) and its Appearance stay inside the window, the detail as whole as the room lets
+// it be (6b.7).
+test('Appearance: at Most, Commit Mono and Larger, the ⋯ menu stays inside a 420 px window', async ({
+  flowEditor,
+}) => {
+  const page = await flowEditor({ size: NARROW });
+
+  await test.step('Most, Commit Mono and Larger picked: both menus inside the window', async () => {
+    const sub = await openAppearance(page, 'editor-menu');
+    for (const [setting, step] of [
+      ['contrast', 'most'],
+      ['font', 'mono'],
+      ['size', 'larger'],
+    ])
+      await sub.getByTestId(`${setting}-${step}`).click();
+    await expect(page.getByTestId('appearance-menu')).toContainText(
+      'Most, Commit Mono, Larger',
+    );
+    const width = page.viewportSize().width;
+    const boxes = await page.getByRole('menu').evaluateAll((all) =>
+      all.map((menu) => {
+        const { left, right } = menu.getBoundingClientRect();
+        return [Math.round(left), Math.round(right)];
+      }),
+    );
+    expect(boxes).toHaveLength(2);
+    for (const [left, right] of boxes) {
+      expect(left).toBeGreaterThanOrEqual(0);
+      expect(right).toBeLessThanOrEqual(width);
+    }
+    await page.getByTestId('appearance-menu').hover();
+    await look(page, null, shot('menus-420-most-mono-larger'));
   });
 });

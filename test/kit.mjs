@@ -1354,7 +1354,7 @@ async function runChecks(browser, open) {
   );
 
   await check(
-    `${browser}: URL cut in the middle: in a narrow box a long one keeps its end whole after its head's ellipsis; a short one is whole; one shorter than an end has no head; in less room than its end, the end gives way at its start, its last characters in sight inside its box; each copies as the text it is, in one piece; a screen reader names it once, whole`,
+    `${browser}: URL cut in the middle: in a narrow box a long one keeps its end whole after its head's ellipsis; a short one is whole; one shorter than an end has no head; in less room than its end, the head keeps room for its ellipsis and the end gives way at its start, with no ellipsis of its own, its last characters in sight inside its box; each copies as the text it is, in one piece; a screen reader names it once, whole`,
     async () => {
       const boxes = await kit.run(() =>
         Object.fromEntries(
@@ -1363,6 +1363,17 @@ async function runChecks(browser, open) {
             const head = element.querySelector('[data-part=head]');
             const tail = element.querySelector('[data-part=tail]');
             const cut = (part) => part.scrollWidth > part.clientWidth;
+            // Whether a head is as wide as an ellipsis in its own font, at least.
+            const roomy = (part) => {
+              const probe = document.createElement('span');
+              probe.textContent = '…';
+              probe.style.font = getComputedStyle(part).font;
+              probe.style.position = 'absolute';
+              document.body.append(probe);
+              const ellipsis = probe.getBoundingClientRect().width;
+              probe.remove();
+              return part.getBoundingClientRect().width >= ellipsis - 0.5;
+            };
             const box = element.parentElement;
             const inside =
               box.getBoundingClientRect().right -
@@ -1380,8 +1391,8 @@ async function runChecks(browser, open) {
             return [
               name,
               [
-                head && [cut(head), getComputedStyle(head).textOverflow],
-                [tail.textContent, cut(tail)],
+                head && [cut(head), getComputedStyle(head).textOverflow, roomy(head)],
+                [tail.textContent, cut(tail), getComputedStyle(tail).textOverflow],
                 [
                   drawn(text.length - 1).right <= edges.right + 0.5,
                   drawn(0).left < edges.left - 0.5,
@@ -1409,10 +1420,25 @@ async function runChecks(browser, open) {
         [boxes, copied, await kit.name('[data-testid=kit-middle-button]')],
         [
           {
-            long: [[true, 'ellipsis'], ['created_at', false], [true, false], true],
-            short: [[false, 'ellipsis'], ['/search?q=inv', false], [true, false], true],
-            bare: [null, ['/graphql', false], [true, false], true],
-            tight: [[true, 'ellipsis'], ['created_at', true], [true, true], true],
+            long: [
+              [true, 'ellipsis', true],
+              ['created_at', false, 'clip'],
+              [true, false],
+              true,
+            ],
+            short: [
+              [false, 'ellipsis', true],
+              ['/search?q=inv', false, 'clip'],
+              [true, false],
+              true,
+            ],
+            bare: [null, ['/graphql', false, 'ellipsis'], [true, false], true],
+            tight: [
+              [true, 'ellipsis', true],
+              ['created_at', true, 'clip'],
+              [true, true],
+              true,
+            ],
           },
           [
             '/api/search?q=invoices&page=2&sort=-created_at',

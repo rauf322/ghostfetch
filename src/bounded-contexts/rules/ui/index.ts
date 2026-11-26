@@ -11,4 +11,4 @@ export { RuleList } from './rule-list.tsx';
 export { RulesPage } from './rules-page.tsx';
 export { UndoNotice } from './undo-notice.tsx';
 export { listenForUndoKey } from './undo-delete.ts';
-export { setListSearch } from './renaming.ts';
+export { setListSearch, setShowList } from './renaming.ts';

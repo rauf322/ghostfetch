@@ -21,4 +21,5 @@ export { slug } from './slug.ts';
 export { splitUrl } from './split-url.ts';
 export { statusLabel, statusName } from './status-names.ts';
 export { timeAgo } from './time-ago.ts';
+export { tailStart } from './url-end.ts';
 export type { Untrusted } from './untrusted.ts';

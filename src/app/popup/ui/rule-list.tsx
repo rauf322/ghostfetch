@@ -21,11 +21,14 @@
 // and End to the first and the last; → unfolds a group or opens the fold, or goes to its first
 // rule, ← folds it, or goes from a rule to its group or the fold; Space turns a rule or a group on
 // or off, as its dot does, and opens or shuts the fold; Enter opens a rule in the editor, as a
-// click does, and folds a group or opens the fold. Tab goes on from a rule to its Edit this rule,
-// then out of the list. A right-click on a rule's row, or the ContextMenu key or Shift+F10 on it,
-// opens its menu: Edit this rule, and Turn off (or on). Only opening the editor takes focus from
-// the popup, which closes it: a menu's Esc shuts the menu and not the popup (Base UI takes the
-// key), and a rule that moves as it answers takes focus with it rather than dropping it.
+// click does, and folds a group or opens the fold. Held down, Space and Enter act once. A rule's
+// item and a group's are checked while their switch is on (aria-checked), so a screen reader says
+// so as Space turns it, the item staying the one with focus. Tab goes on from a rule to its Edit
+// this rule, then out of the list. A right-click on a rule's row, or the ContextMenu key or
+// Shift+F10 on it, opens its menu: Edit this rule, and Turn off (or on). Only opening the editor
+// takes focus from the popup, which closes it: a menu's Esc shuts the menu and not the popup (Base
+// UI takes the key), and a rule that moves as it answers takes focus with it rather than dropping
+// it, while focus is in the list: once it's left, a redraw leaves it where it went.
 import { useId, useLayoutEffect, useRef, useState } from 'react';
 import type {
   ComponentProps,
@@ -59,7 +62,7 @@ import {
 } from '../../../ui/kit/context-menu.tsx';
 import { DropdownMenuItem } from '../../../ui/kit/dropdown-menu.tsx';
 import { Icon } from '../../../ui/kit/icon.tsx';
-import { SharedTooltip, Tooltip } from '../../../ui/kit/tooltip.tsx';
+import { SharedTooltip } from '../../../ui/kit/tooltip.tsx';
 import { RuleRow } from './rule-row.tsx';
 import { RowToolsContext, createRowTools } from './row-tools.ts';
 
@@ -234,11 +237,14 @@ export function RuleList({
         if (expanded === 'true') fold(item, true);
         else to = item.parentElement?.closest<HTMLElement>(ITEM);
         break;
+      // Once, held down: each repeat would turn the rule or group again, or fold it again.
       case 'Enter':
+        if (event.repeat) break;
         if (kind === RULE) openRuleInEditor(id, windowId);
         else if (expanded) fold(item, expanded === 'true');
         break;
       case ' ':
+        if (event.repeat) break;
         if (kind === RULE) turnRule(id);
         else if (kind === GROUP) {
           const entry = entries.find(
@@ -281,8 +287,12 @@ export function RuleList({
     setFocused(item.dataset.item);
   }
 
+  // Focus gone from the list (a click elsewhere): nothing to follow there any more. An item drawn
+  // again elsewhere, focus in it, says nothing of its going (React passes no handler the blur of an
+  // element it's taking away), so it's still followed.
   function onBlur(event: FocusEvent<HTMLElement>) {
     if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
+    held.current = null;
     if (focused) setLastFocused(focused);
     setFocused(null);
   }
@@ -429,8 +439,10 @@ export function RuleList({
 }
 
 // A group's item in the tree, as its row: its dot (where a rule's is), its name, and how many of its
-// rules are on; under it, unless it's folded, its rules. A click on the row folds it or unfolds it.
-// Saved at once, as the popup can close at any moment.
+// rules are on; under it, unless it's folded, its rules. A click on the row folds it or unfolds it,
+// as its chevron shows: no tooltip says so, which would say no more to a screen reader than the
+// item does (its name, and expanded or not), nor open as the keys reach the item. Saved at once,
+// as the popup can close at any moment.
 function GroupItem({
   group,
   rules,
@@ -460,6 +472,7 @@ function GroupItem({
       aria-posinset={position}
       aria-setsize={count}
       aria-expanded={rules.length ? !folded : undefined}
+      aria-checked={group.enabled}
       aria-labelledby={`${ids}name`}
       aria-describedby={`${ids}count`}
       tabIndex={tabbable ? 0 : -1}
@@ -474,24 +487,22 @@ function GroupItem({
         )}
       >
         <GroupSwitch group={group} tabIndex={-1} className="-my-0.5 -ml-[9px]" />
-        <Tooltip label={folded ? `Unfold ${group.name}` : `Fold ${group.name}`}>
-          <span
-            data-testid="popup-group-name"
-            className={cn(
-              'flex min-w-0 items-center gap-1 text-title font-semibold',
-              group.enabled ? 'text-foreground' : 'text-t40',
-            )}
-          >
-            <span id={`${ids}name`} className="truncate">
-              {group.name}
-            </span>
-            <Icon
-              name={folded ? 'forward' : 'down'}
-              size={13}
-              className="flex-none text-t40"
-            />
+        <span
+          data-testid="popup-group-name"
+          className={cn(
+            'flex min-w-0 items-center gap-1 text-title font-semibold',
+            group.enabled ? 'text-foreground' : 'text-t40',
+          )}
+        >
+          <span id={`${ids}name`} className="truncate">
+            {group.name}
           </span>
-        </Tooltip>
+          <Icon
+            name={folded ? 'forward' : 'down'}
+            size={13}
+            className="flex-none text-t40"
+          />
+        </span>
         <span
           id={`${ids}count`}
           className="ml-auto flex-none pl-2 text-label text-t40 tabular-nums"

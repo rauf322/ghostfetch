@@ -1,7 +1,8 @@
 // URLs cut in the middle (MiddleTruncate), in boxes as narrow as a side panel's rows and
 // narrower: a long one keeps its end after the ellipsis; a short one is whole; one shorter than an
-// end is all end, with no head; in less room than its end, the end gives way too and nothing
-// leaves the box; and a button holding a GraphQL rule's URL, which a screen reader names with it
+// end is all end, with no head; in less room than its end, the head keeps its ellipsis, the end
+// gives way at its start and nothing leaves the box; and a button holding a GraphQL rule's URL,
+// which a screen reader names with it
 // whole. Select one and copy it: the text as it is, in one piece.
 import { MiddleTruncate } from '../../../../ui/kit/middle-truncate.tsx';
 import { Cell, Row } from '../cell.tsx';

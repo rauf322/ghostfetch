@@ -82,9 +82,8 @@ export function AppearanceMenu() {
     <DropdownMenuSub>
       <DropdownMenuSubTrigger data-testid="appearance-menu">
         <Icon name="type" /> Appearance
-        <DropdownMenuDetail className="max-w-40">
-          {changed.join(', ') || 'Default'}
-        </DropdownMenuDetail>
+        {/* Whole: the menu grows for it (dropdown-menu.tsx), within the window. */}
+        <DropdownMenuDetail>{changed.join(', ') || 'Default'}</DropdownMenuDetail>
       </DropdownMenuSubTrigger>
       <DropdownMenuSubContent>
         {SETTINGS.map((setting, index) => (

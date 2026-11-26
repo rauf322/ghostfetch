@@ -217,7 +217,7 @@ src/ui/                          the components that know nothing of rules, site
   use-store.ts                   useStore(), which redraws a screen when a store changes
   use-now.ts                     the screens' clock: the time now, every 15 s, on one timer for every component that reads it (Traffic's groups by time, a rule row's "4m"), and a value worked out from it that redraws only when it changes
   cn.ts                          cn(), which joins the kit's class names
-src/lib/                         small libraries, a file each (index.ts): JSON, HTML, URLs, durations, how long ago in a
+src/lib/                         small libraries, a file each (index.ts): JSON, HTML, URLs (and where one cut in its middle keeps its end, url-end.ts), durations, how long ago in a
                                  few letters ("4m", time-ago.ts), status names, cURL commands, icons, file names, a
                                  download, the stores' base, a clock to share (clock.ts), untrusted data, a line diff,
                                  the shape of the clipboard the body editor's vim keys read, and a random id that a page
@@ -238,6 +238,7 @@ test/matching.mjs                which URLs a rule's pattern matches, that the r
 test/order.mjs                   the order without a browser: every operation on it (rules and groups put, moved, deleted and put back, a group renamed), and that no two groups come to share a name
 test/curl.mjs                    cURL commands both ways: Copy as cURL (nothing the page sent breaks out of its quotes), New rule's reading of one
 test/time.mjs                    short times ("now", "4m", "2h", "3d") and the screens' clock, one timer however many listen
+test/url-end.mjs                 where a URL cut in its middle keeps its end: "/42/" of "/api/invoices/42/", "/invoices/*", "return_to=/", an emoji whole
 test/e2e.mjs                     end-to-end test in Chromium (Playwright)
 test/firefox.mjs                 end-to-end test in Zen or Firefox (puppeteer-core)
 test/agent.mjs                   Agent access end to end in Chromium: which hosts are dev hosts, then ghostfetch-mcp started as an agent starts it, and the editor paired with it
@@ -287,7 +288,8 @@ after any description the control has of its own; not where its words are the co
 already. A description isn't a name, so a control that's only an icon keeps its `aria-label`. A
 control that opens a menu of its own (`aria-haspopup`) shows no tooltip while the menu is open,
 nor as it closes and gives the control focus back, until the pointer or focus leaves the control
-and comes back (one watcher for the page, which `<TooltipProvider>` starts). The popup, the
+and comes back (one watcher for the page, which `<TooltipProvider>` starts); one taken off the
+page meanwhile, as a ⋯ by its own Delete, is let go of as the pointer or focus next moves. The popup, the
 editor and the kit page each wrap their root in one `<TooltipProvider>`. Many controls of one
 kind, as each row's in a long list, share one tooltip rather than mount one each: one
 `<SharedTooltip>`, with a handle from `createTooltipHandle()`, and a `<TooltipTrigger>` around
@@ -297,10 +299,13 @@ find bar, which is plain DOM.
 
 A URL with no room is cut in its middle with `<MiddleTruncate>` (`middle-truncate.tsx`), as the
 rule rows, the popup's rows, Traffic's rows and open request and New rule's recent requests do,
-since its end is what tells two apart: `/api/search?q=inv…oices&page=2`. It's CSS only, with no
-measuring: a head that gives way with the ellipsis, and a tail that doesn't (the last path
-segment, if it's 16 characters or fewer, or else the last 10, moved back to after a break). In
-less room than that end, the end gives way at its start, so its last characters still show. Its
+since its end is what tells two apart: `/api/sea…invoices&page=2`. It's CSS only, with no
+measuring: a head that gives way with the ellipsis, and a tail that doesn't (`tailStart()`,
+`src/lib/url-end.ts`: the last segment of the path with a letter or a digit in it, with what
+follows it, `/42/` or `/invoices/*`, if that's 16 characters or fewer, or else the last 10, moved
+back to after a break; never between an emoji's two halves). The head keeps room for its ellipsis
+however narrow the row, so a cut always shows; in less room than that and the end, the end gives
+way at its start, a whole character at a time, so its last characters still show. Its
 `data-full` holds the whole text; `isCut()` says whether either part is cut, for a tooltip only
 when something is. Selected and copied, it's the whole text in one piece, and a screen reader
 reads it once. The ellipsis comes after the last whole character that fits, so a cut can leave a
@@ -407,7 +412,8 @@ of bodies its lines make up both texts again, in order, and the lines it keeps a
 more it keeps as many as the two have in common (the longest common run of lines, worked out the
 slow way), so it removes and adds no more than it has to; a change's removed lines come before its
 added ones; the body the design shows comes out +6 −5; bodies too far apart to search come out
-removed and added whole, and still make up both texts; and long bodies take under 300 ms. And the
+removed and added whole, and still make up both texts, and it says it gave up there (every 14th
+of 15,000 lines changed) and not within its limit (500); and long bodies take under 300 ms. And the
 parts it marks in a changed line (`diffWords`): the value changed, a comma added, nothing in lines
 that share only blanks, and on 5,000 random pairs of lines, what it leaves unmarked in each is the
 same text. `npm test` runs it after `test/json.mjs`.
@@ -475,6 +481,12 @@ listeners, each told at every tick, stopped with the last of them gone and start
 next; and what it says between two ticks (the same), at a tick, and once it has been stopped a
 while (the time now). It needs no browser, and `npm test` runs it after `test/curl.mjs`.
 
+`test/url-end.mjs` checks where a URL cut in its middle keeps its end (`tailStart`,
+`src/lib/url-end.ts`): the last segment of its path with a letter or a digit in it, so a trailing
+slash keeps `/42/` of `/api/invoices/42/` and a wildcard keeps `/invoices/*`, not `/` or `/*`; a
+slash in the query string never chooses it (`return_to=/`); an emoji is never split; and otherwise
+the end is what it was. It needs no browser, and `npm test` runs it after `test/time.mjs`.
+
 `test/e2e.mjs` loads the built extension into Chromium, runs a local API and checks the rules
 against fetch and XHR (that rules saved by older versions do what they should; that a rule stored
 by hand whose name is a number, and one whose headers are an object, answer fetch and XHR as the
@@ -530,16 +542,18 @@ with the focus, and Move to group → New group… clearing a search that would 
 "Rules", a rule in no group's, with New rule in no group; the name's menu the ⋯'s, opened under
 itself, its Move to group working; a double-click or F2 renaming the rule in place, Enter giving
 the name, Esc keeping it, focus back on the crumb, Enter and Esc an input method's while it's
-putting a character together; none in a 420 px panel; Status's split row: its chevron's menu of the common codes, the one the
-page gets checked, a pick setting it, both halves Tab stops, the line between them only under
-the pointer or with focus, and with Keep server's body the server's status kept or replaced; the
-Diff row over the body: its counts, green and grey, each only where there are some, its toggle,
-no Diff button in the footer, the counts following typing once it pauses, the body still fitting
-a one-column pane under it, no row without a server's response or with Keep server's body; and
-nothing past their edges at Commit Mono and Larger), the
+putting a character together; none in a 420 px panel; Status's split row: its chevron's menu of
+the common codes, the one the page gets checked, a pick setting it, both halves Tab stops, the
+line between them only under the pointer or with focus, and with Keep server's body the server's
+status kept or replaced; the Diff row over the body: its counts, green and grey, each only where
+there are some, none past the diff's limit, where Diff draws the one body replaced by the other,
+its toggle, no Diff button in the footer, the counts following typing once it pauses, the body
+still fitting a one-column pane under it, no row without a server's response or with Keep
+server's body; and nothing past their edges at Commit Mono and Larger), the
 traffic view (its filters, Keep on reload, which stops at 500 requests however a page that asks
 for a lot as it starts reloads, Clear, an open request's Copy URL, Copy as cURL and Copy body,
-each saying "Copied" in itself with no toast, and an error toast for a copy the browser refuses,
+each saying "Copied" in itself with no toast, and only in the request it was copied from, and an
+error toast for a copy the browser refuses,
 a request's row: how long ago it was sent from its first minute on ("· 4m", none under "Just
 now"), that time moving on with the clock and drawing nothing else of the row, its slot's Mock
 this response, Copy URL and Copy as cURL under the pointer with nothing moving, a copy's check
@@ -589,7 +603,11 @@ leaving the focus on the list's Tab stop), its right-click menu (a rule's and a 
 pointer at the pointer, by the ContextMenu key and Shift+F10 at the item's bottom left, the same
 items as their ⋯ menus, each item working, and the rename field and selected text keeping the
 browser's own menu, the keys too), a menu shutting when what it's for is deleted elsewhere (a
-row's ⋯ and right-click menus, a group's), a long URL cut in its middle,
+row's ⋯ and right-click menus, a group's), the list's own New group clearing a search that would
+hide it, and in a narrow panel the open rule's Move to group → New group… bringing the list back
+in the rule's place, the new name a field there with the focus, the ⋯ that a rule's own Delete
+takes off the page let go of (none held once the garbage is collected, CDP's
+`Runtime.queryObjects`), a long URL cut in its middle,
 its end in sight inside the row, a row's tooltip only for a name or URL it cuts short, a theme
 picked
 in the `⋯` menu (the editor and the open popup
@@ -609,12 +627,18 @@ the side panel, stood in for, in the user's click or key, and the dot opening no
 a tree that's one Tab stop, Tab going on to the row's Edit this rule and out, its items' levels
 and places, and a row named by its rule and described by what it did; ↑ ↓ Home End, the fold
 opened and shut by → ←, Enter and Space, Space turning a rule off and on in its place, and a
-group in All rules folded, unfolded and turned by the keys; a rule's right-click menu, Edit this
+group in All rules folded, unfolded and turned by the keys, Space and Enter acting once however
+long they're held; a rule's item and a group's checked while their switch is on, as Chromium
+tells a screen reader (a rule on in a group that's off saying so too), Space changing it on the
+item that has focus, not one made anew; a group's row with no tooltip of its own; a rule's
+right-click menu, Edit this
 rule and Turn off or on, by the pointer, the ContextMenu key and Shift+F10, Esc shutting it and
 not the popup, and a group's row and the fold keeping the browser's; the step back in All rules,
 in a group too, none in the fold or while not recording; focus following a rule that answers
-up out of the fold, the popup's window keeping focus; and nothing past a row's edge in Commit
-Mono at Larger, a slot's time giving way first),
+up out of the fold, the popup's window keeping focus, but not once a click has taken it out of
+the list; the site line keeping the host's port and each tab its words on one line at Commit Mono
+and Larger; and nothing past a row's edge in Commit Mono at Larger, a slot's time giving way
+first),
 the sites you added with Remove, its Pause, Resume and Recording clicked as a user does (paused:
 Resume offered, the badge's grey "off", the editor's bar saying Ghostfetch is off, an answering
 rule's chip saying it's paused and its dots still, the page getting the server's response, and
@@ -746,7 +770,8 @@ control's name; and the ⋯ menu, shut with Esc after the keyboard or a click op
 button focus back with no tooltip, which shows again once focus or the pointer leaves and comes
 back. And a URL cut in the middle: in a narrow box a long one keeps its end whole after its
 head's ellipsis, a short one is whole, one shorter than an end has no head, and in less room than
-its end the end gives way inside its box; each, selected and copied with the keyboard, is on the
+its end the head keeps room for its ellipsis and the end gives way at its start, with no
+ellipsis of its own, inside its box; each, selected and copied with the keyboard, is on the
 clipboard as the text it is, in one piece; and a screen reader names it once, whole. And a copy
 button: a press copies (read back from the clipboard), and for a second it says "Copied" with a
 check in the signal's colour, as wide as before and named as before, its live region saying it
@@ -794,18 +819,21 @@ on a small chip, can go unseen in a view where nothing else changes. Zen isn't c
 can't load an extension in it, and `test/firefox.mjs` checks it.
 
 The flows (`flow-*.spec.mjs`) walk each change of the T3 design as a user would, with the real
-pointer and keys: Appearance picked from the ⋯ menu, kept through a reload and in a popup opened
-afterwards, then undone (`flow-appearance`); tooltips after their wait, a neighbour's at once, from
-Tab, at the popup's edge, and none as a menu closes onto its control (`flow-tooltips`); URLs cut
-in the middle wherever they show (`flow-urls`); the rule list's slot, the rows that step back, its
-keys and its right-click menus (`flow-rules`); the popup's rules (`flow-popup`); Traffic's rows,
+pointer and keys: Appearance picked from the ⋯ menu, its detail whole, kept through a reload and
+in a popup opened afterwards (its host keeping its port, its tabs their words on one line), then
+undone, and the ⋯ menu inside a 420 px window at Most, Commit Mono and Larger
+(`flow-appearance`); tooltips after their wait, a neighbour's at once, from Tab, at the popup's
+edge, none as a menu closes onto its control, and an off control saying why, Make the rule and
+the agent's Turn on (`flow-tooltips`); URLs cut in the middle wherever they show, and a wildcard
+pattern's end and a trailing slash's, in two rules that flow adds for itself (`flow-urls`); the
+rule list's slot, the rows that step back, its keys and its right-click menus (`flow-rules`); the popup's rules (`flow-popup`); Traffic's rows,
 its copy buttons saying "Copied" and back, rows passing their first minute, and a focused row
 keeping its focus as it does, an open menu its mark (`flow-traffic`); the open rule's crumbs,
 Status and Diff, and the group renamed in its crumb with the sidebar hidden (`flow-open-rule`);
 undo from the footer and with ⌘Z, the row put back with the ring a key gives it, to the pixel,
 and the notice's time waiting while the pointer is on it, focus is in it from the keyboard or
-the window is in the background (`flow-undo`); and the new parts in Rosé Pine Dawn and in a 420 px window in Commit Mono at
-Larger (`flow-stress`). A flow is one test, and each state in it one `test.step`, which first
+the window is in the background (`flow-undo`); and the new parts in Rosé Pine Dawn and in a 420
+px window in Commit Mono at Larger (`flow-stress`). A flow is one test, and each state in it one `test.step`, which first
 checks the state as a user meets it (a role and name, where the focus is, what a list holds,
 what's stored) and then compares a picture of the part it's about, at 2x (`look()`), with its own
 in `baselines/darwin/<area>/`; a state that must come back exactly (the defaults picked again, the

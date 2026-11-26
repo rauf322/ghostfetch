@@ -1,14 +1,22 @@
-// A URL cut short in the middle, so its end stays: "/api/search?q=inv…oices&page=2" rather than
+// A URL cut short in the middle, so its end stays: "/api/sea…invoices&page=2" rather than
 // "/api/search?q=invoices&pa…", as the end is what tells two URLs apart. After T3 Code's (its
 // idea; none of its code, which measures where this doesn't). CSS only: the text is split once
-// into a head, which gives way with the ellipsis, and a tail, which doesn't (tailStart()), side by
-// side in a flex row; no measuring, so a row draws as fast as one that cuts at the end.
+// into a head, which gives way with the ellipsis, and a tail, which doesn't (tailStart(),
+// src/lib/url-end.ts), side by side in a flex row; no measuring, so a row draws as fast as one
+// that cuts at the end.
 //
 // - Shorter than its tail, a text is all tail: no head, so no empty box beside it.
-// - In less room than the tail itself, the head is gone and the tail gives way too, at its start
-//   with the ellipsis, so its very end still shows ("…ge=2"), and nothing leaves the row: the
-//   tail is a right-to-left box, whose ellipsis is at its left, around its text set left to
-//   right on its own (dir), which it doesn't change while it has room.
+// - The head keeps room for its ellipsis however narrow the row, so a cut always shows ("/…"):
+//   its first character and the ellipsis, as CSS clips a line's first character rather than put
+//   the ellipsis in its place (--cut-room: two characters of a monospace font, which every URL
+//   line has; an unnamed rule's title, in the text font, sets 2em). A head no longer than that
+//   would show whole with the tail cut, so a text with one is all tail. In less room than the
+//   head's and the tail, the tail gives way too, at its start, so its very end still shows
+//   ("/…ge=2"), and nothing leaves the row: the tail is a right-to-left box, cut at its left,
+//   around its text set left to right on its own (dir), which it doesn't change while it has
+//   room. It's cut with no ellipsis of its own, the head's saying so, and as wide as a whole
+//   number of characters (--cut-step), so none is drawn in part.
+// - Where there's no head, the tail cut short shows its own ellipsis, at its start.
 // - The ellipsis comes after the last whole character that fits, as CSS draws it, so a cut can
 //   leave a gap of up to a character before the end, clearest in a monospace font; closing it
 //   would take measuring, as T3 Code's does.
@@ -26,24 +34,8 @@
 // only when it's cut (isCut()).
 import { useEffect } from 'react';
 import type { ComponentProps } from 'react';
+import { tailStart } from '../../lib/index.ts';
 import { cn } from '../cn.ts';
-
-// The end that stays: the last path segment with its slash, if it's this short...
-const SEGMENT = 16;
-// ...or else the last 10 characters, moved back to start after a break within the last 16.
-const END = 10;
-const BREAK = /[/?=&.\-_ ]/;
-
-// Where the tail starts in `text` (0: all of it).
-export function tailStart(text: string) {
-  const slash = text.lastIndexOf('/');
-  if (slash > 0 && text.length - slash <= SEGMENT) return slash;
-  const at = text.length - END;
-  if (at <= 0) return 0;
-  for (let start = at; start > 0 && start >= text.length - SEGMENT; start--)
-    if (BREAK.test(text[start - 1]!)) return start;
-  return at;
-}
 
 // Whether a part of a row is cut short: a text cut at its end, or one cut in the middle (its head,
 // or in less room than its tail, its tail).
@@ -59,13 +51,16 @@ export function MiddleTruncate({
 }: Omit<ComponentProps<'span'>, 'children'> & { text: string }) {
   useCopyWhole();
   const shown = text.replace(/[ \t\n\r\f]+/g, ' ');
-  const at = tailStart(shown);
+  // A head of two characters or fewer would show whole, with the tail cut: all tail, then
+  // ("*/invoices/*").
+  const start = tailStart(shown);
+  const at = start > 2 ? start : 0;
   return (
     <span
       data-slot="middle-truncate"
       data-full={text}
       className={cn(
-        'relative flex min-w-0 overflow-hidden whitespace-pre after:sr-only after:content-[attr(data-full)]',
+        'relative flex min-w-0 overflow-hidden whitespace-pre [--cut-room:2ch] [--cut-step:1ch] after:sr-only after:content-[attr(data-full)]',
         className,
       )}
       {...props}
@@ -74,7 +69,7 @@ export function MiddleTruncate({
         <span
           data-part="head"
           aria-hidden="true"
-          className="min-w-0 overflow-hidden text-ellipsis whitespace-pre"
+          className="min-w-(--cut-room) overflow-hidden text-ellipsis whitespace-pre"
         >
           {shown.slice(0, at)}
         </span>
@@ -83,7 +78,12 @@ export function MiddleTruncate({
         data-part="tail"
         aria-hidden="true"
         dir="rtl"
-        className="max-w-full flex-none overflow-hidden text-ellipsis whitespace-pre"
+        className={cn(
+          'flex-none overflow-hidden whitespace-pre',
+          at > 0
+            ? 'max-w-[round(down,calc(100%_-_var(--cut-room)),var(--cut-step))] text-clip'
+            : 'max-w-full text-ellipsis',
+        )}
       >
         <span dir="ltr">{shown.slice(at)}</span>
       </span>

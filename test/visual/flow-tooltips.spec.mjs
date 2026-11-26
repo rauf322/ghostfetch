@@ -97,12 +97,10 @@ test('Tooltips: at the popup’s right edge, inside its 330 px', async ({ flowPo
   });
 });
 
-// Not walked: no control in the app is off with a reason. Make the rule (New rule, nothing typed
-// yet) and the agent's Turn on (no pairing code yet) are off with none, and a pointer on them
-// shows nothing; only the kit page, which isn't in the build, passes one ("Paste your agent's
-// pairing code first", src/app/kit/ui/sections/tooltip-section.tsx). Listed under Looks wrong in
-// the report. Walk it once a control says why.
-test.fixme('Tooltips: an off control says why it’s off', async ({ flowEditor }) => {
+// A control that's off says why, and what to do, under its tooltip's label (6b.8): Make the rule in
+// New rule with nothing typed, and the agent's Turn on with no pairing code, then half of one;
+// with a whole code it's on, and says nothing more than it did.
+test('Tooltips: an off control says why it’s off', async ({ flowEditor }) => {
   const page = await flowEditor({ rule: 'Pro plan user' });
 
   await test.step('New rule, nothing typed: Make the rule is off', async () => {
@@ -112,11 +110,42 @@ test.fixme('Tooltips: an off control says why it’s off', async ({ flowEditor }
 
   await test.step('Under the pointer, its tooltip says what’s missing', async () => {
     await page.getByTestId('composer-submit').hover({ force: true });
-    await expect(page.locator('[data-slot="tooltip-reason"]')).toBeVisible();
+    await expect(tip(page)).toContainText('Make the rule');
+    await expect(tip(page)).toContainText('Type a URL or paste a cURL command first');
     await look(
       page,
       [page.getByTestId('composer-submit'), tip(page)],
       shot('off-with-reason'),
     );
+  });
+
+  await test.step('The agent’s Turn on, no code yet: off, and its tooltip says to paste one', async () => {
+    await page.mouse.move(0, 0);
+    await page.getByTestId('agent-button').click();
+    const turnOn = page.getByTestId('agent-on');
+    await expect(turnOn).toBeDisabled();
+    await turnOn.hover({ force: true });
+    await expect(tip(page)).toContainText('Turn on Agent access');
+    await expect(tip(page)).toContainText("Paste your agent's pairing code first");
+    await look(page, [turnOn, tip(page)], shot('agent-off-with-reason'));
+  });
+
+  await test.step('Half a code: still off, and it says to paste it whole', async () => {
+    await page.mouse.move(0, 0);
+    await page.getByTestId('agent-code').fill('47318-ABCD');
+    await page.getByTestId('agent-on').hover({ force: true });
+    await expect(tip(page)).toContainText(
+      'Paste the pairing code whole, as your agent gives it',
+    );
+  });
+
+  await test.step('A whole code: Turn on is on, and has no tooltip to say anything', async () => {
+    await page.mouse.move(0, 0);
+    await page.getByTestId('agent-code').fill('47318-ABCD-EFGH-JKMN-PQRS');
+    const turnOn = page.getByTestId('agent-on');
+    await expect(turnOn).toBeEnabled();
+    await turnOn.hover();
+    await page.waitForTimeout(600);
+    await expect(tip(page)).toHaveCount(0);
   });
 });

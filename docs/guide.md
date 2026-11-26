@@ -37,7 +37,8 @@ What's different in Firefox-based browsers:
   right-click on a rule (or the menu key, or Shift+F10) has **Edit this rule** and **Turn off**
   (or **Turn on**). From the keyboard the list is one Tab stop: ↑ and ↓ move between rows, →
   and ← open and shut **Not answering here** or a group, Space turns the rule (or the group) on
-  or off, Enter opens the rule in the editor, and Tab goes on to its **Edit this rule**:
+  or off (a screen reader says whether it's on), Enter opens the rule in the editor, both once
+  however long they're held, and Tab goes on to its **Edit this rule**:
   - **This page**: what each rule did on the tab's page, such as **2 mocked** or **1 modified ·
     1 failed**, counted while recording since the page loaded (Traffic's **Clear** starts the
     count over; a page opened before Ghostfetch was installed or updated needs a reload
@@ -190,7 +191,8 @@ What's different in Firefox-based browsers:
 
     **Diff**, the row over the body ("Diff vs server's response +2 −1": how many lines your
     body adds to the server's response and takes out of it, each where there are some, counted
-    again once you pause typing), shows in the editor's place what your body changes in the
+    again once you pause typing; none for two bodies more than 1,000 lines apart, which Diff
+    shows as the one replaced by the other), shows in the editor's place what your body changes in the
     server's response: the lines you removed dimmed, with a −, the ones you added tinted
     green, with a +, and in a line you changed, the part that changed. Side by side, or
     inline, one column as git shows a diff, from the switch beside it; in a body narrower than
@@ -249,8 +251,9 @@ and errors stay inverted, in the theme's text colour. A theme recolours every pa
 Ghostfetch's at once, the popup too, and is remembered in this browser. Each page puts it on
 before it first draws (`public/theme.js`), so none flashes Ghostfetch's own colours first.
 
-Under Theme, **Appearance** has three settings for every theme, each a few steps; the row says
-which steps you picked that aren't the defaults:
+Under Theme, **Appearance** has three settings for every theme, each a few steps; the row says,
+whole, which steps you picked that aren't the defaults (the menu grows for them, within the
+window):
 
 - **Contrast**: Standard, **More** or **Most**. More and Most bring quieter text (labels, hints,
   placeholders) and the lines between things nearer the text colour, so they're easier to read.
@@ -259,7 +262,8 @@ which steps you picked that aren't the defaults:
 - **Text size**: Default, **Large** or **Larger**, an eighth and a quarter larger. Only the text
   grows: spacing and icons stay as they are, and the body editor keeps its own text size (⌘= and
   ⌘−). Where a row's words no longer fit side by side, they go on to another line rather than
-  being cut.
+  being cut. The popup's tabs keep their names on one line, their counts giving way, and its
+  host is cut in its middle, so its port stays.
 
 Like the theme, each changes every open page of Ghostfetch's at once, is remembered in this
 browser, and is on each page before it first draws.

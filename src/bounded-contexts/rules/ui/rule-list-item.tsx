@@ -302,9 +302,10 @@ function RuleLine({
           {title}
         </ItemTitle>
       ) : (
-        // An unnamed rule's title is its URL (or its GraphQL operation), cut in its middle.
+        // An unnamed rule's title is its URL (or its GraphQL operation), cut in its middle: in the
+        // text font, whose characters aren't all as wide as one another (middle-truncate.tsx).
         <ItemTitle id={`${ids}name`} quiet={quiet} className={name}>
-          <MiddleTruncate text={title} />
+          <MiddleTruncate text={title} className="[--cut-room:2em] [--cut-step:1px]" />
         </ItemTitle>
       )}
       <ItemSlot

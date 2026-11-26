@@ -2,8 +2,10 @@
 // GitActionsControl.tsx): what Diff compares the body with, and at its end how many lines the
 // body adds to the server's response and takes out of it, each only where there are some, the
 // added in the signal's green and the taken out in grey (Ghostfetch has no red). Counted from the
-// diff Diff draws (useTextDiff(), body-card.tsx), as of the last pause in typing. Pressed while
-// Diff shows, in the editor's place. A rule with no server's response yet has no row.
+// diff Diff draws (useTextDiff(), body-card.tsx), as of the last pause in typing. Where the diff gave
+// up (the two bodies more than its limit of changes apart, src/lib/diff.ts) it has no counts: they
+// would count every line as added and removed. Pressed while Diff shows, in the editor's place. A
+// rule with no server's response yet has no row.
 import type { TextDiff } from '../../../../lib/index.ts';
 import { Icon } from '../../../../ui/kit/icon.tsx';
 
@@ -16,8 +18,9 @@ export function DiffRow({
   on: boolean;
   onToggle: (on: boolean) => void;
 }) {
-  const added = diff?.added ?? 0;
-  const removed = diff?.removed ?? 0;
+  const counted = diff && !diff.gaveUp ? diff : null;
+  const added = counted?.added ?? 0;
+  const removed = counted?.removed ?? 0;
   // For a screen reader, the counts in words.
   const said = [
     added && `${added} ${added === 1 ? 'line' : 'lines'} added`,

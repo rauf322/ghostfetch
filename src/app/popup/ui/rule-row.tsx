@@ -10,9 +10,10 @@
 // A click on the row opens the rule in the editor, as its Edit this rule does; its dot turns it on
 // or off, saved at once, as the popup can close at any moment. `stepsBack`: a rule that's on but
 // hasn't answered on the page steps back, its name quieter, as in the editor's list. In the list's
-// tree (rule-list.tsx) the row is an item that takes focus, named by the rule's name and described
-// by whether it's off, what it did and what it matches; its dot is never a Tab stop, its Edit this
-// rule only while the row is the list's Tab stop.
+// tree (rule-list.tsx) the row is an item that takes focus, checked while its switch is on, named
+// by the rule's name and described by whether it's off (its group's off, too), what it did and what
+// it matches; its dot is never a Tab stop, its Edit this rule only while the row is the list's Tab
+// stop.
 import { memo, useId, useRef, useState } from 'react';
 import {
   isAnswering,
@@ -106,6 +107,8 @@ export const RuleRow = memo(function RuleRow({
       aria-level={level}
       aria-posinset={position}
       aria-setsize={count}
+      // Its switch, which Space turns: said as it changes.
+      aria-checked={rule.enabled}
       aria-labelledby={`${ids}name`}
       aria-describedby={`${ids}off ${ids}did ${ids}match`}
       tabIndex={tabbable ? 0 : -1}

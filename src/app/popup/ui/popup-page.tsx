@@ -54,16 +54,13 @@ export function PopupPage({
         onValueChange={(value) => setView(value as View)}
       >
         <SegmentedItem value="page" data-testid="view-page">
-          This page
-          {answering !== null && <Count value={answering} />}
+          <TabLabel count={answering}>This page</TabLabel>
         </SegmentedItem>
         <SegmentedItem value="rules" data-testid="view-rules">
-          All rules
-          <Count value={rules.length} />
+          <TabLabel count={rules.length}>All rules</TabLabel>
         </SegmentedItem>
         <SegmentedItem value="sites" data-testid="view-sites">
-          Sites
-          <Count value={BUILT_IN_HOSTS.length + sites.length} />
+          <TabLabel count={BUILT_IN_HOSTS.length + sites.length}>Sites</TabLabel>
         </SegmentedItem>
       </Segmented>
       {view === 'page' && (
@@ -105,4 +102,18 @@ export function PopupPage({
 
 function Count({ value }: { value: number }) {
   return <span className="ml-1.5 font-normal text-t40 tabular-nums">{value}</span>;
+}
+
+// A view tab's words on one line, its count after them while there's room. In less (Commit Mono
+// at Larger), the count gives way, not the words' line: it goes on to a second line, out of sight
+// in a box one line tall, and is still read out. The tab is never narrower than its words.
+function TabLabel({ count, children }: { count: number | null; children: string }) {
+  return (
+    <span className="flex h-[1lh] flex-wrap justify-center overflow-hidden">
+      <span data-part="label" className="whitespace-nowrap">
+        {children}
+      </span>
+      {count !== null && <Count value={count} />}
+    </span>
+  );
 }

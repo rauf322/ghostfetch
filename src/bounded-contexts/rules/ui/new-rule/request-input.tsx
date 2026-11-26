@@ -129,7 +129,12 @@ export function RequestInput({
           />
           <GroupPicker value={group} onChange={onGroupChange} />
         </div>
-        <Tooltip label="Make the rule" keys="Enter">
+        {/* Off until there's something to make it from, and saying so. */}
+        <Tooltip
+          label="Make the rule"
+          keys="Enter"
+          reason={text.trim() ? undefined : 'Type a URL or paste a cURL command first'}
+        >
           <Button
             variant="primary"
             size="icon"

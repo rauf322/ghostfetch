@@ -236,6 +236,13 @@ function release(control: Element, way: keyof Shut) {
   if (!shut.hover && !shut.focus) shuts.delete(control);
 }
 
+// Controls gone from the page let go of, and with them what's around them (an editor's ⋯, which
+// its own Delete takes away as it shuts the menu, the whole closed editor): one taken away while
+// its popup was open keeps aria-expanded "true", so it's never released, and nothing else holds it.
+function forgetGone() {
+  for (const control of shuts.keys()) if (!control.isConnected) shuts.delete(control);
+}
+
 // A control that opens a popup of its own (aria-haspopup: a ⋯ menu, a select) shows no tooltip
 // while that's open, nor once it's shut, when Base UI gives focus back to the control (after Esc,
 // or a click outside): the pointer has to leave the control and come back, or focus leave it and
@@ -262,6 +269,7 @@ function watchPopups(page: Document) {
   });
   // The pointer over something that isn't the control.
   function moved(event: Event) {
+    forgetGone();
     for (const control of shuts.keys())
       if (!isOpen(control) && !control.contains(event.target as Node))
         release(control, 'hover');
@@ -269,6 +277,7 @@ function watchPopups(page: Document) {
   // Focus gone from the control, or landed elsewhere once the popup is shut, as on a control
   // clicked outside it, which keeps it rather than giving it back.
   function landed(event: FocusEvent) {
+    forgetGone();
     for (const control of shuts.keys())
       if (!isOpen(control) && event.target !== control) release(control, 'focus');
   }

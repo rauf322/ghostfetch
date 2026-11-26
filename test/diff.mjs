@@ -206,6 +206,28 @@ await check(
   },
 );
 await check(
+  "past its limit diffLines says it gave up, its counts being the lines between the ends the two share, not the fewest (every 14th of 15,000 lines changed: 14,995 each way); within it, it doesn't (500 changed)",
+  async () => {
+    const lines = Array.from({ length: 15_000 }, (_, i) => `line ${i}`);
+    const far = diffLines(
+      lines.join('\n'),
+      lines.map((line, i) => (i % 14 ? line : `${line} changed`)).join('\n'),
+    );
+    const near = diffLines(
+      lines.join('\n'),
+      lines.map((line, i) => (i < 500 ? `${line} changed` : line)).join('\n'),
+    );
+    expect(
+      [
+        [far.gaveUp, far.removed, far.added],
+        [near.gaveUp, near.removed, near.added],
+        diffLines('', 'a\nb').gaveUp,
+      ],
+      [[true, 14_995, 14_995], [false, 500, 500], false],
+    );
+  },
+);
+await check(
   'long bodies in good time: 40 lines changed in 20,000, and two of 10,000 lines with none alike, each under 300 ms',
   async () => {
     const random = generator(20261110);

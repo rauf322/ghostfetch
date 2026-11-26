@@ -3900,6 +3900,41 @@ try {
   await trafficRow('rows=answered').waitFor({ timeout: 3000 });
 
   await check(
+    '"Copied" belongs to the request it was copied from: another request opened within its second shows its own Copy URL at rest, and its live region says nothing',
+    async () => {
+      await show('traffic');
+      const rows = app.locator('[data-testid="request"]');
+      await rows.nth(1).waitFor({ timeout: 3000 });
+      await app.evaluate(() => {
+        navigator.clipboard.writeText = async () => {};
+      });
+      try {
+        await rows.nth(0).click();
+        await app.click('[data-testid="copy-url"]');
+        await app.waitForSelector('[data-testid="copy-url"][data-copied]');
+        const first = await app
+          .locator('[data-testid="request-detail"] h2')
+          .getAttribute('title');
+        await rows.nth(1).click();
+        await app.waitForFunction(
+          (was) =>
+            document.querySelector('[data-testid="request-detail"] h2')?.title !== was,
+          first,
+        );
+        const other = await app
+          .locator('[data-testid="copy-url"]')
+          .evaluate((button) => [
+            button.hasAttribute('data-copied'),
+            getComputedStyle(button.querySelector('[data-part=copied]')).opacity,
+            button.nextElementSibling.textContent,
+          ]);
+        expect(other, [false, '0', '']);
+      } finally {
+        await app.evaluate(() => delete navigator.clipboard.writeText);
+      }
+    },
+  );
+  await check(
     'a request\'s row says how long ago the page sent it, after what happened ("· 4m"), from its first minute on; under "Just now" it doesn\'t, as that says it',
     async () => {
       await rowsReady();
@@ -6296,6 +6331,207 @@ try {
       );
     },
   );
+  // Role, name, checked state and description, as Chromium gives them a screen reader.
+  const popAx = async (selector) => {
+    const { root } = await besideSession.send('DOM.getDocument', { depth: 0 });
+    const { nodeId } = await besideSession.send('DOM.querySelector', {
+      nodeId: root.nodeId,
+      selector,
+    });
+    const { nodes } = await besideSession.send('Accessibility.getPartialAXTree', {
+      nodeId,
+      fetchRelatives: false,
+    });
+    const checked = nodes[0]?.properties?.find((property) => property.name === 'checked');
+    return [
+      nodes[0]?.role?.value,
+      nodes[0]?.name?.value,
+      checked ? checked.value.value : null,
+      nodes[0]?.description?.value ?? '',
+    ];
+  };
+  const popRuleAt = (url) => `[data-testid="popup-rule"][data-url="${url}"]`;
+  const POPS_ITEM = `[data-testid="popup-group-block"][data-item="${POPS.id}"]`;
+  // Space on the item that has focus, and whether the item checked or not after it is the same
+  // element, still with focus: changed in place, as a screen reader hears it.
+  const spaceInPlace = async (item, checked) => {
+    const before = await item.elementHandle();
+    await beside.keyboard.press('Space');
+    await rowSettled(
+      () => item.getAttribute('aria-checked'),
+      (now) => now === checked,
+    );
+    return before.evaluate(
+      (element) =>
+        element.isConnected &&
+        element === document.activeElement &&
+        element.getAttribute('aria-checked'),
+    );
+  };
+
+  await check(
+    "in the popup's tree a rule's item and a group's are checked while their switch is on, as Chromium gives a screen reader: a rule on, a rule off, a group, and a rule that's on in a group that's off, which says so; Space changes it on the item that has focus, in place, not on one made anew",
+    async () => {
+      await popReset();
+      await beside.click('[data-testid="view-rules"]');
+      await popsItem.waitFor({ timeout: 3000 });
+      if ((await popsItem.getAttribute('aria-expanded')) === 'false') {
+        await popsItem.focus();
+        await beside.keyboard.press('ArrowRight');
+      }
+      const at = [
+        await popAx(popRuleAt(POP_ANSWERS)),
+        await popAx(popRuleAt(POP_OFF)),
+        await popAx(POPS_ITEM),
+      ];
+      // The group off by Space, its item the same, then a rule of it.
+      await popsItem.focus();
+      const groupOff = await spaceInPlace(popsItem, 'false');
+      const offGroup = [await popAx(POPS_ITEM), await popAx(popRuleAt(POP_ONE))];
+      const groupOn = await spaceInPlace(popsItem, 'true');
+      // A rule off and on by Space.
+      const rule = popRow(POP_ANSWERS);
+      await rule.focus();
+      const ruleOff = await spaceInPlace(rule, 'false');
+      const offRule = await popAx(popRuleAt(POP_ANSWERS));
+      const ruleOn = await spaceInPlace(rule, 'true');
+      expect(
+        [
+          at.map((node) => node.slice(0, 3)),
+          [groupOff, groupOn, ruleOff, ruleOn],
+          offGroup.map((node) => node.slice(0, 3)),
+          offGroup[1][3].startsWith('Off, as its group Pops is off.'),
+          offRule.slice(0, 3),
+        ],
+        [
+          [
+            ['treeitem', 'Pop answers', 'true'],
+            ['treeitem', 'Pop switched off', 'false'],
+            ['treeitem', 'Pops', 'true'],
+          ],
+          ['false', 'true', 'false', 'true'],
+          [
+            ['treeitem', 'Pops', 'false'],
+            ['treeitem', 'Pop one', 'true'],
+          ],
+          true,
+          ['treeitem', 'Pop answers', 'false'],
+        ],
+        `a rule in Pops, off, described as “${offGroup[1][3]}”`,
+      );
+    },
+  );
+
+  await check(
+    "a rule focused in the popup's fold, then left by a click elsewhere in the popup, that answers on the page and goes up under Answering here doesn't take focus back: it stays where the click left it",
+    async () => {
+      const SOON = '/api/pop-soon';
+      const { rules: stored } = await worker.evaluate(() =>
+        chrome.storage.local.get('rules'),
+      );
+      await setStorage({ rules: [slotRule(SOON, 'Pop answers soon'), ...stored] });
+      try {
+        await popReset();
+        await popFold.focus();
+        await beside.keyboard.press('ArrowRight');
+        await popRow(SOON).focus();
+        const focused = await popFocus();
+        // Blank space: the popup's heading.
+        await beside.locator('h2', { hasText: 'Answering here' }).click();
+        const left = await beside.evaluate(() => document.activeElement?.tagName);
+        await popCall(SOON);
+        const level = await rowSettled(
+          () => popRow(SOON).getAttribute('aria-level'),
+          (now) => now === '1',
+        );
+        await sleep(300);
+        expect(
+          [
+            focused,
+            left,
+            level,
+            await beside.evaluate(() => document.activeElement?.tagName),
+          ],
+          [SOON, 'BODY', '1', 'BODY'],
+        );
+      } finally {
+        await setStorage({ rules: stored });
+      }
+    },
+  );
+
+  await check(
+    'Space or Enter held down on a popup item acts once, however many times the key repeats: a rule turned off once, a group folded once',
+    async () => {
+      const { rules: stored } = await worker.evaluate(() =>
+        chrome.storage.local.get('rules'),
+      );
+      const folds = await beside.evaluate(() =>
+        localStorage.getItem('ghostfetch.folded'),
+      );
+      try {
+        await popReset();
+        // The key down, then down again three times as it repeats, then up.
+        const held = async (key) => {
+          for (let time = 0; time < 4; time++) await beside.keyboard.down(key);
+          await beside.keyboard.up(key);
+          await sleep(500);
+        };
+        await popRow(POP_ANSWERS).focus();
+        await held(' ');
+        const rule = (await slotStored(POP_ANSWERS)).enabled;
+        await beside.keyboard.press('Space');
+        const back = (
+          await rowSettled(
+            () => slotStored(POP_ANSWERS),
+            (now) => now.enabled,
+          )
+        ).enabled;
+        await beside.click('[data-testid="view-rules"]');
+        await popsItem.waitFor({ timeout: 3000 });
+        await popsItem.focus();
+        const was = await popsItem.getAttribute('aria-expanded');
+        await held('Enter');
+        const folded = await popsItem.getAttribute('aria-expanded');
+        await beside.keyboard.press('Enter');
+        expect(
+          [rule, back, was, folded, await popsItem.getAttribute('aria-expanded')],
+          [false, true, 'true', 'false', 'true'],
+        );
+      } finally {
+        await setStorage({ rules: stored });
+        await beside.evaluate((was) => {
+          if (was === null) localStorage.removeItem('ghostfetch.folded');
+          else localStorage.setItem('ghostfetch.folded', was);
+        }, folds);
+      }
+    },
+  );
+
+  await check(
+    "a popup group's row has no tooltip of its own, under the pointer on its name or as the keys reach its item: its name, how many of its rules are on and whether it's open are the item's own",
+    async () => {
+      await popReset();
+      await beside.click('[data-testid="view-rules"]');
+      await popsItem.waitFor({ timeout: 3000 });
+      const tips = () => beside.locator('[data-slot="tooltip"]').allTextContents();
+      await popsItem.locator('[data-testid="popup-group-name"]').hover();
+      await sleep(800);
+      const byPointer = await tips();
+      await beside.mouse.move(1, 1);
+      await sleep(300);
+      // ↓ onto it from the item before it.
+      await popsItem.evaluate((item) => item.previousElementSibling.focus());
+      await beside.keyboard.press('ArrowDown');
+      await sleep(800);
+      const byKeys = await tips();
+      expect(
+        [byPointer, byKeys, await popFocus(), (await popAx(POPS_ITEM)).slice(0, 2)],
+        [[], [], 'group: Pops', ['treeitem', 'Pops']],
+      );
+    },
+  );
+
   await check(
     "in Commit Mono at Larger, at the popup's 330 px, nothing in its rows reaches past their edges: a rule's slot ends inside its row, its name keeps 7 letters' room, and what the slot says gives way, the time first, then the count, as in the editor's list; a group's row and the fold's stay on one line inside theirs",
     async () => {
@@ -6402,6 +6638,69 @@ try {
           [true, true, true],
           JSON.stringify({ thisPage, allRules }),
         );
+      } finally {
+        await beside.evaluate(() => {
+          delete document.documentElement.dataset.font;
+          delete document.documentElement.dataset.size;
+        });
+      }
+    },
+  );
+  await check(
+    "in Commit Mono at Larger, at the popup's 330 px, its site line keeps the page's host's port in sight, the host cut in its middle, and each view tab keeps its words on one line, its count giving way first",
+    async () => {
+      try {
+        await beside.evaluate(() =>
+          Object.assign(document.documentElement.dataset, {
+            font: 'mono',
+            size: 'larger',
+          }),
+        );
+        await beside.evaluate(() => document.fonts.ready);
+        await popReset();
+        await sleep(200);
+        const seen = await beside.evaluate(() => {
+          // The text node a run of words ends in, under `element`, and whether `words` at its end
+          // are drawn inside `box` (a part cut at its end draws them past its edge).
+          const drawnInside = (element, words, box) => {
+            const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+            while (walker.nextNode()) {
+              const text = walker.currentNode;
+              if (!text.data.endsWith(words)) continue;
+              const range = document.createRange();
+              range.setStart(text, text.length - words.length);
+              range.setEnd(text, text.length);
+              const at = range.getBoundingClientRect();
+              const edges = box.getBoundingClientRect();
+              return at.left >= edges.left - 0.5 && at.right <= edges.right + 0.5;
+            }
+            return null;
+          };
+          const line = document.querySelector('[data-testid="site-line"]');
+          const host =
+            line.querySelector('[data-slot="middle-truncate"]') ??
+            line.querySelector('.font-mono');
+          const whole = host.dataset.full ?? host.textContent;
+          const port = whole.slice(whole.lastIndexOf(':'));
+          // Each tab's words, not its count: on one line, its boxes at one height.
+          const tabs = [...document.querySelectorAll('[data-slot="segmented-item"]')].map(
+            (tab) => {
+              const walker = document.createTreeWalker(tab, NodeFilter.SHOW_TEXT);
+              while (walker.nextNode()) {
+                const text = walker.currentNode;
+                if (/^\s*\d+\s*$/.test(text.data) || !text.data.trim()) continue;
+                const range = document.createRange();
+                range.selectNodeContents(text);
+                return new Set(
+                  [...range.getClientRects()].map((rect) => Math.round(rect.top)),
+                ).size;
+              }
+              return 0;
+            },
+          );
+          return [/^:\d+$/.test(port), drawnInside(host, port, host), tabs];
+        });
+        expect(seen, [true, true, [1, 1, 1]]);
       } finally {
         await beside.evaluate(() => {
           delete document.documentElement.dataset.font;
@@ -9358,6 +9657,50 @@ try {
     },
   );
 
+  await diffCheck(
+    "past the diff's limit (bodies more than 1,000 lines apart) the Diff row shows no counts, and says none to a screen reader, rather than every line as added and removed, while Diff itself still draws them; a body within it has its counts as before",
+    async () => {
+      const far = (letter) =>
+        Array.from({ length: 1500 }, (_, line) => `${letter}${line}`).join('\n');
+      const text = (id, name, content) =>
+        draftRule(id, name, `/api/never-called?${id}`, content, 'text/plain');
+      const restore = await addRules([
+        [text('d8', 'Near its server', 'a\nB\nc'), 'a\nb\nc'],
+        [text('d9', 'Far from its server', far('b')), far('a')],
+      ]);
+      try {
+        const row = app.locator('[data-testid="diff-switch"]');
+        const counts = () =>
+          app.evaluate(() => [
+            [...document.querySelectorAll('[data-testid="diff-row-counts"] > span')].map(
+              (span) => span.textContent,
+            ),
+            document.querySelector('[data-testid="diff-switch"] .sr-only')?.textContent ??
+              '',
+          ]);
+        await app
+          .locator('[data-testid="rule"]', { hasText: 'Near its server' })
+          .first()
+          .click();
+        const near = await rowSettled(counts, ([now]) => now.length === 2);
+        await app
+          .locator('[data-testid="rule"]', { hasText: 'Far from its server' })
+          .first()
+          .click();
+        await row.waitFor({ timeout: 3000 });
+        await sleep(1000);
+        const farRow = await counts();
+        await row.click();
+        await diffView.waitFor({ timeout: 3000 });
+        expect(
+          [near, farRow, await diffCounts()],
+          [[['+1', '−1'], ', 1 line added, 1 removed'], [[], ''], '+1500 −1500'],
+        );
+      } finally {
+        await restore();
+      }
+    },
+  );
   await check(
     "in Commit Mono at Larger nothing spills out of the open rule's header, Status's row or the Diff row: wide, the crumbs stay inside the header and before its buttons, which stay inside the window, a long group name and a long rule name cut short; at 420 px, Status's row with its chevron and the Diff row with its counts stay inside their card and the body's",
     async () => {
@@ -10657,6 +11000,121 @@ try {
           }
         },
       );
+    },
+  );
+
+  console.log('rows, the popup and the open rule (6b)');
+
+  await check(
+    'a menu whose own Delete takes its button off the page lets the button go: the open rule deleted from its ⋯ three times, the pointer moving on, and none of those ⋯ buttons is still held by the page, nor the closed editor around it',
+    async () => {
+      await withGroups(
+        [grouped('w1', 'one'), grouped('w2', 'two'), grouped('w3', 'three')],
+        [],
+        async () => {
+          await shutMenus();
+          await show('rules');
+          for (const name of ['From one', 'From two', 'From three']) {
+            await named(name).click();
+            await app.locator('[data-testid="rule-menu"]').waitFor({ timeout: 3000 });
+            await app.click('[data-testid="rule-menu"]');
+            await menuReady();
+            await app.click('[data-testid="delete-rule"]');
+            await app
+              .locator('[role="menu"]')
+              .waitFor({ state: 'detached', timeout: 3000 });
+          }
+          // The pointer moving on, as it does.
+          await app.mouse.move(10, 400);
+          await app.mouse.move(600, 300);
+          await sleep(300);
+          // The ⋯ buttons alive once the garbage is collected, taken off the page.
+          await editorSession.send('HeapProfiler.collectGarbage');
+          const { result: prototype } = await editorSession.send('Runtime.evaluate', {
+            expression: 'HTMLButtonElement.prototype',
+          });
+          const { objects } = await editorSession.send('Runtime.queryObjects', {
+            prototypeObjectId: prototype.objectId,
+          });
+          const { result } = await editorSession.send('Runtime.callFunctionOn', {
+            objectId: objects.objectId,
+            functionDeclaration:
+              'function () { return this.filter((button) => !button.isConnected && button.dataset.testid === "rule-menu").length; }',
+            returnByValue: true,
+          });
+          await editorSession.send('Runtime.releaseObject', {
+            objectId: objects.objectId,
+          });
+          await editorSession.send('Runtime.releaseObject', {
+            objectId: prototype.objectId,
+          });
+          expect(result.value, 0);
+        },
+      );
+    },
+  );
+
+  // The field a group's name is typed in, as drawn now: whether it's seen, and has the focus.
+  const groupFieldNow = () =>
+    app.evaluate(() => {
+      const field = document.querySelector('[data-testid="group-name-input"]');
+      return field ? [field.checkVisibility(), document.activeElement === field] : null;
+    });
+
+  await check(
+    "the list's own New group, under a search that would hide the new group, clears the search: its name a field in sight, with the focus",
+    async () => {
+      await withGroups(THREE, [], async () => {
+        try {
+          await shutMenus();
+          await show('rules');
+          await searchRules.fill('one');
+          await named('From one').waitFor({ timeout: 3000 });
+          await app.click('[data-testid="new-group"]');
+          await sleep(400);
+          const seen = [await searchRules.inputValue(), await groupFieldNow()];
+          await app.keyboard.press('Escape');
+          expect(seen, ['', [true, true]]);
+        } finally {
+          await searchRules.fill('');
+        }
+      });
+    },
+  );
+
+  await check(
+    "in a narrow panel the open rule's ⋯ → Move to group → New group… brings back the list in the rule's place, the new group's name a field there with the focus, the rule in the group",
+    async () => {
+      await withGroups(THREE, [], async () => {
+        try {
+          await shutMenus();
+          await show('rules');
+          await app.setViewportSize({ width: 420, height: 760 });
+          const back = app.locator('[data-testid="rule-back"]');
+          if (await back.isVisible()) await back.click();
+          await named('From two').click();
+          await app.locator('[data-testid="rule-menu"]').waitFor({ timeout: 3000 });
+          await app.click('[data-testid="rule-menu"]');
+          await menuReady();
+          await app.click('[data-testid="move-to-group"]');
+          await app.click('[data-testid="move-to-new"]');
+          await sleep(500);
+          const seen = [
+            await groupFieldNow(),
+            await app.locator('[data-testid="rule-back"]').isVisible(),
+          ];
+          await app.keyboard.press('Escape');
+          await sleep(300);
+          const [group] = await storedGroups();
+          const moved = (await storedRules()).find((rule) => rule.id === 'k2')?.group;
+          expect(
+            [seen, group?.name, moved === group?.id],
+            [[[true, true], false], 'New group', true],
+          );
+        } finally {
+          await app.setViewportSize({ width: 1280, height: 820 });
+        }
+      });
     },
   );
 

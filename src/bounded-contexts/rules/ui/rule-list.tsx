@@ -45,7 +45,7 @@ import { DropdownMenu, DropdownMenuContent } from '../../../ui/kit/dropdown-menu
 import { Icon } from '../../../ui/kit/icon.tsx';
 import { SharedTooltip, Tooltip } from '../../../ui/kit/tooltip.tsx';
 import { ListEmpty } from '../../../ui/list-detail.tsx';
-import { renamingStore, setRenaming } from './renaming.ts';
+import { nameInList, renamingStore, setRenaming } from './renaming.ts';
 import { useRuleDrag } from './use-rule-drag.ts';
 import { GroupBlock } from './group-block.tsx';
 import { GroupMenuItems } from './group-menu.tsx';
@@ -133,9 +133,10 @@ export function RuleList({ selectedId, query, onSelect, onCreate, log }: RuleLis
       setFolded(selectedGroup, false);
   }, [selectedId, selectedGroup]);
 
+  // A new group at the top, its name a field in sight: a search that would hide it cleared.
   function newGroup() {
     const group = addGroup(createGroup(freeName(NEW_GROUP, ruleStore.state.groups)), 0);
-    setRenaming(group.id);
+    nameInList(group.id);
   }
 
   const items = () => [...(tree.current?.querySelectorAll<HTMLElement>(ITEM) ?? [])];

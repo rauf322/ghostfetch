@@ -47,8 +47,9 @@ export function RequestActions({
       )}
       {/* Each as wide as its words, sharing what's left: the three fit a side panel side by
           side, where equal thirds would cut "Copy as cURL" short. A copy says so in its button
-          for a second ("Copied"), not in a toast. */}
-      <div className="flex flex-wrap gap-1.5">
+          for a second ("Copied"), not in a toast, and only in this request's: another opened
+          meanwhile has copies of its own (the key). */}
+      <div key={entry.id} className="flex flex-wrap gap-1.5">
         <CopyButton
           size="lg"
           icon={COPY_URL.icon}

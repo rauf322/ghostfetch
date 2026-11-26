@@ -18,9 +18,11 @@ export type MenuHandle<Payload> = MenuPrimitive.Handle<Payload>;
 export const createMenuHandle = <Payload,>(): MenuHandle<Payload> =>
   MenuPrimitive.createHandle<Payload>();
 
-// The menus' card, the right-click menu's too (context-menu.tsx).
+// The menus' card, the right-click menu's too (context-menu.tsx): as wide as its widest row needs,
+// within the room the window has beside its button (Base UI's --available-width), where a detail
+// gives way only if it must.
 export const MENU_POPUP =
-  'max-h-(--available-height) min-w-[210px] overflow-y-auto rounded-lg border border-border bg-popover p-1 shadow-menu outline-none';
+  'max-h-(--available-height) max-w-(--available-width) min-w-[210px] overflow-y-auto rounded-lg border border-border bg-popover p-1 shadow-menu outline-none';
 const ITEM =
   'flex w-full items-center gap-[9px] rounded-md px-2.5 py-2 text-left text-small text-t80 outline-none select-none data-highlighted:bg-raised data-highlighted:text-strong data-disabled:opacity-45 [&_[data-slot=icon]]:text-t40';
 
@@ -79,8 +81,9 @@ export function DropdownMenuItem({
 }
 
 // At a row's right end: a quiet detail, as the theme in use beside Theme ("Ghostfetch") and
-// "Default" beside Appearance, cut short with … where it's long; or the key that does what the row
-// does, in a Kbd as a tooltip has it.
+// "Default" beside Appearance, whole, the menu as wide as it needs, and cut short with … only
+// where the window hasn't the room; or the key that does what the row does, in a Kbd as a tooltip
+// has it.
 export function DropdownMenuDetail({ className, ...props }: ComponentProps<'span'>) {
   return (
     <span

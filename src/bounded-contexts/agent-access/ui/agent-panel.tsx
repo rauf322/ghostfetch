@@ -109,6 +109,20 @@ function PairingForm({
   declined: boolean;
 }) {
   const [draft, setDraft] = useState(code);
+  const ready = Boolean(parsePairingCode(draft));
+  const turnOn = (
+    // As wide as the form, in the tooltip's wrapper too while it's off.
+    <Button
+      type="submit"
+      size="sm"
+      variant="primary"
+      data-testid="agent-on"
+      disabled={!ready}
+      className="w-full"
+    >
+      Turn on
+    </Button>
+  );
   return (
     <form
       className="flex flex-col gap-2"
@@ -143,15 +157,21 @@ function PairingForm({
         autoComplete="off"
         className="font-mono"
       />
-      <Button
-        type="submit"
-        size="sm"
-        variant="primary"
-        data-testid="agent-on"
-        disabled={!parsePairingCode(draft)}
-      >
-        Turn on
-      </Button>
+      {/* Off until there's a whole code, and saying what to do. */}
+      {ready ? (
+        turnOn
+      ) : (
+        <Tooltip
+          label="Turn on Agent access"
+          reason={
+            draft.trim()
+              ? 'Paste the pairing code whole, as your agent gives it'
+              : "Paste your agent's pairing code first"
+          }
+        >
+          {turnOn}
+        </Tooltip>
+      )}
     </form>
   );
 }

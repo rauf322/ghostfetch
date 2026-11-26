@@ -3,11 +3,9 @@
 // the ⋯ menu with Appearance open, a tooltip with its key; New rule; a body's Diff; Appearance at
 // Commit Mono, Larger and Most; and the five themes other than Ghostfetch's, wide, a rule open as
 // in the first (which is Ghostfetch's). The browser and the data: extension.mjs.
-import { NARROW, expect, test } from './extension.mjs';
+import { NARROW, expect, row, test } from './extension.mjs';
 
 const RULE = 'Pro plan user';
-const row = (page, name) =>
-  page.locator('[data-testid="rule"]', { hasText: name }).first();
 
 test('the editor wide, a rule open', async ({ editor }) => {
   const page = await editor({ rule: RULE });

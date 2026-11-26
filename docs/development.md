@@ -244,7 +244,7 @@ test/agent.mjs                   Agent access end to end in Chromium: which host
 test/kit.mjs                     the UI kit under the real CSP, in Chromium and Zen, driven with the keyboard and the mouse
 test/release.mjs                 checks the built manifests, files and zips before an upload
 test/fixtures.mjs                test server, hostile pages and rules shared by the tests
-test/visual/                     the screenshot suite (Playwright Test): its config, the browser and what's in it (extension.mjs), the views (*.spec.mjs), and their pictures, a folder for each platform (baselines/darwin/)
+test/visual/                     the screenshot suite (Playwright Test): its config, the browsers and what's in them (extension.mjs), the views (editor, traffic and popup .spec.mjs), the flows (flow-*.spec.mjs), and their pictures, a folder for each platform (baselines/darwin/, the flows' in a folder for each area)
 README.md                        what Ghostfetch does, installing it, and building it from source (it goes in the sources zip)
 GLOSSARY-MAP.md                  the bounded contexts Ghostfetch's words belong to, and how they relate
 docs/                            guide.md, using it in full; security-model.md; agent-access.md; this file
@@ -772,12 +772,38 @@ and as tall as it is, on This page, All rules and Sites, and at Commit Mono, Lar
 Nothing in them is live: the test server is on a fixed port, every page shows the same time
 (Playwright's clock), the page's requests were sent minutes and seconds before it, one after
 another, each taking a set time (its `performance.now()` steps by that time each time the
-interceptor reads it), the pictures are taken at 1x with animations stopped, the caret hidden and
-the fonts loaded, in English and UTC; `extension.mjs` says how. The pictures must match exactly
-(no pixel past a threshold of 0), and eight runs in a row did; Playwright's comparator, though,
-doesn't count a pixel it takes for anti-aliasing, so a change that moves only the edge of a
-shape, a radius 1 px larger on a small chip, can go unseen in a view where nothing else changes.
-Zen isn't covered: Playwright can't load an extension in it, and `test/firefox.mjs` checks it.
+interceptor reads it), the views' pictures are taken at 1x with animations stopped, the caret
+hidden and the fonts loaded, in English and UTC; `extension.mjs` says how. The pictures must match
+exactly (no pixel past a threshold of 0); Playwright's comparator, though, doesn't count a pixel
+it takes for anti-aliasing, so a change that moves only the edge of a shape, a radius 1 px larger
+on a small chip, can go unseen in a view where nothing else changes. Zen isn't covered: Playwright
+can't load an extension in it, and `test/firefox.mjs` checks it.
+
+The flows (`flow-*.spec.mjs`) walk each change of the T3 design as a user would, with the real
+pointer and keys: Appearance picked from the ⋯ menu, kept through a reload and in a popup opened
+afterwards, then undone (`flow-appearance`); tooltips after their wait, a neighbour's at once, from
+Tab, at the popup's edge, and none as a menu closes onto its control (`flow-tooltips`); URLs cut
+in the middle wherever they show (`flow-urls`); the rule list's slot, the rows that step back, its
+keys and its right-click menus (`flow-rules`); the popup's rules (`flow-popup`); Traffic's rows,
+its copy buttons saying "Copied" and back, and rows passing their first minute (`flow-traffic`);
+the open rule's crumbs, Status and Diff (`flow-open-rule`); undo from the footer and with ⌘Z
+(`flow-undo`); and the new parts in Rosé Pine Dawn and in a 420 px window in Commit Mono at
+Larger (`flow-stress`). A flow is one test, and each state in it one `test.step`, which first
+checks the state as a user meets it (a role and name, where the focus is, what a list holds,
+what's stored) and then compares a picture of the part it's about, at 2x (`look()`), with its own
+in `baselines/darwin/<area>/`; a state that must come back exactly (the defaults picked again, the
+notice gone) is compared with the same picture as before. The flows have a browser of their own
+(`flowShop`), with the demo's data (six rules, two groups, the page's six requests) and two long
+URLs, drawn without the GPU, which drew a light theme's rounded edges a shade apart from one run to
+the next; each flow starts with the rules as stored and the clock at its time, and moves the clock
+itself (`moveClock()`: the shared clock's next tick, a notice's five seconds, "Copied"'s second) or
+holds it (`pauseClock()`) while a state that lasts a second is checked and pictured. Two things to
+know when writing one: a menu takes the focus a moment after it shows (`menuOpen()` waits for
+that), and a right-click that misses the app's menus, on a menu's backdrop or off a row, gets the
+browser's own, which headless Chromium closes on, so a flow right-clicks an element and waits for
+every menu to go first (`menuShut()`). In the report a flow reads as its steps, the one that failed
+marked, with its picture's difference; a state that can't be walked yet is a `test.fixme` test,
+skipped, whose comment names the finding it waits for.
 
 A failure leaves `test/visual/test-results/`, each failed view's picture as taken, as saved and
 their difference, and `test/visual/playwright-report/`, the same as a page: open it with
@@ -800,7 +826,7 @@ npm run test:firefox     # builds, then tests in Zen from /Applications; FIREFOX
 npm run test:kit         # builds the kit page into .output/*-kit, then tests it in Chromium and Zen; SHOTS=dir for screenshots
 npm run test:release     # zips both browsers, then checks the manifests, the release CSP, the built files and the zips
 npm run test:agent       # builds, then tests Agent access in Chromium (npm install --prefix mcp first, once)
-npm run test:visual      # builds, then compares 23 views with their pictures in Chromium; -- --update-snapshots takes new ones
+npm run test:visual      # builds, then compares 23 views and walks 19 flows (91 pictures) in Chromium; -- --update-snapshots takes new ones
 npm run lint:firefox     # Mozilla's validator: the checks addons.mozilla.org runs on upload
 npm run start:zen        # a fresh Zen profile with the dev build loaded, reloaded on every save
 npm run zip              # the packages and the sources zip in web-ext-artifacts/

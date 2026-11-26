@@ -284,6 +284,18 @@ export async function startServer({ port: wanted = 0 } = {}) {
           tags: ['a', 'b'],
         });
       else if (url.pathname === '/api/early') json(200, { early: 'real' });
+      // The demo's API, as the README's and the screenshot suite's flows have it: a search, the
+      // projects, an event the page reports (no content), and anything under /api/v2/.
+      else if (url.pathname === '/api/search')
+        json(200, {
+          query: url.searchParams.get('q'),
+          results: [{ id: 7, title: 'Invoice 7' }],
+        });
+      else if (url.pathname === '/api/projects') json(200, [{ id: 1, name: 'Checkout' }]);
+      else if (url.pathname === '/api/events') {
+        res.writeHead(204);
+        res.end();
+      } else if (url.pathname.startsWith('/api/v2/')) json(200, { items: [] });
       else if (url.pathname === '/api/echo')
         json(200, { method: req.method, headers: req.headers, body });
       else if (url.pathname === '/api/new-home') json(200, { redirected: true });

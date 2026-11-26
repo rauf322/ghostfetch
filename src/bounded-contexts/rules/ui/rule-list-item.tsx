@@ -286,6 +286,7 @@ function RuleLine({
           name={rule.name}
           label="Rule name"
           testId="rule-name-input"
+          allowEmpty
           rename={(next) => {
             editRule(rule.id, (current) => {
               current.name = next;

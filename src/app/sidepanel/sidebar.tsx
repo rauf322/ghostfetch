@@ -13,6 +13,7 @@ import {
   RuleList,
   UndoNotice,
   listenForUndoKey,
+  setListSearch,
 } from '../../bounded-contexts/rules/ui/index.ts';
 import { ruleStore } from '../../bounded-contexts/rules/index.ts';
 import type { TrafficLog } from '../../bounded-contexts/traffic/index.ts';
@@ -96,6 +97,12 @@ export function Sidebar({
   // ⌘Z (Ctrl+Z elsewhere) undoes the delete the footer says was made, for as long as it says so,
   // from anywhere a field, the body editor or a menu doesn't have the keyboard (undo-delete.ts).
   useEffect(listenForUndoKey, []);
+
+  // A group's name to type in the list, a copy's or a new one's, clears a search that would keep
+  // it out of sight, as the field's own clear does (renaming.ts).
+  useEffect(() => {
+    setListSearch({ query, clear: () => onQueryChange('') });
+  }, [query, onQueryChange]);
 
   return (
     <ListPane

@@ -39,7 +39,7 @@ import { Icon } from '../../../../ui/kit/icon.tsx';
 import { Tooltip } from '../../../../ui/kit/tooltip.tsx';
 import { exportRule } from '../rules-file.tsx';
 import { offerUndo } from '../undo-delete.ts';
-import { setRenaming } from '../renaming.ts';
+import { nameInList } from '../renaming.ts';
 
 // No group, as the radio group's value: not an id a group can have.
 const NONE = '*none';
@@ -132,11 +132,12 @@ export function RuleMenuItems({
     moveRule(rule.id, { group: '', index: Math.max(at, 0) });
   }
 
-  // A new group at the top of the list with the rule in it, its name ready to type.
+  // A new group at the top of the list with the rule in it, its name ready to type there, in sight
+  // (the open rule's menu can be opened with the list hidden, or searched).
   function moveToNew() {
     const group = addGroup(createGroup(freeName(NEW_GROUP, ruleStore.state.groups)), 0);
     moveRule(rule.id, { group: group.id, index: 0 });
-    setRenaming(group.id);
+    nameInList(group.id);
   }
 
   return (

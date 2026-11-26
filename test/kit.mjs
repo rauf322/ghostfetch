@@ -1899,6 +1899,46 @@ async function runChecks(browser, open) {
     },
   );
 
+  await check(
+    `${browser}: the ContextMenu key and Shift+F10 in the search field over the rows are the browser's: neither is taken, going down or coming up, and no menu of ours opens`,
+    async () => {
+      const taken = [];
+      for (const keys of [{ key: 'ContextMenu' }, { key: 'F10', shiftKey: true }]) {
+        await kit.focus('[data-testid=kit-rules-search]');
+        // The key as the browser sends it, down and up, sent here as no driver has it in both
+        // browsers: whether each was kept from the browser.
+        taken.push(
+          await kit.run((init) => {
+            const field = document.activeElement;
+            return ['keydown', 'keyup'].map((type) => {
+              const event = new KeyboardEvent(type, {
+                bubbles: true,
+                cancelable: true,
+                ...init,
+              });
+              field.dispatchEvent(event);
+              return event.defaultPrevented;
+            });
+          }, keys),
+        );
+      }
+      await sleep(300);
+      const ours = await kit.run(() =>
+        Boolean(document.querySelector('[data-slot=context-menu-content][data-open]')),
+      );
+      expect(
+        [taken, ours],
+        [
+          [
+            [false, false],
+            [false, false],
+          ],
+          false,
+        ],
+      );
+    },
+  );
+
   await check(`${browser}: icons: the same shapes as src/lib/icons.ts`, async () => {
     const differences = await kit.run((expected) => {
       const shown = Object.fromEntries(

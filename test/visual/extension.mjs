@@ -590,6 +590,10 @@ export async function menuShut(page) {
   await expect(page.getByRole('menu')).toHaveCount(0);
 }
 
+// The groups as stored, in their order.
+export const storedGroups = (shop) =>
+  shop.worker.evaluate(async () => (await chrome.storage.local.get('groups')).groups);
+
 // A rule as stored, by its id.
 export const storedRule = async (shop, id) =>
   (await storedRules(shop)).find((each) => each.id === id);

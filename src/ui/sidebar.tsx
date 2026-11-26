@@ -13,7 +13,7 @@ import type {
 import { cn } from './cn.ts';
 import { Button } from './kit/button.tsx';
 import { Icon } from './kit/icon.tsx';
-import { modKey, modKeyName, modPressed } from './kit/kbd.tsx';
+import { modKey, modKeyName, modPressed, pressedLetter } from './kit/kbd.tsx';
 import { Tooltip } from './kit/tooltip.tsx';
 
 // While it shows, the sidebar is at least this wide, and leaves what's open at least this much
@@ -80,6 +80,9 @@ function setDragging(next: boolean) {
 }
 
 export const useSidebarHidden = () => useSyncExternalStore(subscribe, () => hidden);
+// Shows the sidebar where it's hidden, for what's about to happen in it to be seen (a name to type
+// in the rule list).
+export const showSidebar = () => setHidden(false);
 
 // The sidebar's width, for its ListPane: the width it was dragged to, as --list-width (kept
 // between MIN_LIST and what leaves MIN_OPEN for what's open, however wide the window gets), and
@@ -109,7 +112,7 @@ export function SidebarToggle({ className }: { className?: string }) {
         !modPressed(event) ||
         event.altKey ||
         event.shiftKey ||
-        event.key.toLowerCase() !== 'b'
+        !pressedLetter(event, 'b')
       )
         return;
       if (event.defaultPrevented || !button.current?.checkVisibility()) return;

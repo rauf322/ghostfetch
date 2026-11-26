@@ -1,7 +1,8 @@
 // The sidebar footer's notice of the latest delete (undo-delete.ts): "Rule deleted" and Undo with
-// its key, "⌘Z to undo" (Ctrl+Z elsewhere), for its five seconds; and the polite live region that
-// says it once, "Rule deleted. Press Command Z to undo". The region is in the footer all along,
-// empty between notices, as one that comes onto the page already filled isn't read out.
+// its key, "⌘Z to undo" (Ctrl+Z elsewhere), for its five seconds, which wait while the pointer is
+// on it or focus is in it from the keyboard; and the polite live region that says it once, "Rule
+// deleted. Press Command Z to undo". The region is in the footer all along, empty between
+// notices, as one that comes onto the page already filled isn't read out.
 //
 // While the notice shows it takes the footer's row, and the footer's buttons (`children`) come
 // back when it goes: at the sidebar's usual width they fill the row, and the notice needs most of
@@ -14,7 +15,13 @@ import { cn } from '../../../ui/cn.ts';
 import { Button } from '../../../ui/kit/button.tsx';
 import { Icon } from '../../../ui/kit/icon.tsx';
 import { Kbd, modKey, modKeyName, spokenKeys } from '../../../ui/kit/kbd.tsx';
-import { setUndoFooter, undoDelete, undoStore } from './undo-delete.ts';
+import {
+  focusInNotice,
+  pointerOnNotice,
+  setUndoFooter,
+  undoDelete,
+  undoStore,
+} from './undo-delete.ts';
 
 const KEYS = modKey('Z');
 
@@ -47,6 +54,13 @@ export function UndoNotice({ children }: { children: ReactNode }) {
         {notice && (
           <div
             data-testid="undo-notice"
+            onPointerEnter={() => pointerOnNotice(true)}
+            onPointerLeave={() => pointerOnNotice(false)}
+            onFocus={(event) => focusInNotice(event.target as Element)}
+            onBlur={(event) => {
+              if (!event.currentTarget.contains(event.relatedTarget as Node | null))
+                focusInNotice(null);
+            }}
             className="col-start-1 row-start-1 flex min-w-0 flex-wrap items-center gap-x-2 pl-2.5"
           >
             <Icon name="trash" size={14} className="flex-none text-t50" />

@@ -2,13 +2,15 @@
 // status over its duration, how long ago), its actions under the pointer and with focus, Enter and
 // Esc, the right-click menu and Open the rule, Copy URL from a row; each of a request's copy
 // buttons saying "Copied" and back after its second (the clock moved, not waited for); and rows
-// passing their first minute as the clock moves on. Each step is one state, checked as a user
-// meets it, then pictured at 2x (baselines/<platform>/traffic/).
+// passing their first minute as the clock moves on, a focused one keeping its focus, and its open
+// menu its mark (6a.1). Each step is one state, checked as a user meets it, then pictured at 2x
+// (baselines/<platform>/traffic/).
 import {
   ORIGIN,
   expect,
   look,
   menuOpen,
+  menuShut,
   moveClock,
   pauseClock,
   resumeClock,
@@ -19,12 +21,15 @@ import {
 } from './extension.mjs';
 
 const shot = (name) => ['traffic', `${name}.png`];
+const OVERDUE = '/api/v2/organizations/acme/billing/invoices?status=overdue';
 const request = (page, path) =>
   page.locator(`[data-testid="request"][title="${ORIGIN}${path}"]`);
+// A time's list, by its heading: found with a menu open too, which hides the rest of the page from
+// the accessibility tree, not from sight.
 const timeGroup = (page, label) =>
-  page
-    .locator('section')
-    .filter({ has: page.getByRole('heading', { name: label, exact: true }) });
+  page.locator('section').filter({
+    has: page.getByRole('heading', { name: label, exact: true, includeHidden: true }),
+  });
 const clipboard = (page) => page.evaluate(() => navigator.clipboard.readText());
 
 test('Traffic: a row at rest, under the pointer, with focus, opened and closed, its menu, and Copy URL', async ({
@@ -226,21 +231,23 @@ test('Traffic: 20 s on, two rows pass their first minute, and move under A few m
   });
 });
 
-// Fails today, so it doesn't run: focus falls to the page when a focused request moves to an older
-// time group, as each group is its own list and the row is made again (reports/t3-design-
-// review.md, 3c, medium: src/bounded-contexts/traffic/ui/traffic-list.tsx:213-224). Walk it once
-// that's fixed, and take its picture then.
-test.fixme('Traffic: a focused row keeps its focus as the clock moves it under an older time', async ({
+// A request a tick moves under another time is drawn again in that time's list: it keeps the focus
+// it had, with its ring, and an open right-click menu stays marked on it and gives it the focus
+// back as it shuts (reports/t3-design-plan.md, 6a.1).
+test('Traffic: a focused row keeps its focus as the clock moves it under an older time, and its open menu stays marked on it', async ({
   flowEditor,
   flowShop,
 }) => {
   const page = await flowEditor({ view: 'traffic' });
   const projects = request(page, '/api/projects').getByTestId('request-open');
+  const overdue = request(page, `${OVERDUE}&page=2`);
 
-  await test.step('/api/projects focused from the keyboard, under Just now', async () => {
+  await test.step('/api/projects focused from the keyboard, 41 s old, under Just now', async () => {
     await request(page, '/api/events').getByTestId('request-open').focus();
     await page.keyboard.press('ArrowUp');
     await expect(projects).toBeFocused();
+    expect(await ringed(projects)).toBe(true);
+    await look(page, request(page, '/api/projects'), shot('row-focus-just-now'));
   });
 
   await test.step('20 s on, under A few minutes ago, it still has the focus, ringed', async () => {
@@ -251,5 +258,40 @@ test.fixme('Traffic: a focused row keeps its focus as the clock moves it under a
     await expect(projects).toBeFocused();
     expect(await ringed(projects)).toBe(true);
     await look(page, request(page, '/api/projects'), shot('row-focus-moved'));
+  });
+
+  await test.step('↑ to the overdue invoices, 50 s old, and its right-click menu from the keyboard, the row marked', async () => {
+    await page.keyboard.press('ArrowUp');
+    await expect(overdue.getByTestId('request-open')).toBeFocused();
+    await page.keyboard.press('ContextMenu');
+    const menu = await menuOpen(page);
+    await expect(menu.getByRole('menuitem')).toHaveText([
+      'Mock this response',
+      'Copy URL',
+      'Copy as cURL',
+      'Open the rule',
+    ]);
+    await expect(overdue).toHaveAttribute('data-context-open', 'true');
+    await look(page, [overdue, menu], shot('row-menu-just-now'));
+  });
+
+  await test.step('15 s on, under A few minutes ago, the menu still open and its row marked there', async () => {
+    await moveClock(flowShop, 15_000);
+    await expect(
+      timeGroup(page, 'A few minutes ago').getByTestId('request-path').first(),
+    ).toHaveText(`${OVERDUE}&page=2`);
+    const menu = page.getByRole('menu');
+    await expect(menu).toBeVisible();
+    await expect(overdue).toHaveAttribute('data-context-open', 'true');
+    await look(page, [overdue, menu], shot('row-menu-moved'));
+  });
+
+  await test.step('Esc: the menu shuts, and the focus is back on its row, ringed', async () => {
+    await menuShut(page);
+    const button = overdue.getByTestId('request-open');
+    await expect(button).toBeFocused();
+    expect(await ringed(button)).toBe(true);
+    await expect(overdue).not.toHaveAttribute('data-context-open');
+    await look(page, overdue, shot('row-focus-menu-shut'));
   });
 });

@@ -38,12 +38,15 @@ export const RequestRow = memo(function RequestRow({
   entry,
   selected,
   tabbable,
+  menuOpen,
   onSelect,
 }: {
   entry: LogEntry;
   selected: boolean;
   // The list's Tab stop: the one row the keyboard enters the list at, whose actions are Tab stops.
   tabbable: boolean;
+  // Its right-click menu is open: marked so, as the row under the pointer is.
+  menuOpen: boolean;
   onSelect: (id: string) => void;
 }) {
   // Its actions are the shared tooltips' triggers once the pointer or focus has come near the row,
@@ -65,6 +68,7 @@ export const RequestRow = memo(function RequestRow({
       variant="request"
       data-testid="request"
       data-entry={entry.id}
+      data-context-open={menuOpen || undefined}
       selected={selected}
       title={entry.url}
       // A click anywhere on the row opens it, as its button does, but one on its actions.

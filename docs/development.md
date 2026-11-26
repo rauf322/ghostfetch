@@ -345,7 +345,7 @@ from the event's target; its items are a menu's (`DropdownMenuItem` and the rest
 ContextMenu key and Shift+F10 open it for what has focus, at its bottom left (or at its part
 marked `data-menu-anchor`'s, as a group's header), on the key's release; it gives that focus back
 as it shuts. A right-click in a text field, or on text selected in the trigger, gets the
-browser's own menu.
+browser's own menu, and the ContextMenu key and Shift+F10 in a text field are the browser's too.
 
 ### Adding a UI component
 
@@ -523,10 +523,14 @@ character under it, the same lines on screen after a change of layout, and none 
 this response on a request a rule answered), the open rule (its crumbs in a wide editor: the
 group's, its dot and name, the / after it a chevron under the pointer with nothing moving, its
 menu's New rule in this group opening New rule offering the group, and the group's own items,
-Rename making its name a field in the list; "Rules", a rule in no group's, with New rule in no
-group; the name's menu the ⋯'s, opened under itself, its Move to group working; a double-click
-or F2 renaming the rule in place, Enter giving the name, Esc keeping it, focus back on the crumb;
-none in a 420 px panel; Status's split row: its chevron's menu of the common codes, the one the
+Rename making its name a field in the crumb, as the name's crumb has it, Enter giving it, Esc
+keeping the old one, focus back on the crumb, and a name another group has turned down in a toast,
+the field staying; Duplicate there with the sidebar hidden showing it, the copy's name a field
+with the focus, and Move to group → New group… clearing a search that would hide the new group;
+"Rules", a rule in no group's, with New rule in no group; the name's menu the ⋯'s, opened under
+itself, its Move to group working; a double-click or F2 renaming the rule in place, Enter giving
+the name, Esc keeping it, focus back on the crumb, Enter and Esc an input method's while it's
+putting a character together; none in a 420 px panel; Status's split row: its chevron's menu of the common codes, the one the
 page gets checked, a pick setting it, both halves Tab stops, the line between them only under
 the pointer or with focus, and with Keep server's body the server's status kept or replaced; the
 Diff row over the body: its counts, green and grey, each only where there are some, its toggle,
@@ -575,12 +579,17 @@ as a tree (one Tab stop, the open rule's row, then its Turn off and ⋯, then ou
 other row's controls Tab stops; each item's level, place among its own and, for a group,
 expanded or not, the open rule selected, and Chromium's names for a row and a group; ↑ ↓ Home End
 passing a folded group's rules, → ← folding, unfolding and going into a group and out to it,
-Space and Enter folding a group and opening a rule, "/" still going to the search field; F2
-renaming a rule in its row, Enter keeping the name and giving the row focus back, Esc keeping the
-old one, an empty one refused, leaving the field keeping it, and a group by F2 too), its
-right-click menu (a rule's and a group's, by the pointer at the pointer, by the ContextMenu key
-and Shift+F10 at the item's bottom left, the same items as their ⋯ menus, each item working, and
-the rename field and selected text keeping the browser's own menu), a long URL cut in its middle,
+Space and Enter folding a group and opening a rule, "/" still going to the search field, and
+during a search none of those keys, nor a click on a group's name or chevron, folding or
+unfolding a group for later; F2 renaming a rule in its row, Enter keeping the name and giving the
+row focus back, Esc keeping the old one, an empty one taken, the row then named by its URL, a
+group's refused, leaving the field keeping it, and a group by F2 too, Enter and Esc an input
+method's while it's putting a character together, and a row renamed out of a search's sight
+leaving the focus on the list's Tab stop), its right-click menu (a rule's and a group's, by the
+pointer at the pointer, by the ContextMenu key and Shift+F10 at the item's bottom left, the same
+items as their ⋯ menus, each item working, and the rename field and selected text keeping the
+browser's own menu, the keys too), a menu shutting when what it's for is deleted elsewhere (a
+row's ⋯ and right-click menus, a group's), a long URL cut in its middle,
 its end in sight inside the row, a row's tooltip only for a name or URL it cuts short, a theme
 picked
 in the `⋯` menu (the editor and the open popup
@@ -630,13 +639,17 @@ last entry its end; the popup's All rules with a group's dot and fold, This page
 rule's group; and Export group with its import, off and at the top, renamed where its name is
 taken), a delete's undo where the eye is (the sidebar's footer saying "Rule deleted" and "⌘Z to
 undo" over its buttons, the footer as tall, a polite live region saying it once, and no toast;
-its Undo and ⌘Z putting the rule back where it was, focus on its row; ⌘Z in the search field,
+its Undo and ⌘Z putting the rule back where it was, focus on its row, with the ring a key gives
+it; ⌘Z and ⌘B by the letter typed on a Latin layout, AZERTY too, and by the key where QWERTY has
+it on a Cyrillic or Greek one; ⌘Z in the search field,
 the body, an open menu and a group's name being renamed theirs, the delete staying deleted;
 ⌘Z after ↓ and Esc in the list, or a click on a row, still undoing it and taking the key, so the
 browser's own undo, which takes back the page's last edit, acts neither on the press nor on its
 repeats while it's held; a delete meanwhile taking the notice's place and its time starting
 over, the notice gone five seconds on and ⌘Z then undoing nothing of ours; a group back with its
-rules, focus on its header; and a narrow panel's open rule keeping the toast), plus the
+rules, focus on its header; a narrow panel's open rule keeping the toast, a delete there leaving
+no older notice for ⌘Z; and the footer leaving the screen while the notice shows, by ⌘B or a
+narrow panel opening a rule, the undo going on in a toast with Undo), plus the
 properties of the
 [security model](security-model.md) (channel theft, forged offers, patched built-ins, built-ins
 that try to reach the interceptor through `.caller`, HTML injection, hostile rule files, sites
@@ -757,7 +770,8 @@ the third by another, and a screen reader gets each its words. And a right-click
 pointer on a rule row, Esc shutting it; the ContextMenu key (in Zen, as key events the page gets,
 as its automation has no such key) and Shift+F10 opening it at the focused row's bottom left, Esc
 giving the row focus back; its item working; the search field over the rows and text selected in
-one getting the browser's own menu; and a row Tab reaches showing its ring. Two self-checks make
+one getting the browser's own menu, and the ContextMenu key and Shift+F10 in that field left to the
+browser; and a row Tab reaches showing its ring. Two self-checks make
 sure it can fail: a `<style>` tag added on purpose has to be caught, and so does
 Base UI's own when `CSPProvider`'s setting is off.
 
@@ -785,9 +799,12 @@ afterwards, then undone (`flow-appearance`); tooltips after their wait, a neighb
 Tab, at the popup's edge, and none as a menu closes onto its control (`flow-tooltips`); URLs cut
 in the middle wherever they show (`flow-urls`); the rule list's slot, the rows that step back, its
 keys and its right-click menus (`flow-rules`); the popup's rules (`flow-popup`); Traffic's rows,
-its copy buttons saying "Copied" and back, and rows passing their first minute (`flow-traffic`);
-the open rule's crumbs, Status and Diff (`flow-open-rule`); undo from the footer and with ⌘Z
-(`flow-undo`); and the new parts in Rosé Pine Dawn and in a 420 px window in Commit Mono at
+its copy buttons saying "Copied" and back, rows passing their first minute, and a focused row
+keeping its focus as it does, an open menu its mark (`flow-traffic`); the open rule's crumbs,
+Status and Diff, and the group renamed in its crumb with the sidebar hidden (`flow-open-rule`);
+undo from the footer and with ⌘Z, the row put back with the ring a key gives it, to the pixel,
+and the notice's time waiting while the pointer is on it, focus is in it from the keyboard or
+the window is in the background (`flow-undo`); and the new parts in Rosé Pine Dawn and in a 420 px window in Commit Mono at
 Larger (`flow-stress`). A flow is one test, and each state in it one `test.step`, which first
 checks the state as a user meets it (a role and name, where the focus is, what a list holds,
 what's stored) and then compares a picture of the part it's about, at 2x (`look()`), with its own

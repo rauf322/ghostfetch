@@ -4,18 +4,18 @@
 // rules. A group that's off fades, as its rules do. In the list's tree its group's block takes
 // focus (group-block.tsx), and the header shows the ring; its controls are Tab stops only while
 // the block is the list's (`tabbable`), and the fold button never is, as the list's keys fold.
-import { groupName, renameGroup } from '../index.ts';
+import { groupName } from '../index.ts';
 import type { Group, Rule } from '../index.ts';
 import { cn } from '../../../ui/cn.ts';
 import { GroupSwitch } from './group-switch.tsx';
 import { Button } from '../../../ui/kit/button.tsx';
 import { Icon } from '../../../ui/kit/icon.tsx';
-import { notify } from '../../../ui/kit/toast.tsx';
 import { Tooltip } from '../../../ui/kit/tooltip.tsx';
 import type { HeaderDrag } from './use-rule-drag.ts';
 import { DROP_MARK, INTO_MARK } from './drop-marks.ts';
 import { GroupMenu } from './group-menu.tsx';
 import { RenameField } from './rename-field.tsx';
+import { renameGroupTo } from './renaming.ts';
 
 export function GroupHeader({
   group,
@@ -75,14 +75,7 @@ export function GroupHeader({
           testId="group-name-input"
           maxLength={100}
           tidy={groupName}
-          rename={(name) => {
-            if (renameGroup(group.id, name) !== 'taken') return true;
-            notify(`There's already a group called “${name}”`, {
-              kind: 'error',
-              description: 'Each group has a name of its own: pick another.',
-            });
-            return false;
-          }}
+          rename={(name) => renameGroupTo(group.id, name)}
           onDone={onRenamed}
           className="font-semibold"
         />

@@ -1,9 +1,9 @@
 // The open rule, walked as a user would (reports/t3-design-plan.md, 4a): its crumbs (at rest,
 // under the pointer, their menus, a rename in place by double-click and by F2), the Status row
 // (its hairline under the pointer, its codes, a code picked, the server's status kept), and the
-// Diff row (its counts, which follow the body once typing pauses, and the row opening Diff). Each
-// step is one state, checked as a user meets it, then pictured at 2x
-// (baselines/<platform>/open-rule/).
+// Diff row (its counts, which follow the body once typing pauses, and the row opening Diff); and,
+// with the sidebar hidden, the group renamed in its crumb (6a.13). Each step is one state, checked
+// as a user meets it, then pictured at 2x (baselines/<platform>/open-rule/).
 import {
   expect,
   item,
@@ -13,6 +13,7 @@ import {
   moveClock,
   pauseClock,
   resumeClock,
+  storedGroups,
   storedRule,
   test,
 } from './extension.mjs';
@@ -121,32 +122,56 @@ test('Open rule: the crumbs at rest, under the pointer, their menus, and renamed
   });
 });
 
-// Fails today, so it doesn't run: with the sidebar hidden (⌘B), Rename from the group's crumb
-// mounts the name's field in the hidden list, where it can't take focus and stays open, unseen
-// (reports/t3-design-review.md, 4a, medium: rule-crumbs.tsx:132, list-detail.tsx:78,
-// rename-field.tsx:33-36). Walk it once that's fixed, and take its picture then.
-test.fixme('Open rule: Rename from the group’s crumb with the sidebar hidden', async ({
+// With the sidebar hidden (⌘B), Rename from the group's crumb renames the group in the crumb, as
+// the name's crumb does, where it's seen (reports/t3-design-plan.md, 6a.13).
+test('Open rule: Rename from the group’s crumb with the sidebar hidden, in the crumb', async ({
   flowEditor,
+  flowShop,
 }) => {
   const page = await flowEditor({ rule: 'Checkout fails' });
+  const path = page.getByTestId('rules-head-path');
+  const crumb = page.getByTestId('crumb-group');
 
-  await test.step('⌘B hides the sidebar', async () => {
+  await test.step('⌘B hides the sidebar: the crumbs at the header’s left', async () => {
     await page.keyboard.press('ControlOrMeta+b');
     await expect(page.getByRole('tree', { name: 'Rules' })).toBeHidden();
+    await look(page, path, shot('crumbs-sidebar-hidden'));
   });
 
-  await test.step('Rename from the group’s crumb: a field that has the focus, in sight', async () => {
-    await page.getByTestId('crumb-group').click();
+  await test.step('Rename from the group’s crumb: its name a field there, focused, all of it selected', async () => {
+    await crumb.click();
     const menu = await menuOpen(page);
     await menu.getByRole('menuitem', { name: 'Rename' }).click();
     const field = page.getByRole('textbox', { name: 'Group name' });
     await expect(field).toBeVisible();
     await expect(field).toBeFocused();
-    await look(
-      page,
-      page.getByTestId('rules-head-path'),
-      shot('crumb-group-rename-hidden'),
-    );
+    await expect(field).toHaveValue('PR 412 · checkout');
+    expect(
+      await field.evaluate((input) => [input.selectionStart, input.selectionEnd]),
+    ).toEqual([0, 'PR 412 · checkout'.length]);
+    await page.mouse.move(0, 0);
+    await look(page, path, shot('crumb-group-rename-hidden'));
+  });
+
+  await test.step('A new name and Enter: the crumb says it, has the focus again, with its tooltip, and it’s stored', async () => {
+    await page.keyboard.type('PR 412 · payments');
+    await page.keyboard.press('Enter');
+    await expect(page.getByTestId('crumb-group-input')).toHaveCount(0);
+    await expect(crumb).toHaveAccessibleName('Group “PR 412 · payments”');
+    await expect(crumb).toBeFocused();
+    await expect
+      .poll(async () => (await storedGroups(flowShop)).map((group) => group.name))
+      .toEqual(['PR 412 · payments', 'Billing GraphQL']);
+    const tip = page.locator('[data-slot="tooltip"]');
+    await expect(tip).toHaveText('Group actions');
+    await look(page, [path, tip], shot('crumb-group-renamed'));
+  });
+
+  await test.step('⌘B shows the sidebar again: the list says the new name', async () => {
+    await page.keyboard.press('ControlOrMeta+b');
+    const group = item(page, 'PR 412 · payments');
+    await expect(group).toBeVisible();
+    await look(page, group.getByTestId('group'), shot('group-renamed-in-list'));
   });
 });
 

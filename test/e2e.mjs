@@ -3267,7 +3267,7 @@ try {
     },
   );
   await check(
-    "F2 makes a rule's name a field in its row: Enter keeps the name typed and gives the row focus back, Esc keeps the old name, an empty name is refused, leaving the field keeps what's typed; F2 on a group's item renames the group the same way",
+    "F2 makes a rule's name a field in its row: Enter keeps the name typed and gives the row focus back, Esc keeps the old name, an empty name is taken, as the open rule's name field takes one, leaving the field keeps what's typed; F2 on a group's item renames the group the same way",
     async () => {
       await keysReady();
       const field = app.locator('[data-testid="rule-name-input"]');
@@ -3330,7 +3330,7 @@ try {
           'Renamed by F2',
           NEVER,
           ['Renamed by F2', NEVER],
-          'Renamed by F2',
+          '',
           'Kept on leaving',
           'Keys again',
           'group: Keys again',
@@ -8891,7 +8891,7 @@ try {
     );
 
   await check(
-    "a wide editor's header says where the open rule is in two crumbs that are controls: its group's, the group's dot and name, the / after it a chevron under the pointer with nothing moving, opens New rule in this group, which opens New rule offering the group, and the group's own items, Rename making its name a field in the list; a rule in no group's, \"Rules\", opens New rule, in no group; the rule's name opens the ⋯'s menu, under itself, whose items work; a 420 px panel has its back button instead",
+    "a wide editor's header says where the open rule is in two crumbs that are controls: its group's, the group's dot and name, the / after it a chevron under the pointer with nothing moving, opens New rule in this group, which opens New rule offering the group, and the group's own items, Rename making its name a field in the crumb, as the name's crumb has it; a rule in no group's, \"Rules\", opens New rule, in no group; the rule's name opens the ⋯'s menu, under itself, whose items work; a 420 px panel has its back button instead",
     async () => {
       await withGroups(
         [grouped('c1', 'A1', 'g-1'), grouped('c2', 'loose')],
@@ -8927,11 +8927,11 @@ try {
           await menuOpen.locator('[data-testid="crumb-new-rule"]').click();
           await waitForComposer();
           const offered = await app.locator('[data-testid="picker-group"]').textContent();
-          // Rename, from the group's crumb: its name a field in the list, as from its ⋯.
+          // Rename, from the group's crumb: its name a field in the crumb, as the name's crumb has it.
           await openRule('From A1');
           await crumbGroup.click();
           await menuOpen.locator('[data-testid="rename-group"]').click();
-          const field = app.locator('[data-testid="group-name-input"]');
+          const field = app.locator('[data-testid="crumb-group-input"]');
           await field.waitFor({ timeout: 3000 });
           const renaming = await field.evaluate(
             (input) => input === document.activeElement && input.value,
@@ -10000,6 +10000,660 @@ try {
             );
           } finally {
             await app.setViewportSize({ width: 1280, height: 820 });
+          }
+        },
+      );
+    },
+  );
+
+  console.log('focus and keys (6a)');
+  // The sidebar's toggle, as aria-expanded says it: 'true' while the sidebar shows.
+  const sidebarShown = () =>
+    app.locator('[data-testid="sidebar-toggle"]:visible').getAttribute('aria-expanded');
+  // What has focus: a list item's id, or a test id, or the tag; and whether it shows its ring.
+  const focusNow = () =>
+    app.evaluate(() => {
+      const active = document.activeElement;
+      return [
+        active?.dataset.item ?? active?.dataset.testid ?? active?.tagName,
+        active?.matches(':focus-visible') ?? false,
+      ];
+    });
+  const storedNames = async () => (await storedRules()).map((rule) => rule.name);
+  // F2 on a rule's row: its name a field.
+  const renameRow = async (name) => {
+    await named(name).focus();
+    await app.keyboard.press('F2');
+    await app.locator('[data-testid="rule-name-input"]').waitFor({ timeout: 3000 });
+  };
+  // A key, as the browser would send it, in what has focus: whether it was taken (defaultPrevented).
+  const sendKey = (init) =>
+    app.evaluate((options) => {
+      const target = document.activeElement ?? document.body;
+      const down = new KeyboardEvent('keydown', {
+        bubbles: true,
+        cancelable: true,
+        ...options,
+      });
+      target.dispatchEvent(down);
+      target.dispatchEvent(
+        new KeyboardEvent('keyup', { bubbles: true, cancelable: true, ...options }),
+      );
+      return down.defaultPrevented;
+    }, init);
+  // ⌘ and a key, as this platform's command key: with `code` where it isn't where QWERTY has it.
+  const commandKey = (key, code) =>
+    app.evaluate(
+      ([typed, where]) => {
+        const mac = /Mac/.test(navigator.userAgent);
+        const event = new KeyboardEvent('keydown', {
+          key: typed,
+          code: where,
+          metaKey: mac,
+          ctrlKey: !mac,
+          bubbles: true,
+          cancelable: true,
+        });
+        document.body.dispatchEvent(event);
+        return event.defaultPrevented;
+      },
+      [key, code],
+    );
+  const THREE = [grouped('k1', 'one'), grouped('k2', 'two'), grouped('k3', 'three')];
+  // Toasts a check before left, shut: the checks here find theirs by what they say.
+  const shutToasts = async () => {
+    await app.evaluate(() => {
+      for (const close of document.querySelectorAll(
+        '[data-slot="toast"] button[aria-label="Close"]',
+      ))
+        close.click();
+    });
+    await app.waitForFunction(
+      () => !document.querySelector('[data-slot="toast"]'),
+      null,
+      {
+        timeout: 3000,
+      },
+    );
+  };
+  // A menu the pointer opened, once it has the focus: an item clicked before then isn't taken.
+  const menuReady = () =>
+    app.waitForFunction(() => document.activeElement?.closest('[role="menu"]'), null, {
+      timeout: 3000,
+    });
+  // A field, by its test id: whether it's there, and what's in it.
+  const fieldNow = (testId) =>
+    app.evaluate((id) => {
+      const field = document.querySelector(`[data-testid="${id}"]`);
+      return field ? [1, field.value] : [0, null];
+    }, testId);
+
+  await check(
+    `the row put back by ${MOD_Z} or by the notice's Undo has the focus, and shows its ring, as one reached by a key does`,
+    async () => {
+      await withGroups(THREE, [], async () => {
+        await shutMenus();
+        await show('rules');
+        await named('From two').waitFor({ timeout: 3000 });
+        await deleteFromRow('From two');
+        await undoNotice.waitFor({ timeout: 3000 });
+        await app.keyboard.press('ControlOrMeta+z');
+        await named('From two').waitFor({ timeout: 3000 });
+        await sleep(200);
+        const byKey = await focusNow();
+        await deleteFromRow('From two');
+        await undoNotice.waitFor({ timeout: 3000 });
+        await noticeUndo.click();
+        await named('From two').waitFor({ timeout: 3000 });
+        await sleep(200);
+        expect(
+          [byKey, await focusNow()],
+          [
+            ['k2', true],
+            ['k2', true],
+          ],
+        );
+      });
+    },
+  );
+
+  // A narrow panel, its list showing, and the notice for a rule deleted from its row.
+  const narrowWithNotice = async () => {
+    await shutMenus();
+    await shutToasts();
+    await show('rules');
+    await app.setViewportSize({ width: 420, height: 760 });
+    const back = app.locator('[data-testid="rule-back"]');
+    if (await back.isVisible()) await back.click();
+    await deleteFromRow('From one');
+    await undoNotice.waitFor({ timeout: 3000 });
+  };
+
+  await check(
+    `in a narrow panel, a delete from the open rule, which gets a toast, leaves no older notice behind: back in the list the footer says nothing, and ${MOD_Z} undoes neither delete`,
+    async () => {
+      await withGroups(THREE, [], async () => {
+        try {
+          await narrowWithNotice();
+          await named('From two').click();
+          await app.locator('[data-testid="rule-name"]').waitFor({ timeout: 3000 });
+          await app.click('[data-testid="rule-menu"]');
+          await app.click('[data-testid="delete-rule"]');
+          await anyToast
+            .filter({ hasText: 'Deleted “From two”' })
+            .waitFor({ timeout: 3000 });
+          await named('From three').waitFor({ timeout: 3000 });
+          await sleep(300);
+          const footer = await noticeSays();
+          await app.keyboard.press('ControlOrMeta+z');
+          await sleep(300);
+          expect([footer.notice, await storedNames()], [null, ['From three']]);
+        } finally {
+          await app.setViewportSize({ width: 1280, height: 820 });
+          // A ⌘Z the app doesn't take is the browser's undo, which may bring back a search a
+          // check before cleared.
+          await searchRules.fill('');
+        }
+      });
+    },
+  );
+
+  await check(
+    'in a narrow panel, a notice whose list goes away as a rule opens goes on as a toast with Undo, which brings the rule back',
+    async () => {
+      await withGroups(THREE, [], async () => {
+        try {
+          await narrowWithNotice();
+          await named('From two').click();
+          await app.locator('[data-testid="rule-name"]').waitFor({ timeout: 3000 });
+          const toast = anyToast.filter({ hasText: 'Deleted “From one”' });
+          await toast.waitFor({ timeout: 3000 });
+          await toast.locator('button', { hasText: 'Undo' }).click();
+          await sleep(300);
+          expect(await storedNames(), ['From one', 'From two', 'From three']);
+        } finally {
+          await app.setViewportSize({ width: 1280, height: 820 });
+        }
+      });
+    },
+  );
+
+  await check(
+    `${MOD_Z.replace('Z', 'B')} while the notice shows hides the footer and the undo goes on as a toast with Undo, which brings the rule back; shown again, the footer says nothing`,
+    async () => {
+      await withGroups(THREE, [], async () => {
+        try {
+          await shutMenus();
+          await shutToasts();
+          await show('rules');
+          await deleteFromRow('From two');
+          await undoNotice.waitFor({ timeout: 3000 });
+          await app.keyboard.press('ControlOrMeta+b');
+          const toast = anyToast.filter({ hasText: 'Deleted “From two”' });
+          await toast.waitFor({ timeout: 3000 });
+          const hidden = await sidebarShown();
+          await toast.locator('button', { hasText: 'Undo' }).click();
+          await sleep(300);
+          const back = await storedNames();
+          await app.keyboard.press('ControlOrMeta+b');
+          await sleep(500);
+          expect(
+            [hidden, back, await sidebarShown(), (await noticeSays()).notice],
+            ['false', ['From one', 'From two', 'From three'], 'true', null],
+          );
+        } finally {
+          if ((await sidebarShown()) === 'false')
+            await app.keyboard.press('ControlOrMeta+b');
+        }
+      });
+    },
+  );
+
+  await check(
+    `${MOD_Z} and ${MOD_Z.replace('Z', 'B')} on any layout: on a Latin one, AZERTY too, by the letter typed (Z where QWERTY has W, and W where it has Z isn't Z, nor Dvorak's ; there); where what's typed is a letter of another script (Cyrillic я, Greek ζ, и for B), by the key where QWERTY has it`,
+    async () => {
+      await withGroups(THREE, [], async () => {
+        try {
+          await shutMenus();
+          await show('rules');
+          const tries = [];
+          for (const [key, code] of [
+            [';', 'KeyZ'],
+            ['w', 'KeyZ'],
+            ['z', 'KeyW'],
+            ['я', 'KeyZ'],
+            ['ζ', 'KeyZ'],
+          ]) {
+            if ((await storedNames()).length === 3) {
+              await deleteFromRow('From two');
+              await undoNotice.waitFor({ timeout: 3000 });
+            }
+            const taken = await commandKey(key, code);
+            await sleep(300);
+            tries.push([key, taken, (await storedNames()).length]);
+          }
+          const toggled = [];
+          for (const key of ['и', 'и']) {
+            toggled.push(await commandKey(key, 'KeyB'));
+            await sleep(400);
+            toggled.push(await sidebarShown());
+          }
+          expect(
+            [tries, toggled],
+            [
+              [
+                [';', false, 2],
+                ['w', false, 2],
+                ['z', true, 3],
+                ['я', true, 3],
+                ['ζ', true, 3],
+              ],
+              [true, 'false', true, 'true'],
+            ],
+          );
+        } finally {
+          if ((await sidebarShown()) === 'false')
+            await app.keyboard.press('ControlOrMeta+b');
+        }
+      });
+    },
+  );
+
+  await check(
+    "while an input method is putting a character together, Enter and Esc are its own, in the rename field of a row and of the open rule's name crumb: the field stays, the name as typed, and the next Enter gives it",
+    async () => {
+      await withGroups(THREE, [], async () => {
+        await shutMenus();
+        await show('rules');
+        const composing = async (key) => {
+          await sendKey({ key, isComposing: true });
+          await sleep(150);
+        };
+        await renameRow('From two');
+        const rowField = app.locator('[data-testid="rule-name-input"]');
+        await rowField.fill('日本');
+        await composing('Enter');
+        await composing('Escape');
+        const inRow = await fieldNow('rule-name-input');
+        await app.keyboard.press('Enter');
+        await sleep(300);
+        await named('日本').click();
+        await app.locator('[data-testid="crumb-name"]').dblclick();
+        const crumbField = app.locator('[data-testid="crumb-name-input"]');
+        await crumbField.waitFor({ timeout: 3000 });
+        await crumbField.fill('東京');
+        await composing('Enter');
+        await composing('Escape');
+        const inCrumb = await fieldNow('crumb-name-input');
+        await app.keyboard.press('Enter');
+        await sleep(300);
+        expect(
+          [inRow, inCrumb, await storedNames()],
+          [
+            [1, '日本'],
+            [1, '東京'],
+            ['From one', '東京', 'From three'],
+          ],
+        );
+      });
+    },
+  );
+
+  await check(
+    "a search shows every group open, and while it does no key and no click folds or unfolds one for later: not ←, →, Enter or Space on its header, nor a click on its name or on its chevron, on a group kept open or one kept folded; once it's cleared each is as it was",
+    async () => {
+      await withGroups(
+        [
+          grouped('f1', 'one', 'g-1'),
+          grouped('f2', 'two', 'g-1'),
+          grouped('f3', 'three', 'g-2'),
+          grouped('f4', 'four', 'g-2'),
+        ],
+        [PR1(), { id: 'g-2', name: 'PR-2', enabled: true, at: 2 }],
+        async () => {
+          try {
+            await shutMenus();
+            await show('rules');
+            const block = (id) =>
+              app.locator(`[data-testid="group-block"][data-item="${id}"]`);
+            const expanded = (id) => block(id).getAttribute('aria-expanded');
+            const groupName = (id) => block(id).locator('[data-testid="group-name"]');
+            // PR-1 kept open, PR-2 kept folded, by a click on its name, as before a search.
+            await block('g-2').waitFor({ timeout: 3000 });
+            if ((await expanded('g-1')) === 'false') await groupName('g-1').click();
+            if ((await expanded('g-2')) === 'true') await groupName('g-2').click();
+            const kept = [await expanded('g-1'), await expanded('g-2')];
+            const folds = () =>
+              app.evaluate(() => localStorage.getItem('ghostfetch.folded'));
+            const before = await folds();
+            await searchRules.fill('From');
+            await named('From four').waitFor({ timeout: 3000 });
+            const seen = [];
+            const note = async (id, what) =>
+              seen.push([id, what, await expanded(id), (await folds()) === before]);
+            for (const id of ['g-1', 'g-2']) {
+              for (const key of ['ArrowLeft', 'ArrowRight', 'Enter', 'Space']) {
+                await block(id).focus();
+                await app.keyboard.press(key);
+                await note(id, key);
+              }
+              await groupName(id).locator('span').click();
+              await note(id, 'name');
+              await groupName(id).locator('svg').click();
+              await note(id, 'chevron');
+            }
+            await searchRules.fill('');
+            await sleep(300);
+            const all = (id) =>
+              ['ArrowLeft', 'ArrowRight', 'Enter', 'Space', 'name', 'chevron'].map(
+                (what) => [id, what, 'true', true],
+              );
+            expect(
+              [
+                kept,
+                seen,
+                [await expanded('g-1'), await expanded('g-2')],
+                (await folds()) === before,
+              ],
+              [
+                ['true', 'false'],
+                [...all('g-1'), ...all('g-2')],
+                ['true', 'false'],
+                true,
+              ],
+            );
+          } finally {
+            await searchRules.fill('');
+            // Both groups open again, as the checks after this one have them.
+            for (const id of ['g-1', 'g-2'])
+              if (
+                (await app
+                  .locator(`[data-testid="group-block"][data-item="${id}"]`)
+                  .getAttribute('aria-expanded')) === 'false'
+              )
+                await app
+                  .locator(
+                    `[data-testid="group-block"][data-item="${id}"] [data-testid="group-name"]`,
+                  )
+                  .click();
+          }
+        },
+      );
+    },
+  );
+
+  await check(
+    "a row renamed by F2 to a name the search doesn't find any more leaves the list with the focus, on its Tab stop, not the page",
+    async () => {
+      await withGroups(THREE, [], async () => {
+        try {
+          await shutMenus();
+          await show('rules');
+          await searchRules.fill('From');
+          await renameRow('From two');
+          await app.locator('[data-testid="rule-name-input"]').fill('Profile');
+          await app.keyboard.press('Enter');
+          await sleep(300);
+          const focus = await app.evaluate(() => [
+            document.activeElement?.getAttribute('role'),
+            document.activeElement?.getAttribute('tabindex'),
+          ]);
+          expect(
+            [focus, await storedNames()],
+            [
+              ['treeitem', '0'],
+              ['From one', 'Profile', 'From three'],
+            ],
+          );
+        } finally {
+          await searchRules.fill('');
+        }
+      });
+    },
+  );
+
+  await check(
+    "the ContextMenu key and Shift+F10 in a row's rename field are the browser's: not taken, and no menu of the list's opens",
+    async () => {
+      await withGroups(THREE, [], async () => {
+        await shutMenus();
+        await show('rules');
+        await renameRow('From two');
+        const taken = [
+          await sendKey({ key: 'ContextMenu' }),
+          await sendKey({ key: 'F10', shiftKey: true }),
+        ];
+        await sleep(300);
+        const menus = await app.locator('[role="menu"]').count();
+        await app.keyboard.press('Escape');
+        expect([taken, menus], [[false, false], 0]);
+      });
+    },
+  );
+
+  await check(
+    "a menu whose rule or group goes while it's open (the agent, or another window, deletes it) shuts: a row's ⋯ menu, its right-click menu, a group's right-click menu, and its ⋯ menu",
+    async () => {
+      await withGroups(
+        [grouped('m1', 'one'), grouped('m2', 'two', 'g-1'), grouped('m3', 'three')],
+        [PR1()],
+        async () => {
+          try {
+            await shutMenus();
+            await show('rules');
+            const menu = app.locator('[role="menu"]');
+            const shutAfter = async (stored) => {
+              await menu.first().waitFor({ timeout: 3000 });
+              await setStorage(stored);
+              await sleep(800);
+              return menu.count();
+            };
+            const all = await storedRules();
+            const without = all.filter((rule) => rule.id !== 'm2');
+            await named('From two').hover();
+            await named('From two').locator('[data-testid="row-menu"]').click();
+            const rowMenu = await shutAfter({ rules: without, groups: [PR1()] });
+            await shutMenus();
+            await setStorage({ rules: all, groups: [PR1()] });
+            await named('From two').waitFor({ timeout: 3000 });
+            await named('From two').click({
+              button: 'right',
+              position: { x: 60, y: 12 },
+            });
+            const rightClick = await shutAfter({ rules: without, groups: [PR1()] });
+            await shutMenus();
+            await setStorage({ rules: all, groups: [PR1()] });
+            const header = app.locator('[data-testid="group"][data-group="PR-1"]');
+            await header.waitFor({ timeout: 3000 });
+            await header.click({ button: 'right', position: { x: 60, y: 12 } });
+            const ungrouped = {
+              rules: all.map((rule) => ({ ...rule, group: '' })),
+              groups: [],
+            };
+            const groupMenu = await shutAfter(ungrouped);
+            await shutMenus();
+            await setStorage({ rules: all, groups: [PR1()] });
+            await header.waitFor({ timeout: 3000 });
+            await header.hover();
+            await header.locator('[data-testid="group-menu"]').click();
+            const groupMore = await shutAfter(ungrouped);
+            expect([rowMenu, rightClick, groupMenu, groupMore], [0, 0, 0, 0]);
+          } finally {
+            await shutMenus();
+          }
+        },
+      );
+    },
+  );
+
+  await check(
+    "F2 on a rule takes an empty name, as the open rule's name field does, and its row is then named by its URL; a group's still needs one",
+    async () => {
+      await withGroups(
+        [grouped('e1', 'one', 'g-1'), grouped('e2', 'two')],
+        [PR1()],
+        async () => {
+          await shutMenus();
+          await show('rules');
+          await renameRow('From two');
+          await app.locator('[data-testid="rule-name-input"]').fill('');
+          await app.keyboard.press('Enter');
+          await sleep(300);
+          const row = app.locator('[data-testid="rule"][data-item="e2"]');
+          const unnamed = [
+            (await storedRules()).find((rule) => rule.id === 'e2').name,
+            await row.locator('[data-slot="item-title"]').textContent(),
+          ];
+          const block = app.locator('[data-testid="group-block"][data-item="g-1"]');
+          await block.focus();
+          await app.keyboard.press('F2');
+          const groupField = app.locator('[data-testid="group-name-input"]');
+          await groupField.waitFor({ timeout: 3000 });
+          await groupField.fill('');
+          await app.keyboard.press('Enter');
+          await sleep(300);
+          expect(
+            [unnamed, (await storedGroups()).map((group) => group.name)],
+            [['', '/api/user?case=grouped'], ['PR-1']],
+          );
+        },
+      );
+    },
+  );
+
+  await check(
+    "the group's crumb renames the group in the crumb, as the name's crumb does: its name a field there, Enter gives it and Esc keeps the old one, focus back on the crumb either way; a name another group has is turned down, said so in a toast, the field staying for another",
+    async () => {
+      await withGroups(
+        [grouped('c1', 'one', 'g-1'), grouped('c2', 'two')],
+        [PR1(), { id: 'g-2', name: 'PR-2', enabled: true, at: 2 }],
+        async () => {
+          await shutMenus();
+          await shutToasts();
+          await show('rules');
+          await named('From one').click();
+          // Its header drawn, the crumbs its own.
+          await app
+            .locator('[data-testid="crumb-name"]', { hasText: 'From one' })
+            .waitFor({ timeout: 3000 });
+          const crumb = app.locator('[data-testid="crumb-group"]');
+          const field = app.locator('[data-testid="crumb-group-input"]');
+          // Rename from the crumb's menu, focus on the Rules tab before it (as after a click
+          // there), which the menu gives the focus back to where the crumb's gone.
+          const renameFromCrumb = async () => {
+            await app.locator('[data-testid="nav-rules"]').focus();
+            await crumb.click();
+            await menuReady();
+            await app.locator('[data-testid="rename-group"]').click();
+            await field.waitFor({ timeout: 3000 });
+            await sleep(200);
+          };
+          await renameFromCrumb();
+          const opened = [
+            await field.inputValue(),
+            await app.evaluate(() => document.activeElement?.dataset.testid),
+            await app.locator('[data-testid="group-name-input"]').count(),
+          ];
+          await field.fill('PR-1 checkout');
+          await app.keyboard.press('Enter');
+          await sleep(300);
+          const renamed = [
+            (await storedGroups()).map((group) => group.name),
+            await crumb.getAttribute('aria-label'),
+            await app.evaluate(() => document.activeElement?.dataset.testid),
+          ];
+          await renameFromCrumb();
+          await field.fill('Something else');
+          await app.keyboard.press('Escape');
+          await sleep(300);
+          const kept = [
+            (await storedGroups()).map((group) => group.name),
+            await app.evaluate(() => document.activeElement?.dataset.testid),
+          ];
+          await renameFromCrumb();
+          await field.fill('PR-2');
+          await app.keyboard.press('Enter');
+          await sleep(300);
+          const taken = [
+            await field.count(),
+            await anyToast
+              .filter({ hasText: "There's already a group called “PR-2”" })
+              .count(),
+            (await storedGroups()).map((group) => group.name),
+          ];
+          await app.keyboard.press('Escape');
+          await sleep(200);
+          expect(
+            [opened, renamed, kept, taken],
+            [
+              ['PR-1', 'crumb-group-input', 0],
+              [['PR-1 checkout', 'PR-2'], 'Group “PR-1 checkout”', 'crumb-group'],
+              [['PR-1 checkout', 'PR-2'], 'crumb-group'],
+              [1, 1, ['PR-1 checkout', 'PR-2']],
+            ],
+          );
+        },
+      );
+    },
+  );
+
+  await check(
+    "what the crumbs give a name to type in the list is seen: Duplicate on the group's crumb with the sidebar hidden shows the sidebar, the copy's name a field there with the focus; Move to group → New group… on the name's crumb clears a search that would hide the new group",
+    async () => {
+      await withGroups(
+        [grouped('d1', 'one'), grouped('d2', 'two', 'g-1')],
+        [PR1()],
+        async () => {
+          try {
+            await shutMenus();
+            await show('rules');
+            await named('From two').click();
+            await app
+              .locator('[data-testid="crumb-name"]', { hasText: 'From two' })
+              .waitFor({ timeout: 3000 });
+            await app.keyboard.press('ControlOrMeta+b');
+            await sleep(500);
+            const hidden = await sidebarShown();
+            await app.click('[data-testid="crumb-group"]');
+            await menuReady();
+            await app.click('[data-testid="duplicate-group"]');
+            const copyField = app.locator('[data-testid="group-name-input"]');
+            await copyField.waitFor({ timeout: 3000 });
+            await sleep(300);
+            const copied = [
+              await sidebarShown(),
+              await copyField.isVisible(),
+              await app.evaluate(() => document.activeElement?.dataset.testid),
+            ];
+            await app.keyboard.press('Escape');
+            await searchRules.fill('one');
+            await sleep(300);
+            await app.click('[data-testid="crumb-name"]');
+            await menuReady();
+            await app.click('[data-testid="move-to-group"]');
+            await app.click('[data-testid="move-to-new"]');
+            await copyField.waitFor({ timeout: 3000 });
+            await sleep(300);
+            const moved = [
+              await searchRules.inputValue(),
+              await copyField.isVisible(),
+              await app.evaluate(() => document.activeElement?.dataset.testid),
+            ];
+            await app.keyboard.press('Escape');
+            expect(
+              [hidden, copied, moved],
+              [
+                'false',
+                ['true', true, 'group-name-input'],
+                ['', true, 'group-name-input'],
+              ],
+            );
+          } finally {
+            // The sidebar shown first: its search field is cleared there.
+            await shutMenus();
+            if ((await sidebarShown()) === 'false')
+              await app.keyboard.press('ControlOrMeta+b');
+            await searchRules.fill('');
           }
         },
       );

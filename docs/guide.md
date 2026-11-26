@@ -80,20 +80,23 @@ What's different in Firefox-based browsers:
     and its **⋯** menu, the one an open rule has in its header. A right-click on a rule or a
     group's header (or the menu key, or Shift+F10) opens the same menu as its **⋯**. From the
     keyboard the list is one Tab stop: ↑ and ↓ move between rules and groups, → and ← unfold and
-    fold a group, Enter opens a rule, F2 renames it, and Tab goes on to the rule's **Turn off**
-    and **⋯**. **Duplicate**, in an open rule's header, copies it. From 760 px wide the header
+    fold a group, Enter opens a rule, F2 renames it (left empty, its URL names it, as in an open
+    rule's name field), and Tab goes on to the rule's **Turn off** and **⋯**. **Duplicate**, in an open rule's header, copies it. From 760 px wide the header
     also says where the rule is: its group (the group's dot and name), or **Rules** for a rule in
     no group, then its name. Each opens a menu: the group's has **New rule in this group** and
-    the group's own items (**Rename**, **Duplicate**, **Export group**, **Ungroup**,
-    **Delete**), **Rules** has **New rule**, and the name's is the rule's **⋯** menu.
-    Double-click the name, or press F2 on it, to rename the rule there. A rule or a group you
-    delete is gone at once, and for five seconds the bottom of the sidebar says so, **Rule
-    deleted**, in place of its buttons, with **⌘Z to undo** (Ctrl+Z on Windows and Linux):
-    click it, or press ⌘Z, and it's back where it was, a group with its rules. ⌘Z does it for
-    as long as the notice shows, whatever you pressed or clicked meanwhile, from anywhere but a
-    text field, the body or a menu, which keep their own ⌘Z. Where the sidebar isn't on screen
-    (a narrow side panel with the rule open, or the sidebar hidden), **Undo** is in a toast
-    instead.
+    the group's own items (**Rename**, which renames the group there in the header,
+    **Duplicate**, **Export group**, **Ungroup**, **Delete**), **Rules** has **New rule**, and
+    the name's is the rule's **⋯** menu. Double-click the name, or press F2 on it, to rename the
+    rule there. A rule or a group you delete is gone at once, and for five seconds the bottom of
+    the sidebar says so, **Rule deleted**, in place of its buttons, with **⌘Z to undo** (Ctrl+Z
+    on Windows and Linux): click it, or press ⌘Z, and it's back where it was, a group with its
+    rules. The five seconds wait while the pointer is on the notice, while you've tabbed to it,
+    and while the window is in the background. ⌘Z does it for as long as the notice shows,
+    whatever you pressed or clicked meanwhile, from anywhere but a text field, the body or a
+    menu, which keep their own ⌘Z; on a Cyrillic or Greek layout it's the key where Z is. Where
+    the sidebar isn't on screen (a narrow side panel with the rule open, or the sidebar hidden),
+    **Undo** is in a toast instead, and the notice becomes that toast if the sidebar goes while
+    it shows.
 
     <a id="groups"></a>**Groups** keep the rules for one piece of work together, a PR's, say,
     to turn on and off as one. **New group** (beside **+**) makes one at the top of the list,
@@ -113,7 +116,8 @@ What's different in Firefox-based browsers:
     lands out of any group, and a group's header outlined means the top of that group; where
     nothing shows, letting go leaves it where it was. **Move to group** in a rule's `⋯`
     menu moves it too, or into a **New group…**. A group's name folds it or unfolds it
-    (remembered, and the popup's **All rules** shares it), its **+** makes a rule at its top,
+    (remembered, and the popup's **All rules** shares it; a search shows every group open, and
+    leaves the folds as they were), its **+** makes a rule at its top,
     and its `⋯` menu has **Rename**, **Duplicate** (a copy with the same rules, on, at the top
     of the list, to start another PR from), **Export group**, **Ungroup** (the group goes, its
     rules stay where they were) and **Delete** (with its rules, which **Undo** brings back).

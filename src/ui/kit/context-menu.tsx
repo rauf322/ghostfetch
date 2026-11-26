@@ -3,9 +3,9 @@
 // target, before it opens). Base UI's, with its items, submenus and keys: the arrows move, Enter
 // runs an item, Esc closes it. From the keyboard, the ContextMenu key or Shift+F10 opens it at the
 // bottom left of what has focus (of its row, where it's in one), on the key's release (as VS Code's
-// lists do, and T3 Code's). A
-// right-click in a text field, or on text selected in the trigger, gets the browser's own menu
-// (Copy, Paste, the spelling), and the trigger's onContextMenu doesn't hear it.
+// lists do, and T3 Code's). A right-click in a text field, or on text selected in the trigger, gets
+// the browser's own menu (Copy, Paste, the spelling), and the trigger's onContextMenu doesn't hear
+// it; so do those keys in a text field.
 import { ContextMenu as ContextMenuPrimitive } from '@base-ui/react/context-menu';
 import { createContext, useContext, useMemo, useRef } from 'react';
 import type { KeyboardEvent } from 'react';
@@ -105,7 +105,13 @@ export function ContextMenuTrigger({
       }}
       onKeyDown={(event) => {
         onKeyDown?.(event);
-        if (event.defaultPrevented || !isMenuKey(event)) return;
+        // In a field (a name being renamed, a search), the key is the browser's: its own menu.
+        if (
+          event.defaultPrevented ||
+          !isMenuKey(event) ||
+          (event.target as Element).closest(FIELD)
+        )
+          return;
         event.preventDefault();
         pressed.current = event.target as HTMLElement;
       }}

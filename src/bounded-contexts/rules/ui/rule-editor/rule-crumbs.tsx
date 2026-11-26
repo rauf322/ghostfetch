@@ -6,17 +6,18 @@
 //   while the group is on, still while Ghostfetch is off, grey while the group is off), or
 //   "Rules". Under the pointer, with focus, or while its menu is open, the "/" after it is a
 //   chevron, in the same place, so nothing moves. Its menu: New rule in this group (as the
-//   group's + in the list), then the group's own items (GroupMenuItems, group-menu.tsx: Rename
-//   makes its name a field in the list, as it does from anywhere); for "Rules", New rule, in no
-//   group.
+//   group's + in the list), then the group's own items (GroupMenuItems, group-menu.tsx); for
+//   "Rules", New rule, in no group. Rename makes the group's name a field here, as the name's crumb
+//   does (and a name another group has is turned down, the field staying for another); Duplicate
+//   names the copy in the list, which shows for it if ⌘B hid it (renaming.ts).
 // - The rule's name: its menu, the ⋯'s (one menu for both, rule-menu.tsx), with a chevron after it
 //   under the pointer, with focus, or while that's open. A double-click, or F2 while it has focus,
 //   makes it a field to rename the rule in place (rename-field.tsx, as F2 does in its row): Enter
-//   or leaving it gives the name typed, Esc keeps the one it had, and after either key focus is
-//   back on the crumb. The first click of a double-click opens the menu and the second shuts it,
-//   as in T3 Code.
+//   or leaving it gives the name typed (none, too: the URL names the rule then), Esc keeps the one
+//   it had, and after either key focus is back on the crumb. The first click of a double-click
+//   opens the menu and the second shuts it, as in T3 Code.
 import { useRef, useState } from 'react';
-import { editRule, pausedStore, ruleTitle } from '../../index.ts';
+import { editRule, groupName, pausedStore, ruleTitle } from '../../index.ts';
 import type { Group, Rule } from '../../index.ts';
 import { useStore } from '../../../../ui/use-store.ts';
 import { cn } from '../../../../ui/cn.ts';
@@ -33,7 +34,7 @@ import { SignalDot } from '../../../../ui/kit/signal-dot.tsx';
 import { Tooltip } from '../../../../ui/kit/tooltip.tsx';
 import { GroupMenuItems } from '../group-menu.tsx';
 import { RenameField } from '../rename-field.tsx';
-import { setRenaming } from '../renaming.ts';
+import { renameGroupTo } from '../renaming.ts';
 import type { RuleMenuFrom } from './rule-menu.tsx';
 
 const CRUMB =
@@ -78,12 +79,49 @@ function GroupCrumb({
   onNewRule: (group: string) => void;
 }) {
   const { paused } = useStore(pausedStore);
+  const [renaming, setRenamingHere] = useState(false);
+  // Rename picked in its menu: the name a field once the menu's shut and has given the crumb its
+  // focus back. Made at once, the field would take the crumb's place, menu and all, and the menu,
+  // its button gone, would give the focus to whatever had it before (the Rules tab, say), taking
+  // it from the field, which would shut.
+  const renameNext = useRef(false);
+  const crumb = useRef<HTMLButtonElement>(null);
+  if (group && renaming)
+    return (
+      <span className="flex max-w-[45%] min-w-0 flex-[0_1_auto] items-center gap-1.5 pl-1.5">
+        <SignalDot on={group.enabled} paused={paused} />
+        <RenameField
+          name={group.name}
+          label="Group name"
+          testId="crumb-group-input"
+          maxLength={100}
+          tidy={groupName}
+          rename={(name) => renameGroupTo(group.id, name)}
+          onDone={(byKey) => {
+            setRenamingHere(false);
+            if (byKey) requestAnimationFrame(() => crumb.current?.focus());
+          }}
+          className="h-7 text-control"
+        />
+        <span aria-hidden="true" className="w-3.5 flex-none text-center text-t30">
+          /
+        </span>
+      </span>
+    );
   return (
-    <DropdownMenu>
+    <DropdownMenu
+      onOpenChangeComplete={(open) => {
+        if (open || !renameNext.current) return;
+        renameNext.current = false;
+        // A frame on: the menu, shut, is gone from the page by then.
+        requestAnimationFrame(() => setRenamingHere(true));
+      }}
+    >
       <Tooltip label={group ? 'Group actions' : 'New rule'}>
         <DropdownMenuTrigger
           render={
             <button
+              ref={crumb}
               type="button"
               data-testid="crumb-group"
               aria-label={group ? `Group “${group.name}”` : 'Rules'}
@@ -129,7 +167,12 @@ function GroupCrumb({
         {group && (
           <>
             <DropdownMenuSeparator />
-            <GroupMenuItems group={group} onRename={setRenaming} />
+            <GroupMenuItems
+              group={group}
+              onRename={() => {
+                renameNext.current = true;
+              }}
+            />
           </>
         )}
       </DropdownMenuContent>
@@ -151,6 +194,7 @@ function NameCrumb({ rule, menu }: { rule: Rule; menu: MenuHandle<RuleMenuFrom> 
         name={rule.name}
         label="Rule name"
         testId="crumb-name-input"
+        allowEmpty
         rename={(name) => {
           editRule(rule.id, (current) => {
             current.name = name;

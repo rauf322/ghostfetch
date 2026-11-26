@@ -4,7 +4,8 @@
 // into a group or out of one, or a group's header to move the group with its rules. A group is a
 // block in the list: its header, then its rules, set in, unless it's folded. A rule's dot turns it
 // on or off, as a group's does the group; one that's off stays where it is, its dot grey. Search
-// narrows the list.
+// narrows the list, and shows every group in it open: while it does, nothing folds or unfolds one
+// (its name clicked, ←, Enter or Space), for that would show only once the search was cleared.
 //
 // For the keyboard and a screen reader the list is a tree (ARIA's tree view): the rules and the
 // groups at its top level, each group's rules a level under it, a group expanded or not as it's
@@ -17,7 +18,8 @@
 // are the items' alone, never a field's, a control's in a row, or a menu's, and "/" and ⌘B pass
 // through. A right-click on a row or a header, or the ContextMenu key or Shift+F10 on one, opens
 // its menu: the same items as its ⋯. Every row's ⋯ is one menu, and every row's dot and actions
-// share their tooltips (row-tools.ts), drawn here once.
+// share their tooltips (row-tools.ts), drawn here once. A menu whose rule or group goes while it's
+// open shuts.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { FocusEvent, KeyboardEvent, MouseEvent } from 'react';
 import {
@@ -87,6 +89,10 @@ export function RuleList({ selectedId, query, onSelect, onCreate, log }: RuleLis
   );
   const marked = useRef<HTMLElement | null>(null);
   const menuFrom = useRef<MenuFrom | null>(null);
+  // The right-click menu, and the two menus' shutting (ShutsWhenGone).
+  const contextMenu = useRef<{ close: () => void; unmount: () => void } | null>(null);
+  const shutContextMenu = useCallback(() => contextMenu.current?.close(), []);
+  const shutRowMenu = useCallback(() => tools.menu.close(), [tools]);
   const searching = Boolean(query.trim());
   const visible = filterEntries(entries, query);
   const drag = useRuleDrag(visible.at(-1));
@@ -133,11 +139,16 @@ export function RuleList({ selectedId, query, onSelect, onCreate, log }: RuleLis
   }
 
   const items = () => [...(tree.current?.querySelectorAll<HTMLElement>(ITEM) ?? [])];
+  // An item, or where a search now hides it, the list's Tab stop.
   const focusItem = useCallback((id: string) => {
-    tree.current?.querySelector<HTMLElement>(`[data-item="${CSS.escape(id)}"]`)?.focus();
+    (
+      tree.current?.querySelector<HTMLElement>(`[data-item="${CSS.escape(id)}"]`) ??
+      tree.current?.querySelector<HTMLElement>(`${ITEM}[tabindex="0"]`)
+    )?.focus();
   }, []);
 
-  // A name renamed by Enter or Esc gives focus back to its item.
+  // A name renamed by Enter or Esc gives focus back to its item, or to the list where the name
+  // doesn't match the search any more.
   const renamed = useCallback(
     (id: string, byKey: boolean) => {
       setRenaming(null);
@@ -204,14 +215,16 @@ export function RuleList({ selectedId, query, onSelect, onCreate, log }: RuleLis
         else if (expanded === 'true')
           to = item.querySelector<HTMLElement>(`:scope > [role="group"] > ${ITEM}`);
         break;
+      // A search shows every group open, and while it does no key folds one, unseen, for later.
       case 'ArrowLeft':
-        if (expanded === 'true') setFolded(id, true);
-        else if (!group) to = item.parentElement?.closest<HTMLElement>(ITEM);
+        if (expanded === 'true') {
+          if (!searching) setFolded(id, true);
+        } else if (!group) to = item.parentElement?.closest<HTMLElement>(ITEM);
         break;
       case 'Enter':
       case ' ':
-        if (group) setFolded(id, !isFolded(id));
-        else onSelect(id);
+        if (!group) onSelect(id);
+        else if (!searching) setFolded(id, !isFolded(id));
         break;
       case 'F2':
         setRenaming(id);
@@ -308,6 +321,7 @@ export function RuleList({ selectedId, query, onSelect, onCreate, log }: RuleLis
           </div>
           <RowToolsContext.Provider value={tools}>
             <ContextMenu
+              actionsRef={contextMenu}
               onOpenChange={(open) => {
                 if (open) return;
                 marked.current?.removeAttribute('data-context-open');
@@ -357,7 +371,13 @@ export function RuleList({ selectedId, query, onSelect, onCreate, log }: RuleLis
                       log={log}
                       onSelect={onSelect}
                       onCreate={onCreate}
-                      onFold={() => setFolded(entry.group.id, !isFolded(entry.group.id))}
+                      // Its tooltip's words stay as a search starts: words that change put new
+                      // hidden copies in the page (tooltip.tsx), which in Chromium splits what's
+                      // typed in the search into more steps of the browser's own undo.
+                      onFold={() => {
+                        if (!searching)
+                          setFolded(entry.group.id, !isFolded(entry.group.id));
+                      }}
                       onRename={setRenaming}
                       onRenamed={renamed}
                     />
@@ -373,6 +393,7 @@ export function RuleList({ selectedId, query, onSelect, onCreate, log }: RuleLis
                   />
                 )}
                 {menuGroup && <GroupMenuItems group={menuGroup} onRename={setRenaming} />}
+                {!menuRule && !menuGroup && <ShutsWhenGone shut={shutContextMenu} />}
               </ContextMenuContent>
             </ContextMenu>
             {/* The rows' one ⋯ menu, for the rule whose ⋯ opened it. */}
@@ -389,12 +410,14 @@ export function RuleList({ selectedId, query, onSelect, onCreate, log }: RuleLis
                 const rule = payload ? findRule(payload) : undefined;
                 return (
                   <DropdownMenuContent>
-                    {rule && (
+                    {rule ? (
                       <RuleMenuItems
                         rule={rule}
                         open={rule.id === selectedId}
                         onSelect={onSelect}
                       />
+                    ) : (
+                      <ShutsWhenGone shut={shutRowMenu} />
                     )}
                   </DropdownMenuContent>
                 );
@@ -409,4 +432,11 @@ export function RuleList({ selectedId, query, onSelect, onCreate, log }: RuleLis
       {!entries.length && <NoRulesYet />}
     </div>
   );
+}
+
+// Shuts the menu it's drawn in, where what the menu was opened for has gone meanwhile (deleted by
+// the agent, or in another window), rather than leaving it open with nothing in it.
+function ShutsWhenGone({ shut }: { shut: () => void }) {
+  useEffect(shut, [shut]);
+  return null;
 }

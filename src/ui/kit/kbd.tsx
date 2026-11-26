@@ -1,7 +1,8 @@
 // A key's badge, as in a tooltip's "Hide the sidebar ⌘B" and the search field's "/"; and the one
 // place that knows this platform's command key, ⌘ on a Mac and Ctrl elsewhere, as code editors
 // have it: modKey() writes a shortcut with it, modKeyName() names it for aria-keyshortcuts,
-// spokenKeys() says a written key in words, and modPressed() reads it from a key event.
+// spokenKeys() says a written key in words, and modPressed() reads it from a key event, with
+// pressedLetter() for the shortcut's letter, whatever the layout.
 import type { ComponentProps } from 'react';
 import { cn } from '../cn.ts';
 
@@ -37,6 +38,17 @@ export const spokenKeys = (keys: string) =>
 // Ctrl, which is the Mac's own Ctrl+B), Ctrl elsewhere.
 export const modPressed = (event: { metaKey: boolean; ctrlKey: boolean }) =>
   MAC ? event.metaKey && !event.ctrlKey : event.ctrlKey && !event.metaKey;
+
+// Whether a key event is for a shortcut's letter (`letter`, in lower case): the letter typed, on a
+// layout of Latin letters (AZERTY's Z too, which sits where QWERTY's W does); and where what's
+// typed is a letter of another script (a Cyrillic or Greek layout), the key where the letter is
+// on QWERTY, as a shortcut goes by on those. Not where it's no letter: Dvorak's ; is where QWERTY
+// has Z.
+export function pressedLetter(event: { key: string; code: string }, letter: string) {
+  const key = event.key.toLowerCase();
+  if (/^[a-z]$/.test(key)) return key === letter;
+  return /^\p{L}$/u.test(key) && event.code === `Key${letter.toUpperCase()}`;
+}
 
 export function Kbd({ className, ...props }: ComponentProps<'kbd'>) {
   return (

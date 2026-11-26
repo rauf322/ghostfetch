@@ -1,8 +1,10 @@
 // A group's ⋯ menu: rename it, duplicate it, export it with its rules, take it away and leave its
 // rules where it was (Ungroup), or delete it with its rules (with Undo, which brings them back
 // where they were: in the sidebar's footer, with ⌘Z, or where that isn't on screen in a toast,
-// undo-delete.ts). Its ⋯ in the header (GroupMenu) and its right-click menu in the list
-// (rule-list.tsx) are one list of items (GroupMenuItems), so the two can't drift apart.
+// undo-delete.ts). Its ⋯ in the header (GroupMenu), its right-click menu in the list
+// (rule-list.tsx) and its crumb's menu (rule-crumbs.tsx) are one list of items (GroupMenuItems),
+// so they can't drift apart. Rename is where it was picked (the header's name, or the crumb); the
+// copy's name is typed in the list, which is shown for it (renaming.ts's nameInList()).
 import { duplicateGroup, removeGroup, restoreGroup, ungroup } from '../index.ts';
 import type { Group } from '../index.ts';
 import { Button } from '../../../ui/kit/button.tsx';
@@ -14,6 +16,7 @@ import {
 } from '../../../ui/kit/dropdown-menu.tsx';
 import { Icon } from '../../../ui/kit/icon.tsx';
 import { Tooltip } from '../../../ui/kit/tooltip.tsx';
+import { nameInList } from './renaming.ts';
 import { exportGroup } from './rules-file.tsx';
 import { offerUndo } from './undo-delete.ts';
 
@@ -25,7 +28,7 @@ export function GroupMenu({
   group: Group;
   // -1 where it isn't a Tab stop: in a header the list's keys haven't reached (rule-list.tsx).
   tabIndex?: number;
-  // A group to rename now: this one, or its copy.
+  // Rename: this group's name, as a field where the menu was opened from.
   onRename: (id: string) => void;
 }) {
   return (
@@ -79,7 +82,7 @@ export function GroupMenuItems({
       </DropdownMenuItem>
       <DropdownMenuItem
         data-testid="duplicate-group"
-        onClick={() => onRename(duplicateGroup(group).id)}
+        onClick={() => nameInList(duplicateGroup(group).id)}
       >
         <Icon name="copy" /> Duplicate
       </DropdownMenuItem>

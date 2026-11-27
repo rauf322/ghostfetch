@@ -56,7 +56,7 @@ and in the toolbar popup: green and pulsing while it's on, grey while it's off.
 
 ### Shape every part of the answer
 
-![The editor: the rules in the sidebar, each with its dot, green while it's on and grey while it's off, and what it did on the page (1 mocked, 2 modified), and the rule "Pro plan user" open, with what it matches, what it responds with, and its JSON body.](docs/media/editor.png)
+![The editor: the rules in the sidebar, three of them in two groups, each with its dot, green while it's on and grey while it's off, and what it did on the page (1 mocked, 2 modified), and the rule "Pro plan user" open, with what it matches, what it responds with, and its JSON body.](docs/media/editor.png)
 
 - Match a request by its URL (contains, equals, wildcard or regex), its method and its GraphQL
   operation name. **Try a URL** says whether a rule would answer one.
@@ -92,7 +92,7 @@ command for it.
 ### See what your rules did, from the toolbar
 
 <p align="center">
-  <img src="docs/media/popup.png" width="330" alt="The popup on localhost:5173, recording: under This page, the three rules that answered there, each with its green dot, Pro plan user (1 mocked), Slow search (2 modified) and Feature flags (1 mocked), and a folded row for the three that didn't, one on and two off.">
+  <img src="docs/media/popup.png" width="330" alt="The popup on localhost:5173, recording: under This page, the three rules that answered there, each with its green dot, Pro plan user (1 mocked), Slow search (2 modified) and Feature flags (1 mocked), and a folded row for the three that didn't, two on and one off.">
 </p>
 
 **This page** has the rules that answered on the tab's page and what each did there (**1 mocked**,

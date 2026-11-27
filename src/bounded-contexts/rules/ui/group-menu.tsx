@@ -5,8 +5,9 @@
 // undo-delete.ts). Its header's ⋯ (the list's one menu, row-tools.ts), its right-click menu in the
 // list (rule-list.tsx) and its crumb's menu (rule-editor/rule-crumbs.tsx) are one list of items
 // (GroupMenuItems), so they can't drift apart. Rename is where it was picked (the header's name, or
-// the crumb); the copy's name is typed in the list, which is shown for it (renaming.ts's
-// nameInList()). Turned on or off, it's saved at once, as its rules' dots are.
+// the crumb), and shows its key, F2, which does the same on the group's header and its crumb; the
+// copy's name is typed in the list, which is shown for it (renaming.ts's nameInList()). Turned on
+// or off, it's saved at once, as its rules' dots are.
 import {
   duplicateGroup,
   removeGroup,
@@ -15,7 +16,10 @@ import {
   ungroup,
 } from '../index.ts';
 import type { Group } from '../index.ts';
-import { DropdownMenuItem } from '../../../ui/kit/dropdown-menu.tsx';
+import {
+  DropdownMenuItem,
+  DropdownMenuShortcut,
+} from '../../../ui/kit/dropdown-menu.tsx';
 import { Icon } from '../../../ui/kit/icon.tsx';
 import { nameInList } from './renaming.ts';
 import { exportGroup } from './rules-file.tsx';
@@ -53,8 +57,12 @@ export function GroupMenuItems({
           <Icon name="plus" /> New rule in this group
         </DropdownMenuItem>
       )}
-      <DropdownMenuItem data-testid="rename-group" onClick={() => onRename(group.id)}>
-        <Icon name="edit" /> Rename
+      <DropdownMenuItem
+        data-testid="rename-group"
+        aria-keyshortcuts="F2"
+        onClick={() => onRename(group.id)}
+      >
+        <Icon name="edit" /> Rename <DropdownMenuShortcut>F2</DropdownMenuShortcut>
       </DropdownMenuItem>
       <DropdownMenuItem
         data-testid="turn-group"

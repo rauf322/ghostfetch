@@ -1,6 +1,7 @@
 // The editor's ⋯ menu: import and export rules (`files`; the sidebar's footer has those as buttons
 // beside the menu), move the editor between a tab of its own and the side panel, and pick a theme
-// and the appearance (contrast, font, text size).
+// and the appearance (contrast, font, text size). Its ⋯, in the sidebar's footer or in a narrow
+// panel's top bar, stays filled while its menu is open, as under the pointer.
 import { openInSidePanel, openInTab } from '../../platform/index.ts';
 import { cn } from '../../ui/cn.ts';
 import { Button } from '../../ui/kit/button.tsx';
@@ -41,7 +42,10 @@ export function EditorMenu({
               size="icon"
               aria-label="More"
               data-testid={testId}
-              className={cn('self-center', className)}
+              className={cn(
+                'self-center data-popup-open:bg-pressed data-popup-open:text-foreground',
+                className,
+              )}
             />
           }
         >

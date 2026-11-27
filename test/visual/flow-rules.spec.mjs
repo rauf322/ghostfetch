@@ -118,11 +118,13 @@ test('Rule list: a row at rest, stepping back, off, a minute on, and as the poin
     await look(page, pro, shot('row-focus'));
   });
 
-  await test.step('While its ⋯ menu is open, the actions stay, with the pointer on the menu', async () => {
+  await test.step('While its ⋯ menu is open, the actions stay, with the pointer on the menu; Open and Rename first, with their keys', async () => {
     await pro.hover();
     await pro.getByRole('button', { name: 'More actions for “Pro plan user”' }).click();
     const menu = await menuOpen(page);
     await expect(menu.getByRole('menuitem')).toHaveText([
+      'Open ↵',
+      'Rename F2',
       'Duplicate',
       'Move to group',
       'Export this rule',
@@ -198,7 +200,7 @@ test('Rule list: a group’s header, as A has it: its chip and its count, Turn t
     const menu = await menuOpen(page);
     await expect(menu.getByRole('menuitem')).toHaveText([
       'New rule in this group',
-      'Rename',
+      'Rename F2',
       'Turn the group on',
       'Duplicate',
       'Export group',
@@ -402,6 +404,8 @@ test('Rule list: the right-click menus, and the same from the keyboard', async (
     await pro.click({ button: 'right', position: { x: 120, y: 20 } });
     const menu = await menuOpen(page);
     await expect(menu.getByRole('menuitem')).toHaveText([
+      'Open ↵',
+      'Rename F2',
       'Duplicate',
       'Move to group',
       'Export this rule',
@@ -421,7 +425,7 @@ test('Rule list: the right-click menus, and the same from the keyboard', async (
     const menu = await menuOpen(page);
     await expect(menu.getByRole('menuitem')).toHaveText([
       'New rule in this group',
-      'Rename',
+      'Rename F2',
       'Turn the group off',
       'Duplicate',
       'Export group',
@@ -452,7 +456,8 @@ test('Rule list: the right-click menus, and the same from the keyboard', async (
   await test.step('Shift+F10 opens the same menu in the same place', async () => {
     await page.keyboard.press('Shift+F10');
     const menu = await menuOpen(page);
-    await expect(menu.getByRole('menuitem')).toHaveCount(4);
+    // Open and Rename, then Duplicate, Move to group, Export this rule and Delete.
+    await expect(menu.getByRole('menuitem')).toHaveCount(6);
     await look(page, [ruleRow(page, 'pro'), menu], shot('menu-from-keys'));
     await menuShut(page);
     await expect(pro).toBeFocused();

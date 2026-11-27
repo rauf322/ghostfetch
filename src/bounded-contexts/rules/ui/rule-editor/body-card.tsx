@@ -2,10 +2,11 @@
 // body, and for Replace the Content-Type and the body editor. Over the editor, once there's a
 // server's response to compare the body with, the row that turns Diff on and off, with how many
 // lines the body adds and takes out (diff-row.tsx); under it, what the check found (a mistake is
-// marked in the editor too, and clicking it here puts the cursor there), the Wrap and Vim
-// switches, and Format. The editor sizes its own text, with Cmd/Ctrl and =, - or 0. Wrap shows a
-// long line on as many rows as it takes, as Neovim does, rather than one that scrolls along: the
-// body itself stays as it is.
+// marked in the editor too, and clicking it here puts the cursor there), Copy (the body as the
+// editor has it, saying "Copied" in itself for a second, CopyButton), the Wrap and Vim switches,
+// and Format. The editor sizes its own text, with Cmd/Ctrl and =, - or 0. Wrap shows a long line
+// on as many rows as it takes, as Neovim does, rather than one that scrolls along: the body itself
+// stays as it is.
 //
 // Diff shows, in the editor's place, what your body changes in the server's response (the one the
 // rule was made from, or the editor saw since): side by side, or inline when asked or when the card
@@ -19,9 +20,14 @@
 // How tall the editor is: beside the settings (a pane 760 px wide or more, `pane-wide:`), as tall
 // as the pane has room for, whatever the body; under them, as tall as the body, but never taller
 // than the pane (100cqh: the rule editor's pane is a size container) less the room the card's
-// controls take (120 px, and 40 more with the row over the editor), so all of it is on screen
-// once you scroll to it. code-editor.css reads both, and code-diff.css the same for Diff.
-import { useEffect, useRef, useState } from 'react';
+// controls take in a side panel (122 px, 40 more with the row over the editor, and 32 more while
+// its footer is two rows), so all of it is on screen once you scroll to it. code-editor.css reads
+// both, and code-diff.css the same for Diff.
+//
+// The footer: what the check found, then Copy, Wrap, Vim keys and Format. Where beside the buttons
+// what the check found wouldn't have the room "Valid JSON · 99 lines" takes in the font in use (a
+// side panel, or a wide type), it has a row of its own and the buttons go under it, at its right.
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import type { BodyMode } from '../../../../shared-kernel/index.ts';
 import {
@@ -50,6 +56,7 @@ import {
 import type { CodeEditorHandle, DiffLayout } from '../../../body-editor/index.ts';
 import { Button } from '../../../../ui/kit/button.tsx';
 import { Card } from '../../../../ui/kit/card.tsx';
+import { CopyButton } from '../../../../ui/kit/copy-button.tsx';
 import { Icon } from '../../../../ui/kit/icon.tsx';
 import { Input } from '../../../../ui/kit/input.tsx';
 import { Segmented, SegmentedItem } from '../../../../ui/kit/segmented.tsx';
@@ -110,6 +117,19 @@ export function BodyCard({
     response.body,
     comparing,
   );
+  // Whether the footer is two rows (its buttons under what the check found), as it lays itself out
+  // by what it has to say and the room it has: the editor leaves room for the second row. Watched
+  // from the footer's ref, for as long as it's on the page (Replace's, not Keep server's body's).
+  const [twoRows, setTwoRows] = useState(false);
+  const watchFooter = useCallback((element: HTMLDivElement | null) => {
+    if (!element) return undefined;
+    // One row is 32 px tall; two, 64.
+    const measure = () => setTwoRows(element.offsetHeight > 48);
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    measure();
+    return () => observer.disconnect();
+  }, []);
 
   function switchDiff(on: boolean) {
     if (on) setFromLine(code.current?.topLine ?? 0);
@@ -198,8 +218,12 @@ export function BodyCard({
       className={cn(
         'flex flex-col gap-2',
         replaces && server
-          ? '[--code-max:calc(100cqh-160px)]'
-          : '[--code-max:calc(100cqh-120px)]',
+          ? twoRows
+            ? '[--code-max:calc(100cqh-194px)]'
+            : '[--code-max:calc(100cqh-162px)]'
+          : twoRows
+            ? '[--code-max:calc(100cqh-154px)]'
+            : '[--code-max:calc(100cqh-122px)]',
         'pane-wide:[--code-fill:100%] pane-wide:[--code-max:100%]',
         className,
       )}
@@ -286,89 +310,122 @@ export function BodyCard({
               />
             </div>
           )}
-          <div className="flex min-h-8 items-center gap-1.5">
+          {/* What the check found, then the buttons, together: beside it where there's room for
+              both, else on a row of their own under it, at its right. It asks for the room of
+              "Valid JSON · 99 lines" in the font in use (those words, drawn unseen by CSS, size it,
+              out of its text), whatever it says: a longer message is cut, whole in its title, rather
+              than make the footer two rows as it comes and goes. */}
+          <div
+            ref={watchFooter}
+            className="flex min-h-8 flex-wrap items-center justify-end gap-x-1.5 gap-y-1"
+          >
             <Verdict
               tone={status?.tone}
               data-testid="code-status"
               title={status?.text}
-              className={cn('min-w-0 flex-1 px-1', bad ? 'text-foreground' : 'text-t50')}
-            >
-              {problem ? (
-                <button
-                  type="button"
-                  data-testid="code-problem"
-                  onClick={() => {
-                    stopComparing();
-                    code.current?.reveal(problem.from);
-                  }}
-                  className="min-w-0 truncate text-left decoration-t40 underline-offset-3 hover:underline"
-                >
-                  {status?.text}
-                </button>
-              ) : (
-                <span className="min-w-0 truncate">{status?.text}</span>
+              className={cn(
+                'min-h-8 min-w-0 flex-auto px-1',
+                bad ? 'text-foreground' : 'text-t50',
               )}
-            </Verdict>
-            {comparing && wide && (
-              <Segmented
-                aria-label="Diff layout"
-                value={layout}
-                onValueChange={(next) => pickLayout(next as DiffLayout)}
-                className="flex-none"
-              >
-                <Tooltip label="Side by side">
-                  <SegmentedItem
-                    value="split"
-                    data-testid="diff-split"
-                    aria-label="Side by side"
-                    className="flex-none px-2"
-                  >
-                    <Icon name="split" size={14} />
-                  </SegmentedItem>
-                </Tooltip>
-                <Tooltip label="Inline, one under the other">
-                  <SegmentedItem
-                    value="inline"
-                    data-testid="diff-inline"
-                    aria-label="Inline"
-                    className="flex-none px-2"
-                  >
-                    <Icon name="stack" size={14} />
-                  </SegmentedItem>
-                </Tooltip>
-              </Segmented>
-            )}
-            <Tooltip label="Long lines on as many rows as they take">
-              <Toggle
-                size="sm"
-                data-testid="wrap"
-                pressed={wrap}
-                onPressedChange={switchWrap}
-                className="border-input"
-              >
-                Wrap
-              </Toggle>
-            </Tooltip>
-            <Tooltip label="Vim keys in the body editor">
-              <Toggle
-                size="sm"
-                data-testid="vim"
-                pressed={vim}
-                onPressedChange={switchVim}
-                className="border-input"
-              >
-                Vim keys
-              </Toggle>
-            </Tooltip>
-            <Button
-              variant="ghost"
-              size="sm"
-              data-testid="format"
-              onClick={format}
-              className="border-input"
             >
-              Format
-            </Button>
+              <span className="grid min-w-0 grid-cols-[minmax(0,auto)] overflow-hidden">
+                <span
+                  aria-hidden="true"
+                  data-room="Valid JSON · 99 lines"
+                  className="invisible col-start-1 row-start-1 whitespace-nowrap before:content-[attr(data-room)]"
+                />
+                {problem ? (
+                  <button
+                    type="button"
+                    data-testid="code-problem"
+                    onClick={() => {
+                      stopComparing();
+                      code.current?.reveal(problem.from);
+                    }}
+                    className="col-start-1 row-start-1 w-0 min-w-full truncate text-left decoration-t40 underline-offset-3 hover:underline"
+                  >
+                    {status?.text}
+                  </button>
+                ) : (
+                  <span className="col-start-1 row-start-1 w-0 min-w-full truncate">
+                    {status?.text}
+                  </span>
+                )}
+              </span>
+            </Verdict>
+            <div className="flex items-center gap-1.5">
+              {comparing && wide && (
+                <Segmented
+                  aria-label="Diff layout"
+                  value={layout}
+                  onValueChange={(next) => pickLayout(next as DiffLayout)}
+                  className="flex-none"
+                >
+                  <Tooltip label="Side by side">
+                    <SegmentedItem
+                      value="split"
+                      data-testid="diff-split"
+                      aria-label="Side by side"
+                      className="flex-none px-2"
+                    >
+                      <Icon name="split" size={14} />
+                    </SegmentedItem>
+                  </Tooltip>
+                  <Tooltip label="Inline, one under the other">
+                    <SegmentedItem
+                      value="inline"
+                      data-testid="diff-inline"
+                      aria-label="Inline"
+                      className="flex-none px-2"
+                    >
+                      <Icon name="stack" size={14} />
+                    </SegmentedItem>
+                  </Tooltip>
+                </Segmented>
+              )}
+              <CopyButton
+                variant="ghost"
+                size="sm"
+                icon="copy"
+                text={() => code.current?.value ?? response.body}
+                what="the body"
+                data-testid="copy-rule-body"
+                className="border-input"
+              >
+                Copy
+              </CopyButton>
+              <Tooltip label="Long lines on as many rows as they take">
+                <Toggle
+                  size="sm"
+                  data-testid="wrap"
+                  pressed={wrap}
+                  onPressedChange={switchWrap}
+                  className="border-input"
+                >
+                  Wrap
+                </Toggle>
+              </Tooltip>
+              <Tooltip label="Vim keys in the body editor">
+                <Toggle
+                  size="sm"
+                  data-testid="vim"
+                  pressed={vim}
+                  onPressedChange={switchVim}
+                  className="border-input"
+                >
+                  Vim keys
+                </Toggle>
+              </Tooltip>
+              <Button
+                variant="ghost"
+                size="sm"
+                data-testid="format"
+                onClick={format}
+                className="border-input"
+              >
+                Format
+              </Button>
+            </div>
           </div>
         </>
       ) : (

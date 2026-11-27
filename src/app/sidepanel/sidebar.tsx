@@ -177,7 +177,7 @@ export function Sidebar({
             onImport={onImport}
             files={false}
             testId="sidebar-menu"
-            className="max-wide:hidden data-popup-open:bg-pressed data-popup-open:text-foreground"
+            className="max-wide:hidden"
           />
           <FooterButton icon="import" label="Import rules" onClick={onImport} />
           <FooterButton icon="export" label="Export all rules" onClick={onExport} />

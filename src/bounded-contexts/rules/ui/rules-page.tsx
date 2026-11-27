@@ -24,8 +24,8 @@ interface RulesPageProps {
   ruleGroup: string;
   onRuleGroupChange: (group: string) => void;
   onSelect: (id: string | null) => void;
-  // New rule, in a group ('' for none): an open rule's group crumb asks for it, as a group's + in
-  // the list does.
+  // New rule, in a group ('' for none): an open rule's group crumb asks for it, as a group's New
+  // rule in this group in the list does.
   onNewRule: (group: string) => void;
   // New rule made a rule.
   onCreate: (rule: Rule) => void;

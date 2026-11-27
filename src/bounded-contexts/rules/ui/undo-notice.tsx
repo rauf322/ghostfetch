@@ -1,14 +1,14 @@
-// The sidebar footer's notice of the latest delete (undo-delete.ts): "Rule deleted" and Undo with
-// its key, "⌘Z to undo" (Ctrl+Z elsewhere), for its five seconds, which wait while the pointer is
-// on it or focus is in it from the keyboard; and the polite live region that says it once, "Rule
-// deleted. Press Command Z to undo". The region is in the footer all along, empty between
-// notices, as one that comes onto the page already filled isn't read out.
+// The sidebar footer's notice of the latest delete (undo-delete.ts): "Rule deleted" and Undo, an
+// undo arrow before its key, "⌘Z to undo" (Ctrl+Z elsewhere), as variant A has it, for its five
+// seconds, which wait while the pointer is on it or focus is in it from the keyboard; and the
+// polite live region that says it once, "Rule deleted. Press Command Z to undo". The region is in
+// the footer all along, empty between notices, as one that comes onto the page already filled
+// isn't read out.
 //
-// While the notice shows it takes the footer's row, and the footer's buttons (`children`) come
-// back when it goes: at the sidebar's usual width they fill the row, and the notice needs most of
-// it, as it does in a 420 px panel. The two share one cell, the buttons keeping their places
-// unseen, so the footer stays as tall as it was: where their words take two rows (Commit Mono at
-// Larger), the notice may too, its Undo going under its words rather than cutting them short.
+// While the notice shows it takes the footer's row, and the footer's icons (`children`) come back
+// when it goes. The two share one cell, the icons keeping their places unseen, so the footer keeps
+// its height wherever the notice fits on one row; where it doesn't (a narrow sidebar in a wide
+// type), its Undo goes under its words rather than cutting them short.
 import type { ReactNode } from 'react';
 import { useStore } from '../../../ui/use-store.ts';
 import { cn } from '../../../ui/cn.ts';
@@ -63,7 +63,6 @@ export function UndoNotice({ children }: { children: ReactNode }) {
             }}
             className="col-start-1 row-start-1 flex min-w-0 flex-wrap items-center gap-x-2 pl-2.5"
           >
-            <Icon name="trash" size={14} className="flex-none text-t50" />
             <span className="min-w-0 truncate text-control text-t65">{notice.said}</span>
             <Button
               variant="cell"
@@ -74,6 +73,7 @@ export function UndoNotice({ children }: { children: ReactNode }) {
               onClick={undoDelete}
               className="ml-auto gap-1.5"
             >
+              <Icon name="undo" size={14} className="flex-none" />
               <Kbd>{KEYS}</Kbd>
               to undo
             </Button>

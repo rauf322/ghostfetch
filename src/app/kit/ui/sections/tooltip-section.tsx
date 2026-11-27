@@ -5,7 +5,8 @@
 // open, though the field then has :focus-visible, and which a screen reader hears after the
 // field's own description. Then key badges, and the editor's ⋯: a menu with a row's key and a
 // row's detail, whose tooltip, its name already, describes nothing, and doesn't come back as the
-// menu closes and gives the button focus back.
+// menu closes and gives the button focus back. The row's key is drawn and said by
+// aria-keyshortcuts, its name staying its words.
 import { Button } from '../../../../ui/kit/button.tsx';
 import {
   DropdownMenu,
@@ -17,7 +18,7 @@ import {
 } from '../../../../ui/kit/dropdown-menu.tsx';
 import { Icon } from '../../../../ui/kit/icon.tsx';
 import { Input } from '../../../../ui/kit/input.tsx';
-import { Kbd, modKey } from '../../../../ui/kit/kbd.tsx';
+import { Kbd, modKey, modKeyName } from '../../../../ui/kit/kbd.tsx';
 import { Toggle } from '../../../../ui/kit/toggle.tsx';
 import { Tooltip } from '../../../../ui/kit/tooltip.tsx';
 import { Cell, Row } from '../cell.tsx';
@@ -106,7 +107,7 @@ export function TooltipSection() {
             </DropdownMenuTrigger>
           </Tooltip>
           <DropdownMenuContent align="start">
-            <DropdownMenuItem>
+            <DropdownMenuItem aria-keyshortcuts={modKeyName('B')}>
               <Icon name="sidebar" /> Hide the sidebar
               <DropdownMenuShortcut>{modKey('B')}</DropdownMenuShortcut>
             </DropdownMenuItem>

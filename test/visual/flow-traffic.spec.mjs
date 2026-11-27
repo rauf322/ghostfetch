@@ -3,8 +3,9 @@
 // Esc, the right-click menu and Open the rule, Copy URL from a row; each of a request's copy
 // buttons saying "Copied" and back after its second (the clock moved, not waited for); and rows
 // passing their first minute as the clock moves on, a focused one keeping its focus, and its open
-// menu its mark (6a.1). Each step is one state, checked as a user meets it, then pictured at 2x
-// (baselines/<platform>/traffic/).
+// menu its mark (6a.1); and Mock this response with no group picker under it, its toast naming the
+// group the rule went into (7b). Each step is one state, checked as a user meets it, then pictured
+// at 2x (baselines/<platform>/traffic/).
 import {
   ORIGIN,
   expect,
@@ -293,5 +294,35 @@ test('Traffic: a focused row keeps its focus as the clock moves it under an olde
     expect(await ringed(button)).toBe(true);
     await expect(overdue).not.toHaveAttribute('data-context-open');
     await look(page, overdue, shot('row-focus-menu-shut'));
+  });
+});
+
+// 7b: Mock this response with nothing under it: the rule goes into the group New rule would start
+// in, and the toast after it says which (reports/t3-design-plan.md, Stage 7, item 10).
+test('Traffic: Mock this response with no Into under it, the rule in the group New rule would start in, the toast naming it', async ({
+  flowEditor,
+}) => {
+  const page = await flowEditor({ view: 'traffic' });
+  const detail = page.getByTestId('request-detail');
+
+  await test.step('The open request: Mock this response, and no group to pick under it', async () => {
+    await request(page, '/api/events').getByTestId('request-open').click();
+    await expect(detail).toBeVisible();
+    await expect(detail.getByTestId('picker-group')).toHaveCount(0);
+    await expect(detail).not.toContainText('Into');
+  });
+
+  await test.step('Mocked, the last rule made having gone into PR 412 · checkout: the rule there, open, and the toast naming the group', async () => {
+    await page.evaluate(() => localStorage.setItem('ghostfetch.newRuleGroup', 'pr-412'));
+    await detail.getByTestId('mock').click();
+    const toast = page.locator('[data-slot="toast"]', {
+      hasText: 'Rule created in “PR 412 · checkout”',
+    });
+    await expect(toast).toBeVisible();
+    await expect(page.getByTestId('crumb-group')).toHaveAccessibleName(
+      'Group “PR 412 · checkout”',
+    );
+    await page.mouse.move(0, 0);
+    await look(page, toast, shot('mock-toast'));
   });
 });

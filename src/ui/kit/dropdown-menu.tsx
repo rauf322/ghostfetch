@@ -83,7 +83,8 @@ export function DropdownMenuItem({
 // At a row's right end: a quiet detail, as the theme in use beside Theme ("Ghostfetch") and
 // "Default" beside Appearance, whole, the menu as wide as it needs, and cut short with … only
 // where the window hasn't the room; or the key that does what the row does, in a Kbd as a tooltip
-// has it.
+// has it ("Rename F2"). The key is drawn, not read out: the row says it with aria-keyshortcuts
+// (aria-keyshortcuts="F2"), so its name stays its words.
 export function DropdownMenuDetail({ className, ...props }: ComponentProps<'span'>) {
   return (
     <span
@@ -98,6 +99,7 @@ export function DropdownMenuShortcut({ className, ...props }: ComponentProps<'kb
   return (
     <Kbd
       data-slot="dropdown-menu-shortcut"
+      aria-hidden="true"
       className={cn('ml-auto', className)}
       {...props}
     />

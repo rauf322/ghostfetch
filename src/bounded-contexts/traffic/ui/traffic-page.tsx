@@ -30,9 +30,7 @@ import { TrafficToolbar } from './traffic-toolbar.tsx';
 interface TrafficPageProps {
   // The editor's log of the tab it watches (useTrafficLog).
   log: TrafficLog;
-  // The group a rule Mock this response makes goes into ('' for none), and its picker's change.
-  ruleGroup: string;
-  onRuleGroupChange: (group: string) => void;
+  // Mock this response: the editor places the rule, in the group New rule would start in.
   onMock: (draft: Rule, entry: LogEntry) => void;
   onOpenRule: (id: string) => void;
 }
@@ -44,8 +42,6 @@ const FIELD = 'input, textarea, select, [contenteditable]:not([contenteditable="
 // (app/sidepanel), so a request draws neither the editor nor its rules again.
 export const TrafficPage = memo(function TrafficPage({
   log,
-  ruleGroup,
-  onRuleGroupChange,
   onMock,
   onOpenRule,
 }: TrafficPageProps) {
@@ -133,8 +129,6 @@ export const TrafficPage = memo(function TrafficPage({
         {selected && (
           <RequestDetail
             entry={selected}
-            ruleGroup={ruleGroup}
-            onRuleGroupChange={onRuleGroupChange}
             onClose={close}
             onMock={onMock}
             onOpenRule={onOpenRule}

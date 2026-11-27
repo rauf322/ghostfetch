@@ -78,9 +78,8 @@ export function TrafficList({
   const { entries } = traffic;
   const groups = groupByTime(filterEntries(entries, filter, search), now);
   const shown = groups.flatMap((group) => group.entries);
-  // The rows' tooltips, made once, and Mock this response, made again only when the editor's
-  // onMock changes (the group a new rule goes into was picked), which draws the rows' actions
-  // again, not the rows.
+  // The rows' tooltips, made once, and Mock this response, made again only were the editor's onMock
+  // to change, which would draw the rows' actions again, not the rows.
   const [tips] = useState(createRowTips);
   const tools = useMemo(
     () => ({ tips, mock: (entry: LogEntry) => mockEntry(entry, onMock) }),

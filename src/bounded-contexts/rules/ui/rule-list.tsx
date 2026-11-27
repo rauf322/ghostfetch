@@ -18,10 +18,11 @@
 // rule or fold a group; F2 makes a name a field to rename it. Tab goes on from an item to its own
 // controls, then out of the list: other items' controls aren't Tab stops. The keys are the items'
 // alone, never a field's, a control's in a row, or a menu's, and "/" and ⌘B pass through. A
-// right-click on a row or a header, or the ContextMenu key or Shift+F10 on one, opens its menu:
-// the same items as its ⋯. Every row's and header's ⋯ is one menu, and every row's dot and actions
-// share their tooltips (row-tools.ts), drawn here once. A menu whose rule or group goes while it's open shuts;
-// shut, it gives focus back to its item, or where that's gone (Delete), to the one in its place.
+// right-click on a row or a header, or the ContextMenu key or Shift+F10 on one, opens its menu: the
+// same items as its ⋯, Open and Rename among them with their keys, Enter and F2. Every row's and
+// header's ⋯ is one menu, and every row's dot and actions share their tooltips (row-tools.ts),
+// drawn here once. A menu whose rule or group goes while it's open shuts; shut, it gives focus back
+// to its item, or where that's gone (Delete), to the one in its place.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   NEW_GROUP,
@@ -61,7 +62,8 @@ interface RuleListProps {
   query: string;
   // A rule picked: open it; null: close the open one (deleted from its row's ⋯ menu).
   onSelect: (id: string | null) => void;
-  // New rule: the + (in the group New rule offers), or a group's + (in that group).
+  // New rule: the + (in the group New rule offers), or a group's New rule in this group (in that
+  // group).
   onCreate: (group?: string) => void;
   // The editor's log of the page it watches: what each rule did there.
   log: TrafficLog;
@@ -235,6 +237,7 @@ export function RuleList({ selectedId, query, onSelect, onCreate, log }: RuleLis
                     rule={menuRule}
                     open={menuRule.id === selectedId}
                     onSelect={onSelect}
+                    onRename={() => setRenaming(menuRule.id)}
                   />
                 )}
                 {menuGroup && (
@@ -262,6 +265,7 @@ export function RuleList({ selectedId, query, onSelect, onCreate, log }: RuleLis
                         rule={rule}
                         open={rule.id === selectedId}
                         onSelect={onSelect}
+                        onRename={() => setRenaming(rule.id)}
                       />
                     ) : group ? (
                       <GroupMenuItems

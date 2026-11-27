@@ -1,9 +1,11 @@
 // Tooltips, walked as a user would (reports/t3-design-plan.md, 2a): from the pointer after a short
 // wait (the clock held, then moved on 350 ms), a neighbour's at once, from Tab at once, none as a
-// menu closes onto its control, and one at the popup's right edge staying inside its 330 px. Each
-// step is one state, checked as a user meets it (the words, the key, the control's description),
-// then pictured at 2x (baselines/<platform>/tooltips/).
+// menu closes onto its control, and one at the popup's right edge staying inside its 330 px; and
+// the editor's ⋯, in the sidebar's footer and in a narrow panel's top bar, lit while its menu is
+// open (7a, 7b). Each step is one state, checked as a user meets it (the words, the key, the
+// control's description), then pictured at 2x (baselines/<platform>/tooltips/).
 import {
+  NARROW,
   expect,
   look,
   menuOpen,
@@ -16,6 +18,16 @@ import {
 
 const shot = (name) => ['tooltips', `${name}.png`];
 const tip = (page) => page.locator('[data-slot="tooltip"]');
+// A colour of the theme's, as the page draws it: --pressed, the fill of a control pressed.
+const pressedFill = (page) =>
+  page.evaluate(() => {
+    const probe = document.createElement('div');
+    probe.style.backgroundColor = 'var(--pressed)';
+    document.body.append(probe);
+    const colour = getComputedStyle(probe).backgroundColor;
+    probe.remove();
+    return colour;
+  });
 
 test('Tooltips: after a short wait, a neighbour’s at once, from Tab, and none as a menu closes onto its control', async ({
   flowEditor,
@@ -70,15 +82,7 @@ test('Tooltips: after a short wait, a neighbour’s at once, from Tab, and none 
     await more.click();
     const menu = await menuOpen(page);
     await page.mouse.move(0, 0);
-    const pressed = await page.evaluate(() => {
-      const probe = document.createElement('div');
-      probe.style.backgroundColor = 'var(--pressed)';
-      document.body.append(probe);
-      const colour = getComputedStyle(probe).backgroundColor;
-      probe.remove();
-      return colour;
-    });
-    await expect(more).toHaveCSS('background-color', pressed);
+    await expect(more).toHaveCSS('background-color', await pressedFill(page));
     await look(page, [more, menu], shot('more-lit-while-open'));
     await menuShut(page);
   });
@@ -166,5 +170,21 @@ test('Tooltips: an off control says why it’s off', async ({ flowEditor }) => {
     await turnOn.hover();
     await page.waitForTimeout(600);
     await expect(tip(page)).toHaveCount(0);
+  });
+});
+
+test('Tooltips: in a 420 px panel, the top bar’s More lit while its menu is open, as the footer’s is', async ({
+  flowEditor,
+}) => {
+  const page = await flowEditor({ size: NARROW });
+
+  await test.step('Its menu open, the pointer gone from it: still filled as under the pointer', async () => {
+    const more = page.getByTestId('editor-menu');
+    await more.click();
+    const menu = await menuOpen(page);
+    await page.mouse.move(0, 0);
+    await expect(more).toHaveCSS('background-color', await pressedFill(page));
+    await look(page, [more, menu], shot('top-more-lit-while-open'));
+    await menuShut(page);
   });
 });

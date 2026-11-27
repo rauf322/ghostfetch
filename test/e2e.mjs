@@ -1675,8 +1675,9 @@ try {
     async () => {
       const editor = app.locator('.code textarea');
       const before = await editor.inputValue();
-      // The editor's height and the pane's; with the pane scrolled to the top, how far the body's
-      // section ends from the pane's bottom, and whether the pane has anything to scroll.
+      // The editor's height, the pane's and the body's whole section's; with the pane scrolled to
+      // the top, how far the body's section ends from the pane's bottom, and whether the pane has
+      // anything to scroll.
       const heights = () =>
         app.evaluate(() => {
           const code = document.querySelector('.code');
@@ -1685,6 +1686,7 @@ try {
           return {
             code: code.offsetHeight,
             pane: pane.clientHeight,
+            card: document.querySelector('[data-testid="body-card"]').offsetHeight,
             gap:
               pane.getBoundingClientRect().bottom -
               document.querySelector('[data-testid="body-card"]').getBoundingClientRect()
@@ -1714,19 +1716,24 @@ try {
         )
           throw new Error(`beside: ${JSON.stringify([besideShort, besideLong])}`);
       // Under them, in a side panel 400 px wide.
-      await app.setViewportSize({ width: 400, height: 760 });
-      await editor.fill(short);
-      expect((await heights()).code, 120, 'a short body: the smallest editor');
-      await editor.fill(eight);
-      // Eight lines of 20.125 px (11.5 px text, line height 1.75), its padding and border.
-      expect((await heights()).code, 179, 'eight lines: eight lines tall');
-      // A long one: the pane less the room for the body's controls (body-card.tsx).
-      await editor.fill(long);
-      const under = await heights();
-      if (Math.abs(under.code - (under.pane - 120)) > 1)
-        throw new Error(`a long body, in one column: ${JSON.stringify(under)}`);
-      await app.setViewportSize({ width: 1280, height: 820 });
-      await editor.fill(before);
+      try {
+        await app.setViewportSize({ width: 400, height: 760 });
+        await editor.fill(short);
+        expect((await heights()).code, 120, 'a short body: the smallest editor');
+        await editor.fill(eight);
+        // Eight lines of 20.125 px (11.5 px text, line height 1.75), its padding and border.
+        expect((await heights()).code, 179, 'eight lines: eight lines tall');
+        // A long one: the pane less the room for the body's controls (body-card.tsx: 122 px, and
+        // 32 more in a card this narrow, whose footer is two rows), so the whole section, its
+        // footer too, fits the pane once it's scrolled to.
+        await editor.fill(long);
+        const under = await heights();
+        if (Math.abs(under.code - (under.pane - 154)) > 1 || under.card > under.pane)
+          throw new Error(`a long body, in one column: ${JSON.stringify(under)}`);
+      } finally {
+        await app.setViewportSize({ width: 1280, height: 820 });
+        await editor.fill(before);
+      }
     },
   );
   await check('Cmd/Ctrl+F in the body searches only the body', async () => {
@@ -2843,7 +2850,7 @@ try {
     },
   );
   await check(
-    "a row's ⋯ has the open rule's menu, item for item, and the row's actions stay while it's open; its Delete deletes that rule, the open one staying open, and Undo puts it back",
+    "a row's ⋯ has the open rule's menu, item for item, after Open, as its rule isn't the open one, and the row's actions stay while it's open; its Delete deletes that rule, the open one staying open, and Undo puts it back",
     async () => {
       await slotsReady();
       // The open menu's items, once it's there; and the menu shut.
@@ -2879,7 +2886,7 @@ try {
           await openNow(),
           await ruleRow(SLOT).getAttribute('data-selected'),
         ],
-        [header, ['0', '1'], 0, openUrl, openUrl, null],
+        [[' Open ↵', ...header], ['0', '1'], 0, openUrl, openUrl, null],
         `the open rule's menu: ${header.join(', ')}`,
       );
     },
@@ -3340,7 +3347,7 @@ try {
     },
   );
   await check(
-    "a right-click on a rule's row opens its menu at the pointer, with its ⋯'s items, and on a group's header the group's ⋯'s; the ContextMenu key and Shift+F10 open the focused item's at its bottom left (a group's header's), Esc giving it focus back",
+    "a right-click on a rule's row opens its menu at the pointer, with its ⋯'s items (the open rule's, after Open, as this one isn't open), and on a group's header the group's ⋯'s; the ContextMenu key and Shift+F10 open the focused item's at its bottom left (a group's header's), Esc giving it focus back",
     async () => {
       await keysReady();
       const menu = app.locator('[data-slot="context-menu-content"]');
@@ -3365,9 +3372,10 @@ try {
         const box = await locator.boundingBox();
         return [box.x + box.width / 2, box.y + box.height / 2];
       };
-      // The ⋯ menus' items: the open rule's, and the group's.
+      // The ⋯ menus' items: the open rule's, which a row's has after Open where its rule isn't the
+      // open one, and the group's.
       await app.click('[data-testid="rule-menu"]');
-      const ruleItems = await itemsOf(dropdown);
+      const ruleItems = [' Open ↵', ...(await itemsOf(dropdown))];
       await shut(dropdown);
       // A group's ⋯ is in its header's slot, there under the pointer.
       await keysItem.locator('[data-testid="group"]').hover();
@@ -9324,7 +9332,7 @@ try {
               true,
               [
                 'New rule in this group',
-                'Rename',
+                'Rename F2',
                 'Turn the group off',
                 'Duplicate',
                 'Export group',
@@ -9333,9 +9341,21 @@ try {
               ],
               'PR-1',
               'PR-1',
-              ['Duplicate', 'Move to group', 'Export this rule', 'Delete'],
+              [
+                'Rename F2',
+                'Duplicate',
+                'Move to group PR-1',
+                'Export this rule',
+                'Delete',
+              ],
               true,
-              ['Duplicate', 'Move to group', 'Export this rule', 'Delete'],
+              [
+                'Rename F2',
+                'Duplicate',
+                'Move to group PR-1',
+                'Export this rule',
+                'Delete',
+              ],
               true,
               '',
               'Rules /',
@@ -9598,7 +9618,8 @@ try {
         const whileTyping = await counts();
         const paused = await rowSettled(counts, (now) => now === '+3 −1');
         // In one column (400 px), a long body: the editor the pane's height less the room the
-        // card's controls take, the row's with them, so all of the card is on screen.
+        // card's controls take, the row's with them and the footer's second row in a card this
+        // narrow (162 + 32), so all of the card is on screen.
         let column;
         try {
           await app.setViewportSize({ width: 400, height: 760 });
@@ -9665,7 +9686,7 @@ try {
             ['false', true],
             '+2 −1',
             '+3 −1',
-            160,
+            194,
             [['+2', 'green']],
             [],
             0,
@@ -11327,7 +11348,7 @@ try {
           await awayFromTheList();
           const items = (turn) => [
             'New rule in this group',
-            'Rename',
+            'Rename F2',
             turn,
             'Duplicate',
             'Export group',
@@ -11554,6 +11575,470 @@ try {
         await widthAt('', '');
         await app.locator('[data-testid="sidebar-handle"]').dblclick();
         await sleep(400);
+      }
+    },
+  );
+
+  console.log('the rest of variant A (7b)');
+  // A rule of its own, answering /api/user?case=<from> alone.
+  const own = (id, from, group = '', patch = {}) =>
+    grouped(id, from, group, {
+      match: {
+        url: `/api/user?case=${from}`,
+        mode: 'contains',
+        method: 'ANY',
+        graphqlOperation: '',
+      },
+      ...patch,
+    });
+  // An open menu's items: each one's words (its key's drawn too) and the key it says it has.
+  const itemsOf = (open) =>
+    open.evaluate((menu) =>
+      [...menu.querySelectorAll('[role^="menuitem"]')].map((item) => [
+        item.textContent.replace(/\s+/g, ' ').trim(),
+        item.getAttribute('aria-keyshortcuts'),
+      ]),
+    );
+  const dropdown = app.locator('[data-slot="dropdown-menu-content"]');
+  const contextMenu = app.locator('[data-slot="context-menu-content"]');
+  const shutWithEscape = async (open) => {
+    await app.keyboard.press('Escape');
+    await open.waitFor({ state: 'detached', timeout: 3000 });
+  };
+
+  await check(
+    "7b.3: the open rule's Duplicate is an icon beside its ⋯, named Duplicate and saying so in its tooltip, wide and in a 420 px panel, where it was in the ⋯ alone; it opens the copy",
+    async () => {
+      await withGroups([own('d1', 'dup')], [], async () => {
+        try {
+          await shutMenus();
+          await openRule('From dup');
+          // Seen, named, no words of its own, and just before the ⋯, on its line.
+          const looks = () =>
+            app.evaluate(() => {
+              const button = document.querySelector('[data-testid="duplicate-rule"]');
+              const more = document.querySelector('[data-testid="rule-menu"]');
+              const box = (element) => element.getBoundingClientRect();
+              const middle = (element) => (box(element).top + box(element).bottom) / 2;
+              const gap = box(more).left - box(button).right;
+              return [
+                button.checkVisibility(),
+                button.getAttribute('aria-label'),
+                button.textContent.trim(),
+                gap >= 0 && gap <= 8,
+                Math.abs(middle(button) - middle(more)) < 1,
+              ];
+            });
+          const wide = await looks();
+          await app.locator('[data-testid="duplicate-rule"]').hover();
+          const tip = app.locator('[data-slot="tooltip"][data-open]');
+          await tip.first().waitFor({ timeout: 3000 });
+          const said = await tip.first().textContent();
+          await awayFromTheList();
+          await app.setViewportSize({ width: 420, height: 760 });
+          await sleep(300);
+          const narrow = await looks();
+          const before = (await storedRules()).length;
+          await app.click('[data-testid="duplicate-rule"]');
+          await sleep(400);
+          const after = [
+            (await storedRules()).length - before,
+            await app.locator('[data-testid="rule-name"]').inputValue(),
+          ];
+          expect(
+            [wide, said, narrow, after],
+            [
+              [true, 'Duplicate', '', true, true],
+              'Duplicate',
+              [true, 'Duplicate', '', true, true],
+              [1, 'From dup (copy)'],
+            ],
+          );
+        } finally {
+          await app.setViewportSize({ width: 1280, height: 820 });
+          await sleep(300);
+        }
+      });
+    },
+  );
+
+  await check(
+    "7b.4: the open rule's chip says how long ago it last answered, from the screens' clock, as its row does (\"Mocking · fired 1× on … · now\"), in the chip's green; before it has answered, no time",
+    async () => {
+      await withGroups([own('t1', 'timed')], [], async () => {
+        await shutMenus();
+        await openRule('From timed');
+        const chip = app.locator('[data-testid="rule-state"]');
+        const time = app.locator('[data-testid="rule-state-time"]');
+        const before = [await chip.textContent(), await time.count()];
+        await call('/api/user?case=timed');
+        await time.waitFor({ timeout: 3000 });
+        const after = await chip.textContent();
+        const row = await named('From timed')
+          .locator('[data-testid="rule-time"]')
+          .textContent();
+        const green = await chip.evaluate(
+          (element) =>
+            getComputedStyle(element.querySelector('[data-testid="rule-state-time"]'))
+              .color === getComputedStyle(element).color,
+        );
+        expect(
+          [before, /^Mocking · fired 1× on .+ · now$/.test(after), row, green],
+          [['Mocking', 0], true, '· now', true],
+          after,
+        );
+      });
+    },
+  );
+
+  await check(
+    '7b.5: the body\'s footer has Copy before Wrap, which copies the body as the editor has it and says "Copied" in itself for a second, a screen reader told "Copied the body"; in a 420 px panel, or wide in Commit Mono at Larger, the buttons go under what the check found, which keeps its row',
+    async () => {
+      const copiedBody = '{"copied": true}';
+      await withGroups(
+        [
+          own('c1', 'copied', '', {
+            response: { ...createRule().response, body: copiedBody },
+          }),
+        ],
+        [],
+        async () => {
+          try {
+            await shutMenus();
+            await openRule('From copied');
+            await watchClipboard();
+            const copy = app.locator('[data-testid="copy-rule-body"]');
+            // Where Copy is: before Wrap on its line; and whether what the check found has a
+            // line of its own.
+            const placed = () =>
+              app.evaluate(() => {
+                const box = (id) =>
+                  document.querySelector(`[data-testid="${id}"]`).getBoundingClientRect();
+                const [copyBox, wrapBox, statusBox] = [
+                  'copy-rule-body',
+                  'wrap',
+                  'code-status',
+                ].map(box);
+                return [
+                  copyBox.right <= wrapBox.left &&
+                    Math.abs(copyBox.top - wrapBox.top) < 1,
+                  statusBox.bottom <= copyBox.top,
+                ];
+              });
+            const wide = await placed();
+            await copy.click();
+            const copied = [
+              await app.evaluate(() => window.copiedTexts),
+              await copy.getAttribute('data-copied'),
+              await copy.evaluate(
+                (button) =>
+                  button.parentElement.querySelector('[data-slot="copy-announcer"]')
+                    .textContent,
+              ),
+              await copy.evaluate(
+                (button) =>
+                  getComputedStyle(button.querySelector('[data-part="copied"]')).opacity,
+              ),
+              await copy.getAttribute('aria-label'),
+              await copy.evaluate(
+                (button) => button.querySelector('[data-part="words"]').textContent,
+              ),
+            ];
+            await sleep(1300);
+            const back = await copy.getAttribute('data-copied');
+            // As wide, in Commit Mono at Larger: the buttons under it too, where beside them it
+            // wouldn't have the room of "Valid JSON · 99 lines" in that font.
+            await app.evaluate(() => {
+              document.documentElement.dataset.font = 'mono';
+              document.documentElement.dataset.size = 'larger';
+            });
+            await sleep(400);
+            const wideType = await placed();
+            await app.evaluate(() => {
+              delete document.documentElement.dataset.font;
+              delete document.documentElement.dataset.size;
+            });
+            await app.setViewportSize({ width: 420, height: 760 });
+            await sleep(300);
+            const narrow = await placed();
+            expect(
+              [wide, copied, back, wideType, narrow],
+              [
+                [true, false],
+                [[copiedBody], 'true', 'Copied the body', '1', null, 'Copy'],
+                null,
+                [true, true],
+                [true, true],
+              ],
+            );
+          } finally {
+            await unwatchClipboard();
+            await app.evaluate(() => {
+              delete document.documentElement.dataset.font;
+              delete document.documentElement.dataset.size;
+            });
+            await app.setViewportSize({ width: 1280, height: 820 });
+            await sleep(300);
+          }
+        },
+      );
+    },
+  );
+
+  await check(
+    "7b.7: a rule's row menus, its ⋯ and its right-click menu, start with Open and Rename, their keys, Enter and F2, drawn and said by aria-keyshortcuts, their names their words; the open rule has no Open, and its own menu's Rename renames in its name's crumb, or in a 420 px panel the name over it; Move to group says the rule's group, and nothing for a rule in none; a group's menus show F2 beside Rename, and F2 on its crumb renames it; nothing shows ⌘D or ⌘⌫",
+    async () => {
+      await withGroups(
+        [grouped('m1', 'M1', 'g-1'), grouped('m2', 'M2', 'g-1'), grouped('m3', 'loose')],
+        [PR1()],
+        async () => {
+          try {
+            await shutMenus();
+            await openRule('From M1');
+            const rest = (group) => [
+              ['Duplicate', null],
+              [group ? `Move to group ${group}` : 'Move to group', null],
+              ['Export this rule', null],
+              ['Delete', null],
+            ];
+            // M2's ⋯ and its right-click menu: M2 isn't the open rule.
+            await named('From M2').hover();
+            await named('From M2').locator('[data-testid="row-menu"]').click();
+            await menuReady();
+            const more = await itemsOf(dropdown);
+            const names = [
+              await dropdown.getByRole('menuitem', { name: 'Open', exact: true }).count(),
+              await dropdown
+                .getByRole('menuitem', { name: 'Rename', exact: true })
+                .count(),
+            ];
+            await shutWithEscape(dropdown);
+            await named('From M2').click({ button: 'right', position: { x: 60, y: 12 } });
+            await menuReady();
+            const right = await itemsOf(contextMenu);
+            // Open, from it; then the open rule's own row menu has no Open.
+            await contextMenu.locator('[data-testid="menu-open-rule"]').click();
+            await crumbName.filter({ hasText: 'From M2' }).waitFor({ timeout: 3000 });
+            await named('From M2').click({ button: 'right', position: { x: 60, y: 12 } });
+            await menuReady();
+            const openRow = await itemsOf(contextMenu);
+            // Rename from a row's menu: its name a field in the row, with the focus.
+            await contextMenu.locator('[data-testid="rename-rule"]').click();
+            await app
+              .locator('[data-testid="rule-name-input"]')
+              .waitFor({ timeout: 3000 });
+            await sleep(200);
+            const inRow = await app.evaluate(
+              () => document.activeElement?.dataset.testid,
+            );
+            await app.keyboard.press('Escape');
+            // The open rule's ⋯: Rename makes its name's crumb a field.
+            await app.click('[data-testid="rule-menu"]');
+            await menuReady();
+            const header = await itemsOf(dropdown);
+            await dropdown.locator('[data-testid="rename-rule"]').click();
+            const crumbField = app.locator('[data-testid="crumb-name-input"]');
+            await crumbField.waitFor({ timeout: 3000 });
+            await sleep(200);
+            const inCrumb = [
+              await app.evaluate(() => document.activeElement?.dataset.testid),
+              await crumbField.inputValue(),
+            ];
+            await app.keyboard.press('Escape');
+            // The group's ⋯, its right-click menu and its crumb's: Rename, with F2.
+            const renameOf = async (open) =>
+              (await itemsOf(open)).find(([words]) => words.startsWith('Rename'));
+            const groupHeader = app.locator('[data-testid="group"][data-group="PR-1"]');
+            await groupHeader.hover();
+            await groupHeader.locator('[data-testid="group-menu"]').click();
+            await menuReady();
+            const groupRenames = [await renameOf(dropdown)];
+            await shutWithEscape(dropdown);
+            await groupHeader.click({ button: 'right', position: { x: 120, y: 19 } });
+            await menuReady();
+            groupRenames.push(await renameOf(contextMenu));
+            await shutWithEscape(contextMenu);
+            await crumbGroup.click();
+            await menuReady();
+            groupRenames.push(await renameOf(dropdown));
+            await shutWithEscape(dropdown);
+            // A rule in no group: nothing beside its Move to group.
+            await named('From loose').click({
+              button: 'right',
+              position: { x: 60, y: 12 },
+            });
+            await menuReady();
+            const loose = await itemsOf(contextMenu);
+            await shutWithEscape(contextMenu);
+            // F2 on the group's crumb.
+            await crumbGroup.focus();
+            await app.keyboard.press('F2');
+            const groupField = app.locator('[data-testid="crumb-group-input"]');
+            await groupField.waitFor({ timeout: 3000 });
+            const byF2 = await groupField.inputValue();
+            await app.keyboard.press('Escape');
+            await groupField.waitFor({ state: 'detached', timeout: 3000 });
+            // In a 420 px panel, which has no crumbs: the name over the rule, all of it selected.
+            await app.setViewportSize({ width: 420, height: 760 });
+            await sleep(300);
+            await app.click('[data-testid="rule-menu"]');
+            await menuReady();
+            await dropdown.locator('[data-testid="rename-rule"]').click();
+            await sleep(400);
+            const narrow = await app.evaluate(() => {
+              const field = document.activeElement;
+              return [
+                field?.dataset.testid,
+                field?.selectionStart,
+                field?.selectionEnd,
+                field?.value,
+              ];
+            });
+            expect(
+              [
+                more,
+                names,
+                right,
+                openRow,
+                inRow,
+                header,
+                inCrumb,
+                groupRenames,
+                loose,
+                byF2,
+                narrow,
+              ],
+              [
+                [['Open ↵', 'Enter'], ['Rename F2', 'F2'], ...rest('PR-1')],
+                [1, 1],
+                [['Open ↵', 'Enter'], ['Rename F2', 'F2'], ...rest('PR-1')],
+                [['Rename F2', 'F2'], ...rest('PR-1')],
+                'rule-name-input',
+                [['Rename F2', 'F2'], ...rest('PR-1')],
+                ['crumb-name-input', 'From M2'],
+                [
+                  ['Rename F2', 'F2'],
+                  ['Rename F2', 'F2'],
+                  ['Rename F2', 'F2'],
+                ],
+                [['Open ↵', 'Enter'], ['Rename F2', 'F2'], ...rest('')],
+                'PR-1',
+                ['rule-name', 0, 7, 'From M2'],
+              ],
+            );
+          } finally {
+            await app.setViewportSize({ width: 1280, height: 820 });
+            await sleep(300);
+            await shutMenus();
+          }
+        },
+      );
+    },
+  );
+
+  await check(
+    '7b.10: Mock this response has no Into under it: the rule goes in at the top of the group New rule would start in, the last one a rule was made in, and the toast after it says which; with none to start in, it says no group',
+    async () => {
+      await withGroups([own('k1', 'kept', 'g-1')], [PR1()], async () => {
+        const startIn = (id) =>
+          app.evaluate((group) => {
+            if (group) localStorage.setItem('ghostfetch.newRuleGroup', group);
+            else localStorage.removeItem('ghostfetch.newRuleGroup');
+          }, id);
+        // Mock this response on a request no rule answers: whether Into shows, the toast, and the
+        // rule made, its group and its place.
+        const mock = async (mark) => {
+          await shutMenus();
+          await call(`/api/user?case=${mark}`);
+          await show('traffic');
+          await searchRequests(mark);
+          await trafficRow(mark).first().click();
+          await app.locator('[data-testid="request-detail"]').waitFor({ timeout: 3000 });
+          const into = await app
+            .locator('[data-testid="request-detail"] [data-testid="picker-group"]')
+            .count();
+          await app.click('[data-testid="mock"]');
+          await app.waitForSelector('[data-testid="view-rules"]:not([hidden])');
+          const rules = await storedRules();
+          const made = rules.findIndex((rule) => rule.match.url.includes(`case=${mark}`));
+          return [into, rules[made]?.group ?? null, made];
+        };
+        try {
+          await startIn('g-1');
+          const inGroup = await mock('mocked-in');
+          const toldGroup = await app
+            .locator('[data-slot="toast"]', { hasText: 'Rule created in “PR-1”' })
+            .count();
+          await startIn('');
+          const inNone = await mock('mocked-out');
+          const toldNone = await app
+            .locator('[data-slot="toast"]', { hasText: 'Rule created, in no group' })
+            .count();
+          expect(
+            [inGroup, toldGroup > 0, inNone, toldNone > 0],
+            [[0, 'g-1', 0], true, [0, '', 0], true],
+          );
+        } finally {
+          await startIn('');
+          await show('traffic');
+          await searchRequests('');
+          await show('rules');
+        }
+      });
+    },
+  );
+
+  await check(
+    '7b.11: the notice of a delete has an undo arrow before its key, as variant A has it, and no trash can before its words',
+    async () => {
+      await withGroups([own('n1', 'noticed'), own('n2', 'stays')], [], async () => {
+        await shutMenus();
+        await show('rules');
+        await deleteFromRow('From noticed');
+        await undoNotice.waitFor({ timeout: 3000 });
+        const shape = await undoNotice.evaluate((notice) => {
+          const undo = notice.querySelector('[data-testid="undo-notice-undo"]');
+          return [
+            notice.firstElementChild.tagName,
+            [...undo.children].map((child) =>
+              child.tagName === 'svg' ? child.dataset.icon : child.tagName,
+            ),
+            notice.querySelectorAll('svg[data-icon="trash"]').length,
+          ];
+        });
+        await noticeUndo.click();
+        await undoNotice.waitFor({ state: 'detached', timeout: 7000 });
+        expect(shape, ['SPAN', ['undo', 'KBD'], 0]);
+      });
+    },
+  );
+
+  await check(
+    "7b: in a 420 px panel the top bar's ⋯ stays filled while its menu is open, as the sidebar footer's does, and not once it's shut",
+    async () => {
+      await shutMenus();
+      try {
+        await app.setViewportSize({ width: 420, height: 760 });
+        await show('rules');
+        const back = app.locator('[data-testid="rule-back"]');
+        if (await back.isVisible()) await back.click();
+        const more = app.locator('[data-testid="editor-menu"]');
+        const fill = () =>
+          more.evaluate((button) => getComputedStyle(button).backgroundColor);
+        await more.click();
+        await menuReady();
+        await app.mouse.move(200, 740);
+        await sleep(250);
+        const open = await fill();
+        await app.keyboard.press('Escape');
+        await app.locator('[role="menu"]').waitFor({ state: 'detached', timeout: 3000 });
+        await app.mouse.move(200, 740);
+        await sleep(250);
+        const shut = await fill();
+        expect([open, shut], [await computed('pressed'), 'rgba(0, 0, 0, 0)']);
+      } finally {
+        await app.setViewportSize({ width: 1280, height: 820 });
+        await sleep(300);
       }
     },
   );

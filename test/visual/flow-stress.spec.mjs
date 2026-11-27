@@ -93,7 +93,8 @@ test('Stress: Rosé Pine Dawn, for the slot, a tooltip, a menu and the notice', 
     await flags.hover();
     await flags.getByRole('button', { name: 'More actions for “Feature flags”' }).click();
     const menu = await menuOpen(page);
-    await expect(menu.getByRole('menuitem')).toHaveCount(4);
+    // Feature flags isn't the open rule: Open and Rename first, with their keys.
+    await expect(menu.getByRole('menuitem')).toHaveCount(6);
     await menu.getByRole('menuitem', { name: 'Delete' }).hover();
     await look(page, menu, shot('dawn-menu'), { pad: 16 });
   });

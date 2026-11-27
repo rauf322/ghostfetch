@@ -6,17 +6,19 @@
 //   kit's Monogram, grey while the group is off), or "Rules". Under the pointer, with focus, or
 //   while its menu is open, the "/" after it is a chevron, in the same place, so nothing moves.
 //   Its menu: the group's (GroupMenuItems, group-menu.tsx), New rule in this group first, as its
-//   ⋯'s in the list; for "Rules", New rule, in no group. Rename makes the group's name a field
-//   here, as the name's crumb does (and a name another group has is turned down, the field staying
-//   for another); Duplicate names the copy in the list, which shows for it if ⌘B hid it
-//   (renaming.ts).
+//   ⋯'s in the list; for "Rules", New rule, in no group. Rename, or F2 while it has focus, makes
+//   the group's name a field here, as the name's crumb does (and a name another group has is
+//   turned down, the field staying for another); Duplicate names the copy in the list, which shows
+//   for it if ⌘B hid it (renaming.ts).
 // - The rule's name: its menu, the ⋯'s (one menu for both, rule-menu.tsx), with a chevron after it
-//   under the pointer, with focus, or while that's open. A double-click, or F2 while it has focus,
-//   makes it a field to rename the rule in place (rename-field.tsx, as F2 does in its row): Enter
-//   or leaving it gives the name typed (none, too: the URL names the rule then), Esc keeps the one
-//   it had, and after either key focus is back on the crumb. The first click of a double-click
-//   opens the menu and the second shuts it, as in T3 Code.
+//   under the pointer, with focus, or while that's open. A double-click, F2 while it has focus, or
+//   Rename in that menu (`renaming`, the header's, rule-header.tsx) makes it a field to rename the
+//   rule in place (rename-field.tsx, as F2 does in its row): Enter or leaving it gives the name
+//   typed (none, too: the URL names the rule then), Esc keeps the one it had, and after either key
+//   focus is back on the crumb. The first click of a double-click opens the menu and the second
+//   shuts it, as in T3 Code.
 import { useRef, useState } from 'react';
+import type { KeyboardEvent, RefObject } from 'react';
 import { editRule, groupName, ruleTitle } from '../../index.ts';
 import type { Group, Rule } from '../../index.ts';
 import { cn } from '../../../../ui/cn.ts';
@@ -50,12 +52,19 @@ export function RuleCrumbs({
   rule,
   group,
   menu,
+  nameCrumb,
+  renaming,
+  onRenaming,
   onNewRule,
 }: {
   rule: Rule;
   group: Group | undefined;
   // The rule's menu, which its ⋯ opens too.
   menu: MenuHandle<RuleMenuFrom>;
+  // The name's crumb, and whether it's a field to rename the rule in.
+  nameCrumb: RefObject<HTMLButtonElement | null>;
+  renaming: boolean;
+  onRenaming: (renaming: boolean) => void;
   // New rule, in a group ('' for none).
   onNewRule: (group: string) => void;
 }) {
@@ -66,10 +75,24 @@ export function RuleCrumbs({
       className="hidden min-w-0 flex-1 items-center wide:flex"
     >
       <GroupCrumb group={group} onNewRule={onNewRule} />
-      <NameCrumb rule={rule} menu={menu} />
+      <NameCrumb
+        rule={rule}
+        menu={menu}
+        crumb={nameCrumb}
+        renaming={renaming}
+        onRenaming={onRenaming}
+      />
     </nav>
   );
 }
+
+// F2, with no other key held: what renames a name where it has focus.
+const isF2 = (event: KeyboardEvent) =>
+  event.key === 'F2' &&
+  !event.altKey &&
+  !event.ctrlKey &&
+  !event.metaKey &&
+  !event.shiftKey;
 
 function GroupCrumb({
   group,
@@ -124,6 +147,11 @@ function GroupCrumb({
               type="button"
               data-testid="crumb-group"
               aria-label={group ? `Group “${group.name}”` : 'Rules'}
+              onKeyDown={(event) => {
+                if (!group || !isF2(event)) return;
+                event.preventDefault();
+                setRenamingHere(true);
+              }}
               className={cn(
                 CRUMB,
                 'group/crumb max-w-[45%] flex-[0_1_auto] gap-1.5 pr-0.5 pl-1.5 text-t50 hover:text-foreground data-popup-open:text-foreground',
@@ -176,13 +204,23 @@ function GroupCrumb({
   );
 }
 
-function NameCrumb({ rule, menu }: { rule: Rule; menu: MenuHandle<RuleMenuFrom> }) {
-  const [renaming, setRenamingHere] = useState(false);
-  const crumb = useRef<HTMLButtonElement>(null);
+function NameCrumb({
+  rule,
+  menu,
+  crumb,
+  renaming,
+  onRenaming,
+}: {
+  rule: Rule;
+  menu: MenuHandle<RuleMenuFrom>;
+  crumb: RefObject<HTMLButtonElement | null>;
+  renaming: boolean;
+  onRenaming: (renaming: boolean) => void;
+}) {
   const title = ruleTitle(rule);
   function rename() {
     menu.close();
-    setRenamingHere(true);
+    onRenaming(true);
   }
   if (renaming)
     return (
@@ -198,7 +236,7 @@ function NameCrumb({ rule, menu }: { rule: Rule; menu: MenuHandle<RuleMenuFrom> 
           return true;
         }}
         onDone={(byKey) => {
-          setRenamingHere(false);
+          onRenaming(false);
           if (byKey) requestAnimationFrame(() => crumb.current?.focus());
         }}
         className="h-7 text-control font-medium"
@@ -220,14 +258,7 @@ function NameCrumb({ rule, menu }: { rule: Rule; menu: MenuHandle<RuleMenuFrom> 
                 rename();
             }}
             onKeyDown={(event) => {
-              if (
-                event.key !== 'F2' ||
-                event.altKey ||
-                event.ctrlKey ||
-                event.metaKey ||
-                event.shiftKey
-              )
-                return;
+              if (!isF2(event)) return;
               event.preventDefault();
               rename();
             }}

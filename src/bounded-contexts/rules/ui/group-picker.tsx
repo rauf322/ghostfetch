@@ -1,7 +1,8 @@
-// Which group a new rule goes into, where New rule and Mock this response make one: a small filled
-// pill like New rule's other pickers, offering No group and each group, in their order. One that's
-// off says so, as a rule made in it doesn't answer until it's on. Nothing shows until there's a
-// group, so the screens stay as they were for anyone who doesn't make one.
+// Which group a new rule goes into, in New rule: a small filled pill like New rule's other pickers,
+// offering No group and each group, in their order. One that's off says so, as a rule made in it
+// doesn't answer until it's on. Nothing shows until there's a group, so the screens stay as they
+// were for anyone who doesn't make one. (Traffic's Mock this response has none: its rule goes into
+// the group New rule would start in, new-rule-group.ts, and its toast says which.)
 import { ruleStore } from '../index.ts';
 import { useStore } from '../../../ui/use-store.ts';
 import { cn } from '../../../ui/cn.ts';

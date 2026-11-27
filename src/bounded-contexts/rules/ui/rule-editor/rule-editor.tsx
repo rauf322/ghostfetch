@@ -56,10 +56,17 @@ export function RuleEditor({
   const settings = useRef<HTMLDivElement>(null);
   useKeptScroll(`${rule.id} pane`, pane);
   useKeptScroll(`${rule.id} settings`, settings);
+  // The name over the rule, which the header's Rename puts the cursor in where it has no crumbs.
+  const nameField = useRef<HTMLInputElement>(null);
 
   return (
     <>
-      <RuleHeader rule={rule} onSelect={onSelect} onNewRule={onNewRule} />
+      <RuleHeader
+        rule={rule}
+        nameField={nameField}
+        onSelect={onSelect}
+        onNewRule={onNewRule}
+      />
       <PaneScroll ref={pane} className="@container-size/pane">
         {/* Between the two layouts, the boxes around the body editor change only in width,
             height and margins: a box whose padding, gap, grid columns or flex change has Firefox
@@ -67,7 +74,7 @@ export function RuleEditor({
             grid has Chrome rebuild everything in it, the body editor and its thousands of lines
             included, which made the switch take 60 ms. */}
         <div className="flex flex-col gap-5 px-4 pt-1 pb-4 pane-wide:mx-2 pane-wide:h-full">
-          <RuleIntro rule={rule} log={log} />
+          <RuleIntro rule={rule} log={log} nameField={nameField} />
           {/* A row that wraps: side by side, the settings 40% of it (at least 290 px) and the
               body the rest, 24 px apart; in one column, each on a row of its own. */}
           <div className="flex min-h-0 flex-1 flex-wrap gap-5">

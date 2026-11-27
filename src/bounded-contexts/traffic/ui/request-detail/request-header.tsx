@@ -1,10 +1,14 @@
-// The top of an open request: its method and path (the full URL as its title), and under them
-// its status with its name, how long it took and what made it, as chips; the × closes it.
+// The top of an open request: its method and path, on one line, a long path cut in its middle so
+// its query's end stays (the full URL as its title), and under them its status with its name, how
+// long it took and what made it, as chips; the × closes it. Its method and path take focus where
+// the request opens in the list's place (traffic-page.tsx), so a screen reader starts there.
 import type { LogEntry } from '../../index.ts';
 import { formatDuration, splitUrl, statusName } from '../../../../lib/index.ts';
 import { StatusCode } from '../../../../ui/kit/badge.tsx';
 import { Button } from '../../../../ui/kit/button.tsx';
 import { Icon } from '../../../../ui/kit/icon.tsx';
+import { MiddleTruncate } from '../../../../ui/kit/middle-truncate.tsx';
+import { Tooltip } from '../../../../ui/kit/tooltip.tsx';
 import { KIND_LABELS } from '../entry-labels.ts';
 
 const CHIP =
@@ -24,10 +28,11 @@ export function RequestHeader({
       <div className="flex min-w-0 flex-1 flex-col gap-2.5">
         <h2
           title={entry.url}
-          className="line-clamp-2 font-mono text-title font-semibold break-all text-strong"
+          tabIndex={-1}
+          className="flex min-w-0 font-mono text-title font-semibold text-strong focus:outline-none"
         >
-          <span className="mr-2">{entry.method}</span>
-          {path}
+          <span className="mr-2 flex-none">{entry.method}</span>
+          <MiddleTruncate text={path} />
         </h2>
         <div className="flex flex-wrap gap-1.5">
           <span className={CHIP}>
@@ -46,16 +51,18 @@ export function RequestHeader({
           )}
         </div>
       </div>
-      <Button
-        variant="ghost"
-        size="icon"
-        title="Close"
-        data-testid="request-back"
-        onClick={onClose}
-        className="flex-none rounded-full bg-pressed text-t80"
-      >
-        <Icon name="close" size={16} />
-      </Button>
+      <Tooltip label="Close">
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Close"
+          data-testid="request-back"
+          onClick={onClose}
+          className="flex-none rounded-full bg-pressed text-t80"
+        >
+          <Icon name="close" size={16} />
+        </Button>
+      </Tooltip>
     </div>
   );
 }

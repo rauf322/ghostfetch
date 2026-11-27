@@ -276,11 +276,11 @@ try {
   );
 
   await check(
-    "the footer's Agent button fits beside ⋯, Import and Export, the sidebar at its narrowest too: named where there's room, its icon (with the dot) where there isn't",
+    "the footer's Agent button fits beside ⋯, Import and Export, the sidebar at its narrowest too: an icon, as they are, with its dot, named for a screen reader",
     async () => {
       const handle = app.locator('[data-testid="sidebar-handle"]');
-      // The footer once the sidebar is `width` wide: on screen and nothing past its end, Agent
-      // named or not, and its dot.
+      // The footer once the sidebar is `width` wide: on screen and nothing past its end, Agent's
+      // name for a screen reader with no words drawn, and its dot.
       const footer = async (width) => {
         if (width !== undefined)
           await app.waitForFunction(
@@ -294,12 +294,12 @@ try {
         return app.evaluate(() => {
           const row = document.querySelector('[data-testid="sidebar"] footer');
           const button = document.querySelector('[data-testid="agent-button"]');
-          const name = [...button.querySelectorAll('span')].find(
-            (span) => span.textContent === 'Agent',
-          );
           return [
             row.checkVisibility() && row.scrollWidth <= row.clientWidth,
-            name.checkVisibility() ? 'Agent' : 'icon',
+            button.textContent.trim() === '' &&
+            button.getAttribute('aria-label') === 'Agent access'
+              ? 'icon'
+              : button.textContent,
             Boolean(button.querySelector('[data-slot="signal-dot"]')?.checkVisibility()),
           ];
         });
@@ -324,9 +324,9 @@ try {
       expect(seen, [
         [true, 'icon', true],
         [true, 'icon', true],
-        [true, 'Agent', true],
         [true, 'icon', true],
-        [true, 'Agent', true],
+        [true, 'icon', true],
+        [true, 'icon', true],
       ]);
     },
   );

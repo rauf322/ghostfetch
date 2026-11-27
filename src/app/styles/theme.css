@@ -7,7 +7,11 @@
    body editor's own stylesheet (src/bounded-contexts/body-editor/code-editor.css) uses them as they
    are. Both fonts ship with the extension (public/fonts/), so no page loads one from the web.
    The other themes (themes.css) give the same values under [data-theme=…], which
-   public/theme.js puts on <html>; a swatch in the theme menu puts one on itself. */
+   public/theme.js puts on <html>; a swatch in the theme menu puts one on itself.
+
+   Appearance (the ⋯ menu's row under Theme, src/ui/theme.ts) works here too, for every theme at
+   once: Contrast and Font, as data-contrast and data-font on <html>, which public/theme.js puts
+   there as it does the theme. Text size is in kit.css, with the type sizes. */
 
 @font-face {
   font-family: 'Geist';
@@ -34,14 +38,25 @@
      inverted (the primary button, a toast, an error's badge) */
   --strong: #fff;
   --inverse: #000;
-  --t80: rgba(255, 255, 255, 0.8);
-  --t65: rgba(255, 255, 255, 0.65);
-  --t50: rgba(255, 255, 255, 0.5);
-  --t40: rgba(255, 255, 255, 0.4);
-  --t30: rgba(255, 255, 255, 0.3);
-  --t20: rgba(255, 255, 255, 0.2);
-  --line: #26262a;
-  --line-strong: #34343a;
+  /* the text, fainter by steps, for what's quieter: --t80 buttons, menu rows and code; --t65 a
+     rule's URL, values and the focus ring; --t50 muted text (tabs not picked, a row's second
+     line); --t40 labels, section headings, hints and a rule's summary; --t30 placeholders,
+     counts and the dot of a rule that's off. Those five are mostly text (a few borders use them
+     too), and every theme holds them to a floor on the page (--bg) and on a card (--panel)
+     alike: --t40 at 4.5:1 or more, --t30 at 3:1 or more, and each level at least 1.15 times the
+     contrast of the one below it, so they stay apart. --t20, the faintest (a field's border under
+     the pointer, the body editor's line numbers), has no floor. These are each level's base, as
+     Standard contrast has it; the levels the components use are made from them below. */
+  --t80-base: rgba(255, 255, 255, 0.8);
+  --t65-base: rgba(255, 255, 255, 0.65);
+  --t50-base: rgba(255, 255, 255, 0.52);
+  --t40-base: rgba(255, 255, 255, 0.46);
+  --t30-base: rgba(255, 255, 255, 0.35);
+  --t20-base: rgba(255, 255, 255, 0.2);
+  /* hairlines, the base of --line and --line-strong as for the levels; --line-soft, the edge of
+     the body editor's line numbers, is used as it is */
+  --line-base: #26262a;
+  --line-strong-base: #34343a;
   --line-soft: #1c1c1f;
   /* surfaces, each a step lighter: a card, a row under the pointer, a picked row, and the chosen
      option of a segmented control */
@@ -52,6 +67,14 @@
   --code-bg: #0e0e10;
   --signal: #34d399;
   --signal-soft: rgba(52, 211, 153, 0.12);
+  /* a group's chip (ui/kit/monogram.tsx): five colours for its letters, which its name picks one
+     of, as T3 Code's project chips (rose, blue, amber, teal, violet); each theme has five of its
+     own, its letters at 4.5:1 or more on its tile (below) */
+  --chip-1: #f59aa1;
+  --chip-2: #87bafd;
+  --chip-3: #e1ad63;
+  --chip-4: #4fccd9;
+  --chip-5: #bca9f7;
   /* a switch that's off: its track and its knob */
   --track: #3a3a3f;
   --knob: #a1a1a6;
@@ -66,4 +89,56 @@
   --tk-str: rgba(158, 203, 255, 0.9);
   --tk-num: rgba(255, 171, 112, 0.9);
   --tk-lit: rgba(249, 117, 131, 0.95);
+}
+
+/* The levels and the lines the components use, made once for every theme from its bases: each
+   mixed toward the theme's text by a share, --lift for the levels and a smaller --line-lift for
+   the lines. Moving every level toward the same colour by the same share keeps their order, in
+   the themes whose greys are their text at an opacity and in Catppuccin's opaque greys alike.
+   On [data-theme] too, so a swatch in the theme menu makes them from its own theme's bases. */
+:root,
+[data-theme] {
+  --t80: color-mix(in srgb, var(--t80-base), var(--text) var(--lift));
+  --t65: color-mix(in srgb, var(--t65-base), var(--text) var(--lift));
+  --t50: color-mix(in srgb, var(--t50-base), var(--text) var(--lift));
+  --t40: color-mix(in srgb, var(--t40-base), var(--text) var(--lift));
+  --t30: color-mix(in srgb, var(--t30-base), var(--text) var(--lift));
+  --t20: color-mix(in srgb, var(--t20-base), var(--text) var(--lift));
+  --line: color-mix(in srgb, var(--line-base), var(--text) var(--line-lift));
+  --line-strong: color-mix(
+    in srgb,
+    var(--line-strong-base),
+    var(--text) var(--line-lift)
+  );
+  /* A chip's tile: its letters' colour at 16% over the page, as T3 Code's. */
+  --chip-1-tile: color-mix(in srgb, var(--chip-1) 16%, var(--bg));
+  --chip-2-tile: color-mix(in srgb, var(--chip-2) 16%, var(--bg));
+  --chip-3-tile: color-mix(in srgb, var(--chip-3) 16%, var(--bg));
+  --chip-4-tile: color-mix(in srgb, var(--chip-4) 16%, var(--bg));
+  --chip-5-tile: color-mix(in srgb, var(--chip-5) 16%, var(--bg));
+}
+
+/* Contrast: Standard leaves every level and line its base. More and Most move the levels 30% and
+   60% of the way to the text, so their floors rise to --t40 at 5.5:1 and --t30 at 4:1, then
+   6.5:1 and 5.5:1, each level still above the one below (test/kit.mjs checks every theme at
+   every step); and the lines 8% and 20%, so a card's edge shows without the page turning into a
+   grid. Unlike T3 Code's highest contrast, the levels never all become the text. */
+:root {
+  --lift: 0%;
+  --line-lift: 0%;
+}
+:root[data-contrast='more'] {
+  --lift: 30%;
+  --line-lift: 8%;
+}
+:root[data-contrast='most'] {
+  --lift: 60%;
+  --line-lift: 20%;
+}
+
+/* Font: Commit Mono for words too, as for code. kit.css does the same for Tailwind's font-sans;
+   this is for the words in the body editor (vim's mode, the Diff's titles and notes), whose code
+   is Commit Mono anyway and keeps its own sizes. */
+:root[data-font='mono'] {
+  --font-ui: var(--font);
 }

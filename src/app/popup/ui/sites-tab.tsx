@@ -2,6 +2,7 @@
 // each with Remove, which turns Ghostfetch off there (the tab reloads if it shows that site).
 import { removeSite } from '../../../bounded-contexts/sites/index.ts';
 import { Icon } from '../../../ui/kit/icon.tsx';
+import { Tooltip } from '../../../ui/kit/tooltip.tsx';
 
 // As the manifest's content scripts have them (wxt.config.ts); localhost covers *.localhost too.
 export const BUILT_IN_HOSTS = ['localhost', '127.0.0.1', 'local.*'];
@@ -32,14 +33,15 @@ export function SitesTab({
         >
           <Icon name="globe" size={13} className="text-t40" />
           <span className="truncate font-mono text-meta text-foreground">{site}</span>
-          <button
-            type="button"
-            title={`Turn off for ${site}`}
-            onClick={() => removeSite(site, tab)}
-            className="ml-auto flex-none text-label text-t50 hover:text-foreground"
-          >
-            Remove
-          </button>
+          <Tooltip label={`Turn off for ${site}`}>
+            <button
+              type="button"
+              onClick={() => removeSite(site, tab)}
+              className="ml-auto flex-none text-label text-t50 hover:text-foreground"
+            >
+              Remove
+            </button>
+          </Tooltip>
         </div>
       ))}
       <p className="px-3 pt-1 pb-2 text-meta text-t40">

@@ -2,16 +2,21 @@ import { mergeProps } from '@base-ui/react/merge-props';
 import { useRender } from '@base-ui/react/use-render';
 import { cva } from 'class-variance-authority';
 import type { VariantProps } from 'class-variance-authority';
-import type { ComponentProps } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 import { cn } from '../cn.ts';
 import { CARD } from './card.tsx';
 
-// List rows: a rule, or a request in Traffic. Rounded and inset from the list's edges; the
-// selected row is a filled pill, and a rule that's off fades. A rule's row starts with its switch
-// (the green dot), then its name, with what it did on the page at the right end, over what it
+// List rows: a rule, or a request in Traffic. Rounded and inset from the list's edges, filled
+// under the pointer and while a menu of its own is open (its ⋯'s, or its right-click menu, which
+// marks it data-context-open); the selected row is a filled pill, and a rule that's off fades. A
+// row that takes focus (a rule's, in the editor's list) has a ring inside its edge, which the rows
+// around it don't cover. A rule's row starts with its switch (the green dot), then its name, with
+// its slot at the right end (ItemSlot: what it did on the page, or its actions), over what it
 // matches; a request's starts with its method, and its status and duration sit at its right end.
+export const ROW_FOCUS =
+  'focus-visible:outline-none focus-visible:ring-[1.5px] focus-visible:ring-t65 focus-visible:ring-inset';
 const itemVariants = cva(
-  'group/item relative mx-1.5 grid cursor-pointer items-center rounded-md hover:bg-hover data-selected:bg-pressed',
+  `group/item relative mx-1.5 grid cursor-pointer items-center rounded-md hover:bg-hover has-[[aria-haspopup=menu][data-popup-open]]:bg-hover data-context-open:bg-hover data-selected:bg-pressed ${ROW_FOCUS}`,
   {
     variants: {
       variant: {
@@ -66,12 +71,126 @@ export function ItemContent({ className, ...props }: ComponentProps<'div'>) {
   return <div data-slot="item-content" className={cn('min-w-0', className)} {...props} />;
 }
 
-export function ItemTitle({ className, ...props }: ComponentProps<'div'>) {
+// `quiet`: the row steps back (after T3 Code's receding rows), its name at normal weight in a
+// quieter grey: a rule that's on but hasn't answered on the page, so the ones that did stand out.
+export function ItemTitle({
+  className,
+  quiet,
+  ...props
+}: ComponentProps<'div'> & { quiet?: boolean }) {
   return (
     <div
       data-slot="item-title"
+      data-quiet={quiet || undefined}
       className={cn(
         'truncate text-title font-medium text-strong group-data-off/item:text-t50',
+        quiet && 'font-normal text-t65',
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+// Under the pointer, with keyboard focus on the row or anywhere in it, while a menu of its own is
+// open (one of its actions opened, or its right-click menu, which marks the row
+// data-context-open), and for the second one of its actions says it copied (data-copied): a
+// slot's actions show, and what it says doesn't, unless nothing can hover (touch:), where there
+// are no actions. Base UI marks an open menu's trigger data-popup-open, and a tooltip's trigger
+// too, so the menu's is the one with aria-haspopup.
+const ACTIONS_SHOWN =
+  'group-hover/item:pointer-events-auto group-hover/item:opacity-100 group-focus-visible/item:pointer-events-auto group-focus-visible/item:opacity-100 group-has-[:focus-visible]/item:pointer-events-auto group-has-[:focus-visible]/item:opacity-100 group-has-[[aria-haspopup=menu][data-popup-open]]/item:pointer-events-auto group-has-[[aria-haspopup=menu][data-popup-open]]/item:opacity-100 group-data-context-open/item:pointer-events-auto group-data-context-open/item:opacity-100 group-has-[[data-copied]]/item:pointer-events-auto group-has-[[data-copied]]/item:opacity-100';
+const STATUS_HIDDEN =
+  'group-hover/item:opacity-0 group-focus-visible/item:opacity-0 group-has-[:focus-visible]/item:opacity-0 group-has-[[aria-haspopup=menu][data-popup-open]]/item:opacity-0 group-data-context-open/item:opacity-0 group-has-[[data-copied]]/item:opacity-0 touch:opacity-100';
+
+// A row's one slot, at the end of its first line (after T3 Code's thread rows): what the row says
+// at rest (children: "2 mocked", "· 4m"), and in the same place its actions (ItemAction), as
+// above. As wide as what it says and at least as the actions (two, min-w-12; a className can say
+// otherwise), so nothing in the row moves as they show. Where the row is short of room (a long
+// name, a wider font, larger text) it gives way, down to that: what it says goes from its end
+// first, its later parts wrapping onto a line out of sight, then its first part truncates. Where
+// nothing can hover (touch:) there are no actions and no room kept for them: the row's own
+// controls do what they do. The row's tooltip, its title (the name in full), doesn't show over
+// the actions, which have their own. `statusId`: what it says, for a row to be described by.
+// `stacked`: the slot is a column of the row's own, as tall as the row, and what it says is two
+// short things, one over the other (a request's status over how long it took), which keep their
+// width; the actions sit across both lines. In a row that isn't an Item (a group's header, marked
+// group/item), `shown` and `hidden` add the states of what holds it (its group's block, which takes
+// the focus and the right-click menu's mark) to those that show the actions and hide what it says.
+export function ItemSlot({
+  actions,
+  statusId,
+  stacked = false,
+  shown,
+  hidden,
+  className,
+  children,
+}: {
+  actions?: ReactNode;
+  statusId?: string;
+  stacked?: boolean;
+  shown?: string;
+  hidden?: string;
+  className?: string;
+  children?: ReactNode;
+}) {
+  return (
+    <span
+      data-slot="item-slot"
+      className={cn(
+        'relative ml-auto flex flex-[0_1_auto] items-center justify-end self-stretch',
+        actions && 'min-w-12 touch:min-w-0',
+        className,
+      )}
+    >
+      <span
+        id={statusId}
+        data-slot="item-status"
+        className={cn(
+          'transition-opacity duration-100',
+          stacked
+            ? 'flex flex-col items-end gap-0.5'
+            : 'flex h-[1.5em] min-w-0 flex-wrap content-start items-center justify-end gap-x-1 overflow-hidden text-label whitespace-nowrap tabular-nums [&>*:first-child]:min-w-0 [&>*:first-child]:truncate',
+          actions && [hidden, STATUS_HIDDEN],
+        )}
+      >
+        {children}
+      </span>
+      {actions && (
+        <span
+          data-slot="item-slot-actions"
+          title=""
+          className={cn(
+            'pointer-events-none absolute inset-y-0 right-0 -mr-[5px] flex items-center gap-0.5 opacity-0 transition-opacity duration-100 touch:hidden',
+            ACTIONS_SHOWN,
+            shown,
+          )}
+        >
+          {actions}
+        </span>
+      )}
+    </span>
+  );
+}
+
+// One of a slot's actions: a 24 px square with an icon, as T3 Code's. Give it an aria-label and a
+// Tooltip; a menu's trigger renders as one. A press on it doesn't start dragging the row (a rule's
+// row is draggable) and leaves focus where it was.
+export function ItemAction({
+  className,
+  onMouseDown,
+  ...props
+}: ComponentProps<'button'>) {
+  return (
+    <button
+      type="button"
+      data-slot="item-action"
+      onMouseDown={(event) => {
+        event.preventDefault();
+        onMouseDown?.(event);
+      }}
+      className={cn(
+        'grid size-6 flex-none place-items-center rounded-sm text-t50 hover:bg-raised hover:text-strong data-popup-open:bg-raised data-popup-open:text-strong',
         className,
       )}
       {...props}

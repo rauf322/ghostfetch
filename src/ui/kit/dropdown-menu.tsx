@@ -2,6 +2,7 @@ import { Menu as MenuPrimitive } from '@base-ui/react/menu';
 import type { ComponentProps } from 'react';
 import { cn } from '../cn.ts';
 import { Icon } from './icon.tsx';
+import { Kbd } from './kbd.tsx';
 
 // Menus: a rounded card with a hairline border and a deep shadow, its items rounded rows. A
 // destructive item turns inverted when highlighted. Base UI does the keyboard: Enter or the arrow
@@ -10,8 +11,18 @@ import { Icon } from './icon.tsx';
 // left arrow closes it.
 export const DropdownMenu = MenuPrimitive.Root;
 
-const POPUP =
-  'max-h-(--available-height) min-w-[210px] overflow-y-auto rounded-lg border border-border bg-popover p-1 shadow-menu outline-none';
+// One menu for many buttons (each row's ⋯ in a long list): one root and one popup, with the
+// handle on the root and on each <DropdownMenuTrigger>, which passes the menu what it's for
+// (`payload`); the root's children can be a function of it.
+export type MenuHandle<Payload> = MenuPrimitive.Handle<Payload>;
+export const createMenuHandle = <Payload,>(): MenuHandle<Payload> =>
+  MenuPrimitive.createHandle<Payload>();
+
+// The menus' card, the right-click menu's too (context-menu.tsx): as wide as its widest row needs,
+// within the room the window has beside its button (Base UI's --available-width), where a detail
+// gives way only if it must.
+export const MENU_POPUP =
+  'max-h-(--available-height) max-w-(--available-width) min-w-[210px] overflow-y-auto rounded-lg border border-border bg-popover p-1 shadow-menu outline-none';
 const ITEM =
   'flex w-full items-center gap-[9px] rounded-md px-2.5 py-2 text-left text-small text-t80 outline-none select-none data-highlighted:bg-raised data-highlighted:text-strong data-disabled:opacity-45 [&_[data-slot=icon]]:text-t40';
 
@@ -42,7 +53,7 @@ export function DropdownMenuContent({
       >
         <MenuPrimitive.Popup
           data-slot="dropdown-menu-content"
-          className={cn(POPUP, className)}
+          className={cn(MENU_POPUP, className)}
           {...props}
         />
       </MenuPrimitive.Positioner>
@@ -64,6 +75,32 @@ export function DropdownMenuItem({
         'data-[variant=destructive]:data-highlighted:bg-foreground data-[variant=destructive]:data-highlighted:text-inverse data-[variant=destructive]:data-highlighted:[&_[data-slot=icon]]:text-inverse',
         className,
       )}
+      {...props}
+    />
+  );
+}
+
+// At a row's right end: a quiet detail, as the theme in use beside Theme ("Ghostfetch") and
+// "Default" beside Appearance, whole, the menu as wide as it needs, and cut short with … only
+// where the window hasn't the room; or the key that does what the row does, in a Kbd as a tooltip
+// has it ("Rename F2"). The key is drawn, not read out: the row says it with aria-keyshortcuts
+// (aria-keyshortcuts="F2"), so its name stays its words.
+export function DropdownMenuDetail({ className, ...props }: ComponentProps<'span'>) {
+  return (
+    <span
+      data-slot="dropdown-menu-detail"
+      className={cn('ml-auto truncate pl-4 text-t40', className)}
+      {...props}
+    />
+  );
+}
+
+export function DropdownMenuShortcut({ className, ...props }: ComponentProps<'kbd'>) {
+  return (
+    <Kbd
+      data-slot="dropdown-menu-shortcut"
+      aria-hidden="true"
+      className={cn('ml-auto', className)}
       {...props}
     />
   );
@@ -110,7 +147,7 @@ export function DropdownMenuSubContent({
       >
         <MenuPrimitive.Popup
           data-slot="dropdown-menu-sub-content"
-          className={cn(POPUP, className)}
+          className={cn(MENU_POPUP, className)}
           {...props}
         />
       </MenuPrimitive.Positioner>
@@ -156,9 +193,14 @@ export function DropdownMenuSeparator({
   );
 }
 
-export function DropdownMenuLabel({ className, ...props }: ComponentProps<'div'>) {
+// The name over a group of items, as Appearance's Contrast, Font and Text size. It goes inside its
+// DropdownMenuRadioGroup, which it names for a screen reader too (Base UI's GroupLabel).
+export function DropdownMenuLabel({
+  className,
+  ...props
+}: MenuPrimitive.GroupLabel.Props) {
   return (
-    <div
+    <MenuPrimitive.GroupLabel
       data-slot="dropdown-menu-label"
       className={cn('px-2.5 pt-2 pb-1 text-label font-medium text-t40', className)}
       {...props}

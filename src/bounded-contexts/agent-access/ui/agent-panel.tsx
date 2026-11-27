@@ -10,6 +10,7 @@ import { Card } from '../../../ui/kit/card.tsx';
 import { Icon } from '../../../ui/kit/icon.tsx';
 import { Input } from '../../../ui/kit/input.tsx';
 import { SignalDot } from '../../../ui/kit/signal-dot.tsx';
+import { Tooltip } from '../../../ui/kit/tooltip.tsx';
 import { parsePairingCode } from '../domain/pairing-code.ts';
 import {
   ASKS_CONSENT,
@@ -60,15 +61,16 @@ export function AgentPanel({
             {status !== 'off' && <SignalDot on={status === 'connected'} />}
             {WORDS[status]}
           </span>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            title="Close"
-            aria-label="Close Agent access"
-            onClick={onClose}
-          >
-            <Icon name="close" size={14} />
-          </Button>
+          <Tooltip label="Close">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Close Agent access"
+              onClick={onClose}
+            >
+              <Icon name="close" size={14} />
+            </Button>
+          </Tooltip>
         </div>
         {asking ? (
           <PairingForm code={code} refused={status === 'refused'} declined={declined} />
@@ -107,6 +109,20 @@ function PairingForm({
   declined: boolean;
 }) {
   const [draft, setDraft] = useState(code);
+  const ready = Boolean(parsePairingCode(draft));
+  const turnOn = (
+    // As wide as the form, in the tooltip's wrapper too while it's off.
+    <Button
+      type="submit"
+      size="sm"
+      variant="primary"
+      data-testid="agent-on"
+      disabled={!ready}
+      className="w-full"
+    >
+      Turn on
+    </Button>
+  );
   return (
     <form
       className="flex flex-col gap-2"
@@ -141,15 +157,21 @@ function PairingForm({
         autoComplete="off"
         className="font-mono"
       />
-      <Button
-        type="submit"
-        size="sm"
-        variant="primary"
-        data-testid="agent-on"
-        disabled={!parsePairingCode(draft)}
-      >
-        Turn on
-      </Button>
+      {/* Off until there's a whole code, and saying what to do. */}
+      {ready ? (
+        turnOn
+      ) : (
+        <Tooltip
+          label="Turn on Agent access"
+          reason={
+            draft.trim()
+              ? 'Paste the pairing code whole, as your agent gives it'
+              : "Paste your agent's pairing code first"
+          }
+        >
+          {turnOn}
+        </Tooltip>
+      )}
     </form>
   );
 }

@@ -4,16 +4,19 @@
 // is open: Traffic lists it, a rule says how often it fired there, and New rule offers what the
 // page just asked for. Between the views it opens rules: one picked in the sidebar, one picked in
 // Traffic, one made by New rule or from a captured response, the first of an import, and one the
-// popup asks for. A rule it makes goes into the group New rule and Mock this response offer, at its
-// top: the one the last rule made went into, or the group whose + was clicked. While Agent access
-// is on, it does what a coding agent's tools ask (bounded-contexts/agent-access/).
+// popup asks for. A rule it makes goes in at the top of a group, or of the list: New rule's into
+// the group its picker shows (the one the last rule made went into, or the group New rule in this
+// group was picked in), and Mock this response's, in Traffic, which has no picker, into the group
+// New rule would start in, which the toast after it names. While Agent access is on, it does what
+// a coding agent's tools ask (bounded-contexts/agent-access/).
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAgentAccess } from '../../bounded-contexts/agent-access/ui/index.ts';
-import { RulesPage } from '../../bounded-contexts/rules/ui/index.ts';
+import { RulesPage, setShowList } from '../../bounded-contexts/rules/ui/index.ts';
 import { TrafficPage, useTrafficLog } from '../../bounded-contexts/traffic/ui/index.ts';
 import {
   addRule,
   createResponseCapture,
+  findGroup,
   findRule,
   fromServer,
   keepServerResponse,
@@ -63,8 +66,7 @@ export function Editor({ inTab, windowId }: { inTab: boolean; windowId: number }
   // A rule New rule just made, whose body gets the cursor, once: the body says when it has it.
   const [created, setCreated] = useState<string | null>(null);
   const [query, setQuery] = useState('');
-  // The group a rule made here goes into ('' for none), as New rule's and Mock this response's
-  // pickers show it.
+  // The group a rule New rule makes goes into ('' for none), as its picker shows it.
   const [ruleGroup, setRuleGroup] = useState(lastRuleGroup);
   // The side panel follows the active tab; the editor in a tab keeps the tab it picked.
   const log = useTrafficLog(!inTab);
@@ -83,43 +85,59 @@ export function Editor({ inTab, windowId }: { inTab: boolean; windowId: number }
     setSelectedRule(id);
   }, []);
 
+  // A rule opens in the Rules view, from wherever the editor was; null closes the open rule (one
+  // deleted from its row in the list), leaving the view as it is.
   const openRule = useCallback(
-    (id: string) => {
-      showView('rules');
-      select(findRule(id) ? id : null);
+    (id: string | null) => {
+      if (id) showView('rules');
+      select(id && findRule(id) ? id : null);
     },
     [showView, select],
   );
 
-  // A rule made here, at the top of the group the pickers show, or of the list: that group is the
-  // one the next rule goes into to start with, too.
-  const place = useCallback(
-    (rule: Rule) => {
-      rememberRuleGroup(ruleGroup);
-      return addRule(rule, { group: ruleGroup, index: 0 });
-    },
-    [ruleGroup],
-  );
+  // A rule made here, at the top of `group` ('' for none), or of the list: that group is the one
+  // the next rule goes into to start with, too.
+  const place = useCallback((rule: Rule, group: string) => {
+    rememberRuleGroup(group);
+    return addRule(rule, { group, index: 0 });
+  }, []);
 
   // A rule made from a request (Mock this response, New rule's Mock) keeps the server's response
-  // it was made from, for its body's Diff: if the server gave it, not a rule.
+  // it was made from, for its body's Diff: if the server gave it, not a rule. The toast says which
+  // group it went into, once there are groups.
   const mockRule = useCallback(
-    (draft: Rule, entry: LogEntry) => {
-      const rule = place(normalizeRule(draft));
+    (draft: Rule, entry: LogEntry, group: string) => {
+      const rule = place(normalizeRule(draft), group);
       if (fromServer(entry)) keepServerResponse(rule.id, responseFromEntry(entry));
       openRule(rule.id);
-      notify('Rule created', {
-        kind: 'success',
-        description: 'Edit the body: it applies right away.',
-      });
+      const into = findGroup(group)?.name;
+      notify(
+        into
+          ? `Rule created in “${into}”`
+          : ruleStore.state.groups.length
+            ? 'Rule created, in no group'
+            : 'Rule created',
+        { kind: 'success', description: 'Edit the body: it applies right away.' },
+      );
     },
     [openRule, place],
+  );
+  // New rule's Mock, in the group its picker shows; Traffic's, which has none, in the group New rule
+  // would start in.
+  const mockInPicked = useCallback(
+    (draft: Rule, entry: LogEntry) => mockRule(draft, entry, ruleGroup),
+    [mockRule, ruleGroup],
+  );
+  const mockFromTraffic = useCallback(
+    (draft: Rule, entry: LogEntry) => mockRule(draft, entry, lastRuleGroup()),
+    [mockRule],
   );
 
   const openTraffic = useCallback(() => showView('traffic'), [showView]);
 
   // New rule: the composer takes the open rule's place, with the cursor in it, the group its
-  // picker shows the one whose + was clicked, or else the one the last rule made went into.
+  // picker shows the one New rule in this group was picked in, or else the one the last rule made
+  // went into.
   const compose = useCallback(
     (group?: string) => {
       setQuery('');
@@ -137,11 +155,11 @@ export function Editor({ inTab, windowId }: { inTab: boolean; windowId: number }
     (rule: Rule) => {
       setQuery('');
       if (diffPreferred()) rememberDiff(false);
-      const added = place(rule);
+      const added = place(rule, ruleGroup);
       select(added.id);
       setCreated(added.id);
     },
-    [select, place],
+    [select, place, ruleGroup],
   );
 
   const forgetCreated = useCallback(() => setCreated(null), []);
@@ -149,6 +167,10 @@ export function Editor({ inTab, windowId }: { inTab: boolean; windowId: number }
 
   // "Open this rule" from the popup.
   useEffect(() => watchRuleRequests(openRule), [openRule]);
+
+  // A group's name to type in the list, asked for from the open rule in a narrow panel, where the
+  // rule has the list's place: the rule closed, as its back button does (renaming.ts).
+  useEffect(() => setShowList(() => select(null)), [select]);
 
   // A rule with no server's response to compare its body with gets one from the log: the newest
   // request it matches that no rule answered. As requests arrive, and a moment after the rules
@@ -231,10 +253,11 @@ export function Editor({ inTab, windowId }: { inTab: boolean; windowId: number }
               ruleGroup={ruleGroup}
               onRuleGroupChange={setRuleGroup}
               onSelect={select}
+              onNewRule={compose}
               onCreate={create}
               onBodyFocused={forgetCreated}
               onCancel={cancelCompose}
-              onMock={mockRule}
+              onMock={mockInPicked}
               onOpenTraffic={openTraffic}
             />
           </TabsContent>
@@ -244,13 +267,7 @@ export function Editor({ inTab, windowId }: { inTab: boolean; windowId: number }
             data-testid="view-traffic"
             className="flex min-h-0 flex-1 flex-col"
           >
-            <TrafficPage
-              log={log}
-              ruleGroup={ruleGroup}
-              onRuleGroupChange={setRuleGroup}
-              onMock={mockRule}
-              onOpenRule={openRule}
-            />
+            <TrafficPage log={log} onMock={mockFromTraffic} onOpenRule={openRule} />
           </TabsContent>
         </main>
       </Split>

@@ -20,6 +20,10 @@ export interface TextDiff {
   lines: DiffLine[];
   added: number;
   removed: number;
+  // Past MAX_CHANGES the search gave up, and the middle of the two texts (between the lines both
+  // start and end with) shows as removed whole and added whole: `added` and `removed` count those
+  // lines, not the fewest that changed.
+  gaveUp: boolean;
 }
 
 // Past this many lines removed and added, the rest of a change shows as removed whole and added
@@ -51,7 +55,8 @@ export function diffLines(before: string, after: string): TextDiff {
   const lines: DiffLine[] = [];
   for (let line = 0; line < start; line++)
     lines.push({ kind: 'same', before: line, after: line });
-  grouped(shortestEdit(x, start, endX, y, start, endY), lines);
+  const edit = shortestEdit(x, start, endX, y, start, endY);
+  grouped(edit.lines, lines);
   for (let i = endX, j = endY; i < x.length; i++, j++)
     lines.push({ kind: 'same', before: i, after: j });
   let added = 0;
@@ -60,13 +65,13 @@ export function diffLines(before: string, after: string): TextDiff {
     if (line.kind === 'add') added++;
     else if (line.kind === 'del') removed++;
   }
-  return { before: a, after: b, lines, added, removed };
+  return { before: a, after: b, lines, added, removed, gaveUp: edit.gaveUp };
 }
 
 // The fewest lines removed and added that turn x[x0, x1) into y[y0, y1), with the lines that stay
 // between them: Myers' O(ND) algorithm, which follows each diagonal as far as the two agree, one
 // more change at a time, keeping how far each got for the way back. With more than MAX_CHANGES,
-// all of the one is removed and all of the other added.
+// all of the one is removed and all of the other added, and it says it gave up.
 function shortestEdit(
   x: Int32Array,
   x0: number,
@@ -74,7 +79,7 @@ function shortestEdit(
   y: Int32Array,
   y0: number,
   y1: number,
-): DiffLine[] {
+): { lines: DiffLine[]; gaveUp: boolean } {
   const n = x1 - x0;
   const m = y1 - y0;
   const whole = () => {
@@ -83,7 +88,8 @@ function shortestEdit(
     for (let j = 0; j < m; j++) lines.push({ kind: 'add', before: -1, after: y0 + j });
     return lines;
   };
-  if (!n || !m) return whole();
+  // One of the two empty: all of the other added, or removed, which is the fewest.
+  if (!n || !m) return { lines: whole(), gaveUp: false };
   const max = Math.min(n + m, MAX_CHANGES);
   // How far along x each diagonal k (x minus y) has got, at index k + offset.
   const offset = max + 1;
@@ -104,10 +110,11 @@ function shortestEdit(
         j++;
       }
       v[offset + k] = i;
-      if (i >= n && j >= m) return walkBack(trace, d, n, m, x0, y0);
+      if (i >= n && j >= m)
+        return { lines: walkBack(trace, d, n, m, x0, y0), gaveUp: false };
     }
   }
-  return whole();
+  return { lines: whole(), gaveUp: true };
 }
 
 // The way back from the end to the start through what each round left (trace), as lines in order.

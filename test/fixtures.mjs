@@ -66,9 +66,10 @@ const BYTES = Buffer.from(Array.from({ length: 2048 }, (_, index) => index % 256
 // "Привет" in windows-1251: /api/cp1251, which names that charset.
 const CP1251 = Buffer.from([0xcf, 0xf0, 0xe8, 0xe2, 0xe5, 0xf2]);
 
-// Listens on 127.0.0.1. EVIL_ORIGIN and LOCAL_ORIGIN are the same server under a non-localhost
-// name and under a local.* name; each test maps both to 127.0.0.1 in its own browser.
-export async function startServer() {
+// Listens on 127.0.0.1, on a free port or on `port` (the screenshot suite's, whose pictures show
+// it). EVIL_ORIGIN and LOCAL_ORIGIN are the same server under a non-localhost name and under a
+// local.* name; a suite that loads one maps its name to 127.0.0.1 in its own browser.
+export async function startServer({ port: wanted = 0 } = {}) {
   const server = http.createServer((req, res) => {
     const url = new URL(req.url, 'http://localhost');
     let body = '';
@@ -283,6 +284,18 @@ export async function startServer() {
           tags: ['a', 'b'],
         });
       else if (url.pathname === '/api/early') json(200, { early: 'real' });
+      // The demo's API, as the README's and the screenshot suite's flows have it: a search, the
+      // projects, an event the page reports (no content), and anything under /api/v2/.
+      else if (url.pathname === '/api/search')
+        json(200, {
+          query: url.searchParams.get('q'),
+          results: [{ id: 7, title: 'Invoice 7' }],
+        });
+      else if (url.pathname === '/api/projects') json(200, [{ id: 1, name: 'Checkout' }]);
+      else if (url.pathname === '/api/events') {
+        res.writeHead(204);
+        res.end();
+      } else if (url.pathname.startsWith('/api/v2/')) json(200, { items: [] });
       else if (url.pathname === '/api/echo')
         json(200, { method: req.method, headers: req.headers, body });
       else if (url.pathname === '/api/new-home') json(200, { redirected: true });
@@ -310,7 +323,14 @@ export async function startServer() {
       } else json(404, { error: 'not found' });
     });
   });
-  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  // A port that's taken fails here, plainly.
+  await new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(wanted, '127.0.0.1', () => {
+      server.off('error', reject);
+      resolve();
+    });
+  });
   const { port } = server.address();
   return {
     server,

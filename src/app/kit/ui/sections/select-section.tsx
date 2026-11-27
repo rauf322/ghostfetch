@@ -1,6 +1,6 @@
 // A select and a menu, live, and with ?open (`open`) the same two held open for screenshots. The
-// live menu ends in the editor's Theme row, which recolours this page too: every component here,
-// in every theme.
+// live menu ends in the editor's Theme and Appearance rows, which restyle this page too: every
+// component here, in every theme, contrast, font and text size.
 import { useState } from 'react';
 import { Button } from '../../../../ui/kit/button.tsx';
 import {
@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../../../../ui/kit/select.tsx';
-import { ThemeMenu } from '../../../../ui/theme-menu.tsx';
+import { AppearanceMenu, ThemeMenu } from '../../../../ui/theme-menu.tsx';
 import { Cell, Output, Row } from '../cell.tsx';
 
 const METHODS = ['ANY', 'GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map((value) => ({
@@ -84,6 +84,7 @@ export function SelectSection({ open }: { open: boolean }) {
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <ThemeMenu />
+            <AppearanceMenu />
           </DropdownMenuContent>
         </DropdownMenu>
         <Output testid="kit-picked">

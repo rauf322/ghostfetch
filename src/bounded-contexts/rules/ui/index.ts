@@ -4,6 +4,11 @@
 // group's switch (rule-switch.tsx, group-switch.tsx), which groups are folded (group-folds.ts), the
 // group a new rule goes into (group-picker.tsx, new-rule-group.ts) and rules files
 // (rules-file.tsx). The popup takes its switches and folds from their own files, so it never loads
-// the Rules view; the background and the page scripts take nothing from here.
-export { RuleList } from './rule-list.tsx';
+// the Rules view; the background and the page scripts take nothing from here. The sidebar's footer
+// says what was deleted last, with its Undo and its ⌘Z (undo-notice.tsx, undo-delete.ts); and the
+// sidebar tells the list's search, for a group's name to type there to be in sight (renaming.ts).
+export { RuleList, RuleListButtons } from './rule-list.tsx';
 export { RulesPage } from './rules-page.tsx';
+export { UndoNotice } from './undo-notice.tsx';
+export { listenForUndoKey } from './undo-delete.ts';
+export { setListSearch, setShowList } from './renaming.ts';

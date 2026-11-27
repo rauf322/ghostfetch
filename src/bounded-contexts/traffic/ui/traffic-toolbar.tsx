@@ -9,6 +9,7 @@ import { Button } from '../../../ui/kit/button.tsx';
 import { Icon } from '../../../ui/kit/icon.tsx';
 import { SignalDot } from '../../../ui/kit/signal-dot.tsx';
 import { Toggle } from '../../../ui/kit/toggle.tsx';
+import { Tooltip } from '../../../ui/kit/tooltip.tsx';
 import { SidebarToggle } from '../../../ui/sidebar.tsx';
 import { TabPicker } from './tab-picker.tsx';
 
@@ -40,34 +41,40 @@ export function TrafficToolbar({
       </span>
       <TabPicker tabs={traffic.tabs} target={traffic.target} onPick={onPick} />
       <span className="ml-auto" />
-      <span
-        data-testid="record"
-        title={
+      <Tooltip
+        label={
           record
             ? 'Requests are recorded. Stop recording in the toolbar popup; rules apply either way.'
             : 'Requests aren’t recorded. Start recording in the toolbar popup; rules apply either way.'
         }
-        className={cn(
-          'flex flex-none items-center gap-1.5 px-1.5 text-control font-medium whitespace-nowrap',
-          record ? 'text-signal' : 'text-t50',
-        )}
       >
-        <SignalDot on={record} />
-        {record ? 'Recording' : 'Not recording'}
-      </span>
-      <Toggle
-        pressed={preserve}
-        onPressedChange={onPreserveChange}
-        title="Keep requests when the page reloads"
-        className="border-input"
-      >
-        <Icon name="history" size={14} className="@[560px]/traffic:hidden" />
-        <span className={WIDE_ONLY}>Keep on reload</span>
-      </Toggle>
-      <Button title="Clear the log" onClick={onClear}>
-        <Icon name="trash" size={14} />
-        <span className={WIDE_ONLY}>Clear</span>
-      </Button>
+        <span
+          data-testid="record"
+          className={cn(
+            'flex flex-none items-center gap-1.5 px-1.5 text-control font-medium whitespace-nowrap',
+            record ? 'text-signal' : 'text-t50',
+          )}
+        >
+          <SignalDot on={record} />
+          {record ? 'Recording' : 'Not recording'}
+        </span>
+      </Tooltip>
+      <Tooltip label="Keep requests when the page reloads">
+        <Toggle
+          pressed={preserve}
+          onPressedChange={onPreserveChange}
+          className="border-input"
+        >
+          <Icon name="history" size={14} className="@[560px]/traffic:hidden" />
+          <span className={WIDE_ONLY}>Keep on reload</span>
+        </Toggle>
+      </Tooltip>
+      <Tooltip label="Clear the log">
+        <Button aria-label="Clear the log" onClick={onClear}>
+          <Icon name="trash" size={14} />
+          <span className={WIDE_ONLY}>Clear</span>
+        </Button>
+      </Tooltip>
     </div>
   );
 }

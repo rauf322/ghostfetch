@@ -98,6 +98,10 @@
    place. The view names itself with @container/traffic. */
 @custom-variant beside (@container traffic (min-width: 700px));
 
+/* Where nothing can hover (`touch:`): a touch screen with no mouse or trackpad. A list row's
+   actions, which show under the pointer (ItemSlot, ui/kit/item.tsx), aren't there. */
+@custom-variant touch (@media (any-hover: none));
+
 /* The sidebar's width (ListPane, in ui/list-detail.tsx), which changes on every frame while
    its edge is dragged. Not inherited: a custom property normally is, and then every element under
    the one it's set on had its style worked out again on every frame (each coloured token of a long
@@ -143,6 +147,54 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+}
+
+/* Appearance's Font and Text size (src/ui/theme.ts), which public/theme.js puts on <html> as
+   data-font and data-size; its Contrast, and the Font of the body editor's words, are in
+   theme.css. Outside the layers, so they win over the values in @theme above. Font: Commit Mono
+   for words too. */
+:root[data-font='mono'] {
+  --font-sans: var(--font);
+  --font-widen: 1.17;
+}
+
+/* How much wider a line of the screens' words is than in Geist at Default: Commit Mono's ×1.17
+   (a rule row's "1 mocked · 4m", 80 px in Geist and 93.6 in Commit Mono) times the text size's.
+   The sidebar's usual width (ListPane, src/ui/list-detail.tsx) grows by what a row's slot grows
+   by, saying that, so the name beside it keeps the room it has at Geist and Default: 37 px more at
+   Commit Mono with Larger. */
+:root {
+  --font-widen: 1;
+  --size-widen: 1;
+  --sidebar-grow: calc(80px * (var(--font-widen) * var(--size-widen) - 1));
+}
+
+/* Text size: the nine type sizes ×1.125 (Large) and ×1.25 (Larger), each to the nearest half
+   pixel. Only text grows: spacing and icons keep their sizes, and the body editor keeps its own
+   (code-editor.css). */
+:root[data-size='large'] {
+  --size-widen: 1.125;
+  --text-micro: 12.5px;
+  --text-label: 13.5px;
+  --text-control: 14.5px;
+  --text-meta: 13.5px;
+  --text-small: 14.5px;
+  --text-body: 14.5px;
+  --text-title: 16px;
+  --text-heading: 20.5px;
+  --text-hero: 22.5px;
+}
+:root[data-size='larger'] {
+  --size-widen: 1.25;
+  --text-micro: 14px;
+  --text-label: 15px;
+  --text-control: 16.5px;
+  --text-meta: 15px;
+  --text-small: 16.5px;
+  --text-body: 16.5px;
+  --text-title: 17.5px;
+  --text-heading: 22.5px;
+  --text-hero: 25px;
 }
 
 /* Outside the layers on purpose: Chrome adds body { font-family: system-ui, sans-serif } to

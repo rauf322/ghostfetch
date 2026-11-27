@@ -3,6 +3,7 @@
 import { openInSidePanel, openInTab } from '../../../platform/index.ts';
 import { Button } from '../../../ui/kit/button.tsx';
 import { Icon } from '../../../ui/kit/icon.tsx';
+import { Tooltip } from '../../../ui/kit/tooltip.tsx';
 
 // `quiet`: another button on the popup is the one to press (Turn on for …), so this one steps back.
 export function PopupFooter({ windowId, quiet }: { windowId: number; quiet: boolean }) {
@@ -17,18 +18,19 @@ export function PopupFooter({ windowId, quiet }: { windowId: number; quiet: bool
         <Icon name="panel" size={14} />
         Open editor
       </Button>
-      <Button
-        size="lg"
-        className="w-9 px-0"
-        title="Open the editor in a tab"
-        aria-label="Open the editor in a tab"
-        onClick={() => {
-          openInTab();
-          window.close();
-        }}
-      >
-        <Icon name="external" size={14} />
-      </Button>
+      <Tooltip label="Open the editor in a tab">
+        <Button
+          size="lg"
+          className="w-9 px-0"
+          aria-label="Open the editor in a tab"
+          onClick={() => {
+            openInTab();
+            window.close();
+          }}
+        >
+          <Icon name="external" size={14} />
+        </Button>
+      </Tooltip>
     </footer>
   );
 }

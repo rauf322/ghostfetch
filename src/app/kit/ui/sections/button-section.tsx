@@ -1,8 +1,13 @@
-// Buttons: outline, primary, ghost, cell and link, in their states, and one to press.
+// Buttons: outline, primary, ghost, cell and link, in their states, and one to press; and the
+// request detail's row of copies, live (CopyButton), which test/kit.mjs presses.
 import { useState } from 'react';
 import { Button } from '../../../../ui/kit/button.tsx';
+import { CopyButton } from '../../../../ui/kit/copy-button.tsx';
 import { Icon } from '../../../../ui/kit/icon.tsx';
 import { Cell, FOCUS, HOVER, Output, Row } from '../cell.tsx';
+
+// What the kit's Copy URL copies, which test/kit.mjs reads back from the clipboard.
+const COPIED_URL = 'https://app.acme.test/api/search?q=invoices&page=2';
 
 export function ButtonSection() {
   const [presses, setPresses] = useState(0);
@@ -39,22 +44,41 @@ export function ButtonSection() {
         </Button>
       </Row>
       <Row
-        label="Full width, with a row of secondary actions (request detail)"
+        label="Full width, with a row of copies (request detail; live: a copy says so in its button)"
         className="flex flex-col gap-2"
       >
         <Button variant="primary" size="lg" className="w-full">
           <Icon name="wand" size={14} /> Mock this response
         </Button>
-        <div className="grid auto-cols-fr grid-flow-col gap-2">
-          <Button size="sm" className="min-w-0 px-2 text-t65">
-            <Icon name="rule" size={13} /> Open rule
-          </Button>
-          <Button size="sm" className="min-w-0 px-2 text-t65">
-            <Icon name="copy" size={13} /> Copy URL
-          </Button>
-          <Button size="sm" className="min-w-0 px-2 text-t65">
-            <Icon name="copy" size={13} /> Copy response
-          </Button>
+        <div className="flex flex-wrap gap-1.5">
+          <CopyButton
+            size="lg"
+            icon="link"
+            text={COPIED_URL}
+            what="the URL"
+            data-testid="kit-copy"
+            className="flex-auto px-2 text-t80"
+          >
+            Copy URL
+          </CopyButton>
+          <CopyButton
+            size="lg"
+            icon="terminal"
+            text={`curl '${COPIED_URL}'`}
+            what="the cURL command"
+            className="flex-auto px-2 text-t80"
+          >
+            Copy as cURL
+          </CopyButton>
+          <CopyButton
+            size="lg"
+            icon="copy"
+            text='{"name":"Mocked"}'
+            what="the response body"
+            className="flex-auto px-2 text-t80"
+          >
+            Copy body
+          </CopyButton>
         </div>
       </Row>
       <Row label="Live: Enter, Space or a click">

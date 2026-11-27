@@ -30,9 +30,15 @@ What's different in Firefox-based browsers:
   (the built-in hosts are **Always on**). At the bottom, **Open editor** opens the side panel
   (the sidebar in Firefox), and the button beside it opens the editor in a tab. In between are
   three tabs; in the first two, a rule's dot is its switch, green and pulsing while it's on
-  (still while its group or Ghostfetch is off) and grey while it's off: click it (or reach it
-  with Tab and press Space) to turn the rule on or off, which saves at once. Click its name to
-  open it in the editor:
+  (still while its group or Ghostfetch is off) and grey while it's off: click it to turn the
+  rule on or off, which saves at once. What a rule did on the tab's page shows at the right of
+  its name, with how long ago it last did ("2 mocked · 4m"); under the pointer the same place
+  has **Edit this rule**. Click a rule (or its **Edit this rule**) to open it in the editor. A
+  right-click on a rule (or the menu key, or Shift+F10) has **Edit this rule** and **Turn off**
+  (or **Turn on**). From the keyboard the list is one Tab stop: ↑ and ↓ move between rows, →
+  and ← open and shut **Not answering here** or a group, Space turns the rule (or the group) on
+  or off (a screen reader says whether it's on), Enter opens the rule in the editor, both once
+  however long they're held, and Tab goes on to its **Edit this rule**:
   - **This page**: what each rule did on the tab's page, such as **2 mocked** or **1 modified ·
     1 failed**, counted while recording since the page loaded (Traffic's **Clear** starts the
     count over; a page opened before Ghostfetch was installed or updated needs a reload
@@ -43,62 +49,95 @@ What's different in Firefox-based browsers:
     a site Ghostfetch isn't on, **Turn on for …** instead, which reloads the page.
   - **All rules**: every rule in your order, with what it did on the page (in grey once the
     rule is off), and the [groups](#groups) in their place: each with its own dot, which turns
-    the group on or off, its name, which folds it or unfolds it as in the editor, and how many
-    of its rules are on, its rules set in under it. Switching from one PR's mocks to
-    another's is two clicks here.
+    the group on or off, its name, and how many of its rules are on, its rules set in under it;
+    click a group to fold it or unfold it, as in the editor. A rule that's on but hasn't
+    answered on the page steps back, its name in a quieter grey, as in the editor. Switching
+    from one PR's mocks to another's is two clicks here.
   - **Sites**: where Ghostfetch runs: the built-in hosts, then the sites you added, each with
     **Remove**.
-- **Side panel (Chrome), sidebar (Firefox, Zen) or tab**: the full editor. Open it from the
-  popup, or from the `⋯` menu. From 760 px wide a sidebar stands beside what's open: a search
-  field (**/** puts the cursor in it), **Rules** and **Traffic** with their counts, the rules
-  in your order under how many are on (click one to open it, from Traffic too; **+** for a
-  new rule), and the `⋯` menu, **Import** and **Export** along the bottom. Drag its edge to
-  make it wider or narrower (it's at least 260 px wide and leaves what's open at least
-  320), on past half its narrowest to hide it, and back out from the window's left edge to
-  show it again; double-click the edge for its usual width. The edge also takes focus (Tab):
-  the arrow keys move it, and **Enter** hides or shows the sidebar. The button at the top
-  left of a rule or of Traffic (or **⌘B / Ctrl+B**) hides it too, giving its room to what's
-  open, and brings it back. Its width, and whether it's hidden, are remembered. In a
-  narrower panel a top bar has the two views as tabs, and the rules, a rule or Traffic take
-  the whole panel, one at a time. The `⋯` menu's **Theme** picks the [look](#themes). While
-  Ghostfetch is off (the popup's **Pause**), a bar along the top says so; the popup's
-  **Resume** turns it back on.
+- **Side panel (Chrome), sidebar (Firefox, Zen) or tab**: the full editor. Open it from the popup,
+  or from the `⋯` menu. From 760 px wide a sidebar stands beside what's open: a search field (**/**
+  puts the cursor in it) with **New group** and **New rule** (**+**) beside it, **Rules** and
+  **Traffic** with their counts, the rules in your order under how many are on (click one to open
+  it, from Traffic too), and along the bottom four icons, each named under the pointer: the `⋯`
+  menu, **Import rules**, **Export all rules** and **Agent access**. Drag its edge to make it wider
+  or narrower (it's at least 260 px wide and leaves what's open at least 320), on past half its
+  narrowest to hide it, and back out from the window's left edge to show it again; double-click the
+  edge for its usual width: 272 px, more with Commit Mono or larger text (up to 309 px) so that a
+  rule's name keeps its room, though a width you dragged it to stays as it is. The edge also takes
+  focus (Tab): the arrow keys move it, and **Enter** hides or shows the sidebar. The button at the
+  top left of a rule or of Traffic (or **⌘B / Ctrl+B**) hides it too, giving its room to what's
+  open, and brings it back. Its width, and whether it's hidden, are remembered. In a narrower panel
+  a top bar has the two views as tabs, and the rules, a rule or Traffic take the whole panel, one at
+  a time. The `⋯` menu's **Theme** picks the [look](#themes). While Ghostfetch is off (the popup's
+  **Pause**), a bar along the top says so; the popup's **Resume** turns it back on.
   - **Rules**: create and edit rules. Changes save as you type and apply to open tabs
     immediately, without reloading. Rules apply in the list's order and the first match wins;
     drag them to reorder. A rule's dot turns it on or off without opening it, as in the popup:
     green and pulsing while it's on, grey while it's off. A rule that's off is dimmed and keeps
     its place in the list, and its chip, open, says **Off**. One that answered on the page the
-    editor watches says what it did there at the right of its name ("2 mocked"). **Duplicate**,
-    in an open rule's header, copies it.
+    editor watches says what it did there at the right of its name, and how long ago it last
+    did ("2 mocked · 4m"); one that's on but hasn't answered there steps back, its name in a
+    quieter grey. Under the pointer, the same place has the rule's **Turn off** (or **Turn on**) and
+    its **⋯** menu, the one an open rule has in its header. That menu starts with **Open** and
+    **Rename**, their keys beside them (↵ and F2, which do the same on the rule's row; the open rule
+    has no Open), and its **Move to group** says the group the rule is in. A right-click on a rule
+    or a group's header (or the menu key, or Shift+F10) opens the same menu as its **⋯**. From the
+    keyboard the list is one Tab stop: ↑ and ↓ move between rules and groups, → and ← unfold and
+    fold a group, Enter opens a rule, F2 renames it (left empty, its URL names it, as in an open
+    rule's name field), and Tab goes on to the rule's **Turn off** and **⋯**. **Duplicate**, the
+    icon beside the **⋯** in an open rule's header, copies it. From 760 px wide the header also says
+    where the rule is: its group (the group's chip and name, which step back while the group is
+    off), or **Rules** for a rule in no group, then its name. Each opens a menu: the group's is the
+    group's own **⋯** menu (**New rule in this group**, **Rename**, which renames the group there in
+    the header, as F2 on the crumb does, **Turn the group off**, **Duplicate**, **Export group**,
+    **Ungroup**, **Delete**), **Rules** has **New rule**, and the name's is the rule's **⋯** menu.
+    Double-click the name, press F2 on it, or pick **Rename** in that menu to rename the rule there
+    (in a narrow panel, which has no crumbs, Rename puts the cursor in the name over the rule). A
+    rule or a group you delete is gone at once, and for five seconds the bottom of the sidebar says
+    so, **Rule deleted** or **Group deleted**, in place of its buttons, with an undo arrow and
+    **⌘Z to undo** (Ctrl+Z on Windows and Linux): click it, or press ⌘Z, and it's back where it was,
+    a group with its rules. The five seconds wait while the pointer is on the notice, while you've
+    tabbed to it, and while the window is in the background. ⌘Z does it for as long as the notice
+    shows, whatever you pressed or clicked meanwhile, from anywhere but a text field, the body or a
+    menu, which keep their own ⌘Z; on a Cyrillic or Greek layout it's the key where Z is. Where the
+    sidebar isn't on screen (a narrow side panel with the rule open, or the sidebar hidden),
+    **Undo** is in a toast instead, and the notice becomes that toast if the sidebar goes while it
+    shows.
 
-    <a id="groups"></a>**Groups** keep the rules for one piece of work together, a PR's, say,
-    to turn on and off as one. **New group** (beside **+**) makes one at the top of the list,
-    its name ready to type (double-click a group's name to rename it; no two groups share a
-    name). A group stands in the list as a block, its rules set in under its header, which has
-    a dot of its own: turned off, none of its rules answer, and each keeps its own switch, so
-    turning the group on again brings back just the rules that were on. A rule in a group
-    that's off fades, its dot green but still, as under Pause, and its chip says **Paused
-    while PR-1 is off**. Groups and the rules outside them are tried in one order, top to
-    bottom: of the rules that match a request, the highest one that's on, in a group that's
-    on, answers. Where two groups' rules match the same request, then, the higher group wins,
-    and a new group, like a new rule, goes on top; drag one above the other to change that.
-    Drag a rule into a group (onto its header, below its middle), out of one or between them,
-    and a group's header to move the group with its rules; let go under the list's last entry
-    to put either at the end of the list, out of any group. Where it would land shows as you
-    drag: a line set in under a group's rules lands in that group, a line as wide as the list
-    lands out of any group, and a group's header outlined means the top of that group; where
-    nothing shows, letting go leaves it where it was. **Move to group** in a rule's `⋯`
-    menu moves it too, or into a **New group…**. A group's name folds it or unfolds it
-    (remembered, and the popup's **All rules** shares it), its **+** makes a rule at its top,
-    and its `⋯` menu has **Rename**, **Duplicate** (a copy with the same rules, on, at the top
-    of the list, to start another PR from), **Export group**, **Ungroup** (the group goes, its
-    rules stay where they were) and **Delete** (with its rules, and **Undo** in the toast).
-    Once there's a group, **New rule** and **Mock this response** say which group the rule
-    goes into: the one the last rule made there went into, or the group whose **+** you
-    clicked, and you can pick another, or none. **Export group** saves the group and its rules
-    to hand to someone else: importing the file brings the group in at the top of the list,
-    turned off, its rules' own switches as they were, so its dot then turns on just what the
-    sender had on.
+    <a id="groups"></a>**Groups** keep the rules for one piece of work together, a PR's, say, to
+    turn on and off as one. **New group** (beside the search field) makes one at the top of the
+    list, its name ready to type (double-click a group's name to rename it; no two groups share a
+    name). A group stands in the list as a block, its rules set in under its header, which has the
+    group's chip (its initials, in one of five colours that suit the theme, both worked out from its
+    name), its name and how many rules it has. Under the pointer, with focus or with its menu open,
+    the count gives way to **Turn the group off** and **⋯**, as a rule's does. Turned off, from
+    there or from its `⋯` menu, the header says **Off** and its chip and name step back; none of its
+    rules answer, and each keeps its own switch, so turning the group on again brings back just the
+    rules that were on. A rule in a group that's off fades, its dot green but still, as under Pause,
+    and its chip says **Paused while PR-1 is off**. Groups and the rules outside them are tried in
+    one order, top to bottom: of the rules that match a request, the highest one that's on, in a
+    group that's on, answers. Where two groups' rules match the same request, then, the higher group
+    wins, and a new group, like a new rule, goes on top; drag one above the other to change that.
+    Drag a rule into a group (onto its header, below its middle), out of one or between them, and a
+    group's header to move the group with its rules; let go under the list's last entry to put
+    either at the end of the list, out of any group. Where it would land shows as you drag: a line
+    set in under a group's rules lands in that group, a line as wide as the list lands out of any
+    group, and a group's header outlined means the top of that group; where nothing shows, letting
+    go leaves it where it was. **Move to group** in a rule's `⋯` menu moves it too, or into a
+    **New group…**. A group's name folds it or unfolds it (remembered, and the popup's **All rules**
+    shares it; a search shows every group open, and leaves the folds as they were), and its `⋯` menu
+    has **New rule in this group** (a rule at its top), **Rename** (F2, as on its header),
+    **Turn the group off** (or on), **Duplicate** (a copy with the same rules, on, at the top of the
+    list, to start another PR from), **Export group**, **Ungroup** (the group goes, its rules stay
+    where they were) and **Delete** (with its rules, which **Undo** brings back). Once there's a
+    group, **New rule** says which group the rule goes into: the one the last rule made there went
+    into, or the group whose **New rule in this group** you chose, and you can pick another, or
+    none. **Mock this response**, in Traffic, puts its rule in the group New rule would start in,
+    and the toast after it names that group, or says it's in none. **Export group** saves the group
+    and its rules to hand to someone else: importing the file brings the group in at the top of the
+    list, turned off, its rules' own switches as they were, so turning it on then brings back just
+    what the sender had on.
 
     **New rule** (the **+**) asks "What should Ghostfetch answer?" (beside the sidebar it's
     also what shows with no rule open). Paste a path, a full URL (it keeps the path and query,
@@ -112,15 +151,19 @@ What's different in Firefox-based browsers:
 
     An open rule says what it does in one sentence under its name ("Answers GET requests
     whose URL contains /api/user with the JSON below, without calling the server."), and,
-    while recording, how often it fired on the page the editor watches. Under that are its
-    settings, a row each with its value: **When a request matches** (the URL and how it's
-    compared, the method, a GraphQL operation) and **Respond with** (the status, with its
-    name and the common ones by class; the delay, up to 10 minutes; headers to set or remove).
-    Click a row to edit it in place. A header the page wouldn't get (Set-Cookie, which no page
-    sees, a name with a space or a colon, a value that isn't Latin-1 text) says it's skipped,
-    and why. **Try a URL** says whether the rule would answer a URL you paste. Then the body: **Replace body** sends yours without calling the server; **Keep
-    server's body** makes the real request and keeps its body, so only the status, headers and
-    delay change.
+    while recording, how often it fired on the page the editor watches and how long ago it last did,
+    as its row says ("Mocking · fired 2× on Acme dashboard · 4m"). Under that are its settings, a
+    row each with its value: **When a request matches** (the URL and how it's compared, the method,
+    a GraphQL operation) and **Respond with** (the status, with its name and the common ones by
+    class; the delay, up to 10 minutes; headers to set or remove). Click a row to edit it in place.
+    Status's row ends in a chevron with a short menu of the most common codes, from 200 to 503, the
+    one the page gets checked: pick one and it's set. For a rule that keeps the server's body, the
+    menu starts with **Server's status**, which keeps the server's own again. A header the page
+    wouldn't get (Set-Cookie, which no page sees, a name with a space or a colon, a value that isn't
+    Latin-1 text) says it's skipped, and why. **Try a URL** says whether the rule would answer a URL
+    you paste. Then the body: **Replace body** sends yours without calling the server;
+    **Keep server's body** makes the real request and keeps its body, so only the status, headers
+    and delay change.
 
     In a wide window the settings and the body sit side by side, and the body editor takes
     the window's height; in a side panel the body comes after the settings, as tall as the
@@ -130,45 +173,47 @@ What's different in Firefox-based browsers:
 
     A JSON body is checked as you type: once you pause, a mistake is marked where it is (a
     squiggle, the line in the gutter, a few words at the end of the line and the whole
-    message on hover), and the line under the editor says what it is (click it to go there).
-    In a body editor, **⌘F / Ctrl+F** searches the body itself instead of the page: **Enter**
-    and **Shift+Enter** step through the matches, **Esc** closes the search and leaves the
-    current match selected. **⌘= / ⌘−** (Ctrl on Windows and Linux) make its text larger or
-    smaller and **⌘0** puts it back, instead of zooming the page. The text grows and shrinks
-    around the cursor's line, which stays where it is in the view (or with the cursor out of
-    view, around the middle of the view). **Wrap** under it shows a long line on as many rows
-    as it takes, as Neovim's `wrap` does, breaking between words where it can and anywhere in a
-    word too long for a row (a token, say); the line's number stands by its first row, and
-    nothing scrolls sideways. The body itself doesn't change. **Vim keys** turns on
-    [vim keys](#vim-keys), whose `j` and `k` still move by lines, not rows. The text size and
-    the Wrap and Vim switches are remembered for every body editor. **Format** lays the body
-    out two spaces an indent and changes nothing but the
-    spaces and line breaks: every value stays as you wrote it (`\/` and `\u00e9`, `1.0`, an
-    ID too long for JavaScript's numbers, a key given twice, the order of keys), as it does
-    for a response in Traffic and a rule made from one. It keeps the cursor on the character
-    it was on, and that line where it was in the view; a selection, and vim's Visual mode,
-    stay on what they held. ⌘Z (or vim's `u`) right after it puts the body back with the
-    cursor and the scroll where they were before, and redo where they were after. Format on a
-    body of more than 300 lines can't be undone (the browser would take minutes to make it
-    undoable): ⌘Z then undoes what you've changed since, back to the formatted body, and
-    stops there. Back at a rule you left (another rule
-    picked, the back button in a side panel), its body is where you left it: the cursor or
-    the selection (with vim keys, the cursor, in Normal mode), and the scroll. In a side
-    panel, so is the pane. While the body editor isn't focused, the cursor stays marked,
-    outlined in grey, as vim's block is, so you can see where you'll carry on.
+    message on hover), and the line under the editor says what it is (click it to go there); where
+    the buttons beside it would leave it little room, as in a side panel or a wide type, it has a
+    row of its own, the buttons under it. In a body editor, **⌘F / Ctrl+F** searches the body itself
+    instead of the page: **Enter** and **Shift+Enter** step through the matches, **Esc** closes the
+    search and leaves the current match selected. **⌘= / ⌘−** (Ctrl on Windows and Linux) make its
+    text larger or smaller and **⌘0** puts it back, instead of zooming the page. The text grows and
+    shrinks around the cursor's line, which stays where it is in the view (or with the cursor out of
+    view, around the middle of the view). **Copy** under it copies the body as the editor has it,
+    and says **Copied** in itself for a second. **Wrap** shows a long line on as many rows as it
+    takes, as Neovim's `wrap` does, breaking between words where it can and anywhere in a word too
+    long for a row (a token, say); the line's number stands by its first row, and nothing scrolls
+    sideways. The body itself doesn't change. **Vim keys** turns on [vim keys](#vim-keys), whose `j`
+    and `k` still move by lines, not rows. The text size and the Wrap and Vim switches are
+    remembered for every body editor. **Format** lays the body out two spaces an indent and changes
+    nothing but the spaces and line breaks: every value stays as you wrote it (`\/` and `\u00e9`,
+    `1.0`, an ID too long for JavaScript's numbers, a key given twice, the order of keys), as it
+    does for a response in Traffic and a rule made from one. It keeps the cursor on the character it
+    was on, and that line where it was in the view; a selection, and vim's Visual mode, stay on what
+    they held. ⌘Z (or vim's `u`) right after it puts the body back with the cursor and the scroll
+    where they were before, and redo where they were after. Format on a body of more than 300 lines
+    can't be undone (the browser would take minutes to make it undoable): ⌘Z then undoes what you've
+    changed since, back to the formatted body, and stops there. Back at a rule you left (another
+    rule picked, the back button in a side panel), its body is where you left it: the cursor or the
+    selection (with vim keys, the cursor, in Normal mode), and the scroll. In a side panel, so is
+    the pane. While the body editor isn't focused, the cursor stays marked, outlined in grey, as
+    vim's block is, so you can see where you'll carry on.
 
-    **Diff**, beside Vim keys, shows in the editor's place what your body changes in the
-    server's response: the lines you removed dimmed, with a −, the ones you added tinted
-    green, with a +, and in a line you changed, the part that changed. Side by side, or
-    inline, one column as git shows a diff, from the switch beside it; in a body narrower than
-    480 px, as in a side panel you haven't widened, it's inline. The response it compares with
-    is the server's the rule was made from (**Mock this response** on a request no rule
-    answered), or else one the server gives a request the rule matches while no rule answers
-    it: the newest Traffic has, or the next one (turn the rule off with its dot and reload the
-    page once).
-    Until a rule has one, it has no Diff switch. The response is kept apart from the rule: it
-    never goes to a page, and an exported rules file doesn't have it. Diff can't be typed in:
-    click a line, or press **Enter** for the one at the top, and Diff goes off with the cursor
+    **Diff**, the row over the body ("Diff vs server's response +2 −1": how many lines your body
+    adds to the server's response and takes out of it, each where there are some, counted again once
+    you pause typing; none for two bodies more than 1,000 lines apart, in the row or over Diff,
+    which shows them as the one replaced by the other), shows in the editor's place what your body
+    changes in the server's response: the lines you removed dimmed, with a −, the ones you added
+    tinted green, with a +, and in a line you changed, the part that changed. Side by side, or
+    inline, one column as git shows a diff, from the switch under it, by **Wrap**; in a body
+    narrower than 480 px, as in a side panel you haven't widened, it's inline, with no switch. The
+    response it compares with is the server's the rule was made from (**Mock this response** on a
+    request no rule answered), or else one the server gives a request the rule matches while no rule
+    answers it: the newest Traffic has, or the next one (turn the rule off with its dot and reload
+    the page once). Until a rule has one, it has no Diff row. The response is kept apart from the
+    rule: it never goes to a page, and an exported rules file doesn't have it. Diff can't be typed
+    in: click a line, or press **Enter** for the one at the top, and Diff goes off with the cursor
     there. **Format** and a click on a mistake turn it off too, as they work in the editor, and
     a rule New rule makes opens without it, for typing. With **Keep server's body** there's no
     body of yours to compare, so no Diff. Like Vim keys, it's remembered for every body editor.
@@ -185,11 +230,18 @@ What's different in Firefox-based browsers:
     pick instead stays until you switch tabs. In a tab of its own it keeps the page you
     picked. Either way, when that page closes or goes somewhere that isn't a web page, it
     moves to the page you used last.
+    A request's row says how long ago it was sent ("· 4m") once it's older than a minute, and
+    its status and duration at the right; under the pointer the same place has **Mock this
+    response**, **Copy URL** and **Copy as cURL** (a copy shows a check for a second). A
+    right-click on a request (or the menu key, or Shift+F10) has the same, and **Open the rule**
+    when a rule answered it. From the keyboard the log is one Tab stop: ↑ and ↓ move between
+    requests, Enter opens one, Esc closes it, and Tab goes on to the request's actions.
     Click a request to open it in a drawer beside the log: its status, time and Content-Type,
     the rule that acted on it, its bodies, **Copy URL**, **Copy as cURL** and **Copy body**,
-    and **Mock this response**, which turns it into a rule pre-filled with the method, path,
-    status and the real body, ready to edit, and keeps the response for the body's **Diff** if
-    the server gave it (not a rule).
+    and **Mock this response**, which turns it into a rule pre-filled with the method, path, status
+    and the real body, ready to edit, and keeps the response for the body's **Diff** if the server
+    gave it (not a rule). The rule goes in at the top of the group New rule would start in, which
+    the toast after it names.
 
 ## Themes
 
@@ -202,12 +254,30 @@ pulses. Errors and failed requests are inverted white instead of red.
 The editor's `⋯` menu has **Theme**: Ghostfetch's own (above, the default), **Rosé Pine**,
 **Rosé Pine Moon**, **Rosé Pine Dawn** (light), **Catppuccin Macchiato** and **Vague**. Each
 takes its colours from its theme's palette as its Neovim plugin has them: the page, the
-cards and the steps on them, quieter text, and the body editor's JSON colours. The green is the
-theme's colour for what's added or fine (Catppuccin's green, Vague's; foam in Rosé Pine and
-pine in Dawn, as its own "ok", leaf, is too faint to tell a rule that's on from one that's off),
-and errors stay inverted, in the theme's text colour. A theme recolours every page of
-Ghostfetch's at once, the popup too, and is remembered in this browser. Each page puts it on
-before it first draws (`public/theme.js`), so none flashes Ghostfetch's own colours first.
+cards and the steps on them, quieter text (made strong enough to read on the page and on
+cards), and the body editor's JSON colours. The green is the theme's colour for what's added or fine
+(Catppuccin's green, Vague's; foam in Rosé Pine and pine in Dawn, as its own "ok", leaf, is too
+faint to tell a rule that's on from one that's off), and errors stay inverted, in the theme's text
+colour. A theme recolours every page of Ghostfetch's at once, the popup too, and is remembered in
+this browser. Each page puts it on before it first draws (`public/theme.js`), so none flashes
+Ghostfetch's own colours first.
+
+Under Theme, **Appearance** has three settings for every theme, each a few steps; the row says,
+whole, which steps you picked that aren't the defaults (the menu grows for them, within the
+window):
+
+- **Contrast**: Standard, **More** or **Most**. More and Most bring quieter text (labels, hints,
+  placeholders) and the lines between things nearer the text colour, so they're easier to read.
+  The steps of grey stay apart, so what's quieter still looks quieter.
+- **Font**: Geist or **Commit Mono**, the font of code, for words too.
+- **Text size**: Default, **Large** or **Larger**, an eighth and a quarter larger. Only the text
+  grows: spacing and icons stay as they are, and the body editor keeps its own text size (⌘= and
+  ⌘−). Where a row's words no longer fit side by side, they go on to another line rather than
+  being cut. The popup's tabs keep their names on one line, their counts giving way, and its
+  host is cut in its middle, so its port stays.
+
+Like the theme, each changes every open page of Ghostfetch's at once, is remembered in this
+browser, and is on each page before it first draws.
 
 ## Vim keys
 

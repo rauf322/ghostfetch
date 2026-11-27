@@ -1,12 +1,15 @@
 // The body's Diff: a read-only view of what changed between two texts, the server's response and
-// your body, line by line (diffLines), the parts of a changed line that changed marked
-// (diffWords), in the body editor's syntax colours and text size. Inline, one column as git shows
-// a diff, each line numbered in both texts; or side by side, a pane for each, with a gap on one
-// side where the other has lines it hasn't, the two scrolling down together. Only the lines on
-// screen are drawn, so a long body opens and scrolls as a short one does. It can't be typed in: a
-// click on a line asks to edit there (onEdit, with where in `after` the click was), as Enter does
-// for the line at the top, and a key that would type asks to say so (onType). Its look is
-// code-diff.css.
+// your body, line by line (diffLines, made by useTextDiff()), the parts of a changed line that
+// changed marked (diffWords), in the body editor's syntax colours and text size. Inline, one
+// column as git shows a diff, each line numbered in both texts; or side by side, a pane for each,
+// with a gap on one side where the other has lines it hasn't, the two scrolling down together.
+// Only the lines on screen are drawn, so a long body opens and scrolls as a short one does. It
+// can't be typed in: a click on a line asks to edit there (onEdit, with where in `after` the click
+// was), as Enter does for the line at the top, and a key that would type asks to say so (onType).
+// Its look is code-diff.css.
+//
+// The diff is the page's to make (useTextDiff()), so what shows how many lines changed while Diff
+// is off (the rule editor's row over the body) counts from the same one.
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, KeyboardEvent, MouseEvent, ReactNode, UIEvent } from 'react';
 import { diffLines, diffWords } from '../../lib/index.ts';
@@ -31,6 +34,35 @@ export const diffLayoutPreferred = (): DiffLayout =>
   localStorage.getItem(LAYOUT_KEY) === 'inline' ? 'inline' : 'split';
 export const rememberDiffLayout = (layout: DiffLayout) =>
   localStorage.setItem(LAYOUT_KEY, layout);
+
+// The diff of `before` and `after` with their line ends as the body editor has them (asTextarea):
+// a body or a response with Windows line ends compares line for line with what's typed, and a
+// click's place in `after` is its place in the editor.
+export const diffTexts = (before: string, after: string): TextDiff =>
+  diffLines(asTextarea(before), asTextarea(after));
+
+// How long `after` stays the same before a diff that's only counted is made again.
+const SETTLE = 500;
+
+// The diff of `before` (null for none) and `after` (diffTexts()), for a view that shows it, `now`
+// (CodeDiff: made as the texts are, as it draws), or one that only counts it (made again once
+// `after` has stayed the same for SETTLE ms, so typing in a long body doesn't diff all of it at
+// every key; until then, the diff as of the last pause). Diff opened at a pause draws the diff
+// the counts came from.
+export function useTextDiff(before: string | null, after: string, now: boolean) {
+  // `after` as of the last pause.
+  const [still, setStill] = useState(after);
+  useEffect(() => {
+    if (still === after) return undefined;
+    const timer = setTimeout(() => setStill(after), SETTLE);
+    return () => clearTimeout(timer);
+  }, [after, still]);
+  const text = now ? after : still;
+  return useMemo(
+    () => (before === null ? null : diffTexts(before, text)),
+    [before, text],
+  );
+}
 
 // As tall as the body editor's lines (code-editor.css).
 const LINE_HEIGHT = 1.75;
@@ -66,8 +98,8 @@ interface RowView {
 }
 
 interface CodeDiffProps {
-  before: string;
-  after: string;
+  // What to draw: the diff of the two texts (useTextDiff()).
+  diff: TextDiff;
   layout: DiffLayout;
   beforeTitle: ReactNode;
   afterTitle: ReactNode;
@@ -81,8 +113,7 @@ interface CodeDiffProps {
 }
 
 export function CodeDiff({
-  before: givenBefore,
-  after: givenAfter,
+  diff,
   layout,
   beforeTitle,
   afterTitle,
@@ -94,27 +125,22 @@ export function CodeDiff({
 }: CodeDiffProps) {
   const [fontSize] = useState(fontSizePreferred);
   const rowHeight = fontSize * LINE_HEIGHT;
-  // Each text with its line ends as the body editor has them (asTextarea): a body or a response
-  // with Windows line ends compares line for line with what's typed, and a click's place in
-  // `after` is its place in the editor.
-  const before = useMemo(() => asTextarea(givenBefore), [givenBefore]);
-  const after = useMemo(() => asTextarea(givenAfter), [givenAfter]);
-  const diff = useMemo(() => diffLines(before, after), [before, after]);
   const afterLines = diff.after;
   const marks = useMemo(() => wordMarks(diff), [diff]);
   const split = layout === 'split';
   const pairs = useMemo(() => (split ? pairUp(diff) : []), [split, diff]);
   const count = split ? pairs.length : diff.lines.length;
-  // Where each line of `after` starts in it; and for each row, the line of `after` it is or comes
-  // before, where a click on it puts the cursor (past the last line: the end).
-  const starts = useMemo(() => {
+  // Where each line of `after` starts in it, and where it ends; and for each row, the line of
+  // `after` it is or comes before, where a click on it puts the cursor (past the last line: the
+  // end).
+  const { starts, end } = useMemo(() => {
     const out: number[] = [];
     let at = 0;
     for (const line of afterLines) {
       out.push(at);
       at += line.length + 1;
     }
-    return out;
+    return { starts: out, end: Math.max(0, at - 1) };
   }, [afterLines]);
   const lineAt = useMemo(() => {
     const out = new Int32Array(count + 1);
@@ -171,7 +197,7 @@ export function CodeDiff({
   const offsetOf = (row: number, column = 0) => {
     const line = lineAt[Math.min(Math.max(row, 0), count)]!;
     return line >= afterLines.length
-      ? after.length
+      ? end
       : starts[line]! + Math.min(column, afterLines[line]!.length);
   };
 
@@ -329,7 +355,10 @@ export function CodeDiff({
     );
   }
 
-  const counts = (
+  // How many lines were added and removed; none where the diff gave up (two texts more than its
+  // limit of changes apart, src/lib/diff.ts), as the rule editor's row has none: they'd count the
+  // lines shown removed and added whole, not the fewest that changed.
+  const counts = !diff.gaveUp && (
     <span data-testid="diff-counts" className="diff-counts">
       <span className="diff-added">+{diff.added}</span>
       <span className="diff-removed">−{diff.removed}</span>

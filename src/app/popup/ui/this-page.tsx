@@ -43,7 +43,7 @@ export function ThisPage({
       <RuleList
         rules={rules}
         entries={entries}
-        counts={counts?.record ? counts.rules : undefined}
+        counts={counts?.record ? counts : undefined}
         split={counts?.record === true}
         enabled={enabled}
         windowId={windowId}

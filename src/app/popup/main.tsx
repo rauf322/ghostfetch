@@ -7,6 +7,7 @@ import { PopupPage } from './ui/popup-page.tsx';
 import { initPaused, initRules } from '../../bounded-contexts/rules/index.ts';
 import { initSites } from '../../bounded-contexts/sites/index.ts';
 import { initRecording } from '../../bounded-contexts/traffic/index.ts';
+import { TooltipProvider } from '../../ui/kit/tooltip.tsx';
 import '../styles/kit.css';
 
 // The side panel must be opened synchronously inside the click, so look the window up first.
@@ -20,7 +21,9 @@ flushSync(() => {
   root.render(
     <StrictMode>
       <CSPProvider disableStyleElements>
-        <PopupPage windowId={windowId!} activeTab={activeTab} />
+        <TooltipProvider>
+          <PopupPage windowId={windowId!} activeTab={activeTab} />
+        </TooltipProvider>
       </CSPProvider>
     </StrictMode>,
   );

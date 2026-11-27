@@ -37,11 +37,11 @@ ready to edit, as in the recording above.
 
 ![The rule from the recording above, its "Ada" made "Ghost", in the side panel. Diff shows the server's response against the body: the firstName line removed and added, with "Ada" and "Ghost" marked. A click on "free" in the plan line goes back to the body there, "free" becomes "pro", and Diff shows both changes.](docs/media/diff-side-panel.webp)
 
-**Diff**, under a rule's body, compares it with the response the server gave: the one **Mock
-this response** made the rule from, or one Ghostfetch sees while the rule is off. The lines you
-removed are dimmed, with a −, the ones you added are green, with a +, and in a line you changed,
-the part that changed is marked. Click a line to edit the body there. It's inline in a side
-panel, and side by side when there's room:
+**Diff**, the row over a rule's body with how many lines it adds and takes out, compares it with
+the response the server gave: the one **Mock this response** made the rule from, or one
+Ghostfetch sees while the rule is off. The lines you removed are dimmed, with a −, the ones you
+added are green, with a +, and in a line you changed, the part that changed is marked. Click a
+line to edit the body there. It's inline in a side panel, and side by side when there's room:
 
 ![The editor in a tab, the rule "Pro plan user" open. Diff shows its body side by side with the server's response, "plan" changed from "free" to "pro" and "seats" added, with a gap across from the added line; then inline, one column as git shows a diff, and side by side again.](docs/media/diff-side-by-side.webp)
 
@@ -56,28 +56,29 @@ and in the toolbar popup: green and pulsing while it's on, grey while it's off.
 
 ### Shape every part of the answer
 
-![The editor: the rules in the sidebar, each with its dot, green while it's on and grey while it's off, and what it did on the page (1 mocked, 2 modified), and the rule "Pro plan user" open, with what it matches, what it responds with, and its JSON body.](docs/media/editor.png)
+![The editor: the rules in the sidebar, three of them in two groups, each with its dot, green while it's on and grey while it's off, and what it did on the page (1 mocked, 2 modified), and the rule "Pro plan user" open, with what it matches, what it responds with, and its JSON body.](docs/media/editor.png)
 
 - Match a request by its URL (contains, equals, wildcard or regex), its method and its GraphQL
   operation name. **Try a URL** says whether a rule would answer one.
 - Answer with your own body, or keep the server's and change only the status, headers or
   delay.
 - The body editor checks JSON as you type, formats it, searches it (**⌘F**), zooms (**⌘=**
-  and **⌘−**), wraps long lines (**Wrap**) and has [vim keys](docs/guide.md#vim-keys).
+  and **⌘−**), wraps long lines (**Wrap**), copies the body in one click (**Copy**) and has
+  [vim keys](docs/guide.md#vim-keys).
 - Rules apply in the list's order and the first match wins: drag one to move it. Changes save
   as you type and apply to open tabs right away.
 - Export rules to a JSON file, and import them again (imported rules arrive turned off).
 
 ### Keep each PR's mocks in a group
 
-Working on several PRs at once? Put each one's rules in a **group** (**New group**, beside
-**+**) and turn the whole group on or off with its dot, in the editor or the toolbar popup.
-Turning a group off leaves its rules' own switches as they were, so turning it on again brings
-back just what was on. When two groups' rules match the same request, the higher group in the
-list wins, and a new group goes on top; drag one above the other to change that. **Duplicate**
-starts another PR's group from one you have, and **Export group** hands a PR's mocks to
-whoever reviews it: imported, the group arrives turned off, one click from what you had on.
-[More on groups](docs/guide.md#groups).
+Working on several PRs at once? Put each one's rules in a **group** (**New group**, beside the
+search field), marked by a chip with its initials, and turn the whole group on or off in one click:
+**Turn the group off** on its header in the editor, or its dot in the toolbar popup. Turning a group
+off leaves its rules' own switches as they were, so turning it on again brings back just what was
+on. When two groups' rules match the same request, the higher group in the list wins, and a new
+group goes on top; drag one above the other to change that. **Duplicate** starts another PR's group
+from one you have, and **Export group** hands a PR's mocks to whoever reviews it: imported, the
+group arrives turned off, one click from what you had on. [More on groups](docs/guide.md#groups).
 
 ### See what each request got
 
@@ -91,14 +92,15 @@ command for it.
 ### See what your rules did, from the toolbar
 
 <p align="center">
-  <img src="docs/media/popup.png" width="330" alt="The popup on localhost:5173, recording: under This page, the three rules that answered there, each with its green dot, Pro plan user (1 mocked), Slow search (2 modified) and Feature flags (1 mocked), and a folded row for the three that didn't, one on and two off.">
+  <img src="docs/media/popup.png" width="330" alt="The popup on localhost:5173, recording: under This page, the three rules that answered there, each with its green dot, Pro plan user (1 mocked), Slow search (2 modified) and Feature flags (1 mocked), and a folded row for the three that didn't, two on and one off.">
 </p>
 
-**This page** has the rules that answered on the tab's page and what each did there (**1
-mocked**, **2 modified**), and folds the rest away; **All rules** has every rule and group,
-and **Sites** where Ghostfetch runs. A rule's dot turns it on or off, and a group's the group,
-as in the editor's list; click a rule's name to edit it. The header turns recording on or off and pauses Ghostfetch, and a site that isn't
-built in is turned on (**Turn on for …**) or off (**Turn off here**) right there.
+**This page** has the rules that answered on the tab's page and what each did there (**1 mocked**,
+**2 modified**), and folds the rest away; **All rules** has every rule and group, and **Sites**
+where Ghostfetch runs. A rule's dot turns it on or off, as in the editor's list, and a group's dot
+the group; click a rule's name to edit it. The header turns recording on or off and pauses
+Ghostfetch, and a site that isn't built in is turned on (**Turn on for …**) or off
+(**Turn off here**) right there.
 
 ### Let a coding agent write your mocks
 
@@ -116,7 +118,8 @@ from localhost pages. [Setting it up](docs/agent-access.md).
 
 Ghostfetch's own near-black look, or Rosé Pine, Rosé Pine Moon, Rosé Pine Dawn (light),
 Catppuccin Macchiato or Vague, in the colours their Neovim themes use. **Theme** is in the
-editor's `⋯` menu.
+editor's `⋯` menu, and under it **Appearance**: more contrast for quieter text and lines,
+Commit Mono for words as well as code, and larger text.
 
 ## Install
 

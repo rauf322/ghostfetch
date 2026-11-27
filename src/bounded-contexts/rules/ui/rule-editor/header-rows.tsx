@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../../../../ui/kit/select.tsx';
+import { Tooltip } from '../../../../ui/kit/tooltip.tsx';
 
 const OP_ITEMS = [
   { value: 'set', label: 'Set' },
@@ -106,19 +107,21 @@ export function HeaderRows({
               }
             />
           )}
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            title="Remove header"
-            className="col-start-3 row-start-1 @[380px]:col-start-4"
-            onClick={() =>
-              edit((current) => {
-                pick(current).splice(index, 1);
-              })
-            }
-          >
-            <Icon name="close" size={14} />
-          </Button>
+          <Tooltip label="Remove header">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Remove header"
+              className="col-start-3 row-start-1 @[380px]:col-start-4"
+              onClick={() =>
+                edit((current) => {
+                  pick(current).splice(index, 1);
+                })
+              }
+            >
+              <Icon name="close" size={14} />
+            </Button>
+          </Tooltip>
           {headerProblem(row) && (
             // On a line of its own under the row, as wide as it.
             <CardHint tone="bad" className="col-span-full px-0.5">

@@ -13,13 +13,13 @@ import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
 import { headerProblem } from '../src/shared-kernel/index.ts';
-import { createRule } from '../src/bounded-contexts/rules/index.ts';
+import { createGroup, createRule } from '../src/bounded-contexts/rules/index.ts';
 import {
   isSiteEnabled,
   normalizeSites,
   siteMatchPatterns,
 } from '../src/bounded-contexts/sites/index.ts';
-import { diffLines, formatJson } from '../src/lib/index.ts';
+import { curlCommand, diffLines, formatJson } from '../src/lib/index.ts';
 import {
   CHROME_BUILD,
   VIM_START,
@@ -295,7 +295,7 @@ try {
     if (r.ms < 580) throw new Error(`only took ${Math.round(r.ms)} ms`);
   });
   await check(
-    'a page counts for the popup what each rule did on it, by rule and by what it did, and nothing of the requests',
+    'a page counts for the popup what each rule did on it, by rule and by what it did, with when each last did, and nothing of the requests',
     async () => {
       const tab = (await worker.evaluate(() => chrome.tabs.query({}))).find((candidate) =>
         candidate.url?.startsWith(ORIGIN),
@@ -321,14 +321,25 @@ try {
       const after = await ask();
       const more = (id, key) =>
         (after.rules[id]?.[key] ?? 0) - (before.rules[id]?.[key] ?? 0);
+      // When each rule counted last answered: a time, and nothing else, for each of them.
+      const times = Object.entries(after.last);
       expect(
         [
           after.record,
           Object.keys(after).toSorted(),
           Object.keys(after.rules[replace]).toSorted(),
           [more(replace, 'mocked'), more(merge, 'modified'), more(unreachable, 'failed')],
+          times.map(([id]) => id).toSorted(),
+          times.every(([, time]) => Number.isInteger(time) && time > 0),
         ],
-        [true, ['record', 'rules'], ['failed', 'mocked', 'modified'], [2, 1, 1]],
+        [
+          true,
+          ['last', 'record', 'rules'],
+          ['failed', 'mocked', 'modified'],
+          [2, 1, 1],
+          Object.keys(after.rules).toSorted(),
+          true,
+        ],
       );
     },
   );
@@ -1001,7 +1012,7 @@ try {
         ],
         ['404', 600, ['X-Tabbed']],
       );
-      await app.getByTitle('Remove header').last().click();
+      await app.getByRole('button', { name: 'Remove header' }).last().click();
       expect(await value('headers'), 'No changes');
       await row('delay');
       await app.click('[data-testid="delay-0"]');
@@ -1664,8 +1675,9 @@ try {
     async () => {
       const editor = app.locator('.code textarea');
       const before = await editor.inputValue();
-      // The editor's height and the pane's; with the pane scrolled to the top, how far the body's
-      // section ends from the pane's bottom, and whether the pane has anything to scroll.
+      // The editor's height, the pane's and the body's whole section's; with the pane scrolled to
+      // the top, how far the body's section ends from the pane's bottom, and whether the pane has
+      // anything to scroll.
       const heights = () =>
         app.evaluate(() => {
           const code = document.querySelector('.code');
@@ -1674,6 +1686,7 @@ try {
           return {
             code: code.offsetHeight,
             pane: pane.clientHeight,
+            card: document.querySelector('[data-testid="body-card"]').offsetHeight,
             gap:
               pane.getBoundingClientRect().bottom -
               document.querySelector('[data-testid="body-card"]').getBoundingClientRect()
@@ -1703,19 +1716,24 @@ try {
         )
           throw new Error(`beside: ${JSON.stringify([besideShort, besideLong])}`);
       // Under them, in a side panel 400 px wide.
-      await app.setViewportSize({ width: 400, height: 760 });
-      await editor.fill(short);
-      expect((await heights()).code, 120, 'a short body: the smallest editor');
-      await editor.fill(eight);
-      // Eight lines of 20.125 px (11.5 px text, line height 1.75), its padding and border.
-      expect((await heights()).code, 179, 'eight lines: eight lines tall');
-      // A long one: the pane less the room for the body's controls (body-card.tsx).
-      await editor.fill(long);
-      const under = await heights();
-      if (Math.abs(under.code - (under.pane - 120)) > 1)
-        throw new Error(`a long body, in one column: ${JSON.stringify(under)}`);
-      await app.setViewportSize({ width: 1280, height: 820 });
-      await editor.fill(before);
+      try {
+        await app.setViewportSize({ width: 400, height: 760 });
+        await editor.fill(short);
+        expect((await heights()).code, 120, 'a short body: the smallest editor');
+        await editor.fill(eight);
+        // Eight lines of 20.125 px (11.5 px text, line height 1.75), its padding and border.
+        expect((await heights()).code, 179, 'eight lines: eight lines tall');
+        // A long one: the pane less the room for the body's controls (body-card.tsx: 122 px, and
+        // 32 more in a card this narrow, whose footer is two rows), so the whole section, its
+        // footer too, fits the pane once it's scrolled to.
+        await editor.fill(long);
+        const under = await heights();
+        if (Math.abs(under.code - (under.pane - 154)) > 1 || under.card > under.pane)
+          throw new Error(`a long body, in one column: ${JSON.stringify(under)}`);
+      } finally {
+        await app.setViewportSize({ width: 1280, height: 820 });
+        await editor.fill(before);
+      }
     },
   );
   await check('Cmd/Ctrl+F in the body searches only the body', async () => {
@@ -2551,16 +2569,17 @@ try {
   // counts (precise coverage). The build isn't minified, so a component is counted by its name each
   // time it draws.
   const editorSession = await context.newCDPSession(app);
-  const draws = async (action) => {
-    await editorSession.send('Profiler.enable');
-    await editorSession.send('Profiler.startPreciseCoverage', {
+  // The same in another page, by its CDP session (a popup's).
+  const drawsIn = async (session, action) => {
+    await session.send('Profiler.enable');
+    await session.send('Profiler.startPreciseCoverage', {
       callCount: true,
       detailed: false,
     });
-    await editorSession.send('Profiler.takePreciseCoverage');
+    await session.send('Profiler.takePreciseCoverage');
     await action();
-    const { result } = await editorSession.send('Profiler.takePreciseCoverage');
-    await editorSession.send('Profiler.stopPreciseCoverage');
+    const { result } = await session.send('Profiler.takePreciseCoverage');
+    await session.send('Profiler.stopPreciseCoverage');
     const counts = {};
     for (const script of result) {
       if (!script.url.includes('/chunks/')) continue;
@@ -2571,6 +2590,7 @@ try {
     }
     return counts;
   };
+  const draws = (action) => drawsIn(editorSession, action);
   await check(
     'a request in the watched tab draws its count again, not the editor and its rules',
     async () => {
@@ -2625,12 +2645,976 @@ try {
     },
   );
 
+  // A rule's row: its slot (ItemSlot), which says what the rule did on the page the editor watches
+  // and when, or under the pointer has the row's actions; and its name, which steps back for a
+  // rule that's on but hasn't answered there. Three rules at the top of the list for these checks,
+  // and the list as it was after them: one that answers /api/slot-check, one that's on but nothing
+  // asks for, and one that's off. The rule open since the check before stays open.
+  const SLOT = '/api/slot-check';
+  const NEVER = '/api/slot-never';
+  const OFF = '/api/slot-off';
+  const slotRule = (url, name, enabled = true) => {
+    const rule = createRule();
+    Object.assign(rule, { name, enabled });
+    rule.match.url = url;
+    rule.response.body = '{"slot":true}';
+    return rule;
+  };
+  const SLOT_RULES = [
+    slotRule(SLOT, 'Slot check'),
+    slotRule(NEVER, 'Never asked for'),
+    slotRule(OFF, 'Switched off', false),
+  ];
+  const ruleRow = (url) => app.locator(`[data-testid="rule"][data-url="${url}"]`);
+  // What the open rule matches, or null with none open, read at once.
+  const openNow = () =>
+    app.evaluate(
+      () =>
+        document.querySelector('[data-testid="rule"][data-selected]')?.dataset.url ??
+        null,
+    );
+  // A row's first line: what its slot says, the parts out of sight left out; how opaque that and
+  // the slot's actions are; where its name and its slot stand; and the name's weight and colour.
+  // The editor's, and the popup's (readLine).
+  const readLine = (row) => {
+    const part = (slot) => row.querySelector(`[data-slot="${slot}"]`);
+    const box = (element) => {
+      const { left, right, top, bottom } = element.getBoundingClientRect();
+      return [left, right, top, bottom].map((edge) => Math.round(edge));
+    };
+    const status = part('item-status');
+    const bottom = status.getBoundingClientRect().bottom;
+    const name = getComputedStyle(part('item-title'));
+    return {
+      says: [...status.children]
+        .filter((said) => said.getBoundingClientRect().top < bottom - 1)
+        .map((said) => said.textContent)
+        .join(' '),
+      status: getComputedStyle(status).opacity,
+      actions: getComputedStyle(part('item-slot-actions')).opacity,
+      name: box(part('item-title')),
+      slot: box(part('item-slot')),
+      weight: name.fontWeight,
+      colour: name.color,
+    };
+  };
+  const lineOf = (url) => ruleRow(url).evaluate(readLine);
+  // The theme's text colours by the kit's names, as a probe with each class draws them, in the
+  // editor or another view.
+  const textColours = (view = app) =>
+    view.evaluate(() =>
+      Object.fromEntries(
+        ['strong', 't65', 't50', 'signal'].map((name) => {
+          const probe = document.createElement('span');
+          probe.className = `text-${name}`;
+          document.body.append(probe);
+          const colour = getComputedStyle(probe).color;
+          probe.remove();
+          return [name, colour];
+        }),
+      ),
+    );
+  // What `read` gives once `done` says so, or what it gives after 3 s.
+  const rowSettled = async (read, done) => {
+    const end = Date.now() + 3000;
+    for (;;) {
+      const value = await read();
+      if (done(value) || Date.now() > end) return value;
+      await sleep(50);
+    }
+  };
+  const slotStored = async (url) =>
+    (await worker.evaluate(() => chrome.storage.local.get('rules'))).rules.find(
+      (rule) => rule.match.url === url,
+    );
+  const { rules: beforeSlot } = await worker.evaluate(() =>
+    chrome.storage.local.get('rules'),
+  );
+  await setStorage({ rules: [...SLOT_RULES, ...beforeSlot] });
+  await ruleRow(OFF).waitFor({ timeout: 3000 });
+  const openUrl = await openNow();
+  // What each check after the first starts from, whatever the one before it left: the three rules
+  // at the top of the list as they were made (the same ids, so what they did on the page still
+  // counts), and the rule that was open open.
+  const slotsReady = async () => {
+    const { rules } = await worker.evaluate(() => chrome.storage.local.get('rules'));
+    const top = rules.slice(0, 3).map(({ id, enabled }) => `${id} ${enabled}`);
+    if (`${top}` !== `${SLOT_RULES.map(({ id, enabled }) => `${id} ${enabled}`)}`) {
+      const mine = new Set(SLOT_RULES.map(({ id }) => id));
+      await setStorage({
+        rules: [...SLOT_RULES, ...rules.filter(({ id }) => !mine.has(id))],
+      });
+      await ruleRow(SLOT).waitFor({ timeout: 3000 });
+    }
+    if ((await openNow()) !== openUrl) {
+      await ruleRow(openUrl).click();
+      await rowSettled(openNow, (url) => url === openUrl);
+    }
+  };
+
+  await check(
+    'a rule\'s row says at its right end what the rule did on the page and when, once it has answered there: "1 mocked · now", the count in green and the time in grey; the request draws the row\'s first line again (RuleLine), not the row',
+    async () => {
+      const before = (await lineOf(SLOT)).says;
+      const counts = await draws(async () => {
+        await call(SLOT);
+        await ruleRow(SLOT)
+          .locator('[data-testid="rule-time"]')
+          .waitFor({ timeout: 3000 });
+        await sleep(200);
+      });
+      const theme = await textColours();
+      const drawn = await ruleRow(SLOT).evaluate((row) =>
+        ['rule-signal', 'rule-time'].map(
+          (id) => getComputedStyle(row.querySelector(`[data-testid="${id}"]`)).color,
+        ),
+      );
+      expect(
+        [
+          before,
+          (await lineOf(SLOT)).says,
+          drawn,
+          counts.RuleListItem ?? 0,
+          (counts.RuleLine ?? 0) > 0,
+        ],
+        ['', '1 mocked · now', [theme.signal, theme.t50], 0, true],
+        `drawn: RuleLine ${counts.RuleLine}, RuleTime ${counts.RuleTime}, RuleListItem ${counts.RuleListItem}`,
+      );
+    },
+  );
+  await check(
+    "under the pointer a row's slot shows its actions where it said what the rule did, and nothing in the row moves; its Turn off turns the rule off and Turn on back on, without opening it, and a press on its ⋯ moved away drags nothing",
+    async () => {
+      await slotsReady();
+      await app.mouse.move(1, 1);
+      const rest = await lineOf(SLOT);
+      await ruleRow(SLOT).hover();
+      const shown = await rowSettled(
+        () => lineOf(SLOT),
+        (line) => line.actions === '1' && line.status === '0',
+      );
+      const turn = ruleRow(SLOT).locator('[data-testid="row-switch"]');
+      const labels = [await turn.getAttribute('aria-label')];
+      await turn.click();
+      const off = (
+        await rowSettled(
+          () => slotStored(SLOT),
+          (rule) => !rule.enabled,
+        )
+      ).enabled;
+      labels.push(await turn.getAttribute('aria-label'));
+      await turn.click();
+      const on = (
+        await rowSettled(
+          () => slotStored(SLOT),
+          (rule) => rule.enabled,
+        )
+      ).enabled;
+      // The ⋯ pressed, the pointer moved 120 px left over the row's name, and let go: no drag
+      // starts (the row is draggable), though the press opens its menu.
+      await app.evaluate(() => {
+        window.slotDrags = 0;
+        document.addEventListener('dragstart', () => (window.slotDrags += 1), true);
+      });
+      const at = await ruleRow(SLOT).locator('[data-testid="row-menu"]').boundingBox();
+      await app.mouse.move(at.x + at.width / 2, at.y + at.height / 2);
+      await app.mouse.down();
+      await app.mouse.move(at.x - 120, at.y + at.height / 2, { steps: 8 });
+      await app.mouse.up();
+      const drags = await app.evaluate(() => window.slotDrags);
+      if (await app.locator('[data-slot="dropdown-menu-content"]').count())
+        await app.keyboard.press('Escape');
+      const order = (await worker.evaluate(() => chrome.storage.local.get('rules'))).rules
+        .slice(0, 3)
+        .map((rule) => rule.match.url);
+      expect(
+        [
+          [rest.status, rest.actions],
+          [shown.status, shown.actions, shown.name, shown.slot],
+          labels,
+          [off, on],
+          drags,
+          order,
+          await openNow(),
+        ],
+        [
+          ['1', '0'],
+          ['0', '1', rest.name, rest.slot],
+          ['Turn off “Slot check”', 'Turn on “Slot check”'],
+          [false, true],
+          0,
+          [SLOT, NEVER, OFF],
+          openUrl,
+        ],
+      );
+    },
+  );
+  await check(
+    "a row's ⋯ has the open rule's menu, item for item, after Open, as its rule isn't the open one, and the row's actions stay while it's open; its Delete deletes that rule, the open one staying open, and Undo puts it back",
+    async () => {
+      await slotsReady();
+      // The open menu's items, once it's there; and the menu shut.
+      const menu = app.locator('[data-slot="dropdown-menu-content"]');
+      const items = async () => {
+        await menu.locator('[role^="menuitem"]').first().waitFor({ timeout: 3000 });
+        return menu.locator('[role^="menuitem"]').allTextContents();
+      };
+      await app.click('[data-testid="rule-menu"]');
+      const header = await items();
+      await app.keyboard.press('Escape');
+      await menu.waitFor({ state: 'detached', timeout: 3000 });
+      await ruleRow(SLOT).hover();
+      await ruleRow(SLOT).locator('[data-testid="row-menu"]').click();
+      const row = await items();
+      // The pointer away from the row, over the open rule.
+      await app.mouse.move(900, 700);
+      await sleep(300);
+      const whileOpen = await lineOf(SLOT);
+      await app.click('[data-testid="delete-rule"]');
+      await ruleRow(SLOT).waitFor({ state: 'detached', timeout: 3000 });
+      const gone = await ruleRow(SLOT).count();
+      const stayed = await openNow();
+      // Undo in the sidebar's footer (a toast where the footer isn't on screen).
+      await app.click('[data-testid="undo-notice-undo"]');
+      await ruleRow(SLOT).waitFor({ timeout: 3000 });
+      expect(
+        [
+          row,
+          [whileOpen.status, whileOpen.actions],
+          gone,
+          stayed,
+          await openNow(),
+          await ruleRow(SLOT).getAttribute('data-selected'),
+        ],
+        [[' Open ↵', ...header], ['0', '1'], 0, openUrl, openUrl, null],
+        `the open rule's menu: ${header.join(', ')}`,
+      );
+    },
+  );
+  await check(
+    "a rule that's on but hasn't answered on the page steps back, its name at normal weight in a quieter grey; one that answered, and the open one, stay at medium weight in the text colour, and one that's off fades as before; while Recording is off, none steps back",
+    async () => {
+      await slotsReady();
+      const theme = await textColours();
+      const look = async (url) => {
+        const { weight, colour } = await lineOf(url);
+        return [weight, colour];
+      };
+      const seen = async () => [
+        await look(SLOT),
+        await look(NEVER),
+        await look(OFF),
+        await look(openUrl),
+      ];
+      const recording = await seen();
+      await setStorage({ record: false });
+      const notRecording = await rowSettled(seen, (rows) => rows[1][0] === '500');
+      await setStorage({ record: true });
+      const again = await rowSettled(seen, (rows) => rows[1][0] === '400');
+      // Opened, the rule that hasn't answered stands out as well.
+      await ruleRow(NEVER).click();
+      const opened = await rowSettled(
+        () => look(NEVER),
+        ([weight]) => weight === '500',
+      );
+      await ruleRow(openUrl).click();
+      await rowSettled(openNow, (url) => url === openUrl);
+      const BRIGHT = ['500', theme.strong];
+      const QUIET = ['400', theme.t65];
+      const FADED = ['500', theme.t50];
+      expect(
+        [recording, notRecording, again, opened],
+        [
+          [BRIGHT, QUIET, FADED, BRIGHT],
+          [BRIGHT, BRIGHT, FADED, BRIGHT],
+          [BRIGHT, QUIET, FADED, BRIGHT],
+          BRIGHT,
+        ],
+      );
+    },
+  );
+  await check(
+    "in Commit Mono at Larger, nothing in a rule's row reaches past its edge: in a 420 px panel its slot says it all, and beside an open rule, where the sidebar is narrow, what it says gives way, the time first, then the count, as the name keeps 7 letters' room",
+    async () => {
+      // The rows that say what their rule did: whether the slot ends inside the row's padding and
+      // nothing in the row overflows it; whether the name has 7 letters' room, or 60% of the line;
+      // and each part of what the slot says, whole, cut, or out of sight.
+      const rows = () =>
+        app.evaluate(() =>
+          [...document.querySelectorAll('[data-testid="rule"]')]
+            .filter((row) => row.querySelector('[data-testid="rule-signal"]'))
+            .map((row) => {
+              const edge =
+                row.getBoundingClientRect().right -
+                parseFloat(getComputedStyle(row).paddingRight);
+              const slot = row
+                .querySelector('[data-slot="item-slot"]')
+                .getBoundingClientRect();
+              const title = row.querySelector('[data-slot="item-title"]');
+              const line = title.parentElement.getBoundingClientRect().width;
+              const em = parseFloat(getComputedStyle(title).fontSize);
+              const status = row.querySelector('[data-slot="item-status"]');
+              const bottom = status.getBoundingClientRect().bottom;
+              return {
+                inside: slot.right <= edge + 0.5 && row.scrollWidth <= row.clientWidth,
+                room:
+                  title.getBoundingClientRect().width >=
+                  Math.min(7 * em, 0.6 * line) - 0.5,
+                says: [...status.children].map((said) =>
+                  said.getBoundingClientRect().top >= bottom - 1
+                    ? 'gone'
+                    : said.scrollWidth > said.clientWidth
+                      ? 'cut'
+                      : 'whole',
+                ),
+              };
+            }),
+        );
+      // The time goes first, then the count: what the slot may say.
+      const GIVES_WAY = ['whole,whole', 'whole,gone', 'cut,gone'];
+      await slotsReady();
+      try {
+        await app.evaluate(() =>
+          Object.assign(document.documentElement.dataset, {
+            font: 'mono',
+            size: 'larger',
+          }),
+        );
+        await app.setViewportSize({ width: 420, height: 760 });
+        // In a narrow panel the list is a screen of its own once the open rule is closed.
+        await app.locator('[data-testid="rule-back"]').click({ timeout: 3000 });
+        await ruleRow(SLOT).waitFor({ state: 'visible' });
+        await app.evaluate(() => document.fonts.ready);
+        const narrow = await rows();
+        await app.setViewportSize({ width: 1280, height: 820 });
+        await ruleRow(openUrl).click();
+        await app.evaluate(() => document.fonts.ready);
+        const beside = await rows();
+        expect(
+          [
+            narrow.length > 0,
+            narrow.every(
+              (row) => row.inside && row.room && `${row.says}` === 'whole,whole',
+            ),
+            beside.every(
+              (row) => row.inside && row.room && GIVES_WAY.includes(`${row.says}`),
+            ),
+            beside.some((row) => row.says[1] === 'gone'),
+          ],
+          [true, true, true, true],
+          JSON.stringify({ narrow, beside }),
+        );
+      } finally {
+        await app.evaluate(() => {
+          delete document.documentElement.dataset.font;
+          delete document.documentElement.dataset.size;
+        });
+        await app.setViewportSize({ width: 1280, height: 820 });
+        if ((await openNow()) !== openUrl) await ruleRow(openUrl).click();
+      }
+    },
+  );
+  // The list as a tree, for the keyboard and a screen reader: one Tab stop, the arrow keys, F2,
+  // and the right-click menu, on the three rules above and a group of two rules after them, Keys.
+  const { groups: beforeGroups = [] } = await worker.evaluate(() =>
+    chrome.storage.local.get('groups'),
+  );
+  const KEYS = createGroup('Keys');
+  const K1 = '/api/key-one';
+  const K2 = '/api/key-two';
+  const KEY_RULES = [K1, K2].map((url, index) =>
+    Object.assign(slotRule(url, `Key ${index ? 'two' : 'one'}`), { group: KEYS.id }),
+  );
+  const keysItem = app.locator(`[data-testid="group-block"][data-item="${KEYS.id}"]`);
+  // What has focus: a rule's row (what it matches), a group's item ("group: " its name), or else
+  // what it's called.
+  const focusedItem = () =>
+    app.evaluate(() => {
+      const active = document.activeElement;
+      if (!active?.matches('[role="treeitem"]'))
+        return `not an item: ${active?.getAttribute('aria-label') ?? active?.tagName}`;
+      return active.dataset.testid === 'group-block'
+        ? `group: ${active.querySelector('[data-testid="group"]').dataset.group}`
+        : active.dataset.url;
+    });
+  // The role and the name Chromium gives the element `selector` finds, as a screen reader gets: in
+  // the editor, or in another page by its CDP session; with `described`, its description too.
+  const axOf = async (selector, session = editorSession, described = false) => {
+    const { root } = await session.send('DOM.getDocument', { depth: 0 });
+    const { nodeId } = await session.send('DOM.querySelector', {
+      nodeId: root.nodeId,
+      selector,
+    });
+    const { nodes } = await session.send('Accessibility.getPartialAXTree', {
+      nodeId,
+      fetchRelatives: false,
+    });
+    const [node] = nodes;
+    return described
+      ? [node?.role?.value, node?.name?.value, node?.description?.value]
+      : [node?.role?.value, node?.name?.value];
+  };
+  // What each of these checks starts from, whatever the one before left: the three rules and Keys
+  // with its two as they were made, Keys unfolded, and the rule that was open open.
+  const keysReady = async () => {
+    const stored = await worker.evaluate(() =>
+      chrome.storage.local.get(['rules', 'groups']),
+    );
+    const made = [...SLOT_RULES, ...KEY_RULES];
+    const kept = (list) =>
+      list
+        .map(({ id, name, enabled, group }) => `${id} ${name} ${enabled} ${group}`)
+        .join();
+    const keys = stored.groups?.find(({ id }) => id === KEYS.id);
+    if (
+      kept(stored.rules.slice(0, made.length)) !== kept(made) ||
+      keys?.name !== 'Keys' ||
+      !keys.enabled
+    ) {
+      const mine = new Set(made.map(({ id }) => id));
+      await setStorage({
+        rules: [...made, ...stored.rules.filter(({ id }) => !mine.has(id))],
+        groups: [
+          { ...KEYS, at: 3 },
+          ...(stored.groups ?? []).filter(({ id }) => id !== KEYS.id),
+        ],
+      });
+      await app.locator(`[data-item="${KEY_RULES[1].id}"]`).waitFor({ timeout: 3000 });
+    }
+    if ((await keysItem.getAttribute('aria-expanded')) === 'false')
+      await keysItem.locator('[data-testid="group-name"]').click();
+    if ((await openNow()) !== openUrl) {
+      await ruleRow(openUrl).click();
+      await rowSettled(openNow, (url) => url === openUrl);
+    }
+  };
+
+  await check(
+    "the rule list is a tree that's one Tab stop: Tab from the button before it lands on the open rule's row, then that row's Turn off and ⋯, then out of the list, no other row's controls being Tab stops; each item says its level and its place among its own, a group whether it's expanded, the open rule that it's selected; a screen reader names a row by its rule's name and a group by its own",
+    async () => {
+      await keysReady();
+      const tree = await app.evaluate(() => {
+        const list = document.querySelector('[role="tree"]');
+        const label = (item) =>
+          item.dataset.testid === 'group-block'
+            ? `group: ${item.querySelector('[data-testid="group"]').dataset.group}`
+            : item.dataset.url;
+        const items = [...list.querySelectorAll('[role="treeitem"]')];
+        return {
+          name: list.getAttribute('aria-label'),
+          top: [...list.children].filter((child) => child.matches('[role="treeitem"]'))
+            .length,
+          first: items
+            .slice(0, 7)
+            .map((item) => [
+              label(item),
+              ...['aria-level', 'aria-posinset', 'aria-setsize', 'aria-expanded'].map(
+                (name) => item.getAttribute(name),
+              ),
+            ]),
+          selected: items
+            .filter((item) => item.getAttribute('aria-selected') === 'true')
+            .map(label),
+          group:
+            list.querySelector('[role="group"]').closest('[role="treeitem"]') ===
+            items[3],
+          stops: [...list.querySelectorAll('*')]
+            .filter((element) => element.tabIndex >= 0)
+            .map((element) =>
+              element.matches('[role="treeitem"]')
+                ? label(element)
+                : element.getAttribute('aria-label'),
+            ),
+        };
+      });
+      const title = await ruleRow(openUrl)
+        .locator('[data-slot="item-title"]')
+        .textContent();
+      // Tab from the button before the list (the Traffic view's row: New rule is in the search row
+      // over the views), four times.
+      await app.locator('[data-testid="nav-traffic"]').focus();
+      const tabs = [];
+      for (let time = 0; time < 4; time++) {
+        await app.keyboard.press('Tab');
+        tabs.push(await focusedItem());
+      }
+      const left = await app.evaluate(
+        () => !document.activeElement?.closest('[role="tree"]'),
+      );
+      const named = [
+        await axOf(`[data-testid="rule"][data-url="${SLOT}"]`),
+        await axOf(`[data-testid="group-block"][data-item="${KEYS.id}"]`),
+      ];
+      const top = `${tree.top}`;
+      expect(
+        [tree.name, tree.first.slice(0, 6), tree.first[6].slice(1, 3), tree.selected],
+        [
+          'Rules',
+          [
+            [SLOT, '1', '1', top, null],
+            [NEVER, '1', '2', top, null],
+            [OFF, '1', '3', top, null],
+            ['group: Keys', '1', '4', top, 'true'],
+            [K1, '2', '1', '2', null],
+            [K2, '2', '2', '2', null],
+          ],
+          ['1', '5'],
+          [openUrl],
+        ],
+        'the tree',
+      );
+      expect(
+        [tree.group, tree.stops, tabs.slice(0, 3), left, named],
+        [
+          true,
+          [openUrl, `Turn off “${title}”`, `More actions for “${title}”`],
+          [
+            openUrl,
+            `not an item: Turn off “${title}”`,
+            `not an item: More actions for “${title}”`,
+          ],
+          true,
+          [
+            ['treeitem', 'Slot check'],
+            ['treeitem', 'Keys'],
+          ],
+        ],
+        'Tab, and the names',
+      );
+    },
+  );
+  await check(
+    '↑ ↓ move between the rows and the group\'s header, passing a folded group\'s rules, Home and End to the first and the last; → unfolds a group or goes to its first rule, ← folds it or goes from a rule to its group; Space and Enter fold and unfold a group, and Enter or Space on a rule opens it; "/" from a row goes to the search field',
+    async () => {
+      await keysReady();
+      const items = () =>
+        app.evaluate(() =>
+          [...document.querySelectorAll('[role="treeitem"]')].map((item) =>
+            item.dataset.testid === 'group-block'
+              ? `group: ${item.querySelector('[data-testid="group"]').dataset.group}`
+              : item.dataset.url,
+          ),
+        );
+      const all = await items();
+      const rest = all[6];
+      const last = all.at(-1);
+      await ruleRow(openUrl).focus();
+      // Each key, and the item focus is on after it, with whether Keys is expanded.
+      const seen = [];
+      const press = async (key) => {
+        await app.keyboard.press(key);
+        seen.push([
+          key,
+          await focusedItem(),
+          await keysItem.getAttribute('aria-expanded'),
+        ]);
+      };
+      for (const key of [
+        'Home',
+        'ArrowDown',
+        'ArrowDown',
+        'ArrowDown',
+        'ArrowDown',
+        'ArrowDown',
+        'ArrowLeft',
+        'ArrowLeft',
+        'ArrowDown',
+        'ArrowUp',
+        'ArrowRight',
+        'ArrowRight',
+        'End',
+        'Home',
+        'ArrowUp',
+      ])
+        await press(key);
+      // Space and Enter on the group's item.
+      await keysItem.focus();
+      await press('Space');
+      await press('Enter');
+      // Enter on a rule's row opens it, and so does Space on another.
+      await ruleRow(NEVER).focus();
+      await app.keyboard.press('Enter');
+      const enter = await rowSettled(openNow, (url) => url === NEVER);
+      await ruleRow(OFF).focus();
+      await app.keyboard.press('Space');
+      const space = await rowSettled(openNow, (url) => url === OFF);
+      // "/" from a row.
+      await ruleRow(SLOT).focus();
+      await app.keyboard.press('/');
+      const slash = await app.evaluate(() =>
+        document.activeElement?.getAttribute('aria-label'),
+      );
+      const G = 'group: Keys';
+      expect(
+        [seen, enter, space, slash],
+        [
+          [
+            ['Home', SLOT, 'true'],
+            ['ArrowDown', NEVER, 'true'],
+            ['ArrowDown', OFF, 'true'],
+            ['ArrowDown', G, 'true'],
+            ['ArrowDown', K1, 'true'],
+            ['ArrowDown', K2, 'true'],
+            ['ArrowLeft', G, 'true'],
+            ['ArrowLeft', G, 'false'],
+            ['ArrowDown', rest, 'false'],
+            ['ArrowUp', G, 'false'],
+            ['ArrowRight', G, 'true'],
+            ['ArrowRight', K1, 'true'],
+            ['End', last, 'true'],
+            ['Home', SLOT, 'true'],
+            ['ArrowUp', SLOT, 'true'],
+            ['Space', G, 'false'],
+            ['Enter', G, 'true'],
+          ],
+          NEVER,
+          OFF,
+          'Search rules',
+        ],
+      );
+    },
+  );
+  await check(
+    "F2 makes a rule's name a field in its row: Enter keeps the name typed and gives the row focus back, Esc keeps the old name, an empty name is taken, as the open rule's name field takes one, leaving the field keeps what's typed; F2 on a group's item renames the group the same way",
+    async () => {
+      await keysReady();
+      const field = app.locator('[data-testid="rule-name-input"]');
+      const stored = () => slotStored(NEVER).then((rule) => rule.name);
+      // F2, the field's words typed over (they're selected), and a key to end it.
+      const rename = async (typed, end) => {
+        await ruleRow(NEVER).focus();
+        await app.keyboard.press('F2');
+        await field.waitFor({ timeout: 3000 });
+        const shown = [
+          await field.inputValue(),
+          await field.evaluate((input) => input === document.activeElement),
+        ];
+        if (typed === '') await app.keyboard.press('Backspace');
+        else await app.keyboard.type(typed);
+        await app.keyboard.press(end);
+        await field.waitFor({ state: 'detached', timeout: 3000 });
+        return shown;
+      };
+      const opened = await rename('Renamed by F2', 'Enter');
+      const kept = await rowSettled(stored, (name) => name === 'Renamed by F2');
+      const back = await rowSettled(focusedItem, (item) => item === NEVER);
+      await rename('Not this', 'Escape');
+      await sleep(400);
+      const escaped = [await stored(), await focusedItem()];
+      await rename('', 'Enter');
+      await sleep(400);
+      const empty = await stored();
+      // Typed, then the pointer elsewhere: the field's left, and keeps it.
+      await ruleRow(NEVER).focus();
+      await app.keyboard.press('F2');
+      await field.waitFor({ timeout: 3000 });
+      await app.keyboard.type('Kept on leaving');
+      await app.locator('[data-testid="rule-list"] h2').click();
+      await field.waitFor({ state: 'detached', timeout: 3000 });
+      const left = await rowSettled(stored, (name) => name === 'Kept on leaving');
+      // The group, by F2 on its item.
+      await keysItem.focus();
+      await app.keyboard.press('F2');
+      const groupField = app.locator('[data-testid="group-name-input"]');
+      await groupField.waitFor({ timeout: 3000 });
+      await app.keyboard.type('Keys again');
+      await app.keyboard.press('Enter');
+      await groupField.waitFor({ state: 'detached', timeout: 3000 });
+      const group = await rowSettled(
+        async () =>
+          (await worker.evaluate(() => chrome.storage.local.get('groups'))).groups.find(
+            ({ id }) => id === KEYS.id,
+          ).name,
+        (name) => name === 'Keys again',
+      );
+      const groupBack = await rowSettled(
+        focusedItem,
+        (item) => item === 'group: Keys again',
+      );
+      expect(
+        [opened, kept, back, escaped, empty, left, group, groupBack],
+        [
+          ['Never asked for', true],
+          'Renamed by F2',
+          NEVER,
+          ['Renamed by F2', NEVER],
+          '',
+          'Kept on leaving',
+          'Keys again',
+          'group: Keys again',
+        ],
+      );
+    },
+  );
+  await check(
+    "a right-click on a rule's row opens its menu at the pointer, with its ⋯'s items (the open rule's, after Open, as this one isn't open), and on a group's header the group's ⋯'s; the ContextMenu key and Shift+F10 open the focused item's at its bottom left (a group's header's), Esc giving it focus back",
+    async () => {
+      await keysReady();
+      const menu = app.locator('[data-slot="context-menu-content"]');
+      const dropdown = app.locator('[data-slot="dropdown-menu-content"]');
+      const itemsOf = async (popup) => {
+        await popup.locator('[role^="menuitem"]').first().waitFor({ timeout: 3000 });
+        return popup.locator('[role^="menuitem"]').allTextContents();
+      };
+      const shut = async (popup) => {
+        await app.keyboard.press('Escape');
+        await popup.waitFor({ state: 'detached', timeout: 3000 });
+      };
+      const near = async (point) => {
+        const box = await menu.boundingBox();
+        return Boolean(box) && Math.hypot(box.x - point[0], box.y - point[1]) <= 12;
+      };
+      const corner = async (locator) => {
+        const box = await locator.boundingBox();
+        return [box.x, box.y + box.height];
+      };
+      const middle = async (locator) => {
+        const box = await locator.boundingBox();
+        return [box.x + box.width / 2, box.y + box.height / 2];
+      };
+      // The ⋯ menus' items: the open rule's, which a row's has after Open where its rule isn't the
+      // open one, and the group's.
+      await app.click('[data-testid="rule-menu"]');
+      const ruleItems = [' Open ↵', ...(await itemsOf(dropdown))];
+      await shut(dropdown);
+      // A group's ⋯ is in its header's slot, there under the pointer.
+      await keysItem.locator('[data-testid="group"]').hover();
+      await keysItem.locator('[data-testid="group-menu"]').click();
+      const groupItems = await itemsOf(dropdown);
+      await shut(dropdown);
+      // The pointer's right-click on a rule's row and on the group's header.
+      const onRow = await middle(ruleRow(SLOT));
+      await app.mouse.click(...onRow, { button: 'right' });
+      const rightRule = [await itemsOf(menu), await near(onRow)];
+      await shut(menu);
+      const header = keysItem.locator('[data-testid="group"]');
+      const onHeader = await middle(header);
+      await app.mouse.click(...onHeader, { button: 'right' });
+      const rightGroup = [await itemsOf(menu), await near(onHeader)];
+      await shut(menu);
+      // The keys on the focused items.
+      await ruleRow(SLOT).focus();
+      await app.keyboard.press('ContextMenu');
+      const keyRule = [await itemsOf(menu), await near(await corner(ruleRow(SLOT)))];
+      await shut(menu);
+      const keyBack = await rowSettled(focusedItem, (item) => item === SLOT);
+      await keysItem.focus();
+      await app.keyboard.press('Shift+F10');
+      const keyGroup = [await itemsOf(menu), await near(await corner(header))];
+      await shut(menu);
+      const groupBack = await rowSettled(focusedItem, (item) => item === 'group: Keys');
+      expect(
+        [rightRule, rightGroup, keyRule, keyBack, keyGroup, groupBack],
+        [
+          [ruleItems, true],
+          [groupItems, true],
+          [ruleItems, true],
+          SLOT,
+          [groupItems, true],
+          'group: Keys',
+        ],
+        `a rule's: ${ruleItems.join(', ')}; a group's: ${groupItems.join(', ')}`,
+      );
+    },
+  );
+  await check(
+    "a rule's right-click menu's items work: Duplicate opens a copy, Move to group moves it into Keys and No group out again, Export this rule saves it, Delete deletes it with the open rule staying open and Undo puts it back; a group's: Rename makes its name a field, Duplicate copies it, Export group saves it, Ungroup leaves its rules where it was, Delete deletes it and Undo puts it back",
+    async () => {
+      await keysReady();
+      const menu = app.locator('[data-slot="context-menu-content"]');
+      const rightClick = async (locator) => {
+        await locator.click({ button: 'right', position: { x: 60, y: 12 } });
+        await menu.locator('[role^="menuitem"]').first().waitFor({ timeout: 3000 });
+      };
+      const pick = async (text) => {
+        await menu.locator('[role^="menuitem"]', { hasText: text }).first().click();
+        await menu.waitFor({ state: 'detached', timeout: 3000 });
+      };
+      // Undo in the sidebar's footer, which says what was deleted last.
+      const undo = () => app.click('[data-testid="undo-notice-undo"]');
+      const groupOf = (locator) =>
+        locator.evaluate(
+          (row) =>
+            row.parentElement
+              .closest('[data-testid="group-block"]')
+              ?.querySelector('[data-testid="group"]').dataset.group ?? '',
+        );
+      const download = async (locator, text) => {
+        await rightClick(locator);
+        const [saved] = await Promise.all([app.waitForEvent('download'), pick(text)]);
+        return JSON.parse(fs.readFileSync(await saved.path(), 'utf8'));
+      };
+      // A rule's: Duplicate, on Never asked for.
+      await rightClick(ruleRow(NEVER));
+      await pick('Duplicate');
+      await app
+        .locator(`[data-testid="rule"][data-url="${NEVER}"]`)
+        .nth(1)
+        .waitFor({ timeout: 3000 });
+      const duplicated = [
+        await app.locator(`[data-testid="rule"][data-url="${NEVER}"]`).count(),
+        await openNow(),
+      ];
+      // Delete, on the copy, which is open: it closes, and Undo opens it again; then it's gone.
+      const copy = app.locator(
+        `[data-testid="rule"][data-url="${NEVER}"][data-selected]`,
+      );
+      await rightClick(copy);
+      await pick('Delete');
+      const deletedOpen = [
+        await app.locator(`[data-testid="rule"][data-url="${NEVER}"]`).count(),
+        await openNow(),
+      ];
+      await undo();
+      await copy.waitFor({ timeout: 3000 });
+      await rightClick(copy);
+      await pick('Delete');
+      await keysReady();
+      // Move to group: into Keys, then out of it.
+      await rightClick(ruleRow(SLOT));
+      await menu.locator('[data-testid="move-to-group"]').click();
+      await app.click('[data-testid="move-to"][data-group="Keys"]');
+      await menu.waitFor({ state: 'detached', timeout: 3000 });
+      const movedIn = await groupOf(ruleRow(SLOT));
+      await rightClick(ruleRow(SLOT));
+      await menu.locator('[data-testid="move-to-group"]').click();
+      await app.click('[data-testid="move-to-none"]');
+      await menu.waitFor({ state: 'detached', timeout: 3000 });
+      const movedOut = await groupOf(ruleRow(SLOT));
+      await keysReady();
+      // Export this rule, and Delete on a rule that isn't open.
+      const exportedRule = await download(ruleRow(OFF), 'Export this rule');
+      await rightClick(ruleRow(OFF));
+      await pick('Delete');
+      const deleted = [await ruleRow(OFF).count(), await openNow()];
+      await undo();
+      await ruleRow(OFF).waitFor({ timeout: 3000 });
+      // The group's: Rename, Duplicate (its copy's name a field to type in), Export group.
+      const header = keysItem.locator('[data-testid="group"]');
+      const groupField = app.locator('[data-testid="group-name-input"]');
+      await rightClick(header);
+      await pick('Rename');
+      await groupField.waitFor({ timeout: 3000 });
+      await sleep(200);
+      // Still there a moment later: the menu, shutting, doesn't take its focus away.
+      const renameField = [await groupField.inputValue()];
+      await app.keyboard.press('Escape');
+      await groupField.waitFor({ state: 'detached', timeout: 3000 });
+      await rightClick(header);
+      await pick('Duplicate');
+      await groupField.waitFor({ timeout: 3000 });
+      const copied = await groupField.inputValue();
+      await app.keyboard.press('Escape');
+      const copyHeader = app.locator(`[data-testid="group"][data-group="${copied}"]`);
+      await rightClick(copyHeader);
+      await pick('Delete');
+      await copyHeader.waitFor({ state: 'detached', timeout: 3000 });
+      const exportedGroup = await download(header, 'Export group');
+      // Ungroup, then Keys again; Delete, and Undo.
+      await rightClick(header);
+      await pick('Ungroup');
+      const ungrouped = [await keysItem.count(), await groupOf(ruleRow(K1))];
+      await keysReady();
+      await rightClick(header);
+      await pick('Delete');
+      const gone = [await keysItem.count(), await ruleRow(K1).count()];
+      await undo();
+      await keysItem.waitFor({ timeout: 3000 });
+      const back = [await groupOf(ruleRow(K1)), await groupOf(ruleRow(K2))];
+      // Each delete said so in the footer, none in a toast; the last undone, the notice is gone.
+      const said = [
+        await app.locator('[data-slot="toast"]').count(),
+        await app.locator('[data-testid="undo-notice"]').count(),
+      ];
+      expect(
+        [
+          duplicated,
+          deletedOpen,
+          [movedIn, movedOut],
+          exportedRule.rules.map(({ name }) => name),
+          deleted,
+          renameField,
+          copied,
+          [
+            exportedGroup.groups.map(({ name }) => name),
+            exportedGroup.rules.map(({ name }) => name),
+          ],
+          ungrouped,
+          gone,
+          back,
+          said,
+        ],
+        [
+          [2, NEVER],
+          [1, null],
+          ['Keys', ''],
+          ['Switched off'],
+          [0, openUrl],
+          ['Keys'],
+          'Keys copy',
+          [['Keys'], ['Key one', 'Key two']],
+          [0, ''],
+          [0, 0],
+          ['Keys', 'Keys'],
+          [0, 0],
+        ],
+      );
+    },
+  );
+  await check(
+    "a text field in the list, and text selected in a row, keep the browser's own menu: a right-click in a rule's name field while it's renamed, or on selected text, opens none of ours and leaves the browser's, which a right-click elsewhere on a row doesn't",
+    async () => {
+      await keysReady();
+      const menu = app.locator('[data-slot="context-menu-content"]');
+      await app.evaluate(() => {
+        window.menusKept = [];
+        addEventListener(
+          'contextmenu',
+          (event) => setTimeout(() => window.menusKept.push(event.defaultPrevented)),
+          true,
+        );
+      });
+      // In the field F2 makes.
+      await ruleRow(NEVER).focus();
+      await app.keyboard.press('F2');
+      const field = app.locator('[data-testid="rule-name-input"]');
+      await field.waitFor({ timeout: 3000 });
+      await field.click({ button: 'right' });
+      await sleep(300);
+      const inField = await menu.count();
+      await app.keyboard.press('Escape');
+      await field.waitFor({ state: 'detached', timeout: 3000 });
+      // On text selected in a row, then on the row with none selected.
+      const title = ruleRow(SLOT).locator('[data-slot="item-title"]');
+      await title.evaluate((element) => getSelection().selectAllChildren(element));
+      await title.click({ button: 'right' });
+      await sleep(300);
+      const onSelection = await menu.count();
+      await title.evaluate(() => getSelection().removeAllRanges());
+      await app.keyboard.press('Escape');
+      await title.click({ button: 'right' });
+      await menu.waitFor({ timeout: 3000 });
+      await app.keyboard.press('Escape');
+      await menu.waitFor({ state: 'detached', timeout: 3000 });
+      await sleep(100);
+      expect(
+        [inField, onSelection, await app.evaluate(() => window.menusKept)],
+        [0, 0, [false, false, true]],
+      );
+    },
+  );
+  await setStorage({ rules: beforeSlot, groups: beforeGroups });
+  await ruleRow(SLOT).waitFor({ state: 'detached', timeout: 3000 });
+  // Folding Keys and unfolding it left the folds' key behind (an empty list): gone again, as the
+  // editor's settings are checked by name further on.
+  await app.evaluate(() => localStorage.removeItem('ghostfetch.folded'));
+
   await check('delete with undo', async () => {
     const before = await app.locator('[data-testid="rule"]').count();
     await app.click('[data-testid="rule-menu"]');
     await app.click('[data-testid="delete-rule"]');
     expect(await app.locator('[data-testid="rule"]').count(), before - 1);
-    await app.click('[data-slot="toast"] button:has-text("Undo")');
+    await app.click('[data-testid="undo-notice-undo"]');
     expect(await app.locator('[data-testid="rule"]').count(), before);
   });
   await check('traffic view shows captured requests live', async () => {
@@ -2738,6 +3722,723 @@ try {
         );
     },
   );
+  await check(
+    'an open request\'s Copy URL, Copy as cURL and Copy body each copy and say so in the button ("Copied", a polite live region saying what), with no toast; a copy the browser refuses shows the error toast, saying what to do, and leaves the button as it was',
+    async () => {
+      // Up to 0.26.0 a copy said so in a toast at the corner, over the list in a side panel.
+      const url = `${ORIGIN}/api/user?case=live-check`;
+      await app
+        .locator('[data-testid="request"]', { hasText: 'case=live-check' })
+        .first()
+        .click();
+      // What the page writes to the clipboard, kept as it's written: the clipboard is the
+      // browser's own (the kit check reads it back).
+      await app.evaluate(() => {
+        window.copiedTexts = [];
+        navigator.clipboard.writeText = async (text) => {
+          window.copiedTexts.push(text);
+        };
+      });
+      const said = [];
+      for (const testid of ['copy-url', 'copy-curl', 'copy-body']) {
+        await app.click(`[data-testid="${testid}"]`);
+        await app.waitForSelector(`[data-testid="${testid}"][data-copied]`);
+        said.push(
+          await app
+            .locator(`[data-testid="${testid}"]`)
+            .evaluate((button) => [
+              getComputedStyle(button.querySelector('[data-part=copied]')).opacity,
+              button.nextElementSibling.getAttribute('aria-live'),
+              button.nextElementSibling.textContent,
+            ]),
+        );
+      }
+      const copied = await app.evaluate(() => window.copiedTexts);
+      const toasted = await app
+        .locator('[data-slot="toast"]', { hasText: /cop(y|ied)/i })
+        .count();
+      // Refused, as Firefox's sidebar does without the focus, once Copy URL says its words again.
+      await app.evaluate(() => {
+        navigator.clipboard.writeText = () =>
+          Promise.reject(new DOMException('Document is not focused.', 'NotAllowedError'));
+      });
+      await app.waitForSelector('[data-testid="copy-url"]:not([data-copied])');
+      await app.click('[data-testid="copy-url"]');
+      const toast = app.locator('[data-slot="toast"]', {
+        hasText: "Couldn't copy the URL",
+      });
+      await toast.waitFor({ timeout: 3000 });
+      await sleep(200);
+      const refused = [
+        await toast.textContent(),
+        await app
+          .locator('[data-testid="copy-url"]')
+          .evaluate((button) => [
+            button.hasAttribute('data-copied'),
+            button.nextElementSibling.textContent,
+          ]),
+      ];
+      await app.evaluate(() => delete navigator.clipboard.writeText);
+      await app.locator('[data-testid="request-back"]').click();
+      expect(
+        [
+          said,
+          copied[0],
+          copied[1],
+          JSON.parse(copied[2]).name,
+          copied[2].includes('\n'),
+          toasted,
+          refused,
+        ],
+        [
+          [
+            ['1', 'polite', 'Copied the URL'],
+            ['1', 'polite', 'Copied the cURL command'],
+            ['1', 'polite', 'Copied the response body'],
+          ],
+          url,
+          curlCommand({ method: 'GET', url, body: '' }),
+          'Real',
+          true,
+          0,
+          [
+            "Couldn't copy the URLThe browser didn't let Ghostfetch use the clipboard. Click in Ghostfetch, then copy again.",
+            [false, ''],
+          ],
+        ],
+      );
+    },
+  );
+  // Traffic's rows (3c): a request's slot, its status over its duration, or under the pointer its
+  // actions (Mock this response, Copy URL, Copy as cURL); how long ago the page sent it; the list
+  // as a list of buttons for the keyboard, one Tab stop, with Esc; and a row's right-click menu.
+  // On requests of their own, marked rows=…, which the search shows alone. The rules as they were
+  // after, the server's response a rule made here keeps gone with it, the search empty.
+  const { rules: beforeRows } = await worker.evaluate(() =>
+    chrome.storage.local.get('rules'),
+  );
+  const trafficRow = (mark) => app.locator('[data-testid="request"]', { hasText: mark });
+  const searchRequests = (text) => app.fill('[aria-label="Search requests"]', text);
+  // A request the page makes, `ago` ms back by its own clock, which its log keeps as when it was
+  // sent.
+  const callAgo = (url, ago) =>
+    page.evaluate(
+      async ([target, back]) => {
+        const real = Date.now;
+        Date.now = () => real() - back;
+        try {
+          await (await fetch(target)).text();
+          // The interceptor logs the request a moment after it ends.
+          await new Promise((resolve) => setTimeout(resolve, 200));
+        } finally {
+          Date.now = real;
+        }
+      },
+      [url, ago],
+    );
+  // A row's slot: how opaque what it says and its actions are; where the row's path and its slot
+  // stand; and the icons of its actions.
+  const requestSlot = (mark) =>
+    trafficRow(mark).evaluate((row) => {
+      const part = (slot) => row.querySelector(`[data-slot="${slot}"]`);
+      const box = (element) => {
+        const { left, right, top, bottom } = element.getBoundingClientRect();
+        return [left, right, top, bottom].map((edge) => Math.round(edge));
+      };
+      return {
+        status: getComputedStyle(part('item-status')).opacity,
+        actions: getComputedStyle(part('item-slot-actions')).opacity,
+        path: box(row.querySelector('[data-testid="request-path"]')),
+        slot: box(part('item-slot')),
+        icons: [...row.querySelectorAll('[data-action] [data-icon]')].map(
+          (icon) => icon.dataset.icon,
+        ),
+      };
+    });
+  // What has focus: a row's button (its path), or what it's called.
+  const requestFocus = () =>
+    app.evaluate(() => {
+      const active = document.activeElement;
+      if (active?.matches('[data-row-open]'))
+        return active
+          .closest('[data-testid="request"]')
+          .querySelector('[data-testid="request-path"]').textContent;
+      return `not a row: ${active?.getAttribute('aria-label') ?? active?.tagName}`;
+    });
+  // What the page writes to the clipboard, kept as it's written, and the clipboard as it was.
+  const watchClipboard = () =>
+    app.evaluate(() => {
+      window.copiedTexts = [];
+      navigator.clipboard.writeText = async (text) => {
+        window.copiedTexts.push(text);
+      };
+    });
+  const unwatchClipboard = () => app.evaluate(() => delete navigator.clipboard.writeText);
+  // How many tooltips are open, and how many controls still say they copied (each does for a
+  // second).
+  const tipsOpen = () => app.locator('[data-slot="tooltip"][data-open]').count();
+  const sayingCopied = () => app.locator('[data-copied]').count();
+  // Esc for the open request, once no tooltip is open: an open tooltip takes the first Esc, as a
+  // tooltip does, and one that focus opened shuts a moment after focus has left its control (Base
+  // UI waits a turn of the page's tasks to see where focus went), a moment that keys pressed back
+  // to back can fall in.
+  const escapeRequest = async () => {
+    await rowSettled(tipsOpen, (count) => count === 0);
+    await app.keyboard.press('Escape');
+  };
+  // What each check starts from, whatever the one before left: no right-click menu open (it keeps
+  // the pointer from the page), Traffic showing, no request open, the pointer away from the rows
+  // (resting on an action, its tooltip would take the first Esc, as a tooltip does), and no copy
+  // still saying it copied (a row's icon a check for its second).
+  const rowsReady = async () => {
+    const menu = app.locator('[data-slot="context-menu-content"]');
+    if (await menu.count()) {
+      await app.keyboard.press('Escape');
+      await menu.waitFor({ state: 'detached', timeout: 3000 });
+    }
+    await show('traffic');
+    const back = app.locator('[data-testid="request-back"]');
+    if (await back.isVisible()) await back.click();
+    await app.mouse.move(900, 780);
+    await rowSettled(sayingCopied, (count) => count === 0);
+  };
+  await show('traffic');
+  // 4½ minutes back: the screens' clock reads up to 15 s behind between its ticks, so the row says
+  // "4m" for the next half minute.
+  await callAgo('/api/user?rows=old', 270_000);
+  await call('/api/user?rows=plain');
+  await call('/api/early?rows=answered');
+  await trafficRow('rows=answered').waitFor({ timeout: 3000 });
+
+  await check(
+    '"Copied" belongs to the request it was copied from: another request opened within its second shows its own Copy URL at rest, and its live region says nothing',
+    async () => {
+      await show('traffic');
+      const rows = app.locator('[data-testid="request"]');
+      await rows.nth(1).waitFor({ timeout: 3000 });
+      await app.evaluate(() => {
+        navigator.clipboard.writeText = async () => {};
+      });
+      try {
+        await rows.nth(0).click();
+        await app.click('[data-testid="copy-url"]');
+        await app.waitForSelector('[data-testid="copy-url"][data-copied]');
+        const first = await app
+          .locator('[data-testid="request-detail"] h2')
+          .getAttribute('title');
+        await rows.nth(1).click();
+        await app.waitForFunction(
+          (was) =>
+            document.querySelector('[data-testid="request-detail"] h2')?.title !== was,
+          first,
+        );
+        const other = await app
+          .locator('[data-testid="copy-url"]')
+          .evaluate((button) => [
+            button.hasAttribute('data-copied'),
+            getComputedStyle(button.querySelector('[data-part=copied]')).opacity,
+            button.nextElementSibling.textContent,
+          ]);
+        expect(other, [false, '0', '']);
+      } finally {
+        await app.evaluate(() => delete navigator.clipboard.writeText);
+      }
+    },
+  );
+  await check(
+    'a request\'s row says how long ago the page sent it, after what happened ("· 4m"), from its first minute on; under "Just now" it doesn\'t, as that says it',
+    async () => {
+      await rowsReady();
+      await searchRequests('rows=');
+      await trafficRow('rows=old').waitFor({ timeout: 3000 });
+      const listed = await app.evaluate(() =>
+        [...document.querySelectorAll('[data-testid="traffic-list"] section')].map(
+          (section) => [
+            section.querySelector('h2').textContent,
+            [...section.querySelectorAll('[data-testid="request"]')].map((row) => {
+              const time = row.querySelector(
+                '[data-testid="request-path"] + span [data-testid="request-time"]',
+              );
+              return [
+                row.querySelector('[data-testid="request-path"]').textContent,
+                time?.textContent ?? null,
+              ];
+            }),
+          ],
+        ),
+      );
+      expect(listed, [
+        [
+          'Just now',
+          [
+            ['/api/early?rows=answered', null],
+            ['/api/user?rows=plain', null],
+          ],
+        ],
+        ['A few minutes ago', [['/api/user?rows=old', '· 4m']]],
+      ]);
+    },
+  );
+  await check(
+    'a row\'s time moves on with the screens\' clock by itself: a request made 1 min 57 s back says "· 1m", then "· 2m" from a tick of the clock, which draws the time again (RequestTime) and not the row (RequestRow)',
+    async () => {
+      await rowsReady();
+      await callAgo('/api/user?rows=tick', 117_000);
+      await searchRequests('rows=tick');
+      const time = trafficRow('rows=tick').locator('[data-testid="request-time"]');
+      await time.waitFor({ timeout: 3000 });
+      const before = await time.textContent();
+      const counts = await draws(async () => {
+        await app.waitForFunction(
+          () =>
+            document.querySelector('[data-testid="request"] [data-testid="request-time"]')
+              ?.textContent === '· 2m',
+          null,
+          { timeout: 35_000 },
+        );
+        await sleep(200);
+      });
+      expect(
+        [
+          before,
+          await time.textContent(),
+          (counts.RequestTime ?? 0) > 0,
+          counts.RequestRow ?? 0,
+        ],
+        ['· 1m', '· 2m', true, 0],
+        `drawn: RequestTime ${counts.RequestTime}, RequestRow ${counts.RequestRow}`,
+      );
+    },
+  );
+  await check(
+    "under the pointer a request's row shows Mock this response, Copy URL and Copy as cURL where its status and duration were, and nothing in the row moves; Copy URL copies the URL, its icon a check for a second, the actions staying that second with the pointer gone, a polite live region saying so; Copy as cURL copies the command",
+    async () => {
+      await rowsReady();
+      await searchRequests('rows=');
+      await app.mouse.move(900, 780);
+      const rest = await requestSlot('rows=plain');
+      await trafficRow('rows=plain').hover();
+      const shown = await rowSettled(
+        () => requestSlot('rows=plain'),
+        (slot) => slot.actions === '1' && slot.status === '0',
+      );
+      await watchClipboard();
+      try {
+        await trafficRow('rows=plain').locator('[data-testid="row-copy-url"]').click();
+        await app.mouse.move(900, 780);
+        const copying = await rowSettled(
+          () => requestSlot('rows=plain'),
+          (slot) => slot.icons.includes('check'),
+        );
+        await sleep(300);
+        const held = await requestSlot('rows=plain');
+        const said = await trafficRow('rows=plain')
+          .locator('[data-testid="row-copy-url"]')
+          .evaluate((button) => [
+            button.nextElementSibling.getAttribute('aria-live'),
+            button.nextElementSibling.textContent,
+          ]);
+        const after = await rowSettled(
+          () => requestSlot('rows=plain'),
+          (slot) => slot.status === '1' && !slot.icons.includes('check'),
+        );
+        await trafficRow('rows=plain').hover();
+        await trafficRow('rows=plain').locator('[data-testid="row-copy-curl"]').click();
+        await rowSettled(
+          () => app.evaluate(() => window.copiedTexts.length),
+          (count) => count === 2,
+        );
+        const url = `${ORIGIN}/api/user?rows=plain`;
+        const parts = (slot) => [slot.status, slot.actions, slot.path, slot.slot];
+        expect(
+          [
+            parts(rest),
+            [...parts(shown), shown.icons],
+            [held.status, held.actions, held.icons],
+            said,
+            parts(after),
+            await app.evaluate(() => window.copiedTexts),
+          ],
+          [
+            ['1', '0', rest.path, rest.slot],
+            ['0', '1', rest.path, rest.slot, ['wand', 'link', 'terminal']],
+            ['0', '1', ['wand', 'check', 'terminal']],
+            ['polite', 'Copied the URL'],
+            ['1', '0', rest.path, rest.slot],
+            [url, curlCommand({ method: 'GET', url, body: '' })],
+          ],
+          JSON.stringify({ copying }),
+        );
+      } finally {
+        await unwatchClipboard();
+      }
+    },
+  );
+  await check(
+    "Traffic's list is a list of buttons that's one Tab stop: Tab from the search lands on its row's button, then on that row's three actions, which show, then out of the list, the last one's tooltip shutting; ↑ ↓ Home End move between requests, from one stretch of time to the next; Enter opens one, its button marked the current one, focus staying on its row beside it; Esc shuts it, focus on its row; a screen reader names a row's button by its method, path and what happened, and describes it by its status and duration",
+    async () => {
+      await rowsReady();
+      await searchRequests('rows=');
+      await trafficRow('rows=old').waitFor({ timeout: 3000 });
+      const list = await app.evaluate(() => {
+        const rows = [...document.querySelectorAll('[data-testid="request"]')];
+        const pathOf = (row) =>
+          row.querySelector('[data-testid="request-path"]').textContent;
+        return {
+          order: rows.map(pathOf),
+          stops: [...document.querySelectorAll('[data-testid="traffic-list"] *')]
+            .filter(
+              (element) =>
+                element.tabIndex >= 0 && element.closest('[data-testid="request"]'),
+            )
+            .map((element) =>
+              element.matches('[data-row-open]')
+                ? pathOf(element.closest('[data-testid="request"]'))
+                : element.getAttribute('aria-label'),
+            ),
+        };
+      });
+      const stop = list.stops[0];
+      await app.locator('[aria-label="Search requests"]').focus();
+      const tabs = [];
+      let actions = '';
+      for (let time = 0; time < 5; time++) {
+        await app.keyboard.press('Tab');
+        tabs.push(await requestFocus());
+        // With focus on the row's first action, once the actions have faded in.
+        if (time === 1)
+          actions = (
+            await rowSettled(
+              () => requestSlot(stop),
+              (slot) => slot.actions === '1',
+            )
+          ).actions;
+      }
+      const left = await app.evaluate(
+        () => !document.activeElement?.closest('[data-testid="traffic-list"]'),
+      );
+      // The last action's tooltip, which focus opened, shuts with focus gone from it.
+      const tipsLeft = await rowSettled(tipsOpen, (count) => count === 0);
+      await trafficRow(stop).locator('[data-row-open]').focus();
+      const keys = [];
+      for (const key of [
+        'Home',
+        'ArrowDown',
+        'ArrowDown',
+        'ArrowDown',
+        'End',
+        'ArrowUp',
+      ]) {
+        await app.keyboard.press(key);
+        keys.push(await requestFocus());
+      }
+      // Enter on the one focused now (the third), and Esc.
+      await app.keyboard.press('Enter');
+      const detail = app.locator('[data-testid="request-detail"]');
+      await detail.waitFor({ timeout: 3000 });
+      const opened = [
+        await detail.locator('h2').textContent(),
+        await app.locator('[data-row-open][aria-current="true"]').count(),
+        await requestFocus(),
+      ];
+      await escapeRequest();
+      await detail.waitFor({ state: 'detached', timeout: 3000 });
+      const shut = await requestFocus();
+      // The button of /api/user?rows=plain, as a screen reader gets it.
+      const [role, name, description] = await axOf(
+        '[data-testid="request"]:has([data-full="/api/user?rows=plain"]) [data-row-open]',
+        editorSession,
+        true,
+      );
+      const { order } = list;
+      expect(
+        [
+          list.stops.slice(1),
+          tabs.slice(0, 4),
+          tabs[4].startsWith('not a row'),
+          left,
+          tipsLeft,
+          actions,
+          keys,
+          opened,
+          shut,
+          role,
+          name.startsWith('GET /api/user?rows=plain ') && name.includes(' · fetch()'),
+          /^200 \d+ ms$/.test(description),
+        ],
+        [
+          [
+            `Mock this response: GET ${stop}`,
+            `Copy URL: GET ${stop}`,
+            `Copy as cURL: GET ${stop}`,
+          ],
+          [
+            stop,
+            `not a row: Mock this response: GET ${stop}`,
+            `not a row: Copy URL: GET ${stop}`,
+            `not a row: Copy as cURL: GET ${stop}`,
+          ],
+          true,
+          true,
+          0,
+          '1',
+          [
+            order[0],
+            order[1],
+            order[2],
+            order[3] ?? order[2],
+            order.at(-1),
+            order.at(-2),
+          ],
+          [`GET${order[2]}`, 1, order[2]],
+          order[2],
+          'button',
+          true,
+          true,
+        ],
+        JSON.stringify({ name, description }),
+      );
+    },
+  );
+  await check(
+    "in a 420 px panel an open request takes the list's place: Enter on a row puts focus on the request's name at its top; Esc shuts it, the list back with focus on the row, and so does Close",
+    async () => {
+      await rowsReady();
+      await searchRequests('rows=');
+      const detail = app.locator('[data-testid="request-detail"]');
+      // What has focus: a row's button (its path), something in the open request, or else.
+      const where = () =>
+        app.evaluate(() => {
+          const active = document.activeElement;
+          if (active?.matches('[data-row-open]'))
+            return active
+              .closest('[data-testid="request"]')
+              .querySelector('[data-testid="request-path"]').textContent;
+          if (active?.closest('[data-testid="request-detail"]'))
+            return `in the request: ${active.tagName}`;
+          return `elsewhere: ${active?.tagName}`;
+        });
+      const listShows = () => app.locator('[data-testid="traffic-list"]').isVisible();
+      try {
+        await app.setViewportSize({ width: 420, height: 760 });
+        await trafficRow('rows=plain').waitFor({ state: 'visible', timeout: 3000 });
+        await trafficRow('rows=plain').locator('[data-row-open]').focus();
+        await app.keyboard.press('Enter');
+        await detail.waitFor({ timeout: 3000 });
+        const opened = [await listShows(), await where()];
+        await escapeRequest();
+        await detail.waitFor({ state: 'detached', timeout: 3000 });
+        const byEsc = [await listShows(), await where()];
+        await app.keyboard.press('Enter');
+        await detail.waitFor({ timeout: 3000 });
+        await app.locator('[data-testid="request-back"]').click();
+        await detail.waitFor({ state: 'detached', timeout: 3000 });
+        const byClose = [await listShows(), await where()];
+        expect(
+          [opened, byEsc, byClose],
+          [
+            [false, 'in the request: H2'],
+            [true, '/api/user?rows=plain'],
+            [true, '/api/user?rows=plain'],
+          ],
+        );
+      } finally {
+        await app.setViewportSize({ width: 1280, height: 820 });
+      }
+    },
+  );
+  await check(
+    "a right-click on a request's row opens its menu at the pointer: Mock this response, Copy URL and Copy as cURL, and Open the rule where a rule answered it, the row showing its actions while it's open; the ContextMenu key and Shift+F10 on the focused row open it at the row's bottom left, Esc giving focus back; its Copy URL copies and the row says so; its Open the rule opens the rule; elsewhere in the list, the browser's menu",
+    async () => {
+      await rowsReady();
+      await searchRequests('rows=');
+      const menu = app.locator('[data-slot="context-menu-content"]');
+      const items = async () => {
+        await menu.locator('[role="menuitem"]').first().waitFor({ timeout: 3000 });
+        return (await menu.locator('[role="menuitem"]').allTextContents()).map((text) =>
+          text.trim(),
+        );
+      };
+      const near = async (point) => {
+        const box = await menu.boundingBox();
+        return Boolean(box) && Math.hypot(box.x - point[0], box.y - point[1]) <= 12;
+      };
+      const shut = async () => {
+        await app.keyboard.press('Escape');
+        await menu.waitFor({ state: 'detached', timeout: 3000 });
+      };
+      const pointOn = async (mark) => {
+        const box = await trafficRow(mark).boundingBox();
+        return [box.x + 120, box.y + box.height / 2];
+      };
+      const ROW_ITEMS = ['Mock this response', 'Copy URL', 'Copy as cURL'];
+      // By the pointer, on the request a rule answered, the pointer then gone from its row; and
+      // on one no rule answered.
+      const onAnswered = await pointOn('rows=answered');
+      await app.mouse.click(...onAnswered, { button: 'right' });
+      const answered = [await items(), await near(onAnswered)];
+      await app.mouse.move(900, 780);
+      await sleep(300);
+      const whileOpen = (await requestSlot('rows=answered')).actions;
+      await shut();
+      await app.mouse.click(...(await pointOn('rows=plain')), { button: 'right' });
+      const plain = await items();
+      await shut();
+      // The keys, on the row with focus.
+      await trafficRow('rows=plain').locator('[data-row-open]').focus();
+      await app.keyboard.press('ContextMenu');
+      const box = await trafficRow('rows=plain').boundingBox();
+      const byKey = [await items(), await near([box.x, box.y + box.height])];
+      await shut();
+      const back = await rowSettled(
+        requestFocus,
+        (focused) => focused === '/api/user?rows=plain',
+      );
+      await app.keyboard.press('Shift+F10');
+      const byShift = await items();
+      // Its Copy URL: the row's own button copies, and its icon says so.
+      await watchClipboard();
+      let copied;
+      try {
+        await menu.locator('[data-testid="request-menu-copy-url"]').click();
+        await menu.waitFor({ state: 'detached', timeout: 3000 });
+        const slot = await rowSettled(
+          () => requestSlot('rows=plain'),
+          (look) => look.icons.includes('check') && look.actions === '1',
+        );
+        copied = [slot.actions, slot.icons, await app.evaluate(() => window.copiedTexts)];
+      } finally {
+        await unwatchClipboard();
+      }
+      // Its Open the rule, on the request a rule answered.
+      await app.mouse.click(...(await pointOn('rows=answered')), { button: 'right' });
+      await items();
+      await menu.locator('[data-testid="request-menu-open-rule"]').click();
+      const opened = await rowSettled(openNow, (url) => url === '/api/early');
+      await show('traffic');
+      // A stretch of time's label: no menu of ours, and nothing kept from the browser.
+      await app.evaluate(() => {
+        window.trafficMenus = [];
+        addEventListener('contextmenu', (event) => window.trafficMenus.push(event), true);
+      });
+      await app
+        .locator('[data-testid="traffic-list"] h2', { hasText: 'Just now' })
+        .click({ button: 'right' });
+      await sleep(300);
+      const elsewhere = [
+        await menu.count(),
+        await app.evaluate(() =>
+          window.trafficMenus.map((event) => event.defaultPrevented),
+        ),
+      ];
+      expect(
+        [answered, whileOpen, plain, byKey, back, byShift, copied, opened, elsewhere],
+        [
+          [[...ROW_ITEMS, 'Open the rule'], true],
+          '1',
+          ROW_ITEMS,
+          [ROW_ITEMS, true],
+          '/api/user?rows=plain',
+          ROW_ITEMS,
+          ['1', ['wand', 'check', 'terminal'], [`${ORIGIN}/api/user?rows=plain`]],
+          '/api/early',
+          [0, [false]],
+        ],
+      );
+    },
+  );
+  await check(
+    "Mock this response on a request's row makes a rule of its response, as the open request's button does: the rule opens, with the server's body",
+    async () => {
+      await rowsReady();
+      await searchRequests('rows=');
+      await trafficRow('rows=plain').hover();
+      await trafficRow('rows=plain').locator('[data-testid="row-mock"]').click();
+      await app.waitForSelector('[data-testid="view-rules"]:not([hidden])');
+      expect(
+        [
+          JSON.parse(await body.inputValue()).name,
+          await app.locator('[data-testid="row-url-value"]').textContent(),
+        ],
+        ['Real', '/api/user?rows=plain'],
+      );
+    },
+  );
+  await check(
+    "in Commit Mono at Larger, in a 420 px panel, nothing in a request's row reaches past its edge: its slot ends inside the row, and what happened gives way before its time",
+    async () => {
+      await rowsReady();
+      await searchRequests('');
+      try {
+        await app.evaluate(() =>
+          Object.assign(document.documentElement.dataset, {
+            font: 'mono',
+            size: 'larger',
+          }),
+        );
+        await app.setViewportSize({ width: 420, height: 760 });
+        await app.evaluate(() => document.fonts.ready);
+        await app
+          .locator('[data-testid="request"]')
+          .first()
+          .waitFor({ state: 'visible' });
+        const rows = await app.evaluate(() =>
+          [...document.querySelectorAll('[data-testid="request"]')].map((row) => {
+            const edge =
+              row.getBoundingClientRect().right -
+              parseFloat(getComputedStyle(row).paddingRight);
+            const slot = row
+              .querySelector('[data-slot="item-slot"]')
+              .getBoundingClientRect();
+            const open = row.querySelector('[data-row-open]');
+            const second = row.querySelector('[data-testid="request-path"] + span');
+            const time = second.querySelector('[data-testid="request-time"]');
+            return {
+              inside:
+                slot.right <= edge + 0.5 &&
+                row.scrollWidth <= row.clientWidth &&
+                open.scrollWidth <= open.clientWidth,
+              time: Boolean(time),
+              timeWhole:
+                !time ||
+                (time.getBoundingClientRect().right <=
+                  second.getBoundingClientRect().right + 0.5 &&
+                  time.scrollWidth <= time.clientWidth),
+            };
+          }),
+        );
+        expect(
+          [
+            rows.length > 3,
+            rows.every((row) => row.inside),
+            rows.some((row) => row.time),
+            rows.every((row) => row.timeWhole),
+          ],
+          [true, true, true, true],
+          JSON.stringify(rows.filter((row) => !row.inside || !row.timeWhole)),
+        );
+      } finally {
+        await app.evaluate(() => {
+          delete document.documentElement.dataset.font;
+          delete document.documentElement.dataset.size;
+        });
+        await app.setViewportSize({ width: 1280, height: 820 });
+      }
+    },
+  );
+  {
+    const { rules: afterRows } = await worker.evaluate(() =>
+      chrome.storage.local.get('rules'),
+    );
+    const made = afterRows
+      .filter((rule) => !beforeRows.some(({ id }) => id === rule.id))
+      .map(({ id }) => `serverResponse:${id}`);
+    await setStorage({ rules: beforeRows });
+    await worker.evaluate((keys) => chrome.storage.local.remove(keys), made);
+    await show('traffic');
+    await searchRequests('');
+  }
+
   await check('"Mock this response" turns a request into a rule', async () => {
     await app
       .locator('[data-testid="request"]', { hasText: 'case=live-check' })
@@ -3754,8 +5455,10 @@ try {
         ),
       ];
       const on = await state();
-      // No Turn off or Turn on, nor any button but the dot and the name.
-      const buttons = await first.locator('button').count();
+      // No Turn off or Turn on: the dot is the switch, and the row's one button is Edit this rule.
+      const buttons = await first
+        .locator('button')
+        .evaluateAll((all) => all.map((button) => button.dataset.testid));
       await dot.click();
       await sleep(200);
       const off = await state();
@@ -3763,12 +5466,17 @@ try {
       await sleep(200);
       expect(
         [on, off, await state(), buttons],
-        [[true, 'true', true], [false, 'false', false], [true, 'true', true], 1],
+        [
+          [true, 'true', true],
+          [false, 'false', false],
+          [true, 'true', true],
+          ['edit-rule'],
+        ],
       );
     },
   );
   await check(
-    "a long rule name is cut short in the popup, after its dot and inside its row, with nothing moving under the pointer, and the editor's list shows a name or URL whole in a tooltip only when it's cut short",
+    "a long rule name is cut short in the popup, after its dot and inside its row, with nothing moving under the pointer; the editor's list cuts a long URL in its middle, its end in sight inside the row, and shows a name or URL whole in a tooltip only when it's cut short",
     async () => {
       const rules = (await worker.evaluate(() => chrome.storage.local.get('rules')))
         .rules;
@@ -3786,14 +5494,14 @@ try {
         const row = popup.locator('[data-testid="popup-rule"]').first();
         await popup.waitForFunction(
           (name) =>
-            document.querySelector('[data-testid="popup-rule"] button')?.textContent ===
-            name,
+            document.querySelector('[data-testid="popup-rule"] [data-slot="item-title"]')
+              ?.textContent === name,
           url,
           { timeout: 3000 },
         );
         const edges = () =>
           row.evaluate((element) => {
-            const name = element.querySelector('button');
+            const name = element.querySelector('[data-slot="item-title"]');
             const box = (target) => target.getBoundingClientRect();
             return [
               name.scrollWidth > name.clientWidth,
@@ -3808,16 +5516,39 @@ try {
         await row.hover();
         await sleep(250);
         const pointed = await edges();
-        // The editor: each row under the pointer, its tooltip, and what it cuts short.
+        // The editor: the long URL, its title as the rule has no name, cut in its middle: the
+        // head cut short, the end whole and inside the row.
         await show('rules');
         await app.waitForSelector(`[data-testid="rule"][data-url="${url}"]`);
+        const end = await app
+          .locator(`[data-testid="rule"][data-url="${url}"]`)
+          .evaluate((element) => {
+            const head = element.querySelector(
+              '[data-slot="item-title"] [data-part="head"]',
+            );
+            const tail = element.querySelector(
+              '[data-slot="item-title"] [data-part="tail"]',
+            );
+            return [
+              head.scrollWidth > head.clientWidth,
+              tail.textContent,
+              tail.scrollWidth <= tail.clientWidth,
+              tail.getBoundingClientRect().right <= element.getBoundingClientRect().right,
+            ];
+          });
+        // Each row under the pointer, its tooltip, and what it cuts short: a name at its end, a
+        // URL in its middle (its head, or in less room than its end, its end).
         const tips = [];
         for (const item of await app.locator('[data-testid="rule"]').all()) {
           await item.hover();
           tips.push(
             await item.evaluate((element) => {
               const cut = [...element.querySelectorAll('[data-full]')]
-                .filter((part) => part.scrollWidth > part.clientWidth)
+                .filter((part) =>
+                  [part, ...part.querySelectorAll('[data-part]')].some(
+                    (each) => each.scrollWidth > each.clientWidth,
+                  ),
+                )
                 .map((part) => part.dataset.full);
               return [
                 cut.length > 0,
@@ -3830,11 +5561,19 @@ try {
           [
             resting.filter((each) => typeof each === 'boolean'),
             pointed[3] === resting[3],
+            end,
             tips.every(([, right]) => right),
             tips.some(([cut]) => cut),
             tips.some(([cut]) => !cut),
           ],
-          [[true, true, true, true], true, true, true, true],
+          [
+            [true, true, true, true],
+            true,
+            [true, '1e2f3a4b5c6d', true, true],
+            true,
+            true,
+            true,
+          ],
         );
       } finally {
         await popup.mouse.move(1, 1);
@@ -3885,7 +5624,7 @@ try {
                     fold.compareDocumentPosition(row) & Node.DOCUMENT_POSITION_PRECEDING,
                 )
                 .map((row) => [
-                  row.querySelector('button').textContent,
+                  row.querySelector('[data-slot="item-title"]').textContent,
                   row.querySelector('[role="switch"]').getAttribute('aria-checked') ===
                     'true',
                   row.querySelector('[data-testid="rule-did"]')?.textContent ?? '',
@@ -3920,6 +5659,1080 @@ try {
       }
     },
   );
+
+  // The popup's rules as the editor's rows (3b): a rule's slot, what it did on the tab's page and
+  // when ("1 mocked · 4m"), from the counts the page sends with when each rule last answered, or
+  // under the pointer and with focus its Edit this rule; the step back in All rules; and the list
+  // as a tree for the keyboard, with a rule's right-click menu. On a blank page of their own, whose
+  // log starts empty (`popPage`), beside which a popup opens as the toolbar's would (`beside`):
+  // five rules at the top of the list, then a group of two, Pops; three of them answer before the
+  // popup opens, one 50 s and one 4 minutes before by the page's clock. The list, the folds and
+  // the rule open in the editor as they were after these checks.
+  const POP_ANSWERS = '/api/pop-answers';
+  const POP_OLD = '/api/pop-old';
+  const POP_NEVER = '/api/pop-never';
+  const POP_OFF = '/api/pop-off';
+  const POP_LATE = '/api/pop-late';
+  const POP_ONE = '/api/pop-one';
+  const POP_TWO = '/api/pop-two';
+  const POPS = createGroup('Pops');
+  const POP_RULES = [
+    slotRule(POP_ANSWERS, 'Pop answers'),
+    slotRule(POP_OLD, 'Pop answered before'),
+    slotRule(POP_NEVER, 'Pop never asked for'),
+    slotRule(POP_OFF, 'Pop switched off', false),
+    slotRule(POP_LATE, 'Pop answers late'),
+    ...[POP_ONE, POP_TWO].map((url, index) =>
+      Object.assign(slotRule(url, `Pop ${index ? 'two' : 'one'}`), { group: POPS.id }),
+    ),
+  ];
+  const popId = (url) => POP_RULES.find((rule) => rule.match.url === url).id;
+  const { rules: beforePop, groups: beforePopGroups = [] } = await worker.evaluate(() =>
+    chrome.storage.local.get(['rules', 'groups']),
+  );
+  const openBeforePop = await openNow();
+  await setStorage({
+    rules: [...POP_RULES, ...beforePop],
+    groups: [{ ...POPS, at: 5 }, ...beforePopGroups],
+  });
+  const popPage = await context.newPage();
+  popPage.on('pageerror', (error) => errors.push(`pop page: ${error.message}`));
+  await popPage.goto(`${ORIGIN}/__control?popup`);
+  const popTab = (await worker.evaluate(() => chrome.tabs.query({}))).find(
+    (candidate) => candidate.url === popPage.url(),
+  );
+  // A request the page makes, `ago` ms back by its own clock, which its log keeps as when the
+  // request was sent; and when (by this clock) it made it.
+  const popCall = async (url, ago = 0) => {
+    const at = Date.now();
+    await popPage.evaluate(
+      async ([target, back]) => {
+        const real = Date.now;
+        Date.now = () => real() - back;
+        try {
+          await (await fetch(target)).text();
+          // The interceptor logs the request a moment after it ends.
+          await new Promise((resolve) => setTimeout(resolve, 200));
+        } finally {
+          Date.now = real;
+        }
+      },
+      [url, ago],
+    );
+    return at - ago;
+  };
+  // POP_OLD answers twice, 6 minutes back and then 4: the last time is the one it says.
+  await popCall(POP_OLD, 6 * 60_000);
+  const sentAt = {
+    [POP_ANSWERS]: await popCall(POP_ANSWERS, 50_000),
+    [POP_OLD]: await popCall(POP_OLD, 4 * 60_000),
+    [POP_ONE]: await popCall(POP_ONE),
+  };
+  // The popup beside the page, as the toolbar's opens: in a background tab, which takes the page's
+  // tab as the one it's about, 330 px wide. The side panel it opens the editor in (Edit this rule,
+  // a row's click, Enter) is stood in for, as one opened here would stay open over the checks
+  // after these: what it's asked for, the window, and whether the click or key that asked is the
+  // user's, which Chrome needs; and the popup's window losing focus, which would close a popup.
+  await popPage.bringToFront();
+  const besideOpened = context.waitForEvent('page', {
+    predicate: (candidate) => candidate.url().includes('popup.html'),
+  });
+  await worker.evaluate(() => chrome.tabs.create({ url: 'popup.html', active: false }));
+  const beside = await besideOpened;
+  beside.on('pageerror', (error) => errors.push(`popup beside: ${error.message}`));
+  beside.on(
+    'console',
+    (message) =>
+      message.type() === 'error' &&
+      errors.push(`popup beside console: ${message.text()}`),
+  );
+  await beside.setViewportSize({ width: 330, height: 600 });
+  await beside.waitForSelector('[data-testid="not-answering"]', { timeout: 5000 });
+  await beside.bringToFront();
+  await beside.evaluate(() => {
+    window.sidePanels = [];
+    chrome.sidePanel.open = (options) => {
+      window.sidePanels.push([options.windowId, navigator.userActivation.isActive]);
+      return new Promise(() => {});
+    };
+    window.blurs = 0;
+    window.addEventListener('blur', () => (window.blurs += 1));
+  });
+  const besideWindow = await beside.evaluate(() =>
+    chrome.windows.getCurrent().then(({ id }) => id),
+  );
+  const besideSession = await context.newCDPSession(beside);
+  const popRow = (url) => beside.locator(`[data-testid="popup-rule"][data-url="${url}"]`);
+  const popLine = (url) => popRow(url).evaluate(readLine);
+  const popFold = beside.locator('[data-testid="not-answering-block"]');
+  const popsItem = beside.locator(
+    `[data-testid="popup-group-block"][data-item="${POPS.id}"]`,
+  );
+  // What has focus in the popup: a rule's row (what it matches), a group's ("group: " its name),
+  // the fold, or else what it's called.
+  const popFocus = () =>
+    beside.evaluate(() => {
+      const active = document.activeElement;
+      if (!active?.matches('[role="treeitem"]'))
+        return `not an item: ${active?.getAttribute('aria-label') ?? active?.textContent?.trim()}`;
+      if (active.dataset.testid === 'not-answering-block') return 'fold';
+      if (active.dataset.testid === 'popup-group-block')
+        return `group: ${active.querySelector('[data-testid="popup-group"]').dataset.group}`;
+      return active.dataset.url;
+    });
+  // Keys pressed one after another, and where focus is after each.
+  const popKeys = async (keys) => {
+    const seen = [];
+    for (const key of keys) {
+      await beside.keyboard.press(key);
+      seen.push(await popFocus());
+    }
+    return seen;
+  };
+  // The list drawn anew: This page, the fold shut, no item focused before, and no menu a check
+  // before left open.
+  const popReset = async () => {
+    if (await beside.locator('[data-slot="context-menu-content"]').count()) {
+      await beside.keyboard.press('Escape');
+      await beside
+        .locator('[data-slot="context-menu-content"]')
+        .waitFor({ state: 'detached', timeout: 3000 });
+    }
+    await beside.click('[data-testid="view-rules"]');
+    await beside.click('[data-testid="view-page"]');
+    await popFold.waitFor({ timeout: 3000 });
+    await beside.mouse.move(1, 1);
+  };
+  const popGroup = async () =>
+    (await worker.evaluate(() => chrome.storage.local.get('groups'))).groups.find(
+      ({ id }) => id === POPS.id,
+    );
+
+  await check(
+    'a popup row says at its right end what its rule did on the page and when, as the editor\'s does: "1 mocked · now", or "2 mocked · 4m" for requests the page made 6 and 4 minutes ago by its clock, the count in green and the time in grey; the page tells the popup when each rule last answered (last), beside its counts as they were',
+    async () => {
+      const theme = await textColours(beside);
+      const said = await beside.evaluate(() =>
+        [...document.querySelectorAll('[data-testid="popup-rule"]')]
+          .filter((row) => !row.closest('[data-testid="not-answering-block"]'))
+          .map((row) => [
+            row.dataset.url,
+            row.querySelector('[data-slot="item-status"]').textContent,
+          ]),
+      );
+      const colours = await popRow(POP_OLD).evaluate((row) =>
+        ['rule-did', 'rule-time'].map(
+          (id) => getComputedStyle(row.querySelector(`[data-testid="${id}"]`)).color,
+        ),
+      );
+      const told = await worker.evaluate(
+        (id) =>
+          chrome.tabs.sendMessage(id, { type: 'ghostfetch:counts' }, { frameId: 0 }),
+        popTab.id,
+      );
+      // When each rule last answered, as the page tells it, against when it asked.
+      const when = [POP_ANSWERS, POP_OLD, POP_ONE].map(
+        (url) => Math.abs(told.last[popId(url)] - sentAt[url]) < 3000,
+      );
+      expect(
+        [
+          said,
+          colours,
+          Object.keys(told),
+          told.record,
+          Object.keys(told.rules).toSorted(),
+          told.rules[popId(POP_OLD)],
+          Object.keys(told.last).toSorted(),
+          when,
+        ],
+        [
+          [
+            [POP_ANSWERS, '1 mocked · now'],
+            [POP_OLD, '2 mocked · 4m'],
+            [POP_ONE, '1 mocked · now'],
+          ],
+          [theme.signal, theme.t50],
+          ['record', 'rules', 'last'],
+          true,
+          [POP_ANSWERS, POP_OLD, POP_ONE].map(popId).toSorted(),
+          { mocked: 2, modified: 0, failed: 0 },
+          [POP_ANSWERS, POP_OLD, POP_ONE].map(popId).toSorted(),
+          [true, true, true],
+        ],
+      );
+    },
+  );
+  await check(
+    "a popup row's time moves on with the screens' clock by itself: the request made 50 s before the popup opened says now, then 1m from the clock's next tick, which draws the time again (RuleTime) and not the row (RuleRow) or the list",
+    async () => {
+      const before = (await popLine(POP_ANSWERS)).says;
+      const counts = await drawsIn(besideSession, async () => {
+        await beside.waitForFunction(
+          (url) =>
+            document.querySelector(
+              `[data-testid="popup-rule"][data-url="${url}"] [data-testid="rule-time"]`,
+            )?.textContent === '· 1m',
+          POP_ANSWERS,
+          { timeout: 20_000 },
+        );
+        await sleep(200);
+      });
+      expect(
+        [
+          before,
+          (await popLine(POP_ANSWERS)).says,
+          (counts.RuleTime ?? 0) > 0,
+          counts.RuleRow ?? 0,
+          counts.RuleList ?? 0,
+        ],
+        ['1 mocked · now', '1 mocked · 1m', true, 0, 0],
+        `drawn: RuleTime ${counts.RuleTime}, RuleRow ${counts.RuleRow}, RuleList ${counts.RuleList}`,
+      );
+    },
+  );
+  await check(
+    "under the pointer a popup row's slot shows its Edit this rule where it said what the rule did, and nothing in the row moves; Edit this rule, a click on the row and Enter on it each open the rule in the editor, in the side panel of the popup's window, asked in the user's click or key; its dot turns it off and on and opens nothing",
+    async () => {
+      await beside.mouse.move(1, 1);
+      const rest = await popLine(POP_OLD);
+      await popRow(POP_OLD).hover();
+      const shown = await rowSettled(
+        () => popLine(POP_OLD),
+        (line) => line.actions === '1' && line.status === '0',
+      );
+      const opened = [];
+      const opens = async (act, url) => {
+        await act();
+        opened.push(await rowSettled(openNow, (now) => now === url));
+      };
+      await opens(
+        () => popRow(POP_OLD).locator('[data-testid="edit-rule"]').click(),
+        POP_OLD,
+      );
+      await opens(
+        () => popRow(POP_ANSWERS).locator('[data-slot="item-title"]').click(),
+        POP_ANSWERS,
+      );
+      await opens(async () => {
+        await popRow(POP_OLD).focus();
+        await beside.keyboard.press('Enter');
+      }, POP_OLD);
+      const dot = popRow(POP_ANSWERS).locator('[role="switch"]');
+      await dot.click();
+      const off = (
+        await rowSettled(
+          () => slotStored(POP_ANSWERS),
+          (rule) => !rule.enabled,
+        )
+      ).enabled;
+      await dot.click();
+      const on = (
+        await rowSettled(
+          () => slotStored(POP_ANSWERS),
+          (rule) => rule.enabled,
+        )
+      ).enabled;
+      await sleep(200);
+      expect(
+        [
+          [rest.status, rest.actions],
+          [shown.status, shown.actions, shown.name, shown.slot],
+          opened,
+          await beside.evaluate(() => window.sidePanels),
+          [off, on],
+          await openNow(),
+        ],
+        [
+          ['1', '0'],
+          ['0', '1', rest.name, rest.slot],
+          [POP_OLD, POP_ANSWERS, POP_OLD],
+          [
+            [besideWindow, true],
+            [besideWindow, true],
+            [besideWindow, true],
+          ],
+          [false, true],
+          POP_OLD,
+        ],
+      );
+    },
+  );
+  await check(
+    "the popup's rule list is a tree that's one Tab stop: Tab from its tabs lands on its first row, then on that row's Edit this rule, which shows, then out of the list; no other row's controls, nor any dot, is a Tab stop; each item says its level and its place among its own, the fold whether it's open; a screen reader names a row by its rule's name, described by what it did and what it matches, and the fold by its own",
+    async () => {
+      await popReset();
+      const tree = await beside.evaluate(() => {
+        const list = document.querySelector('[role="tree"]');
+        const label = (item) =>
+          item.dataset.testid === 'not-answering-block' ? 'fold' : item.dataset.url;
+        return {
+          name: list.getAttribute('aria-label'),
+          items: [...list.querySelectorAll('[role="treeitem"]')].map((item) => [
+            label(item),
+            ...['aria-level', 'aria-posinset', 'aria-setsize', 'aria-expanded'].map(
+              (name) => item.getAttribute(name),
+            ),
+          ]),
+          stops: [...list.querySelectorAll('*')]
+            .filter((element) => element.tabIndex >= 0)
+            .map((element) =>
+              element.matches('[role="treeitem"]')
+                ? label(element)
+                : element.getAttribute('aria-label'),
+            ),
+        };
+      });
+      await beside.locator('[data-testid="view-page"]').focus();
+      const tabs = [];
+      let actions = '';
+      for (let time = 0; time < 3; time++) {
+        await beside.keyboard.press('Tab');
+        tabs.push(await popFocus());
+        // With focus on Edit this rule, once the actions have faded in.
+        if (time === 1)
+          actions = (
+            await rowSettled(
+              () => popLine(POP_ANSWERS),
+              (line) => line.actions === '1',
+            )
+          ).actions;
+      }
+      // Role, name and description, as Chromium gives them a screen reader.
+      const ax = async (selector) => {
+        const { root } = await besideSession.send('DOM.getDocument', { depth: 0 });
+        const { nodeId } = await besideSession.send('DOM.querySelector', {
+          nodeId: root.nodeId,
+          selector,
+        });
+        const { nodes } = await besideSession.send('Accessibility.getPartialAXTree', {
+          nodeId,
+          fetchRelatives: false,
+        });
+        return [
+          nodes[0]?.role?.value,
+          nodes[0]?.name?.value,
+          nodes[0]?.description?.value,
+        ];
+      };
+      const row = await ax(`[data-testid="popup-rule"][data-url="${POP_ANSWERS}"]`);
+      const fold = await ax('[data-testid="not-answering-block"]');
+      const EDIT = 'Edit this rule: “Pop answers”';
+      expect(
+        [
+          tree.name,
+          tree.items,
+          tree.stops,
+          tabs,
+          actions,
+          row.slice(0, 2),
+          /^1 mocked · \d+m\b.*\/api\/pop-answers/.test(row[2]),
+          fold.slice(0, 2),
+          /^\d+ on · \d+ off$/.test(fold[2]),
+        ],
+        [
+          'Rules',
+          [
+            [POP_ANSWERS, '1', '1', '4', null],
+            [POP_OLD, '1', '2', '4', null],
+            [POP_ONE, '1', '3', '4', null],
+            ['fold', '1', '4', '4', 'false'],
+          ],
+          [POP_ANSWERS, EDIT],
+          [POP_ANSWERS, `not an item: ${EDIT}`, 'not an item: Open editor'],
+          '1',
+          ['treeitem', 'Pop answers'],
+          true,
+          ['treeitem', 'Not answering here'],
+          true,
+        ],
+        `described as “${row[2]}” and “${fold[2]}”`,
+      );
+    },
+  );
+  await check(
+    "in the popup's This page ↑ ↓ Home End move between its rows, passing the fold's rules while it's shut; → opens the fold and goes on into it, ← goes from a rule in it back to the fold and shuts it; Enter and Space open and shut it; Space turns a focused rule off and on as its dot does, saved at once, the rule staying where it is with focus",
+    async () => {
+      await popReset();
+      await popRow(POP_ANSWERS).focus();
+      const open = () => popFold.getAttribute('aria-expanded');
+      const shutMoves = await popKeys([
+        'ArrowDown',
+        'ArrowDown',
+        'ArrowDown',
+        'ArrowDown',
+        'ArrowUp',
+        'Home',
+        'End',
+      ]);
+      const shut = await open();
+      const into = await popKeys(['ArrowRight', 'ArrowRight', 'ArrowDown']);
+      const opened = await open();
+      const last = await beside.evaluate(
+        () => [...document.querySelectorAll('[role="treeitem"]')].at(-1).dataset.url,
+      );
+      const out = await popKeys(['End', 'ArrowLeft', 'ArrowLeft']);
+      const shutAgain = await open();
+      const byKeys = [];
+      for (const key of ['Enter', 'Enter', 'Space', 'Space']) {
+        await beside.keyboard.press(key);
+        byKeys.push(await open());
+      }
+      await beside.keyboard.press('Home');
+      await beside.keyboard.press('Space');
+      const off = (
+        await rowSettled(
+          () => slotStored(POP_ANSWERS),
+          (rule) => !rule.enabled,
+        )
+      ).enabled;
+      const stayed = [
+        await popFocus(),
+        await popRow(POP_ANSWERS).getAttribute('aria-posinset'),
+      ];
+      await beside.keyboard.press('Space');
+      const on = (
+        await rowSettled(
+          () => slotStored(POP_ANSWERS),
+          (rule) => rule.enabled,
+        )
+      ).enabled;
+      expect(
+        [shutMoves, shut, into, opened, out, shutAgain, byKeys, [off, on], stayed],
+        [
+          [POP_OLD, POP_ONE, 'fold', 'fold', POP_ONE, POP_ANSWERS, 'fold'],
+          'false',
+          ['fold', POP_NEVER, POP_OFF],
+          'true',
+          [last, 'fold', 'fold'],
+          'false',
+          ['true', 'false', 'true', 'false'],
+          [false, true],
+          [POP_ANSWERS, '1'],
+        ],
+      );
+    },
+  );
+  await check(
+    "in the popup's All rules → and ← unfold and fold a group and step into it and out, as in the editor's list, ↓ passing a folded group's rules; Enter folds and unfolds it too, and Space turns the group off and on as its dot does, saved at once",
+    async () => {
+      await beside.click('[data-testid="view-rules"]');
+      await popsItem.waitFor({ timeout: 3000 });
+      const next = await popsItem.evaluate((item) => {
+        const after = item.nextElementSibling;
+        return after.dataset.testid === 'popup-group-block'
+          ? `group: ${after.querySelector('[data-testid="popup-group"]').dataset.group}`
+          : after.dataset.url;
+      });
+      const expanded = () => popsItem.getAttribute('aria-expanded');
+      await popsItem.focus();
+      const inAndOut = await popKeys(['ArrowRight', 'ArrowLeft', 'ArrowLeft']);
+      const folded = await expanded();
+      const past = await popKeys(['ArrowDown', 'ArrowUp', 'ArrowRight']);
+      const unfolded = await expanded();
+      const byEnter = [];
+      for (const key of ['Enter', 'Enter']) {
+        await beside.keyboard.press(key);
+        byEnter.push(await expanded());
+      }
+      await beside.keyboard.press('Space');
+      const off = (await rowSettled(popGroup, (group) => !group.enabled)).enabled;
+      await beside.keyboard.press('Space');
+      const on = (await rowSettled(popGroup, (group) => group.enabled)).enabled;
+      expect(
+        [inAndOut, folded, past, unfolded, byEnter, [off, on], await popFocus()],
+        [
+          [POP_ONE, 'group: Pops', 'group: Pops'],
+          'false',
+          [next, 'group: Pops', 'group: Pops'],
+          'true',
+          ['false', 'true'],
+          [false, true],
+          'group: Pops',
+        ],
+      );
+    },
+  );
+  await check(
+    "a right-click on a popup rule's row opens its menu at the pointer: Edit this rule, and Turn off, which turns it off; the ContextMenu key, or Shift+F10, on the focused row opens it at the row's bottom left, saying Turn on now; Esc shuts the menu and not the popup (the key's taken, as it isn't with nothing open), focus back on the row; its Edit this rule opens the rule in the editor; a group's row and the fold keep the browser's menu",
+    async () => {
+      await popReset();
+      const menu = beside.locator('[data-slot="context-menu-content"]');
+      const items = async () => {
+        await menu.locator('[role="menuitem"]').first().waitFor({ timeout: 3000 });
+        return (await menu.locator('[role="menuitem"]').allTextContents()).map((text) =>
+          text.trim(),
+        );
+      };
+      const pick = async (testid) => {
+        await menu.locator(`[data-testid="${testid}"]`).click();
+        await menu.waitFor({ state: 'detached', timeout: 3000 });
+      };
+      const near = async (point) => {
+        const box = await menu.boundingBox();
+        return Boolean(box) && Math.hypot(box.x - point[0], box.y - point[1]) <= 12;
+      };
+      const row = popRow(POP_ANSWERS);
+      const box = await row.boundingBox();
+      const point = [box.x + 40, box.y + box.height / 2];
+      await beside.mouse.click(...point, { button: 'right' });
+      const byPointer = [
+        await items(),
+        await near(point),
+        await row.getAttribute('data-context-open'),
+      ];
+      await pick('popup-menu-turn');
+      const off = (
+        await rowSettled(
+          () => slotStored(POP_ANSWERS),
+          (rule) => !rule.enabled,
+        )
+      ).enabled;
+      const afterPick = await rowSettled(popFocus, (item) => item === POP_ANSWERS);
+      await beside.evaluate(() => {
+        window.escapes = [];
+        window.addEventListener(
+          'keydown',
+          (event) => event.key === 'Escape' && window.escapes.push(event),
+          true,
+        );
+      });
+      await row.focus();
+      await beside.keyboard.press('ContextMenu');
+      const byKey = [await items(), await near([box.x, box.y + box.height])];
+      await beside.keyboard.press('Escape');
+      await menu.waitFor({ state: 'detached', timeout: 3000 });
+      const back = await rowSettled(popFocus, (item) => item === POP_ANSWERS);
+      await beside.keyboard.press('Escape');
+      const taken = await beside.evaluate(() =>
+        window.escapes.map((event) => event.defaultPrevented),
+      );
+      await beside.keyboard.press('Shift+F10');
+      const byShift = await items();
+      await pick('popup-menu-turn');
+      const on = (
+        await rowSettled(
+          () => slotStored(POP_ANSWERS),
+          (rule) => rule.enabled,
+        )
+      ).enabled;
+      await row.click({ button: 'right', position: { x: 40, y: 12 } });
+      await items();
+      await pick('popup-menu-edit');
+      const edited = await rowSettled(openNow, (url) => url === POP_ANSWERS);
+      const panels = (await beside.evaluate(() => window.sidePanels)).at(-1);
+      // Elsewhere: the fold's row, and in All rules a group's.
+      await beside.evaluate(() => {
+        window.menus = [];
+        window.addEventListener('contextmenu', (event) => window.menus.push(event), true);
+      });
+      // Whether a right-click there opened a menu of ours, which is then shut so the check goes
+      // on to the next.
+      const ours = async (locator) => {
+        await locator.click({ button: 'right' });
+        await sleep(300);
+        const opened = await menu.count();
+        if (opened) {
+          await beside.keyboard.press('Escape');
+          await menu.waitFor({ state: 'detached', timeout: 3000 });
+        }
+        return opened;
+      };
+      const onFold = await ours(beside.locator('[data-testid="not-answering"]'));
+      await beside.click('[data-testid="view-rules"]');
+      const onGroup = await ours(popsItem.locator('[data-testid="popup-group"]'));
+      const elsewhere = [
+        onFold,
+        onGroup,
+        await beside.evaluate(() => window.menus.map((event) => event.defaultPrevented)),
+      ];
+      expect(
+        [
+          byPointer,
+          off,
+          afterPick,
+          byKey,
+          back,
+          taken,
+          byShift,
+          on,
+          edited,
+          panels,
+          elsewhere,
+        ],
+        [
+          [['Edit this rule', 'Turn off'], true, ''],
+          false,
+          POP_ANSWERS,
+          [['Edit this rule', 'Turn on'], true],
+          POP_ANSWERS,
+          [true, false],
+          ['Edit this rule', 'Turn on'],
+          true,
+          POP_ANSWERS,
+          [besideWindow, true],
+          [0, 0, [false, false]],
+        ],
+      );
+    },
+  );
+  await check(
+    "in the popup's All rules a rule that's on but hasn't answered on the page steps back, as in the editor's list, its name at normal weight in a quieter grey, in a group too; one that answered stays as it was, and one that's off fades; under This page the fold's rules don't step back, the fold saying so already; while Recording is off, none does",
+    async () => {
+      const theme = await textColours(beside);
+      const look = (url) =>
+        popRow(url)
+          .locator('[data-slot="item-title"]')
+          .evaluate((title) => [
+            getComputedStyle(title).fontWeight,
+            getComputedStyle(title).color,
+          ]);
+      const seen = async () => [
+        await look(POP_ANSWERS),
+        await look(POP_NEVER),
+        await look(POP_OFF),
+        await look(POP_ONE),
+        await look(POP_TWO),
+      ];
+      await beside.click('[data-testid="view-rules"]');
+      await popsItem.waitFor({ timeout: 3000 });
+      const all = await seen();
+      await popReset();
+      await beside.locator('[data-testid="not-answering"]').click();
+      const folded = [await look(POP_NEVER), await look(POP_TWO)];
+      let notRecording;
+      try {
+        await setStorage({ record: false });
+        await beside.click('[data-testid="view-rules"]');
+        notRecording = await rowSettled(seen, (rows) => rows[1][0] === '500');
+      } finally {
+        await setStorage({ record: true });
+      }
+      const again = await rowSettled(seen, (rows) => rows[1][0] === '400');
+      const BRIGHT = ['500', theme.strong];
+      const QUIET = ['400', theme.t65];
+      const FADED = ['500', theme.t50];
+      expect(
+        [all, folded, notRecording, again],
+        [
+          [BRIGHT, QUIET, FADED, BRIGHT, QUIET],
+          [BRIGHT, BRIGHT],
+          [BRIGHT, BRIGHT, FADED, BRIGHT, BRIGHT],
+          [BRIGHT, QUIET, FADED, BRIGHT, QUIET],
+        ],
+      );
+    },
+  );
+  await check(
+    "a rule focused in the popup's fold that answers on the page meanwhile goes up under Answering here, and focus goes with it; nothing in these checks took focus from the popup's window",
+    async () => {
+      await popReset();
+      await popFold.focus();
+      await popKeys(['ArrowRight', 'ArrowRight', 'ArrowDown', 'ArrowDown']);
+      const level = () =>
+        beside.evaluate(() => document.activeElement.getAttribute('aria-level'));
+      const before = [await popFocus(), await level()];
+      await popCall(POP_LATE);
+      const after = await rowSettled(
+        async () => [await popFocus(), await level()],
+        ([url, at]) => url === POP_LATE && at === '1',
+      );
+      expect(
+        [before, after, await beside.evaluate(() => window.blurs)],
+        [[POP_LATE, '2'], [POP_LATE, '1'], 0],
+      );
+    },
+  );
+  // Role, name, checked state and description, as Chromium gives them a screen reader.
+  const popAx = async (selector) => {
+    const { root } = await besideSession.send('DOM.getDocument', { depth: 0 });
+    const { nodeId } = await besideSession.send('DOM.querySelector', {
+      nodeId: root.nodeId,
+      selector,
+    });
+    const { nodes } = await besideSession.send('Accessibility.getPartialAXTree', {
+      nodeId,
+      fetchRelatives: false,
+    });
+    const checked = nodes[0]?.properties?.find((property) => property.name === 'checked');
+    return [
+      nodes[0]?.role?.value,
+      nodes[0]?.name?.value,
+      checked ? checked.value.value : null,
+      nodes[0]?.description?.value ?? '',
+    ];
+  };
+  const popRuleAt = (url) => `[data-testid="popup-rule"][data-url="${url}"]`;
+  const POPS_ITEM = `[data-testid="popup-group-block"][data-item="${POPS.id}"]`;
+  // Space on the item that has focus, and whether the item checked or not after it is the same
+  // element, still with focus: changed in place, as a screen reader hears it.
+  const spaceInPlace = async (item, checked) => {
+    const before = await item.elementHandle();
+    await beside.keyboard.press('Space');
+    await rowSettled(
+      () => item.getAttribute('aria-checked'),
+      (now) => now === checked,
+    );
+    return before.evaluate(
+      (element) =>
+        element.isConnected &&
+        element === document.activeElement &&
+        element.getAttribute('aria-checked'),
+    );
+  };
+
+  await check(
+    "in the popup's tree a rule's item and a group's are checked while their switch is on, as Chromium gives a screen reader: a rule on, a rule off, a group, and a rule that's on in a group that's off, which says so; Space changes it on the item that has focus, in place, not on one made anew",
+    async () => {
+      await popReset();
+      await beside.click('[data-testid="view-rules"]');
+      await popsItem.waitFor({ timeout: 3000 });
+      if ((await popsItem.getAttribute('aria-expanded')) === 'false') {
+        await popsItem.focus();
+        await beside.keyboard.press('ArrowRight');
+      }
+      const at = [
+        await popAx(popRuleAt(POP_ANSWERS)),
+        await popAx(popRuleAt(POP_OFF)),
+        await popAx(POPS_ITEM),
+      ];
+      // The group off by Space, its item the same, then a rule of it.
+      await popsItem.focus();
+      const groupOff = await spaceInPlace(popsItem, 'false');
+      const offGroup = [await popAx(POPS_ITEM), await popAx(popRuleAt(POP_ONE))];
+      const groupOn = await spaceInPlace(popsItem, 'true');
+      // A rule off and on by Space.
+      const rule = popRow(POP_ANSWERS);
+      await rule.focus();
+      const ruleOff = await spaceInPlace(rule, 'false');
+      const offRule = await popAx(popRuleAt(POP_ANSWERS));
+      const ruleOn = await spaceInPlace(rule, 'true');
+      expect(
+        [
+          at.map((node) => node.slice(0, 3)),
+          [groupOff, groupOn, ruleOff, ruleOn],
+          offGroup.map((node) => node.slice(0, 3)),
+          offGroup[1][3].startsWith('Off, as its group Pops is off.'),
+          offRule.slice(0, 3),
+        ],
+        [
+          [
+            ['treeitem', 'Pop answers', 'true'],
+            ['treeitem', 'Pop switched off', 'false'],
+            ['treeitem', 'Pops', 'true'],
+          ],
+          ['false', 'true', 'false', 'true'],
+          [
+            ['treeitem', 'Pops', 'false'],
+            ['treeitem', 'Pop one', 'true'],
+          ],
+          true,
+          ['treeitem', 'Pop answers', 'false'],
+        ],
+        `a rule in Pops, off, described as “${offGroup[1][3]}”`,
+      );
+    },
+  );
+
+  await check(
+    "a rule focused in the popup's fold, then left by a click elsewhere in the popup, that answers on the page and goes up under Answering here doesn't take focus back: it stays where the click left it",
+    async () => {
+      const SOON = '/api/pop-soon';
+      const { rules: stored } = await worker.evaluate(() =>
+        chrome.storage.local.get('rules'),
+      );
+      await setStorage({ rules: [slotRule(SOON, 'Pop answers soon'), ...stored] });
+      try {
+        await popReset();
+        await popFold.focus();
+        await beside.keyboard.press('ArrowRight');
+        await popRow(SOON).focus();
+        const focused = await popFocus();
+        // Blank space: the popup's heading.
+        await beside.locator('h2', { hasText: 'Answering here' }).click();
+        const left = await beside.evaluate(() => document.activeElement?.tagName);
+        await popCall(SOON);
+        const level = await rowSettled(
+          () => popRow(SOON).getAttribute('aria-level'),
+          (now) => now === '1',
+        );
+        await sleep(300);
+        expect(
+          [
+            focused,
+            left,
+            level,
+            await beside.evaluate(() => document.activeElement?.tagName),
+          ],
+          [SOON, 'BODY', '1', 'BODY'],
+        );
+      } finally {
+        await setStorage({ rules: stored });
+      }
+    },
+  );
+
+  await check(
+    'Space or Enter held down on a popup item acts once, however many times the key repeats: a rule turned off once, a group folded once',
+    async () => {
+      const { rules: stored } = await worker.evaluate(() =>
+        chrome.storage.local.get('rules'),
+      );
+      const folds = await beside.evaluate(() =>
+        localStorage.getItem('ghostfetch.folded'),
+      );
+      try {
+        await popReset();
+        // The key down, then down again three times as it repeats, then up.
+        const held = async (key) => {
+          for (let time = 0; time < 4; time++) await beside.keyboard.down(key);
+          await beside.keyboard.up(key);
+          await sleep(500);
+        };
+        await popRow(POP_ANSWERS).focus();
+        await held(' ');
+        const rule = (await slotStored(POP_ANSWERS)).enabled;
+        await beside.keyboard.press('Space');
+        const back = (
+          await rowSettled(
+            () => slotStored(POP_ANSWERS),
+            (now) => now.enabled,
+          )
+        ).enabled;
+        await beside.click('[data-testid="view-rules"]');
+        await popsItem.waitFor({ timeout: 3000 });
+        await popsItem.focus();
+        const was = await popsItem.getAttribute('aria-expanded');
+        await held('Enter');
+        const folded = await popsItem.getAttribute('aria-expanded');
+        await beside.keyboard.press('Enter');
+        expect(
+          [rule, back, was, folded, await popsItem.getAttribute('aria-expanded')],
+          [false, true, 'true', 'false', 'true'],
+        );
+      } finally {
+        await setStorage({ rules: stored });
+        await beside.evaluate((was) => {
+          if (was === null) localStorage.removeItem('ghostfetch.folded');
+          else localStorage.setItem('ghostfetch.folded', was);
+        }, folds);
+      }
+    },
+  );
+
+  await check(
+    "a popup group's row has no tooltip of its own, under the pointer on its name or as the keys reach its item: its name, how many of its rules are on and whether it's open are the item's own",
+    async () => {
+      await popReset();
+      await beside.click('[data-testid="view-rules"]');
+      await popsItem.waitFor({ timeout: 3000 });
+      const tips = () => beside.locator('[data-slot="tooltip"]').allTextContents();
+      await popsItem.locator('[data-testid="popup-group-name"]').hover();
+      await sleep(800);
+      const byPointer = await tips();
+      await beside.mouse.move(1, 1);
+      await sleep(300);
+      // ↓ onto it from the item before it.
+      await popsItem.evaluate((item) => item.previousElementSibling.focus());
+      await beside.keyboard.press('ArrowDown');
+      await sleep(800);
+      const byKeys = await tips();
+      expect(
+        [byPointer, byKeys, await popFocus(), (await popAx(POPS_ITEM)).slice(0, 2)],
+        [[], [], 'group: Pops', ['treeitem', 'Pops']],
+      );
+    },
+  );
+
+  await check(
+    "in Commit Mono at Larger, at the popup's 330 px, nothing in its rows reaches past their edges: a rule's slot ends inside its row, its name keeps 7 letters' room, and what the slot says gives way, the time first, then the count, as in the editor's list; a group's row and the fold's stay on one line inside theirs",
+    async () => {
+      // Each rule's row: whether its slot ends inside its padding and nothing in it overflows it,
+      // whether its name has its room, and each part of what its slot says, whole, cut, or out of
+      // sight; each group's row and the fold's: whether all of it is on its one line inside it;
+      // and whether the page itself is wider than the popup.
+      const rows = () =>
+        beside.evaluate(() => ({
+          rules: [...document.querySelectorAll('[data-testid="popup-rule"]')].map(
+            (row) => {
+              const edge =
+                row.getBoundingClientRect().right -
+                parseFloat(getComputedStyle(row).paddingRight);
+              const slot = row
+                .querySelector('[data-slot="item-slot"]')
+                .getBoundingClientRect();
+              const title = row.querySelector('[data-slot="item-title"]');
+              const line = title.parentElement.getBoundingClientRect().width;
+              const em = parseFloat(getComputedStyle(title).fontSize);
+              const status = row.querySelector('[data-slot="item-status"]');
+              const bottom = status.getBoundingClientRect().bottom;
+              return {
+                url: row.dataset.url,
+                inside: slot.right <= edge + 0.5 && row.scrollWidth <= row.clientWidth,
+                room:
+                  title.getBoundingClientRect().width >=
+                  Math.min(7 * em, 0.6 * line) - 0.5,
+                says: [...status.children].map((said) =>
+                  said.getBoundingClientRect().top >= bottom - 1
+                    ? 'gone'
+                    : said.scrollWidth > said.clientWidth
+                      ? 'cut'
+                      : 'whole',
+                ),
+              };
+            },
+          ),
+          heads: [
+            ...document.querySelectorAll(
+              '[data-testid="popup-group"], [data-testid="not-answering"]',
+            ),
+          ].map((head) => {
+            const box = head.getBoundingClientRect();
+            // Each of its words' runs on one line: one box each, or boxes at one height.
+            const texts = document.createTreeWalker(head, NodeFilter.SHOW_TEXT);
+            let wraps = false;
+            while (texts.nextNode()) {
+              const range = document.createRange();
+              range.selectNodeContents(texts.currentNode);
+              const tops = new Set(
+                [...range.getClientRects()].map((rect) => Math.round(rect.top)),
+              );
+              if (tops.size > 1) wraps = true;
+            }
+            return (
+              head.scrollWidth <= head.clientWidth &&
+              !wraps &&
+              // What shows: not the hidden checkbox Base UI keeps beside a group's switch.
+              [...head.children].every((part) => {
+                if (part instanceof HTMLInputElement) return true;
+                const at = part.getBoundingClientRect();
+                return (
+                  at.top >= box.top - 0.5 &&
+                  at.bottom <= box.bottom + 0.5 &&
+                  at.right <= box.right + 0.5
+                );
+              })
+            );
+          }),
+          wider: document.documentElement.scrollWidth > 330,
+        }));
+      // The time goes first, then the count: what a slot may say ('' for a rule that hasn't
+      // answered).
+      const GIVES_WAY = ['', 'whole,whole', 'whole,gone', 'cut,gone'];
+      const fits = ({ rules, heads, wider }) =>
+        rules.length > 0 &&
+        rules.every(
+          (row) => row.inside && row.room && GIVES_WAY.includes(`${row.says}`),
+        ) &&
+        heads.length > 0 &&
+        heads.every(Boolean) &&
+        !wider;
+      try {
+        await beside.evaluate(() =>
+          Object.assign(document.documentElement.dataset, {
+            font: 'mono',
+            size: 'larger',
+          }),
+        );
+        await beside.evaluate(() => document.fonts.ready);
+        await popReset();
+        await beside.locator('[data-testid="not-answering"]').click();
+        const thisPage = await rows();
+        await beside.click('[data-testid="view-rules"]');
+        await popsItem.waitFor({ timeout: 3000 });
+        const allRules = await rows();
+        expect(
+          [
+            fits(thisPage),
+            fits(allRules),
+            allRules.rules.some((row) => row.says[1] === 'gone'),
+          ],
+          [true, true, true],
+          JSON.stringify({ thisPage, allRules }),
+        );
+      } finally {
+        await beside.evaluate(() => {
+          delete document.documentElement.dataset.font;
+          delete document.documentElement.dataset.size;
+        });
+      }
+    },
+  );
+  await check(
+    "in Commit Mono at Larger, at the popup's 330 px, its site line keeps the page's host's port in sight, the host cut in its middle, and each view tab keeps its words on one line, its count giving way first",
+    async () => {
+      try {
+        await beside.evaluate(() =>
+          Object.assign(document.documentElement.dataset, {
+            font: 'mono',
+            size: 'larger',
+          }),
+        );
+        await beside.evaluate(() => document.fonts.ready);
+        await popReset();
+        await sleep(200);
+        const seen = await beside.evaluate(() => {
+          // The text node a run of words ends in, under `element`, and whether `words` at its end
+          // are drawn inside `box` (a part cut at its end draws them past its edge).
+          const drawnInside = (element, words, box) => {
+            const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+            while (walker.nextNode()) {
+              const text = walker.currentNode;
+              if (!text.data.endsWith(words)) continue;
+              const range = document.createRange();
+              range.setStart(text, text.length - words.length);
+              range.setEnd(text, text.length);
+              const at = range.getBoundingClientRect();
+              const edges = box.getBoundingClientRect();
+              return at.left >= edges.left - 0.5 && at.right <= edges.right + 0.5;
+            }
+            return null;
+          };
+          const line = document.querySelector('[data-testid="site-line"]');
+          const host =
+            line.querySelector('[data-slot="middle-truncate"]') ??
+            line.querySelector('.font-mono');
+          const whole = host.dataset.full ?? host.textContent;
+          const port = whole.slice(whole.lastIndexOf(':'));
+          // Each tab's words, not its count: on one line, its boxes at one height.
+          const tabs = [...document.querySelectorAll('[data-slot="segmented-item"]')].map(
+            (tab) => {
+              const walker = document.createTreeWalker(tab, NodeFilter.SHOW_TEXT);
+              while (walker.nextNode()) {
+                const text = walker.currentNode;
+                if (/^\s*\d+\s*$/.test(text.data) || !text.data.trim()) continue;
+                const range = document.createRange();
+                range.selectNodeContents(text);
+                return new Set(
+                  [...range.getClientRects()].map((rect) => Math.round(rect.top)),
+                ).size;
+              }
+              return 0;
+            },
+          );
+          return [/^:\d+$/.test(port), drawnInside(host, port, host), tabs];
+        });
+        expect(seen, [true, true, [1, 1, 1]]);
+      } finally {
+        await beside.evaluate(() => {
+          delete document.documentElement.dataset.font;
+          delete document.documentElement.dataset.size;
+        });
+      }
+    },
+  );
+  await besideSession.detach();
+  await beside.close();
+  await popPage.close();
+  await setStorage({ rules: beforePop, groups: beforePopGroups });
+  await ruleRow(POP_ANSWERS).waitFor({ state: 'detached', timeout: 3000 });
+  // Pops folded and unfolded left the folds' key behind, which the editor's settings check after
+  // these would find.
+  await app.evaluate(() => localStorage.removeItem('ghostfetch.folded'));
+  if (openBeforePop && (await openNow()) !== openBeforePop) {
+    await ruleRow(openBeforePop).click();
+    await rowSettled(openNow, (url) => url === openBeforePop);
+  }
+  await popup.bringToFront();
 
   // The popup's Pause, Resume and Recording, clicked as a user does, and what the views, the
   // toolbar badge and the page then do (Paused, docs/glossary/rules.md; Recording,
@@ -4327,6 +7140,98 @@ try {
         ROSE_PINE,
         ['', 'rgb(11, 11, 12)', null],
       ]);
+    },
+  );
+  await check(
+    "the ⋯ menu's Appearance restyles the editor and the open popup at once, a page opened afterwards has it before it draws, and the defaults picked again leave nothing behind",
+    async () => {
+      // What's on <html> and stored for each setting, and what the page draws with: how far the
+      // grey levels are lifted, and the font and size of body text, read from a probe with the
+      // type size the kit gives it (<body>'s own size isn't one: Chrome sets it to 75% on
+      // extension pages, over the kit's).
+      const look = (target) =>
+        target.evaluate(() => {
+          const names = ['contrast', 'font', 'size'];
+          const root = document.documentElement;
+          const probe = document.createElement('span');
+          probe.className = 'text-body';
+          document.body.append(probe);
+          const text = getComputedStyle(probe);
+          const drawn = [
+            text.fontFamily.split(',')[0].replaceAll('"', ''),
+            text.fontSize,
+          ];
+          probe.remove();
+          return [
+            names.map((name) => root.dataset[name] ?? ''),
+            names.map((name) => localStorage.getItem(`ghostfetch.${name}`)),
+            getComputedStyle(root).getPropertyValue('--lift').trim(),
+            ...drawn,
+          ];
+        });
+      const pick = async (...steps) => {
+        await app.click('[data-testid="sidebar-menu"]');
+        await app.click('[data-testid="appearance-menu"]');
+        for (const step of steps) {
+          await app.click(`[data-testid="${step}"]`);
+          // The menu stays open, to pick another.
+          await app.waitForSelector(`[data-testid="${step}"][data-checked]`);
+        }
+        await app.keyboard.press('Escape');
+        await app.keyboard.press('Escape');
+      };
+      const PICKED = [
+        ['most', 'mono', 'larger'],
+        ['most', 'mono', 'larger'],
+        '60%',
+        'Commit Mono',
+        '16.5px',
+      ];
+      const DEFAULTS = [['', '', ''], [null, null, null], '0%', 'Geist', '13px'];
+      const fresh = await context.newPage();
+      try {
+        await pick('contrast-most', 'font-mono', 'size-larger');
+        const seen = [await look(app)];
+        // The popup, already open, follows (the storage event).
+        await popup.waitForFunction(
+          () => document.documentElement.dataset.size === 'larger',
+        );
+        seen.push(await look(popup));
+        // A page opened now has them on <html> as its <body> begins: public/theme.js, in
+        // <head>, has put them there, and none of the page's modules has run yet.
+        await fresh.addInitScript(() => {
+          new MutationObserver((records, observer) => {
+            if (!document.body) return;
+            observer.disconnect();
+            window.atBody = ['theme', 'contrast', 'font', 'size'].map(
+              (name) => document.documentElement.dataset[name] ?? '',
+            );
+          }).observe(document, { childList: true, subtree: true });
+        });
+        await fresh.goto(`chrome-extension://${extensionId}/popup.html`);
+        await fresh.waitForFunction(() => window.atBody);
+        seen.push(await fresh.evaluate(() => window.atBody));
+        await pick('contrast-standard', 'font-geist', 'size-default');
+        seen.push(await look(app));
+        await popup.waitForFunction(() => !document.documentElement.dataset.size);
+        seen.push(await look(popup));
+        expect(seen, [
+          PICKED,
+          PICKED,
+          ['', 'most', 'mono', 'larger'],
+          DEFAULTS,
+          DEFAULTS,
+        ]);
+      } finally {
+        // The defaults again whatever happened, for the checks after this one.
+        await fresh.close();
+        await app.evaluate(() => {
+          for (const name of ['contrast', 'font', 'size']) {
+            localStorage.removeItem(`ghostfetch.${name}`);
+            delete document.documentElement.dataset[name];
+          }
+        });
+      }
     },
   );
   await check(
@@ -4931,7 +7836,7 @@ try {
         rule.response.headers.map((row) => row.name),
         ['X-Mock', 'X-Added'],
       );
-      await app.getByTitle('Remove header').last().click();
+      await app.getByRole('button', { name: 'Remove header' }).last().click();
     },
   );
   await check(
@@ -5155,7 +8060,7 @@ try {
         { timeout: 3000 },
       );
       await app.getByRole('button', { name: 'Keep on reload' }).click();
-      await app.getByTitle('Clear the log').click();
+      await app.getByRole('button', { name: 'Clear the log' }).click();
       // The log redraws once a frame, however many requests arrive; then the count in the tab goes.
       await app.waitForFunction(
         () =>
@@ -5292,7 +8197,7 @@ try {
           window.clearedWith = document.querySelectorAll(
             '[data-testid="request"]',
           ).length;
-          document.querySelector('button[title="Clear the log"]').click();
+          document.querySelector('button[aria-label="Clear the log"]').click();
         });
         observer.observe(document.body, { childList: true, subtree: true });
       });
@@ -5332,7 +8237,7 @@ try {
     },
   );
   await check(
-    "an iframe's requests reach the tab's log: one a rule answers and one no rule answers are both in Traffic for the tab, and the popup's counts for the tab include the one answered",
+    "an iframe's requests reach the tab's log: one a rule answers and one no rule answers are both in Traffic for the tab, and the popup's counts for the tab include the one answered, and when",
     async () => {
       // An iframe's bridge sends each request it logs to the background, which passes it on to
       // the tab's top frame (src/app/background/on-message.ts), whose log is the tab's
@@ -5352,6 +8257,7 @@ try {
           (rule) => rule.match.url === '/api/early',
         );
         // In the iframe, one after the other: a request that rule answers, and one no rule does.
+        const sent = Date.now();
         const [answered, unanswered] = await frame.evaluate(async () => {
           const got = [];
           for (const target of [
@@ -5374,13 +8280,28 @@ try {
               ])
               .toSorted(),
           );
-        // What the popup is told of the tab: how often each rule answered there.
+        // What the popup is told of the tab: how often each rule answered there, and when each
+        // last did, here whether that's a time since the iframe's requests were sent.
         const counted = () =>
-          worker.evaluate(
-            (id) =>
-              chrome.tabs.sendMessage(id, { type: 'ghostfetch:counts' }, { frameId: 0 }),
-            tab.id,
-          );
+          worker
+            .evaluate(
+              (id) =>
+                chrome.tabs.sendMessage(
+                  id,
+                  { type: 'ghostfetch:counts' },
+                  { frameId: 0 },
+                ),
+              tab.id,
+            )
+            .then((counts) => ({
+              ...counts,
+              last: Object.fromEntries(
+                Object.entries(counts.last).map(([id, time]) => [
+                  id,
+                  time >= sent && time <= Date.now(),
+                ]),
+              ),
+            }));
         const LISTED = [
           [`${LOCAL_ORIGIN}/api/early?in-frame=answered`, 'Mocked'],
           [`${LOCAL_ORIGIN}/api/user?in-frame=unanswered`, ''],
@@ -5388,6 +8309,7 @@ try {
         const COUNTED = {
           record: true,
           rules: { [early.id]: { mocked: 1, modified: 0, failed: 0 } },
+          last: { [early.id]: true },
         };
         expect(
           [
@@ -5618,7 +8540,7 @@ try {
   );
 
   await check(
-    "the sidebar draws a group as a block: its header, its dot where an ungrouped rule's is, its name and how many of its rules are on, then its rules set in; turned off, it and its rules fade, their dots green but still and the open rule's chip saying so; its name folds it, kept when the editor opens again; a search shows a group with the rules of it that match, or all of them when its name matches",
+    "the sidebar draws a group as a block: its header, after A's: a chevron where an ungrouped rule's dot is, the group's chip (its initials), its name where its rules' names start, and how many rules it has; then its rules set in, their dots under the chip; turned off from its header's slot, it and its rules fade, its slot says Off, their dots green but still and the open rule's chip saying so; its name folds it, kept when the editor opens again; a search shows a group with the rules of it that match, or all of them when its name matches",
     async () => {
       await withGroups(
         [
@@ -5633,23 +8555,43 @@ try {
           const header = app.locator('[data-testid="group"][data-group="PR-1"]');
           await header.waitFor({ timeout: 3000 });
           const order = await listed();
-          const dots = await app.evaluate(() => {
-            const left = (row) =>
-              row.querySelector('[role="switch"]').getBoundingClientRect().left;
+          // Where the header's parts stand against the rules': centres, and where names start.
+          const lined = await app.evaluate(() => {
+            const centre = (element) => {
+              const box = element.getBoundingClientRect();
+              return (box.left + box.right) / 2;
+            };
             const rule = (name) =>
               [...document.querySelectorAll('[data-testid="rule"]')].find((row) =>
                 row.textContent.includes(name),
               );
+            const head = document.querySelector('[data-testid="group"]');
+            const chip = head.querySelector('[data-slot="monogram"]');
             return [
-              left(document.querySelector('[data-testid="group"]')),
-              left(rule('From one')),
-              left(rule('From A1')),
+              Math.abs(
+                centre(head.querySelector('[data-testid="group-name"] svg')) -
+                  centre(rule('From one').querySelector('[role="switch"]')),
+              ) < 1,
+              Math.abs(
+                centre(chip) - centre(rule('From A1').querySelector('[role="switch"]')),
+              ) < 1,
+              Math.abs(
+                head
+                  .querySelector('[data-testid="group-name"] [id]')
+                  .getBoundingClientRect().left -
+                  rule('From A1')
+                    .querySelector('[data-slot="item-title"]')
+                    .getBoundingClientRect().left,
+              ) < 1,
+              chip.dataset.letters,
             ];
           });
           const count = await header.locator('[data-testid="group-count"]').textContent();
           const a1 = app.locator('[data-testid="rule"]', { hasText: 'From A1' });
           await a1.click();
-          await header.locator('[role="switch"]').click();
+          // Its slot's actions are there under the pointer.
+          await header.hover();
+          await header.locator('[data-testid="group-turn"]').click();
           await sleep(300);
           const dot = a1.locator('[role="switch"]');
           const off = [
@@ -5666,8 +8608,9 @@ try {
             (await app.locator('[data-testid="rules-head-path"]').textContent())
               .replace(/\s+/g, ' ')
               .trim(),
+            await header.locator('[data-testid="group-count"]').textContent(),
           ];
-          await header.locator('[role="switch"]').click();
+          await header.locator('[data-testid="group-turn"]').click();
           await sleep(300);
           await header.locator('[data-testid="group-name"]').click();
           const folded = await listed();
@@ -5684,22 +8627,11 @@ try {
           const byName = await listed();
           await search.fill('');
           expect(
-            [
-              order,
-              Math.abs(dots[0] - dots[1]) < 1,
-              Math.round(dots[2] - dots[1]),
-              count,
-              off,
-              folded,
-              reopened,
-              found,
-              byName,
-            ],
+            [order, lined, count, off, folded, reopened, found, byName],
             [
               ['From one', 'group PR-1', 'From A1', 'From A2', 'From two'],
-              true,
-              14,
-              '1 of 2 on',
+              [true, true, true, 'PR'],
+              '2',
               [
                 false,
                 true,
@@ -5707,7 +8639,8 @@ try {
                 'true',
                 false,
                 'Paused while PR-1 is off',
-                'Rules / PR-1 / From A1',
+                'PR-1 / From A1',
+                'Off',
               ],
               ['From one', 'group PR-1', 'From two'],
               ['From one', 'group PR-1', 'From two'],
@@ -5721,7 +8654,7 @@ try {
   );
 
   await check(
-    "New group makes one at the top, its name ready to type; Move to group puts a rule at the group's top; the group's + makes a rule at its top, and New rule then offers that group to the next rule; a name another group has, in any case, is turned down",
+    "New group makes one at the top, its name ready to type; Move to group puts a rule at the group's top; New rule in this group, in the group's ⋯ menu, makes a rule at its top, and New rule then offers that group to the next rule; a name another group has, in any case, is turned down",
     async () => {
       await withGroups([grouped('u1', 'one'), grouped('u2', 'two')], [], async () => {
         await show('rules');
@@ -5749,9 +8682,12 @@ try {
           rule.id,
           rule.group === made.id,
         ]);
+        // Its ⋯ is in its header's slot, there under the pointer.
+        await app.hover('[data-testid="group"][data-group="PR-7"]');
         await app.click(
-          '[data-testid="group"][data-group="PR-7"] [data-testid="group-new-rule"]',
+          '[data-testid="group"][data-group="PR-7"] [data-testid="group-menu"]',
         );
+        await app.click('[data-testid="group-new-rule"]');
         await app.waitForFunction(
           () => document.activeElement?.dataset.testid === 'composer-input',
           null,
@@ -5819,6 +8755,7 @@ try {
         async () => {
           await show('rules');
           const menu = async (name, item) => {
+            await app.hover(`[data-testid="group"][data-group="${name}"]`);
             await app.click(
               `[data-testid="group"][data-group="${name}"] [data-testid="group-menu"]`,
             );
@@ -5840,7 +8777,7 @@ try {
           await menu('PR-1 copy', 'delete-group');
           const gone = [(await storedGroups()).length, (await storedRules()).length];
           await app.click(
-            '[data-slot="toast"]:has-text("Deleted “PR-1 copy” and its 2 rules") button:has-text("Undo")',
+            '[data-testid="undo-notice"]:has-text("Group deleted") [data-testid="undo-notice-undo"]',
           );
           await sleep(300);
           const back = [
@@ -6034,11 +8971,13 @@ try {
               ),
             ],
             [
+              // A line in the group starts at its rules' dots' left edge (their centre 45, under the
+              // group's chip).
               [
-                [['rule', 'after', 32]],
-                [['rule', 'before', 32]],
+                [['rule', 'after', 42]],
+                [['rule', 'before', 42]],
                 [],
-                [['rule', 'before', 32]],
+                [['rule', 'before', 42]],
                 [],
                 [['group-block', 'after', 6]],
               ],
@@ -6131,7 +9070,7 @@ try {
               ].map((row) =>
                 row.dataset.testid === 'popup-group'
                   ? `group ${row.dataset.group}`
-                  : row.querySelector('button').textContent,
+                  : row.querySelector('[data-slot="item-title"]').textContent,
               ),
             );
           const shown = await rows();
@@ -6200,6 +9139,7 @@ try {
         [PR1()],
         async () => {
           await show('rules');
+          await app.hover('[data-testid="group"][data-group="PR-1"]');
           await app.click(
             '[data-testid="group"][data-group="PR-1"] [data-testid="group-menu"]',
           );
@@ -6240,6 +9180,2866 @@ try {
           );
         },
       );
+    },
+  );
+
+  console.log('the open rule');
+  // The open rule (4a): its crumbs in a wide editor, Status's row split in two, the Diff row over
+  // the body, and nothing spilling out of them at Commit Mono and Larger. On rules of their own,
+  // with the suite's put back after.
+  const crumbGroup = app.locator('[data-testid="crumb-group"]');
+  const crumbName = app.locator('[data-testid="crumb-name"]');
+  const menuOpen = app.locator('[data-slot="dropdown-menu-content"]');
+  // A menu's items as they read, once it's open, and which of them are checked.
+  const menuItems = async () => {
+    await menuOpen.locator('[role^="menuitem"]').first().waitFor({ timeout: 3000 });
+    return (await menuOpen.locator('[role^="menuitem"]').allTextContents()).map((text) =>
+      text.replace(/\s+/g, ' ').trim(),
+    );
+  };
+  const menuChecked = async () =>
+    (await menuOpen.locator('[aria-checked="true"]').allTextContents()).map((text) =>
+      text.replace(/\s+/g, ' ').trim(),
+    );
+  const openRule = async (name) => {
+    await show('rules');
+    await app.locator('[data-testid="rule"]', { hasText: name }).first().click();
+    await crumbName.filter({ hasText: name }).waitFor({ timeout: 3000 });
+  };
+  // What has focus: its test id, or what it is.
+  const focusedId = () =>
+    app.evaluate(
+      () => document.activeElement?.dataset.testid ?? document.activeElement?.tagName,
+    );
+  const waitForComposer = () =>
+    app.waitForFunction(
+      () => document.activeElement?.dataset.testid === 'composer-input',
+      null,
+      { timeout: 3000 },
+    );
+
+  await check(
+    "a wide editor's header says where the open rule is in two crumbs that are controls: its group's, the group's chip and name, the / after it a chevron under the pointer with nothing moving, opens New rule in this group, which opens New rule offering the group, and the group's own items, Turn the group off among them, Rename making its name a field in the crumb, as the name's crumb has it; a rule in no group's, \"Rules\", opens New rule, in no group; the rule's name opens the ⋯'s menu, under itself, whose items work; a 420 px panel has its back button instead",
+    async () => {
+      await withGroups(
+        [grouped('c1', 'A1', 'g-1'), grouped('c2', 'loose')],
+        [PR1()],
+        async () => {
+          await openRule('From A1');
+          const said = await app.evaluate(() => {
+            const group = document.querySelector('[data-testid="crumb-group"]');
+            const chip = group.querySelector('[data-slot="monogram"]');
+            return [
+              group.textContent.replace(/\s+/g, ' ').trim(),
+              chip && !chip.dataset.off ? chip.dataset.letters : null,
+              document.querySelector('[data-testid="crumb-name"]').textContent.trim(),
+            ];
+          });
+          // The / and the chevron in its place, the crumb's last part: how opaque each is.
+          const marks = () =>
+            crumbGroup.evaluate((button) =>
+              [...button.lastElementChild.children].map(
+                (mark) => getComputedStyle(mark).opacity,
+              ),
+            );
+          await app.mouse.move(5, 700);
+          const rest = await rowSettled(marks, ([slash]) => slash === '1');
+          const nameAt = await crumbName.boundingBox();
+          await crumbGroup.hover();
+          const hovered = await rowSettled(
+            marks,
+            ([slash, chevron]) => slash === '0' && chevron === '1',
+          );
+          const nameThen = await crumbName.boundingBox();
+          await crumbGroup.click();
+          const groupItems = await menuItems();
+          await menuOpen.locator('[data-testid="crumb-new-rule"]').click();
+          await waitForComposer();
+          const offered = await app.locator('[data-testid="picker-group"]').textContent();
+          // Rename, from the group's crumb: its name a field in the crumb, as the name's crumb has it.
+          await openRule('From A1');
+          await crumbGroup.click();
+          await menuOpen.locator('[data-testid="rename-group"]').click();
+          const field = app.locator('[data-testid="crumb-group-input"]');
+          await field.waitFor({ timeout: 3000 });
+          const renaming = await field.evaluate(
+            (input) => input === document.activeElement && input.value,
+          );
+          await field.press('Escape');
+          await field.waitFor({ state: 'detached', timeout: 3000 });
+          // The name's crumb: the ⋯'s menu, under the crumb, left edges lined up (the ⋯'s, right
+          // edges); its Move to group → No group takes the rule out of PR-1.
+          await crumbName.click();
+          const nameItems = await menuItems();
+          const underName = Math.abs(
+            (await menuOpen.boundingBox()).x - (await crumbName.boundingBox()).x,
+          );
+          await app.keyboard.press('Escape');
+          await menuOpen.waitFor({ state: 'detached', timeout: 3000 });
+          await app.click('[data-testid="rule-menu"]');
+          const moreItems = await menuItems();
+          const more = await app.locator('[data-testid="rule-menu"]').boundingBox();
+          const menu = await menuOpen.boundingBox();
+          const underMore = Math.abs(menu.x + menu.width - (more.x + more.width));
+          await app.keyboard.press('Escape');
+          await menuOpen.waitFor({ state: 'detached', timeout: 3000 });
+          await crumbName.click();
+          await menuOpen.locator('[data-testid="move-to-group"]').click();
+          await app.click('[data-testid="move-to-none"]');
+          await sleep(300);
+          const moved = (await storedRules()).find((rule) => rule.id === 'c1').group;
+          const rulesCrumb = (await crumbGroup.textContent()).replace(/\s+/g, ' ').trim();
+          await crumbGroup.click();
+          const rulesItems = await menuItems();
+          await menuOpen.locator('[data-testid="crumb-new-rule"]').click();
+          await waitForComposer();
+          const inNone = await app.locator('[data-testid="picker-group"]').textContent();
+          // In a 420 px panel: the back button, and no crumbs.
+          await openRule('From A1');
+          let narrow;
+          try {
+            await app.setViewportSize({ width: 420, height: 760 });
+            narrow = [
+              await app.locator('[data-testid="rules-head-path"]').isVisible(),
+              await app.locator('[data-testid="rule-back"]').isVisible(),
+            ];
+          } finally {
+            await app.setViewportSize({ width: 1280, height: 820 });
+          }
+          expect(
+            [
+              said,
+              rest,
+              hovered,
+              nameThen.x === nameAt.x,
+              groupItems,
+              offered,
+              renaming,
+              nameItems,
+              underName < 2,
+              moreItems,
+              underMore < 2,
+              moved,
+              rulesCrumb,
+              rulesItems,
+              inNone,
+              narrow,
+            ],
+            [
+              ['PR-1 /', 'PR', 'From A1'],
+              ['1', '0'],
+              ['0', '1'],
+              true,
+              [
+                'New rule in this group',
+                'Rename F2',
+                'Turn the group off',
+                'Duplicate',
+                'Export group',
+                'Ungroup',
+                'Delete',
+              ],
+              'PR-1',
+              'PR-1',
+              [
+                'Rename F2',
+                'Duplicate',
+                'Move to group PR-1',
+                'Export this rule',
+                'Delete',
+              ],
+              true,
+              [
+                'Rename F2',
+                'Duplicate',
+                'Move to group PR-1',
+                'Export this rule',
+                'Delete',
+              ],
+              true,
+              '',
+              'Rules /',
+              ['New rule'],
+              'No group',
+              [false, true],
+            ],
+          );
+        },
+      );
+    },
+  );
+
+  await check(
+    "a double-click on the rule's name crumb, or F2 with focus on it, makes it a field to rename the rule in place, its name selected, the menu the first click opened shut: Enter gives the name typed, in the list too; Esc keeps the one it had; after either, focus is back on the crumb",
+    async () => {
+      await withGroups([grouped('c1', 'A1', 'g-1')], [PR1()], async () => {
+        await openRule('From A1');
+        const field = app.locator('[data-testid="crumb-name-input"]');
+        await crumbName.dblclick();
+        await field.waitFor({ timeout: 3000 });
+        const ready = await field.evaluate((input) => [
+          input === document.activeElement,
+          input.selectionStart === 0 && input.selectionEnd === input.value.length,
+          input.value,
+        ]);
+        const menus = await menuOpen.count();
+        await app.keyboard.type('Renamed');
+        await app.keyboard.press('Enter');
+        await field.waitFor({ state: 'detached', timeout: 3000 });
+        const byEnter = await rowSettled(focusedId, (id) => id === 'crumb-name');
+        await sleep(300);
+        const stored = (await storedRules()).find((rule) => rule.id === 'c1').name;
+        const inList = await app
+          .locator('[data-testid="rule"][data-item="c1"] [data-slot="item-title"]')
+          .textContent();
+        await app.keyboard.press('F2');
+        await field.waitFor({ timeout: 3000 });
+        await app.keyboard.type('Other');
+        await app.keyboard.press('Escape');
+        await field.waitFor({ state: 'detached', timeout: 3000 });
+        const byEsc = await rowSettled(focusedId, (id) => id === 'crumb-name');
+        expect(
+          [
+            ready,
+            menus,
+            byEnter,
+            stored,
+            inList,
+            (await crumbName.textContent()).trim(),
+            byEsc,
+          ],
+          [
+            [true, true, 'From A1'],
+            0,
+            'crumb-name',
+            'Renamed',
+            'Renamed',
+            'Renamed',
+            'crumb-name',
+          ],
+        );
+      });
+    },
+  );
+
+  await check(
+    "Status's row is split: what it says opens its editor as before, and the chevron at its end a menu of the common codes, each with its name, the one the page gets checked, a pick setting it at once; both halves are Tab stops, Enter on the chevron opening its menu; the line between them shows only under the pointer or with focus; for a rule that keeps the server's body, the menu starts with the server's status, checked while it's kept, which keeps it again",
+    async () => {
+      await withGroups(
+        [
+          grouped('s1', 'status'),
+          grouped('s2', 'kept', '', {
+            response: { ...createRule().response, bodyMode: 'original', body: '' },
+          }),
+        ],
+        [],
+        async () => {
+          await openRule('From status');
+          const statusOf = async (id) =>
+            (await storedRules()).find((rule) => rule.id === id).response.status;
+          const value = () =>
+            app.locator('[data-testid="row-status-value"]').textContent();
+          const line = app.locator('[data-slot="accordion-split-line"]');
+          const lineShows = () =>
+            line.evaluate(
+              (element) =>
+                getComputedStyle(element).backgroundColor !== 'rgba(0, 0, 0, 0)',
+            );
+          await app.mouse.move(5, 700);
+          const atRest = await rowSettled(lineShows, (shows) => !shows);
+          await app.locator('[data-testid="row-status"]').hover();
+          const hovered = await rowSettled(lineShows, Boolean);
+          await app.mouse.move(5, 700);
+          await rowSettled(lineShows, (shows) => !shows);
+          // From the keyboard: Tab from the row's main part to its chevron, which shows the line;
+          // Enter opens the menu.
+          await app.locator('[data-testid="row-status"]').focus();
+          await app.keyboard.press('Tab');
+          const next = await focusedId();
+          const focused = await rowSettled(lineShows, Boolean);
+          await app.keyboard.press('Enter');
+          const codes = await menuItems();
+          const checked = await menuChecked();
+          await menuOpen.locator('[data-testid="status-menu-404"]').click();
+          await menuOpen.waitFor({ state: 'detached', timeout: 3000 });
+          await sleep(300);
+          const set = [
+            await statusOf('s1'),
+            await value(),
+            await app.locator('[data-testid="status-code"]').count(),
+          ];
+          await app.click('[data-testid="status-menu"]');
+          await menuItems();
+          const nowChecked = await menuChecked();
+          await app.keyboard.press('Escape');
+          await menuOpen.waitFor({ state: 'detached', timeout: 3000 });
+          // The row's main part still opens Status's editor.
+          await app.click('[data-testid="row-status"]');
+          const editor = await app.locator('[data-testid="status-code"]').inputValue();
+          await app.click('[data-testid="row-status"]');
+          // Keep server's body: the server's status, kept until a code is picked.
+          await openRule('From kept');
+          const keptValue = await value();
+          await app.click('[data-testid="status-menu"]');
+          const keptCodes = await menuItems();
+          const keptChecked = await menuChecked();
+          await menuOpen.locator('[data-testid="status-menu-503"]').click();
+          await menuOpen.waitFor({ state: 'detached', timeout: 3000 });
+          await sleep(300);
+          const forced = [await statusOf('s2'), await value()];
+          await app.click('[data-testid="status-menu"]');
+          await menuOpen.locator('[data-testid="status-menu-server"]').click();
+          await menuOpen.waitFor({ state: 'detached', timeout: 3000 });
+          await sleep(300);
+          const keptAgain = [await statusOf('s2'), await value()];
+          const COMMON = [
+            '200 OK',
+            '201 Created',
+            '204 No Content',
+            '400 Bad Request',
+            '401 Unauthorized',
+            '403 Forbidden',
+            '404 Not Found',
+            '500 Internal Server Error',
+            '503 Service Unavailable',
+          ];
+          expect(
+            [
+              [atRest, hovered, next, focused],
+              codes,
+              checked,
+              set,
+              nowChecked,
+              editor,
+              keptValue,
+              keptCodes,
+              keptChecked,
+              forced,
+              keptAgain,
+            ],
+            [
+              [false, true, 'status-menu', true],
+              COMMON,
+              ['200 OK'],
+              ['404', '404 Not Found', 0],
+              ['404 Not Found'],
+              '404',
+              "Server's",
+              ["Server's status", ...COMMON],
+              ["Server's status"],
+              ['503', '503 Service Unavailable'],
+              ['', "Server's"],
+            ],
+          );
+        },
+      );
+    },
+  );
+
+  await diffCheck(
+    "over the body, the Diff row: what Diff compares the body with, and how many lines the body adds (green) and takes out (grey), each only where there are some; a click shows Diff in the editor's place, the row pressed, another goes back, and the footer has no Diff button of its own; the counts follow the body once typing pauses, not at every key; in one column the body still fits the pane with the row over it; no row for a rule with no server's response, nor for one that keeps the server's body",
+    async () => {
+      const THEIRS = 'a\nb\nc\nd';
+      const text = (id, name, content) =>
+        draftRule(id, name, `/api/never-called?${id}`, content, 'text/plain');
+      const restore = await addRules([
+        [text('d1', 'Changes it', 'a\nB\nc\nd\ne'), THEIRS],
+        [text('d2', 'Only adds', `${THEIRS}\ne\nf`), THEIRS],
+        [text('d3', 'The same', THEIRS), THEIRS],
+      ]);
+      await worker.evaluate(
+        async (rule) => {
+          const { rules } = await chrome.storage.local.get('rules');
+          await chrome.storage.local.set({ rules: [...rules, rule] });
+        },
+        text('d4', 'No response', THEIRS),
+      );
+      let vimWasOn = false;
+      try {
+        const row = app.locator('[data-testid="diff-switch"]');
+        // The row's words, and its counts with their colours.
+        const look = () =>
+          app.evaluate(() => {
+            const button = document.querySelector('[data-testid="diff-switch"]');
+            if (!button) return null;
+            return {
+              words: [
+                ...button.querySelectorAll(
+                  ':scope > span:not([data-testid]):not(.sr-only)',
+                ),
+              ].map((span) => span.textContent),
+              counts: [
+                ...button.querySelectorAll('[data-testid="diff-row-counts"] > span'),
+              ].map((span) => [
+                span.textContent,
+                span.classList.contains('text-signal')
+                  ? 'green'
+                  : span.classList.contains('text-t65')
+                    ? 'grey'
+                    : span.className,
+              ]),
+              pressed: button.getAttribute('aria-pressed'),
+              // Over the body editor, and the footer with no Diff of its own.
+              over:
+                button.getBoundingClientRect().bottom <=
+                document.querySelector('.code').getBoundingClientRect().top,
+              footer: [
+                ...document.querySelectorAll('[data-testid="body-card"] button'),
+              ].filter((other) => other !== button && other.textContent.trim() === 'Diff')
+                .length,
+            };
+          });
+        const counts = async () =>
+          (await look())?.counts.map(([count]) => count).join(' ');
+        await app
+          .locator('[data-testid="rule"]', { hasText: 'Changes it' })
+          .first()
+          .click();
+        await row.waitFor({ timeout: 3000 });
+        // Vim's keys off while the body is typed in (a check before leaves them on), then as
+        // they were.
+        vimWasOn = (await vimSwitch.getAttribute('aria-pressed')) === 'true';
+        if (vimWasOn) await vimSwitch.click();
+        const changes = await look();
+        await row.click();
+        await diffView.waitFor({ timeout: 3000 });
+        const on = [await row.getAttribute('aria-pressed'), await body.isVisible()];
+        await row.click();
+        await diffView.waitFor({ state: 'detached', timeout: 3000 });
+        const off = [await row.getAttribute('aria-pressed'), await body.isVisible()];
+        // A new line typed at the end, a key at a time: the counts as they were until typing
+        // pauses, then the new ones.
+        await body.focus();
+        await body.evaluate((textarea) =>
+          textarea.setSelectionRange(textarea.value.length, textarea.value.length),
+        );
+        await app.keyboard.press('Enter');
+        await app.keyboard.type('zz', { delay: 40 });
+        const whileTyping = await counts();
+        const paused = await rowSettled(counts, (now) => now === '+3 −1');
+        // In one column (400 px), a long body: the editor the pane's height less the room the
+        // card's controls take, the row's with them and the footer's second row in a card this
+        // narrow (162 + 32), so all of the card is on screen.
+        let column;
+        try {
+          await app.setViewportSize({ width: 400, height: 760 });
+          await body.fill(
+            Array.from({ length: 200 }, (_, line) => `line ${line}`).join('\n'),
+          );
+          column = await app.evaluate(() => {
+            const code = document.querySelector('.code');
+            const pane = code.closest('[data-slot="pane-scroll"]');
+            return pane.clientHeight - code.offsetHeight;
+          });
+        } finally {
+          await app.setViewportSize({ width: 1280, height: 820 });
+        }
+        await app
+          .locator('[data-testid="rule"]', { hasText: 'Only adds' })
+          .first()
+          .click();
+        const adds = await rowSettled(look, (seen) => seen?.counts.length === 1);
+        await app
+          .locator('[data-testid="rule"]', { hasText: 'The same' })
+          .first()
+          .click();
+        const unchanged = await rowSettled(look, (seen) => seen?.counts.length === 0);
+        await app
+          .locator('[data-testid="rule"]', { hasText: 'No response' })
+          .first()
+          .click();
+        await body.waitFor();
+        const none = await row.count();
+        await app
+          .locator('[data-testid="rule"]', { hasText: 'Changes it' })
+          .first()
+          .click();
+        await row.waitFor({ timeout: 3000 });
+        await app.click('[data-testid="body-original"]');
+        const kept = await row.count();
+        await app.click('[data-testid="body-replace"]');
+        expect(
+          [
+            changes,
+            on,
+            off,
+            whileTyping,
+            paused,
+            column,
+            adds?.counts,
+            unchanged?.counts,
+            none,
+            kept,
+          ],
+          [
+            {
+              words: ['Diff', "vs server's response"],
+              counts: [
+                ['+2', 'green'],
+                ['−1', 'grey'],
+              ],
+              pressed: 'false',
+              over: true,
+              footer: 0,
+            },
+            ['true', false],
+            ['false', true],
+            '+2 −1',
+            '+3 −1',
+            194,
+            [['+2', 'green']],
+            [],
+            0,
+            0,
+          ],
+        );
+      } finally {
+        if (vimWasOn)
+          await app.evaluate(() => localStorage.setItem('ghostfetch.vim', '1'));
+        await restore();
+      }
+    },
+  );
+
+  await diffCheck(
+    "past the diff's limit (bodies more than 1,000 lines apart) the Diff row shows no counts, and says none to a screen reader, rather than every line as added and removed; a body within it has its counts as before",
+    async () => {
+      const far = (letter) =>
+        Array.from({ length: 1500 }, (_, line) => `${letter}${line}`).join('\n');
+      const text = (id, name, content) =>
+        draftRule(id, name, `/api/never-called?${id}`, content, 'text/plain');
+      const restore = await addRules([
+        [text('d8', 'Near its server', 'a\nB\nc'), 'a\nb\nc'],
+        [text('d9', 'Far from its server', far('b')), far('a')],
+      ]);
+      try {
+        const row = app.locator('[data-testid="diff-switch"]');
+        const counts = () =>
+          app.evaluate(() => [
+            [...document.querySelectorAll('[data-testid="diff-row-counts"] > span')].map(
+              (span) => span.textContent,
+            ),
+            document.querySelector('[data-testid="diff-switch"] .sr-only')?.textContent ??
+              '',
+          ]);
+        await app
+          .locator('[data-testid="rule"]', { hasText: 'Near its server' })
+          .first()
+          .click();
+        const near = await rowSettled(counts, ([now]) => now.length === 2);
+        await app
+          .locator('[data-testid="rule"]', { hasText: 'Far from its server' })
+          .first()
+          .click();
+        await row.waitFor({ timeout: 3000 });
+        await sleep(1000);
+        const farRow = await counts();
+        expect(
+          [near, farRow],
+          [
+            [['+1', '−1'], ', 1 line added, 1 removed'],
+            [[], ''],
+          ],
+        );
+      } finally {
+        await restore();
+      }
+    },
+  );
+  await diffCheck(
+    "past the diff's limit Diff's own header shows no counts either, as its row doesn't, while Diff still draws the one body replaced by the other; a body within it has its counts there as before",
+    async () => {
+      const far = (letter) =>
+        Array.from({ length: 1500 }, (_, line) => `${letter}${line}`).join('\n');
+      const text = (id, name, content) =>
+        draftRule(id, name, `/api/never-called?${id}`, content, 'text/plain');
+      const restore = await addRules([
+        [text('d10', 'Diff near its server', 'a\nB\nc'), 'a\nb\nc'],
+        [text('d11', 'Diff far from its server', far('b')), far('a')],
+      ]);
+      try {
+        // Diff's header's counts, or none; and the first line Diff draws as removed, in either
+        // layout: what shows which rule's Diff it is.
+        const shown = () =>
+          app.evaluate(() => ({
+            counts: [
+              ...document.querySelectorAll('[data-testid="diff-counts"] > span'),
+            ].map((span) => span.textContent),
+            removed:
+              document.querySelector(
+                '[data-testid="diff-row"][data-kind="del"] [data-code]',
+              )?.textContent ?? null,
+          }));
+        await app
+          .locator('[data-testid="rule"]', { hasText: 'Diff near its server' })
+          .first()
+          .click();
+        await app.locator('[data-testid="diff-switch"]').click();
+        await diffView.waitFor({ timeout: 3000 });
+        const near = await rowSettled(shown, ({ removed }) => removed === 'b');
+        // Diff stays on from one rule to the next, so the far one's opens in it.
+        await app
+          .locator('[data-testid="rule"]', { hasText: 'Diff far from its server' })
+          .first()
+          .click();
+        const farDiff = await rowSettled(shown, ({ removed }) => removed === 'a0');
+        expect(
+          [near, farDiff],
+          [
+            { counts: ['+1', '−1'], removed: 'b' },
+            { counts: [], removed: 'a0' },
+          ],
+        );
+      } finally {
+        await restore();
+      }
+    },
+  );
+  await check(
+    "in Commit Mono at Larger nothing spills out of the open rule's header, Status's row or the Diff row: wide, the crumbs stay inside the header and before its buttons, which stay inside the window, a long group name and a long rule name cut short; at 420 px, Status's row with its chevron and the Diff row with its counts stay inside their card and the body's",
+    async () => {
+      const long = 'A rule with a name long enough to be cut short in the header';
+      await withGroups(
+        [grouped('m1', 'X', 'g-1', { name: long })],
+        [PR1({ name: 'A group with a name long enough to be cut short too' })],
+        async () => {
+          await worker.evaluate((values) => chrome.storage.local.set(values), {
+            'serverResponse:m1': keptResponse('{\n  "from": "the server"\n}'),
+          });
+          try {
+            await app.evaluate(() =>
+              Object.assign(document.documentElement.dataset, {
+                font: 'mono',
+                size: 'larger',
+              }),
+            );
+            await app.evaluate(() => document.fonts.ready);
+            await openRule(long);
+            await app.locator('[data-testid="diff-switch"]').waitFor({ timeout: 3000 });
+            const header = await app.evaluate(() => {
+              const box = (selector) =>
+                document.querySelector(selector).getBoundingClientRect().toJSON();
+              const nav = document.querySelector('[data-testid="rules-head-path"]');
+              const cut = (selector) => {
+                const words = document.querySelector(`${selector} span.truncate`);
+                return words.scrollWidth > words.clientWidth;
+              };
+              return {
+                nav: box('[data-testid="rules-head-path"]'),
+                group: box('[data-testid="crumb-group"]'),
+                name: box('[data-testid="crumb-name"]'),
+                duplicate: box('[data-testid="duplicate-rule"]'),
+                // The header's last button, its ⋯, inside the window.
+                buttons:
+                  box('[data-testid="rule-menu"]').right <=
+                  document.documentElement.clientWidth + 0.5,
+                fits: nav.scrollWidth <= nav.clientWidth,
+                cut: [
+                  cut('[data-testid="crumb-group"]'),
+                  cut('[data-testid="crumb-name"]'),
+                ],
+              };
+            });
+            await app.setViewportSize({ width: 420, height: 760 });
+            await sleep(200);
+            const narrow = await app.evaluate(() => {
+              const inside = (selector, within) => {
+                const element = document.querySelector(selector);
+                const outer = element.closest(within).getBoundingClientRect();
+                const box = element.getBoundingClientRect();
+                return (
+                  box.left >= outer.left - 0.5 &&
+                  box.right <= outer.right + 0.5 &&
+                  element.scrollWidth <= element.clientWidth
+                );
+              };
+              return [
+                inside('[data-slot="accordion-split"]', '[data-slot="accordion"]'),
+                inside('[data-testid="status-menu"]', '[data-slot="accordion"]'),
+                inside('[data-testid="diff-switch"]', '[data-testid="body-card"]'),
+                inside('[data-testid="diff-row-counts"]', '[data-testid="diff-switch"]'),
+              ];
+            });
+            expect(
+              [
+                header.group.left >= header.nav.left - 0.5,
+                header.group.right <= header.name.left + 0.5,
+                header.name.right <= header.nav.right + 0.5,
+                header.nav.right <= header.duplicate.left,
+                header.buttons,
+                header.fits,
+                header.cut,
+                narrow,
+              ],
+              [
+                true,
+                true,
+                true,
+                true,
+                true,
+                true,
+                [true, true],
+                [true, true, true, true],
+              ],
+              JSON.stringify(header),
+            );
+          } finally {
+            await app.evaluate(() => {
+              delete document.documentElement.dataset.font;
+              delete document.documentElement.dataset.size;
+            });
+            await app.setViewportSize({ width: 1280, height: 820 });
+            await worker.evaluate(() => chrome.storage.local.remove('serverResponse:m1'));
+          }
+        },
+      );
+    },
+  );
+
+  // Undo where the eye is: a delete says so in the sidebar's footer, with Undo and ⌘Z, or in a
+  // toast where the footer isn't on screen.
+  console.log('undo where the eye is');
+  const undoNotice = app.locator('[data-testid="undo-notice"]');
+  const noticeUndo = app.locator('[data-testid="undo-notice-undo"]');
+  const anyToast = app.locator('[data-slot="toast"]');
+  const searchRules = app.locator('input[aria-label="Search rules"]');
+  // ⌘Z as this platform writes it and says it (kbd.tsx's modKey() and spokenKeys()).
+  const [MOD_Z, SPOKEN_Z] = await app.evaluate(() =>
+    /Mac/.test(navigator.userAgent) ? ['⌘Z', 'Command Z'] : ['Ctrl+Z', 'Control Z'],
+  );
+  const named = (name) => app.locator('[data-testid="rule"]', { hasText: name }).first();
+  // A rule deleted from its row's ⋯, by the pointer.
+  const deleteFromRow = async (name) => {
+    await named(name).hover();
+    await named(name).locator('[data-testid="row-menu"]').click();
+    await app.click('[data-testid="delete-rule"]');
+    await app
+      .locator('[data-slot="dropdown-menu-content"]')
+      .waitFor({ state: 'detached', timeout: 3000 });
+  };
+  // The sidebar's footer: the notice's words and its Undo's (its key, then the rest), or none; how
+  // its own buttons are seen; and how tall it is.
+  const noticeSays = () =>
+    app.evaluate(() => {
+      const footer = document.querySelector('#sidebar footer');
+      const notice = footer.querySelector('[data-testid="undo-notice"]');
+      const undo = notice?.querySelector('[data-testid="undo-notice-undo"]');
+      return {
+        notice: notice && [
+          notice.querySelector('span.truncate').textContent,
+          undo.querySelector('kbd').textContent,
+          undo.textContent.replace(undo.querySelector('kbd').textContent, '').trim(),
+        ],
+        buttons: [...footer.querySelectorAll('button')]
+          .filter((button) => button !== undo && button.getClientRects().length)
+          .map((button) => getComputedStyle(button).visibility),
+        height: footer.offsetHeight,
+      };
+    });
+  // The list's item with focus (its rule's or group's id), or what has it instead.
+  const focusedOn = () =>
+    app.evaluate(
+      () => document.activeElement?.dataset.item ?? document.activeElement?.tagName,
+    );
+  // The rules' ids in their stored order, each with its group and switch.
+  const storedOrder = async () =>
+    (await storedRules()).map((rule) => [rule.id, rule.group, rule.enabled]);
+  // A menu a check before left open, shut: its backdrop would take every click after it.
+  const shutMenus = async () => {
+    for (
+      let tries = 0;
+      tries < 3 && (await app.locator('[role="menu"]').count());
+      tries++
+    ) {
+      await app.keyboard.press('Escape');
+      await sleep(300);
+    }
+  };
+
+  await check(
+    `deleting a rule says so in the sidebar's footer, not in a toast: "Rule deleted" and "${MOD_Z} to undo", a button named "${SPOKEN_Z} to undo" with its keys, said once by a polite live region, the footer's buttons unseen meanwhile and the footer as tall; its Undo puts the rule back where it was, focus on its row, and so does ${MOD_Z} after a delete from the keyboard, from the row focus went back to`,
+    async () => {
+      await withGroups(
+        [grouped('n1', 'one'), grouped('n2', 'two'), grouped('n3', 'three')],
+        [],
+        async () => {
+          await shutMenus();
+          await show('rules');
+          await named('From two').waitFor({ timeout: 3000 });
+          const was = [await listed(), await storedOrder()];
+          const before = await noticeSays();
+          // Everything the live region is given from here on.
+          await app.evaluate(() => {
+            window.announced = [];
+            new MutationObserver((records) => {
+              for (const record of records)
+                for (const node of record.addedNodes)
+                  window.announced.push(node.textContent);
+            }).observe(document.querySelector('[data-slot="undo-announcer"]'), {
+              childList: true,
+              subtree: true,
+              characterData: true,
+            });
+          });
+          await deleteFromRow('From two');
+          await undoNotice.waitFor({ timeout: 3000 });
+          // Long enough for a toast to have come, and for the region to be given anything more.
+          await sleep(500);
+          const shown = [
+            await noticeSays(),
+            await noticeUndo.getAttribute('aria-label'),
+            await noticeUndo.getAttribute('aria-keyshortcuts'),
+            await app.locator('[data-slot="undo-announcer"]').getAttribute('aria-live'),
+            await app.evaluate(() => window.announced),
+            await anyToast.count(),
+            await listed(),
+          ];
+          const rules = was[0];
+          const SEEN = ['visible', 'visible', 'visible', 'visible'];
+          // What the delete shows, before anything is clicked in it.
+          expect(
+            [before, shown],
+            [
+              { notice: null, buttons: SEEN, height: 44 },
+              [
+                {
+                  notice: ['Rule deleted', MOD_Z, 'to undo'],
+                  buttons: ['hidden', 'hidden', 'hidden', 'hidden'],
+                  height: 44,
+                },
+                `${SPOKEN_Z} to undo`,
+                MOD_Z === '⌘Z' ? 'Meta+Z' : 'Control+Z',
+                'polite',
+                [`Rule deleted. Press ${SPOKEN_Z} to undo`],
+                0,
+                rules.filter((name) => name !== 'From two'),
+              ],
+            ],
+            'the delete',
+          );
+          await noticeUndo.click();
+          await undoNotice.waitFor({ state: 'detached', timeout: 3000 });
+          const clicked = [
+            await listed(),
+            await storedOrder(),
+            await rowSettled(focusedOn, (item) => item === 'n2'),
+            (await noticeSays()).buttons,
+          ];
+          // From the keyboard: the row's right-click menu by Shift+F10, its last item, Delete;
+          // focus goes back to the row in its place, and ⌘Z from there.
+          await named('From two').focus();
+          await app.keyboard.press('Shift+F10');
+          const menu = app.locator('[data-slot="context-menu-content"]');
+          // The keys only once the menu has focus: before, End is the list's (its last item).
+          await app.waitForFunction(
+            () => document.activeElement?.closest('[data-slot="context-menu-content"]'),
+            null,
+            { timeout: 3000 },
+          );
+          await app.keyboard.press('End');
+          await menu
+            .locator('[data-testid="delete-rule"][data-highlighted]')
+            .waitFor({ timeout: 3000 });
+          await app.keyboard.press('Enter');
+          await menu.waitFor({ state: 'detached', timeout: 3000 });
+          await undoNotice.waitFor({ timeout: 3000 });
+          const from = await rowSettled(focusedOn, (item) => item === 'n3');
+          await app.keyboard.press('ControlOrMeta+z');
+          await undoNotice.waitFor({ state: 'detached', timeout: 3000 });
+          const keyed = [
+            from,
+            await listed(),
+            await storedOrder(),
+            await rowSettled(focusedOn, (item) => item === 'n2'),
+            await anyToast.count(),
+          ];
+          expect(
+            [clicked, keyed],
+            [
+              [rules, was[1], 'n2', SEEN],
+              ['n3', rules, was[1], 'n2', 0],
+            ],
+            'the undos',
+          );
+        },
+      );
+    },
+  );
+
+  await check(
+    `${MOD_Z} where a field, the body editor or a menu has the keyboard is theirs and doesn't undo the delete the footer shows: in the search field it undoes what was typed there, in the body what was typed there, and in a group's name being renamed and in an open menu it reaches them, not stopped; each delete stays deleted, the notice still there`,
+    async () => {
+      let vimWasOn = false;
+      await withGroups(
+        [
+          grouped('k1', 'one'),
+          grouped('k2', 'two'),
+          grouped('k3', 'three'),
+          grouped('k4', 'four'),
+          grouped('k5', 'five'),
+          grouped('k6', 'six', 'g-1'),
+        ],
+        [PR1()],
+        async () => {
+          try {
+            await shutMenus();
+            // A page of its own: a ⌘Z that isn't the notice's is the browser's undo, which takes
+            // back the page's last edit wherever it was made, as checks before leave some (a
+            // search typed and cleared, which would come back and hide rules).
+            await app.reload();
+            await show('rules');
+            await named('From six').waitFor({ timeout: 3000 });
+            // Each ⌘Z that reaches the document: what it was pressed in.
+            await app.evaluate(() => {
+              window.zKeys = [];
+              document.addEventListener('keydown', (event) => {
+                if (event.key.toLowerCase() === 'z' && (event.metaKey || event.ctrlKey))
+                  window.zKeys.push(event.target.dataset?.testid ?? event.target.tagName);
+              });
+            });
+            const zKeys = () =>
+              app.evaluate(() => window.zKeys.splice(0, window.zKeys.length));
+            // Deleted as stored (saved at once), whatever a search shows.
+            const deleted = async (name) =>
+              !(await storedRules()).some((rule) => rule.name === name);
+            // The search field: typed in before the delete, clicked into after it.
+            await searchRules.click();
+            await app.keyboard.type('From');
+            await deleteFromRow('From one');
+            await undoNotice.waitFor({ timeout: 3000 });
+            await searchRules.click();
+            await app.keyboard.press('ControlOrMeta+z');
+            await sleep(300);
+            const typed = await searchRules.inputValue();
+            const inSearch = [
+              typed !== 'From' && 'From'.startsWith(typed),
+              await deleted('From one'),
+              await undoNotice.count(),
+              await zKeys(),
+            ];
+            await searchRules.fill('');
+            // The body: typed in before the delete (vim's keys off: a check before leaves them
+            // on), clicked into after it.
+            await named('From five').click();
+            await body.waitFor({ timeout: 3000 });
+            vimWasOn = (await vimSwitch.getAttribute('aria-pressed')) === 'true';
+            if (vimWasOn) await vimSwitch.click();
+            const original = await body.inputValue();
+            await body.focus();
+            await body.evaluate((textarea) =>
+              textarea.setSelectionRange(textarea.value.length, textarea.value.length),
+            );
+            await app.keyboard.type('z');
+            await sleep(400);
+            const edited = await body.inputValue();
+            await deleteFromRow('From two');
+            await undoNotice.waitFor({ timeout: 3000 });
+            await body.click();
+            await app.keyboard.press('ControlOrMeta+z');
+            await sleep(400);
+            const inBody = [
+              edited !== original,
+              (await body.inputValue()) === original,
+              await deleted('From two'),
+              await undoNotice.count(),
+            ];
+            // An open menu: a row's ⋯, opened by the pointer. (Before the rename: a double-click
+            // on a group's name also clicks it twice, folding it and unfolding it.)
+            await deleteFromRow('From three');
+            await undoNotice.waitFor({ timeout: 3000 });
+            await named('From six').hover();
+            await named('From six').locator('[data-testid="row-menu"]').click();
+            const menu = app.locator('[data-slot="dropdown-menu-content"]');
+            // Focus goes into a menu the pointer opened a moment after its items are there.
+            await app.waitForFunction(
+              () =>
+                document.activeElement?.closest('[data-slot="dropdown-menu-content"]'),
+              null,
+              { timeout: 3000 },
+            );
+            await app.keyboard.press('ControlOrMeta+z');
+            await sleep(300);
+            const inMenu = [
+              await menu.count(),
+              await deleted('From three'),
+              await undoNotice.count(),
+            ];
+            await app.keyboard.press('Escape');
+            await menu.waitFor({ state: 'detached', timeout: 3000 });
+            await zKeys();
+            // A group's name being renamed, by a double-click.
+            await deleteFromRow('From four');
+            await undoNotice.waitFor({ timeout: 3000 });
+            const field = app.locator('[data-testid="group-name-input"]');
+            await app
+              .locator(
+                '[data-testid="group"][data-group="PR-1"] [data-testid="group-name"]',
+              )
+              .dblclick();
+            await field.waitFor({ timeout: 3000 });
+            await app.keyboard.press('ControlOrMeta+z');
+            await sleep(300);
+            // (A ⌘Z taken from the field would undo the delete and give the row focus, and the
+            // field, left, would go.)
+            const stillThere = (await field.count()) === 1;
+            const inRename = [
+              stillThere && (await field.inputValue()),
+              stillThere &&
+                (await field.evaluate((input) => input === document.activeElement)),
+              await deleted('From four'),
+              await undoNotice.count(),
+              await zKeys(),
+            ];
+            if (stillThere) await app.keyboard.press('Escape');
+            await field.waitFor({ state: 'detached', timeout: 3000 });
+            expect(
+              [inSearch, inBody, inMenu, inRename],
+              [
+                [true, true, 1, ['INPUT']],
+                [true, true, true, 1],
+                [1, true, 1],
+                ['PR-1', true, true, 1, ['group-name-input']],
+              ],
+            );
+          } finally {
+            if (vimWasOn)
+              await app.evaluate(() => localStorage.setItem('ghostfetch.vim', '1'));
+          }
+        },
+      );
+    },
+  );
+
+  await check(
+    `while the notice shows, ${MOD_Z} outside a field undoes the delete whatever came before it, ↓ and Esc in the list or a click on a row, and takes the key: the browser's own undo, which would take back a search cleared before, acts neither on the press nor on its repeats while it's held; a delete meanwhile takes the notice's place and starts its time over; it goes five seconds after that, the footer's buttons back, and ${MOD_Z} then undoes nothing of ours`,
+    async () => {
+      await withGroups(
+        [
+          grouped('t1', 'one'),
+          grouped('t2', 'two'),
+          grouped('t4', 'four'),
+          grouped('t5', 'five'),
+          grouped('t3', 'three', 'g-1'),
+        ],
+        [PR1()],
+        async () => {
+          await shutMenus();
+          await show('rules');
+          await named('From three').waitFor({ timeout: 3000 });
+          // Deleted as stored (saved at once), whatever a search shows.
+          const deleted = async (name) =>
+            !(await storedRules()).some((rule) => rule.name === name);
+          // The page's undo history, which the browser's own ⌘Z takes back from wherever focus
+          // is: three steps in the search field, so that one taken back shows, and so do two
+          // ('' back to 'Fr', then 'From'); every rule matches each.
+          await searchRules.fill('From');
+          await searchRules.fill('Fr');
+          await searchRules.fill('');
+          // ↓ and Esc on the list, then ⌘Z held down: its press and a repeat. Each part notes
+          // what it finds rather than stopping the check, so that what's wrong shows, part by
+          // part.
+          await deleteFromRow('From one');
+          await undoNotice.waitFor({ timeout: 3000 });
+          await named('From two').focus();
+          await app.keyboard.press('ArrowDown');
+          await app.keyboard.press('Escape');
+          await app.keyboard.down('ControlOrMeta');
+          await app.keyboard.down('z');
+          await app.keyboard.down('z');
+          await app.keyboard.up('z');
+          await app.keyboard.up('ControlOrMeta');
+          await sleep(300);
+          const afterKeys = [
+            await deleted('From one'),
+            await undoNotice.count(),
+            await searchRules.inputValue(),
+          ];
+          // A click on a row, then ⌘Z.
+          await deleteFromRow('From four');
+          await undoNotice.waitFor({ timeout: 3000 });
+          await named('From two').click({ position: { x: 60, y: 12 } });
+          await app.keyboard.press('ControlOrMeta+z');
+          await sleep(300);
+          const afterClick = [
+            await deleted('From four'),
+            await undoNotice.count(),
+            await searchRules.inputValue(),
+          ];
+          // A delete, and the group 2 s on: it takes the notice's place, and the time starts
+          // over.
+          await deleteFromRow('From five');
+          await undoNotice.waitFor({ timeout: 3000 });
+          await sleep(2000);
+          await app
+            .locator('[data-testid="group"][data-group="PR-1"]')
+            .click({ button: 'right', position: { x: 60, y: 12 } });
+          await app.click(
+            '[data-slot="context-menu-content"] [data-testid="delete-group"]',
+          );
+          await app
+            .locator('[data-slot="context-menu-content"]')
+            .waitFor({ state: 'detached', timeout: 3000 });
+          const takenOver = (await noticeSays()).notice;
+          const from = Date.now();
+          // Past five seconds from the delete before, under five from this one: still there.
+          await sleep(3500);
+          const stays = await undoNotice.count();
+          const gone = await rowSettled(
+            () => undoNotice.count(),
+            (count) => count === 0,
+          );
+          const went = Date.now() - from;
+          const after = await noticeSays();
+          // ⌘Z now undoes nothing of ours (the browser's own undo may take the search back).
+          await named('From two').focus();
+          await app.keyboard.press('ControlOrMeta+z');
+          await sleep(400);
+          const last = [
+            await deleted('From five'),
+            (await storedGroups()).length,
+            (await storedRules()).map((rule) => rule.name),
+          ];
+          await searchRules.fill('');
+          expect(
+            [
+              afterKeys,
+              afterClick,
+              takenOver,
+              [stays, gone, went > 4000 && went < 6500],
+              after,
+              last,
+              await anyToast.count(),
+            ],
+            [
+              [false, 0, ''],
+              [false, 0, ''],
+              ['Group deleted', MOD_Z, 'to undo'],
+              [1, 0, true],
+              {
+                notice: null,
+                buttons: ['visible', 'visible', 'visible', 'visible'],
+                height: 44,
+              },
+              [true, 0, ['From one', 'From two', 'From four']],
+              0,
+            ],
+            `gone ${went} ms after the group's delete`,
+          );
+        },
+      );
+    },
+  );
+
+  await check(
+    `a group deleted says "Group deleted" in the footer, and ${MOD_Z} brings it back where it was with its rules, in their order and with their switches, focus on its header`,
+    async () => {
+      await withGroups(
+        [
+          grouped('p1', 'one'),
+          grouped('p2', 'A1', 'g-1'),
+          grouped('p3', 'A2', 'g-1', { enabled: false }),
+          grouped('p4', 'two'),
+        ],
+        [PR1()],
+        async () => {
+          await shutMenus();
+          await show('rules');
+          await named('From A2').waitFor({ timeout: 3000 });
+          const was = [
+            await listed(),
+            await storedOrder(),
+            (await storedGroups()).map((group) => [group.id, group.at, group.enabled]),
+          ];
+          await app.hover('[data-testid="group"][data-group="PR-1"]');
+          await app.click(
+            '[data-testid="group"][data-group="PR-1"] [data-testid="group-menu"]',
+          );
+          await app.click('[data-testid="delete-group"]');
+          await undoNotice.waitFor({ timeout: 3000 });
+          await sleep(300);
+          const gone = [
+            (await noticeSays()).notice,
+            await listed(),
+            (await storedGroups()).length,
+            await anyToast.count(),
+          ];
+          await app.keyboard.press('ControlOrMeta+z');
+          await undoNotice.waitFor({ state: 'detached', timeout: 3000 });
+          const back = [
+            await listed(),
+            await storedOrder(),
+            (await storedGroups()).map((group) => [group.id, group.at, group.enabled]),
+            await rowSettled(focusedOn, (item) => item === 'g-1'),
+          ];
+          expect(
+            [gone, back],
+            [
+              [['Group deleted', MOD_Z, 'to undo'], ['From one', 'From two'], 0, 0],
+              [...was, 'g-1'],
+            ],
+          );
+        },
+      );
+    },
+  );
+
+  await check(
+    "in a narrow panel a rule deleted from its own screen, where there's no footer, says so in a toast with Undo, as before: the list comes back with no notice in its footer, its buttons there, ⌘Z doesn't undo it, and the toast's Undo brings the rule back where it was and opens it again",
+    async () => {
+      await withGroups(
+        [grouped('w1', 'one'), grouped('w2', 'two'), grouped('w3', 'three')],
+        [],
+        async () => {
+          try {
+            await shutMenus();
+            await show('rules');
+            await app.setViewportSize({ width: 420, height: 760 });
+            const back = app.locator('[data-testid="rule-back"]');
+            if (await back.isVisible()) await back.click();
+            await named('From two').click();
+            await app.locator('[data-testid="rule-name"]').waitFor({ timeout: 3000 });
+            const was = await storedOrder();
+            await app.click('[data-testid="rule-menu"]');
+            await app.click('[data-testid="delete-rule"]');
+            const toast = app.locator('[data-slot="toast"]', {
+              hasText: 'Deleted “From two”',
+            });
+            await toast.waitFor({ timeout: 3000 });
+            await named('From one').waitFor({ timeout: 3000 });
+            await sleep(300);
+            const shown = [await noticeSays(), await listed()];
+            await app.keyboard.press('ControlOrMeta+z');
+            await sleep(300);
+            // As stored: a ⌘Z that isn't ours is the browser's undo, which may bring back a
+            // search a check before cleared.
+            const keyed = (await storedRules()).map((rule) => rule.name);
+            await toast.locator('button', { hasText: 'Undo' }).click();
+            await app.locator('[data-testid="rule-name"]').waitFor({ timeout: 3000 });
+            expect(
+              [
+                shown,
+                keyed,
+                await app.locator('[data-testid="rule-name"]').inputValue(),
+                await storedOrder(),
+              ],
+              [
+                [
+                  {
+                    notice: null,
+                    buttons: ['visible', 'visible', 'visible'],
+                    height: 44,
+                  },
+                  ['From one', 'From three'],
+                ],
+                ['From one', 'From three'],
+                'From two',
+                was,
+              ],
+            );
+          } finally {
+            await app.setViewportSize({ width: 1280, height: 820 });
+          }
+        },
+      );
+    },
+  );
+
+  console.log('focus and keys (6a)');
+  // The sidebar's toggle, as aria-expanded says it: 'true' while the sidebar shows.
+  const sidebarShown = () =>
+    app.locator('[data-testid="sidebar-toggle"]:visible').getAttribute('aria-expanded');
+  // What has focus: a list item's id, or a test id, or the tag; and whether it shows its ring.
+  const focusNow = () =>
+    app.evaluate(() => {
+      const active = document.activeElement;
+      return [
+        active?.dataset.item ?? active?.dataset.testid ?? active?.tagName,
+        active?.matches(':focus-visible') ?? false,
+      ];
+    });
+  const storedNames = async () => (await storedRules()).map((rule) => rule.name);
+  // F2 on a rule's row: its name a field.
+  const renameRow = async (name) => {
+    await named(name).focus();
+    await app.keyboard.press('F2');
+    await app.locator('[data-testid="rule-name-input"]').waitFor({ timeout: 3000 });
+  };
+  // A key, as the browser would send it, in what has focus: whether it was taken (defaultPrevented).
+  const sendKey = (init) =>
+    app.evaluate((options) => {
+      const target = document.activeElement ?? document.body;
+      const down = new KeyboardEvent('keydown', {
+        bubbles: true,
+        cancelable: true,
+        ...options,
+      });
+      target.dispatchEvent(down);
+      target.dispatchEvent(
+        new KeyboardEvent('keyup', { bubbles: true, cancelable: true, ...options }),
+      );
+      return down.defaultPrevented;
+    }, init);
+  // ⌘ and a key, as this platform's command key: with `code` where it isn't where QWERTY has it.
+  const commandKey = (key, code) =>
+    app.evaluate(
+      ([typed, where]) => {
+        const mac = /Mac/.test(navigator.userAgent);
+        const event = new KeyboardEvent('keydown', {
+          key: typed,
+          code: where,
+          metaKey: mac,
+          ctrlKey: !mac,
+          bubbles: true,
+          cancelable: true,
+        });
+        document.body.dispatchEvent(event);
+        return event.defaultPrevented;
+      },
+      [key, code],
+    );
+  const THREE = [grouped('k1', 'one'), grouped('k2', 'two'), grouped('k3', 'three')];
+  // Toasts a check before left, shut: the checks here find theirs by what they say.
+  const shutToasts = async () => {
+    await app.evaluate(() => {
+      for (const close of document.querySelectorAll(
+        '[data-slot="toast"] button[aria-label="Close"]',
+      ))
+        close.click();
+    });
+    await app.waitForFunction(
+      () => !document.querySelector('[data-slot="toast"]'),
+      null,
+      {
+        timeout: 3000,
+      },
+    );
+  };
+  // A menu the pointer opened, once it has the focus: an item clicked before then isn't taken.
+  const menuReady = () =>
+    app.waitForFunction(() => document.activeElement?.closest('[role="menu"]'), null, {
+      timeout: 3000,
+    });
+  // A field, by its test id: whether it's there, and what's in it.
+  const fieldNow = (testId) =>
+    app.evaluate((id) => {
+      const field = document.querySelector(`[data-testid="${id}"]`);
+      return field ? [1, field.value] : [0, null];
+    }, testId);
+
+  await check(
+    `the row put back by ${MOD_Z} or by the notice's Undo has the focus, and shows its ring, as one reached by a key does`,
+    async () => {
+      await withGroups(THREE, [], async () => {
+        await shutMenus();
+        await show('rules');
+        await named('From two').waitFor({ timeout: 3000 });
+        await deleteFromRow('From two');
+        await undoNotice.waitFor({ timeout: 3000 });
+        await app.keyboard.press('ControlOrMeta+z');
+        await named('From two').waitFor({ timeout: 3000 });
+        await sleep(200);
+        const byKey = await focusNow();
+        await deleteFromRow('From two');
+        await undoNotice.waitFor({ timeout: 3000 });
+        await noticeUndo.click();
+        await named('From two').waitFor({ timeout: 3000 });
+        await sleep(200);
+        expect(
+          [byKey, await focusNow()],
+          [
+            ['k2', true],
+            ['k2', true],
+          ],
+        );
+      });
+    },
+  );
+
+  // A narrow panel, its list showing, and the notice for a rule deleted from its row.
+  const narrowWithNotice = async () => {
+    await shutMenus();
+    await shutToasts();
+    await show('rules');
+    await app.setViewportSize({ width: 420, height: 760 });
+    const back = app.locator('[data-testid="rule-back"]');
+    if (await back.isVisible()) await back.click();
+    await deleteFromRow('From one');
+    await undoNotice.waitFor({ timeout: 3000 });
+  };
+
+  await check(
+    `in a narrow panel, a delete from the open rule, which gets a toast, leaves no older notice behind: back in the list the footer says nothing, and ${MOD_Z} undoes neither delete`,
+    async () => {
+      await withGroups(THREE, [], async () => {
+        try {
+          await narrowWithNotice();
+          await named('From two').click();
+          await app.locator('[data-testid="rule-name"]').waitFor({ timeout: 3000 });
+          await app.click('[data-testid="rule-menu"]');
+          await app.click('[data-testid="delete-rule"]');
+          await anyToast
+            .filter({ hasText: 'Deleted “From two”' })
+            .waitFor({ timeout: 3000 });
+          await named('From three').waitFor({ timeout: 3000 });
+          await sleep(300);
+          const footer = await noticeSays();
+          await app.keyboard.press('ControlOrMeta+z');
+          await sleep(300);
+          expect([footer.notice, await storedNames()], [null, ['From three']]);
+        } finally {
+          await app.setViewportSize({ width: 1280, height: 820 });
+          // A ⌘Z the app doesn't take is the browser's undo, which may bring back a search a
+          // check before cleared.
+          await searchRules.fill('');
+        }
+      });
+    },
+  );
+
+  await check(
+    'in a narrow panel, a notice whose list goes away as a rule opens goes on as a toast with Undo, which brings the rule back',
+    async () => {
+      await withGroups(THREE, [], async () => {
+        try {
+          await narrowWithNotice();
+          await named('From two').click();
+          await app.locator('[data-testid="rule-name"]').waitFor({ timeout: 3000 });
+          const toast = anyToast.filter({ hasText: 'Deleted “From one”' });
+          await toast.waitFor({ timeout: 3000 });
+          await toast.locator('button', { hasText: 'Undo' }).click();
+          await sleep(300);
+          expect(await storedNames(), ['From one', 'From two', 'From three']);
+        } finally {
+          await app.setViewportSize({ width: 1280, height: 820 });
+        }
+      });
+    },
+  );
+
+  await check(
+    `${MOD_Z.replace('Z', 'B')} while the notice shows hides the footer and the undo goes on as a toast with Undo, which brings the rule back; shown again, the footer says nothing`,
+    async () => {
+      await withGroups(THREE, [], async () => {
+        try {
+          await shutMenus();
+          await shutToasts();
+          await show('rules');
+          await deleteFromRow('From two');
+          await undoNotice.waitFor({ timeout: 3000 });
+          await app.keyboard.press('ControlOrMeta+b');
+          const toast = anyToast.filter({ hasText: 'Deleted “From two”' });
+          await toast.waitFor({ timeout: 3000 });
+          const hidden = await sidebarShown();
+          await toast.locator('button', { hasText: 'Undo' }).click();
+          await sleep(300);
+          const back = await storedNames();
+          await app.keyboard.press('ControlOrMeta+b');
+          await sleep(500);
+          expect(
+            [hidden, back, await sidebarShown(), (await noticeSays()).notice],
+            ['false', ['From one', 'From two', 'From three'], 'true', null],
+          );
+        } finally {
+          if ((await sidebarShown()) === 'false')
+            await app.keyboard.press('ControlOrMeta+b');
+        }
+      });
+    },
+  );
+
+  await check(
+    `${MOD_Z} and ${MOD_Z.replace('Z', 'B')} on any layout: on a Latin one, AZERTY too, by the letter typed (Z where QWERTY has W, and W where it has Z isn't Z, nor Dvorak's ; there); where what's typed is a letter of another script (Cyrillic я, Greek ζ, и for B), by the key where QWERTY has it`,
+    async () => {
+      await withGroups(THREE, [], async () => {
+        try {
+          await shutMenus();
+          await show('rules');
+          const tries = [];
+          for (const [key, code] of [
+            [';', 'KeyZ'],
+            ['w', 'KeyZ'],
+            ['z', 'KeyW'],
+            ['я', 'KeyZ'],
+            ['ζ', 'KeyZ'],
+          ]) {
+            if ((await storedNames()).length === 3) {
+              await deleteFromRow('From two');
+              await undoNotice.waitFor({ timeout: 3000 });
+            }
+            const taken = await commandKey(key, code);
+            await sleep(300);
+            tries.push([key, taken, (await storedNames()).length]);
+          }
+          const toggled = [];
+          for (const key of ['и', 'и']) {
+            toggled.push(await commandKey(key, 'KeyB'));
+            await sleep(400);
+            toggled.push(await sidebarShown());
+          }
+          expect(
+            [tries, toggled],
+            [
+              [
+                [';', false, 2],
+                ['w', false, 2],
+                ['z', true, 3],
+                ['я', true, 3],
+                ['ζ', true, 3],
+              ],
+              [true, 'false', true, 'true'],
+            ],
+          );
+        } finally {
+          if ((await sidebarShown()) === 'false')
+            await app.keyboard.press('ControlOrMeta+b');
+        }
+      });
+    },
+  );
+
+  await check(
+    "while an input method is putting a character together, Enter and Esc are its own, in the rename field of a row and of the open rule's name crumb: the field stays, the name as typed, and the next Enter gives it",
+    async () => {
+      await withGroups(THREE, [], async () => {
+        await shutMenus();
+        await show('rules');
+        const composing = async (key) => {
+          await sendKey({ key, isComposing: true });
+          await sleep(150);
+        };
+        await renameRow('From two');
+        const rowField = app.locator('[data-testid="rule-name-input"]');
+        await rowField.fill('日本');
+        await composing('Enter');
+        await composing('Escape');
+        const inRow = await fieldNow('rule-name-input');
+        await app.keyboard.press('Enter');
+        await sleep(300);
+        await named('日本').click();
+        await app.locator('[data-testid="crumb-name"]').dblclick();
+        const crumbField = app.locator('[data-testid="crumb-name-input"]');
+        await crumbField.waitFor({ timeout: 3000 });
+        await crumbField.fill('東京');
+        await composing('Enter');
+        await composing('Escape');
+        const inCrumb = await fieldNow('crumb-name-input');
+        await app.keyboard.press('Enter');
+        await sleep(300);
+        expect(
+          [inRow, inCrumb, await storedNames()],
+          [
+            [1, '日本'],
+            [1, '東京'],
+            ['From one', '東京', 'From three'],
+          ],
+        );
+      });
+    },
+  );
+
+  await check(
+    "a search shows every group open, and while it does no key and no click folds or unfolds one for later: not ←, →, Enter or Space on its header, nor a click on its name or on its chevron, on a group kept open or one kept folded; once it's cleared each is as it was",
+    async () => {
+      await withGroups(
+        [
+          grouped('f1', 'one', 'g-1'),
+          grouped('f2', 'two', 'g-1'),
+          grouped('f3', 'three', 'g-2'),
+          grouped('f4', 'four', 'g-2'),
+        ],
+        [PR1(), { id: 'g-2', name: 'PR-2', enabled: true, at: 2 }],
+        async () => {
+          try {
+            await shutMenus();
+            await show('rules');
+            const block = (id) =>
+              app.locator(`[data-testid="group-block"][data-item="${id}"]`);
+            const expanded = (id) => block(id).getAttribute('aria-expanded');
+            const groupName = (id) => block(id).locator('[data-testid="group-name"]');
+            // PR-1 kept open, PR-2 kept folded, by a click on its name, as before a search.
+            await block('g-2').waitFor({ timeout: 3000 });
+            if ((await expanded('g-1')) === 'false') await groupName('g-1').click();
+            if ((await expanded('g-2')) === 'true') await groupName('g-2').click();
+            const kept = [await expanded('g-1'), await expanded('g-2')];
+            const folds = () =>
+              app.evaluate(() => localStorage.getItem('ghostfetch.folded'));
+            const before = await folds();
+            await searchRules.fill('From');
+            await named('From four').waitFor({ timeout: 3000 });
+            const seen = [];
+            const note = async (id, what) =>
+              seen.push([id, what, await expanded(id), (await folds()) === before]);
+            for (const id of ['g-1', 'g-2']) {
+              for (const key of ['ArrowLeft', 'ArrowRight', 'Enter', 'Space']) {
+                await block(id).focus();
+                await app.keyboard.press(key);
+                await note(id, key);
+              }
+              // Its name, after the chevron and the chip.
+              await groupName(id).locator('span[id]').click();
+              await note(id, 'name');
+              await groupName(id).locator('svg').click();
+              await note(id, 'chevron');
+            }
+            await searchRules.fill('');
+            await sleep(300);
+            const all = (id) =>
+              ['ArrowLeft', 'ArrowRight', 'Enter', 'Space', 'name', 'chevron'].map(
+                (what) => [id, what, 'true', true],
+              );
+            expect(
+              [
+                kept,
+                seen,
+                [await expanded('g-1'), await expanded('g-2')],
+                (await folds()) === before,
+              ],
+              [
+                ['true', 'false'],
+                [...all('g-1'), ...all('g-2')],
+                ['true', 'false'],
+                true,
+              ],
+            );
+          } finally {
+            await searchRules.fill('');
+            // Both groups open again, as the checks after this one have them.
+            for (const id of ['g-1', 'g-2'])
+              if (
+                (await app
+                  .locator(`[data-testid="group-block"][data-item="${id}"]`)
+                  .getAttribute('aria-expanded')) === 'false'
+              )
+                await app
+                  .locator(
+                    `[data-testid="group-block"][data-item="${id}"] [data-testid="group-name"]`,
+                  )
+                  .click();
+          }
+        },
+      );
+    },
+  );
+
+  await check(
+    "a row renamed by F2 to a name the search doesn't find any more leaves the list with the focus, on its Tab stop, not the page",
+    async () => {
+      await withGroups(THREE, [], async () => {
+        try {
+          await shutMenus();
+          await show('rules');
+          await searchRules.fill('From');
+          await renameRow('From two');
+          await app.locator('[data-testid="rule-name-input"]').fill('Profile');
+          await app.keyboard.press('Enter');
+          await sleep(300);
+          const focus = await app.evaluate(() => [
+            document.activeElement?.getAttribute('role'),
+            document.activeElement?.getAttribute('tabindex'),
+          ]);
+          expect(
+            [focus, await storedNames()],
+            [
+              ['treeitem', '0'],
+              ['From one', 'Profile', 'From three'],
+            ],
+          );
+        } finally {
+          await searchRules.fill('');
+        }
+      });
+    },
+  );
+
+  await check(
+    "the ContextMenu key and Shift+F10 in a row's rename field are the browser's: not taken, and no menu of the list's opens",
+    async () => {
+      await withGroups(THREE, [], async () => {
+        await shutMenus();
+        await show('rules');
+        await renameRow('From two');
+        const taken = [
+          await sendKey({ key: 'ContextMenu' }),
+          await sendKey({ key: 'F10', shiftKey: true }),
+        ];
+        await sleep(300);
+        const menus = await app.locator('[role="menu"]').count();
+        await app.keyboard.press('Escape');
+        expect([taken, menus], [[false, false], 0]);
+      });
+    },
+  );
+
+  await check(
+    "a menu whose rule or group goes while it's open (the agent, or another window, deletes it) shuts: a row's ⋯ menu, its right-click menu, a group's right-click menu, and its ⋯ menu",
+    async () => {
+      await withGroups(
+        [grouped('m1', 'one'), grouped('m2', 'two', 'g-1'), grouped('m3', 'three')],
+        [PR1()],
+        async () => {
+          try {
+            await shutMenus();
+            await show('rules');
+            const menu = app.locator('[role="menu"]');
+            const shutAfter = async (stored) => {
+              await menu.first().waitFor({ timeout: 3000 });
+              await setStorage(stored);
+              await sleep(800);
+              return menu.count();
+            };
+            const all = await storedRules();
+            const without = all.filter((rule) => rule.id !== 'm2');
+            await named('From two').hover();
+            await named('From two').locator('[data-testid="row-menu"]').click();
+            const rowMenu = await shutAfter({ rules: without, groups: [PR1()] });
+            await shutMenus();
+            await setStorage({ rules: all, groups: [PR1()] });
+            await named('From two').waitFor({ timeout: 3000 });
+            await named('From two').click({
+              button: 'right',
+              position: { x: 60, y: 12 },
+            });
+            const rightClick = await shutAfter({ rules: without, groups: [PR1()] });
+            await shutMenus();
+            await setStorage({ rules: all, groups: [PR1()] });
+            const header = app.locator('[data-testid="group"][data-group="PR-1"]');
+            await header.waitFor({ timeout: 3000 });
+            await header.click({ button: 'right', position: { x: 60, y: 12 } });
+            const ungrouped = {
+              rules: all.map((rule) => ({ ...rule, group: '' })),
+              groups: [],
+            };
+            const groupMenu = await shutAfter(ungrouped);
+            await shutMenus();
+            await setStorage({ rules: all, groups: [PR1()] });
+            await header.waitFor({ timeout: 3000 });
+            await header.hover();
+            await header.locator('[data-testid="group-menu"]').click();
+            const groupMore = await shutAfter(ungrouped);
+            expect([rowMenu, rightClick, groupMenu, groupMore], [0, 0, 0, 0]);
+          } finally {
+            await shutMenus();
+          }
+        },
+      );
+    },
+  );
+
+  await check(
+    "F2 on a rule takes an empty name, as the open rule's name field does, and its row is then named by its URL; a group's still needs one",
+    async () => {
+      await withGroups(
+        [grouped('e1', 'one', 'g-1'), grouped('e2', 'two')],
+        [PR1()],
+        async () => {
+          await shutMenus();
+          await show('rules');
+          await renameRow('From two');
+          await app.locator('[data-testid="rule-name-input"]').fill('');
+          await app.keyboard.press('Enter');
+          await sleep(300);
+          const row = app.locator('[data-testid="rule"][data-item="e2"]');
+          const unnamed = [
+            (await storedRules()).find((rule) => rule.id === 'e2').name,
+            await row.locator('[data-slot="item-title"]').textContent(),
+          ];
+          const block = app.locator('[data-testid="group-block"][data-item="g-1"]');
+          await block.focus();
+          await app.keyboard.press('F2');
+          const groupField = app.locator('[data-testid="group-name-input"]');
+          await groupField.waitFor({ timeout: 3000 });
+          await groupField.fill('');
+          await app.keyboard.press('Enter');
+          await sleep(300);
+          expect(
+            [unnamed, (await storedGroups()).map((group) => group.name)],
+            [['', '/api/user?case=grouped'], ['PR-1']],
+          );
+        },
+      );
+    },
+  );
+
+  await check(
+    "the group's crumb renames the group in the crumb, as the name's crumb does: its name a field there, Enter gives it and Esc keeps the old one, focus back on the crumb either way; a name another group has is turned down, said so in a toast, the field staying for another",
+    async () => {
+      await withGroups(
+        [grouped('c1', 'one', 'g-1'), grouped('c2', 'two')],
+        [PR1(), { id: 'g-2', name: 'PR-2', enabled: true, at: 2 }],
+        async () => {
+          await shutMenus();
+          await shutToasts();
+          await show('rules');
+          await named('From one').click();
+          // Its header drawn, the crumbs its own.
+          await app
+            .locator('[data-testid="crumb-name"]', { hasText: 'From one' })
+            .waitFor({ timeout: 3000 });
+          const crumb = app.locator('[data-testid="crumb-group"]');
+          const field = app.locator('[data-testid="crumb-group-input"]');
+          // Rename from the crumb's menu, focus on the Rules tab before it (as after a click
+          // there), which the menu gives the focus back to where the crumb's gone.
+          const renameFromCrumb = async () => {
+            await app.locator('[data-testid="nav-rules"]').focus();
+            await crumb.click();
+            await menuReady();
+            await app.locator('[data-testid="rename-group"]').click();
+            await field.waitFor({ timeout: 3000 });
+            await sleep(200);
+          };
+          await renameFromCrumb();
+          const opened = [
+            await field.inputValue(),
+            await app.evaluate(() => document.activeElement?.dataset.testid),
+            await app.locator('[data-testid="group-name-input"]').count(),
+          ];
+          await field.fill('PR-1 checkout');
+          await app.keyboard.press('Enter');
+          await sleep(300);
+          const renamed = [
+            (await storedGroups()).map((group) => group.name),
+            await crumb.getAttribute('aria-label'),
+            await app.evaluate(() => document.activeElement?.dataset.testid),
+          ];
+          await renameFromCrumb();
+          await field.fill('Something else');
+          await app.keyboard.press('Escape');
+          await sleep(300);
+          const kept = [
+            (await storedGroups()).map((group) => group.name),
+            await app.evaluate(() => document.activeElement?.dataset.testid),
+          ];
+          await renameFromCrumb();
+          await field.fill('PR-2');
+          await app.keyboard.press('Enter');
+          await sleep(300);
+          const taken = [
+            await field.count(),
+            await anyToast
+              .filter({ hasText: "There's already a group called “PR-2”" })
+              .count(),
+            (await storedGroups()).map((group) => group.name),
+          ];
+          await app.keyboard.press('Escape');
+          await sleep(200);
+          expect(
+            [opened, renamed, kept, taken],
+            [
+              ['PR-1', 'crumb-group-input', 0],
+              [['PR-1 checkout', 'PR-2'], 'Group “PR-1 checkout”', 'crumb-group'],
+              [['PR-1 checkout', 'PR-2'], 'crumb-group'],
+              [1, 1, ['PR-1 checkout', 'PR-2']],
+            ],
+          );
+        },
+      );
+    },
+  );
+
+  await check(
+    "what the crumbs give a name to type in the list is seen: Duplicate on the group's crumb with the sidebar hidden shows the sidebar, the copy's name a field there with the focus; Move to group → New group… on the name's crumb clears a search that would hide the new group",
+    async () => {
+      await withGroups(
+        [grouped('d1', 'one'), grouped('d2', 'two', 'g-1')],
+        [PR1()],
+        async () => {
+          try {
+            await shutMenus();
+            await show('rules');
+            await named('From two').click();
+            await app
+              .locator('[data-testid="crumb-name"]', { hasText: 'From two' })
+              .waitFor({ timeout: 3000 });
+            await app.keyboard.press('ControlOrMeta+b');
+            await sleep(500);
+            const hidden = await sidebarShown();
+            await app.click('[data-testid="crumb-group"]');
+            await menuReady();
+            await app.click('[data-testid="duplicate-group"]');
+            const copyField = app.locator('[data-testid="group-name-input"]');
+            await copyField.waitFor({ timeout: 3000 });
+            await sleep(300);
+            const copied = [
+              await sidebarShown(),
+              await copyField.isVisible(),
+              await app.evaluate(() => document.activeElement?.dataset.testid),
+            ];
+            await app.keyboard.press('Escape');
+            await searchRules.fill('one');
+            await sleep(300);
+            await app.click('[data-testid="crumb-name"]');
+            await menuReady();
+            await app.click('[data-testid="move-to-group"]');
+            await app.click('[data-testid="move-to-new"]');
+            await copyField.waitFor({ timeout: 3000 });
+            await sleep(300);
+            const moved = [
+              await searchRules.inputValue(),
+              await copyField.isVisible(),
+              await app.evaluate(() => document.activeElement?.dataset.testid),
+            ];
+            await app.keyboard.press('Escape');
+            expect(
+              [hidden, copied, moved],
+              [
+                'false',
+                ['true', true, 'group-name-input'],
+                ['', true, 'group-name-input'],
+              ],
+            );
+          } finally {
+            // The sidebar shown first: its search field is cleared there.
+            await shutMenus();
+            if ((await sidebarShown()) === 'false')
+              await app.keyboard.press('ControlOrMeta+b');
+            await searchRules.fill('');
+          }
+        },
+      );
+    },
+  );
+
+  console.log('rows, the popup and the open rule (6b)');
+
+  await check(
+    'a menu whose own Delete takes its button off the page lets the button go: the open rule deleted from its ⋯ three times, the pointer moving on, and none of those ⋯ buttons is still held by the page, nor the closed editor around it',
+    async () => {
+      await withGroups(
+        [grouped('w1', 'one'), grouped('w2', 'two'), grouped('w3', 'three')],
+        [],
+        async () => {
+          await shutMenus();
+          await show('rules');
+          for (const name of ['From one', 'From two', 'From three']) {
+            await named(name).click();
+            await app.locator('[data-testid="rule-menu"]').waitFor({ timeout: 3000 });
+            await app.click('[data-testid="rule-menu"]');
+            await menuReady();
+            await app.click('[data-testid="delete-rule"]');
+            await app
+              .locator('[role="menu"]')
+              .waitFor({ state: 'detached', timeout: 3000 });
+          }
+          // The pointer moving on, as it does.
+          await app.mouse.move(10, 400);
+          await app.mouse.move(600, 300);
+          await sleep(300);
+          // The ⋯ buttons alive once the garbage is collected, taken off the page.
+          await editorSession.send('HeapProfiler.collectGarbage');
+          const { result: prototype } = await editorSession.send('Runtime.evaluate', {
+            expression: 'HTMLButtonElement.prototype',
+          });
+          const { objects } = await editorSession.send('Runtime.queryObjects', {
+            prototypeObjectId: prototype.objectId,
+          });
+          const { result } = await editorSession.send('Runtime.callFunctionOn', {
+            objectId: objects.objectId,
+            functionDeclaration:
+              'function () { return this.filter((button) => !button.isConnected && button.dataset.testid === "rule-menu").length; }',
+            returnByValue: true,
+          });
+          await editorSession.send('Runtime.releaseObject', {
+            objectId: objects.objectId,
+          });
+          await editorSession.send('Runtime.releaseObject', {
+            objectId: prototype.objectId,
+          });
+          expect(result.value, 0);
+        },
+      );
+    },
+  );
+
+  // The field a group's name is typed in, as drawn now: whether it's seen, and has the focus.
+  const groupFieldNow = () =>
+    app.evaluate(() => {
+      const field = document.querySelector('[data-testid="group-name-input"]');
+      return field ? [field.checkVisibility(), document.activeElement === field] : null;
+    });
+
+  await check(
+    "the list's own New group, under a search that would hide the new group, clears the search: its name a field in sight, with the focus",
+    async () => {
+      await withGroups(THREE, [], async () => {
+        try {
+          await shutMenus();
+          await show('rules');
+          await searchRules.fill('one');
+          await named('From one').waitFor({ timeout: 3000 });
+          await app.click('[data-testid="new-group"]');
+          await sleep(400);
+          const seen = [await searchRules.inputValue(), await groupFieldNow()];
+          await app.keyboard.press('Escape');
+          expect(seen, ['', [true, true]]);
+        } finally {
+          await searchRules.fill('');
+        }
+      });
+    },
+  );
+
+  await check(
+    "in a narrow panel the open rule's ⋯ → Move to group → New group… brings back the list in the rule's place, the new group's name a field there with the focus, the rule in the group",
+    async () => {
+      await withGroups(THREE, [], async () => {
+        try {
+          await shutMenus();
+          await show('rules');
+          await app.setViewportSize({ width: 420, height: 760 });
+          const back = app.locator('[data-testid="rule-back"]');
+          if (await back.isVisible()) await back.click();
+          await named('From two').click();
+          await app.locator('[data-testid="rule-menu"]').waitFor({ timeout: 3000 });
+          await app.click('[data-testid="rule-menu"]');
+          await menuReady();
+          await app.click('[data-testid="move-to-group"]');
+          await app.click('[data-testid="move-to-new"]');
+          await sleep(500);
+          const seen = [
+            await groupFieldNow(),
+            await app.locator('[data-testid="rule-back"]').isVisible(),
+          ];
+          await app.keyboard.press('Escape');
+          await sleep(300);
+          const [group] = await storedGroups();
+          const moved = (await storedRules()).find((rule) => rule.id === 'k2')?.group;
+          expect(
+            [seen, group?.name, moved === group?.id],
+            [[[true, true], false], 'New group', true],
+          );
+        } finally {
+          await app.setViewportSize({ width: 1280, height: 820 });
+        }
+      });
+    },
+  );
+
+  console.log('the sidebar after variant A (7a)');
+  // A colour as the page computes it: a custom property's, through a probe's background.
+  const computed = (name) =>
+    app.evaluate((property) => {
+      const probe = document.createElement('div');
+      probe.style.backgroundColor = `var(--${property})`;
+      document.body.append(probe);
+      const colour = getComputedStyle(probe).backgroundColor;
+      probe.remove();
+      return colour;
+    }, name);
+  const awayFromTheList = () => app.mouse.move(640, 790);
+  const groupMenuItems = async () => {
+    await menuReady();
+    return (await app.locator('[role="menu"] [role="menuitem"]').allTextContents()).map(
+      (text) => text.replace(/\s+/g, ' ').trim(),
+    );
+  };
+
+  await check(
+    '7a.1: the search row is bare, after A: the field has no fill at rest, one under the pointer and a card\'s with the cursor, its "/" in it, then New group and New rule in the same row; how many rules are on is the list\'s own line, with nothing beside it',
+    async () => {
+      await withGroups(THREE, [], async () => {
+        await shutMenus();
+        await show('rules');
+        await awayFromTheList();
+        await sleep(200);
+        const row = await app.evaluate(() => {
+          const field = document.querySelector('input[aria-label="Search rules"]');
+          const middle = (element) => {
+            const box = element.getBoundingClientRect();
+            return Math.round(box.top + box.height / 2);
+          };
+          const label = document.querySelector('[data-testid="rule-list"] h2');
+          return [
+            ['new-group', 'new-rule'].map((id) => {
+              const button = document.querySelector(`[data-testid="${id}"]`);
+              return (
+                middle(button) === middle(field) &&
+                button.getBoundingClientRect().left >= field.getBoundingClientRect().right
+              );
+            }),
+            /^\d+ of 3 on$/.test(label.textContent),
+            label.parentElement.querySelectorAll('button').length,
+          ];
+        });
+        const fill = () =>
+          searchRules.evaluate((input) => getComputedStyle(input).backgroundColor);
+        const fills = [await fill()];
+        await searchRules.hover();
+        await sleep(200);
+        fills.push(await fill());
+        await searchRules.focus();
+        await sleep(200);
+        fills.push(await fill());
+        await searchRules.blur();
+        await awayFromTheList();
+        expect(
+          [row, fills],
+          [
+            [[true, true], true, 0],
+            ['rgba(0, 0, 0, 0)', await computed('hover'), await computed('card')],
+          ],
+        );
+      });
+    },
+  );
+
+  await check(
+    "7a.2: a group's header's slot says how many rules it has, or Off, which its item says to a screen reader too; under the pointer, Turn the group off (or on) and ⋯, named, which turn it and open its menu; its ⋯'s menu and its right-click menu have New rule in this group and Turn the group off or on; the open rule's crumb shows the group's chip, stepping back while it's off",
+    async () => {
+      await withGroups(
+        [grouped('h1', 'H1', 'g-1'), grouped('h2', 'H2', 'g-1')],
+        [PR1()],
+        async () => {
+          await shutMenus();
+          await show('rules');
+          const block = app.locator('[data-testid="group-block"][data-item="g-1"]');
+          const header = block.locator('[data-testid="group"]');
+          await header.waitFor({ timeout: 3000 });
+          await awayFromTheList();
+          await sleep(200);
+          const said = () =>
+            block.evaluate((element) => [
+              element.querySelector('[data-testid="group-count"]').textContent,
+              document.getElementById(element.getAttribute('aria-describedby'))
+                ?.textContent ?? null,
+            ]);
+          const actions = () =>
+            header.evaluate(
+              (element) =>
+                getComputedStyle(element.querySelector('[data-slot="item-slot-actions"]'))
+                  .opacity,
+            );
+          const rest = [await said(), await actions()];
+          await header.hover();
+          await sleep(200);
+          const labels = await header.evaluate((element) =>
+            [...element.querySelectorAll('[data-slot="item-slot-actions"] button')].map(
+              (button) => button.getAttribute('aria-label'),
+            ),
+          );
+          const under = await actions();
+          // Off from its slot, on from its ⋯'s menu, off from its right-click menu.
+          await header.locator('[data-testid="group-turn"]').click();
+          await sleep(300);
+          const offBySlot = [(await storedGroups())[0].enabled, await said()];
+          await header.locator('[data-testid="group-menu"]').click();
+          const moreItems = await groupMenuItems();
+          await app.click('[role="menu"] [data-testid="turn-group"]');
+          await sleep(300);
+          const onByMore = (await storedGroups())[0].enabled;
+          await header.click({ button: 'right', position: { x: 120, y: 19 } });
+          const rightItems = await groupMenuItems();
+          await app.click('[role="menu"] [data-testid="turn-group"]');
+          await sleep(300);
+          const offByRight = (await storedGroups())[0].enabled;
+          // The crumb, for a rule in it: the group off, then on again from its slot.
+          await app.locator('[data-testid="rule"]', { hasText: 'From H1' }).click();
+          const chip = () =>
+            app
+              .locator('[data-testid="crumb-group"] [data-slot="monogram"]')
+              .evaluate((element) => [
+                element.dataset.letters,
+                element.hasAttribute('data-off'),
+              ]);
+          const crumbOff = await chip();
+          await header.hover();
+          await header.locator('[data-testid="group-turn"]').click();
+          await sleep(300);
+          const crumbOn = await chip();
+          await awayFromTheList();
+          const items = (turn) => [
+            'New rule in this group',
+            'Rename F2',
+            turn,
+            'Duplicate',
+            'Export group',
+            'Ungroup',
+            'Delete',
+          ];
+          expect(
+            [
+              rest,
+              labels,
+              under,
+              offBySlot,
+              moreItems,
+              onByMore,
+              rightItems,
+              offByRight,
+              crumbOff,
+              crumbOn,
+            ],
+            [
+              [['2', '2 rules.'], '0'],
+              ['Turn the group “PR-1” off', 'More actions for PR-1'],
+              '1',
+              [false, ['Off', 'Off.']],
+              items('Turn the group on'),
+              true,
+              items('Turn the group off'),
+              false,
+              ['PR', true],
+              ['PR', false],
+            ],
+          );
+        },
+      );
+    },
+  );
+
+  await check(
+    "7a.2: a group's chip is worked out from its name, with nothing stored: an abbreviation the name starts with (PR 412 · checkout: PR), else its first two words' first letters (Billing GraphQL: BG, 412 checkout: 4C), else its first two letters (Payments: PA, qa: QA); one of five colours, the same again after a reload",
+    async () => {
+      const names = [
+        'PR 412 · checkout',
+        'Billing GraphQL',
+        'Payments',
+        'qa',
+        '412 checkout',
+      ];
+      await withGroups(
+        [],
+        names.map((name, index) => ({
+          id: `n-${index}`,
+          name,
+          enabled: true,
+          at: index,
+        })),
+        async () => {
+          await shutMenus();
+          await show('rules');
+          const chips = async () => {
+            await app.locator('[data-testid="group"]').first().waitFor({ timeout: 3000 });
+            return app.evaluate(() =>
+              [...document.querySelectorAll('[data-testid="group"]')].map((header) => {
+                const chip = header.querySelector('[data-slot="monogram"]');
+                return [header.dataset.group, chip.dataset.letters, chip.dataset.colour];
+              }),
+            );
+          };
+          const first = await chips();
+          await app.reload();
+          const again = await chips();
+          const stored = (await storedGroups()).map((group) =>
+            Object.keys(group).toSorted().join(),
+          );
+          expect(
+            [
+              first.map(([name, letters]) => [name, letters]),
+              first.every(([, , colour]) => ['1', '2', '3', '4', '5'].includes(colour)),
+              again,
+              [...new Set(stored)],
+            ],
+            [
+              [
+                ['PR 412 · checkout', 'PR'],
+                ['Billing GraphQL', 'BG'],
+                ['Payments', 'PA'],
+                ['qa', 'QA'],
+                ['412 checkout', '4C'],
+              ],
+              true,
+              first,
+              ['at,enabled,id,name'],
+            ],
+          );
+        },
+      );
+    },
+  );
+
+  await check(
+    "7a.6: the sidebar's footer is icons, ⋯, Import, Export and Agent, each named for a screen reader and saying what it does in its tooltip; on one line in Commit Mono at Larger too",
+    async () => {
+      await shutMenus();
+      await show('rules');
+      const footer = () =>
+        app.evaluate(() => {
+          const row = document.querySelector('#sidebar footer');
+          return [
+            [...row.querySelectorAll('button')]
+              .filter((button) => button.checkVisibility())
+              .map((button) => [
+                button.getAttribute('aria-label'),
+                button.textContent.trim(),
+              ]),
+            row.offsetHeight,
+          ];
+        });
+      const tips = [];
+      for (const name of ['More', 'Import rules', 'Export all rules', 'Agent access']) {
+        await app
+          .locator('#sidebar footer')
+          .getByRole('button', { name, exact: true })
+          .hover();
+        const tip = app.locator('[data-slot="tooltip"][data-open]');
+        await tip.waitFor({ timeout: 3000 });
+        tips.push(await tip.textContent());
+      }
+      await awayFromTheList();
+      const atDefault = await footer();
+      await app.evaluate(() => {
+        document.documentElement.dataset.font = 'mono';
+        document.documentElement.dataset.size = 'larger';
+      });
+      await sleep(400);
+      const atLarger = await footer();
+      await app.evaluate(() => {
+        delete document.documentElement.dataset.font;
+        delete document.documentElement.dataset.size;
+      });
+      await sleep(400);
+      const icons = [
+        ['More', ''],
+        ['Import rules', ''],
+        ['Export all rules', ''],
+        ['Agent access', ''],
+      ];
+      expect(
+        [atDefault, atLarger, tips],
+        [
+          [icons, 44],
+          [icons, 44],
+          [
+            'More',
+            'Import rules',
+            'Export all rules',
+            'Agent access: a coding agent reads and changes your rules',
+          ],
+        ],
+      );
+    },
+  );
+
+  await check(
+    "7a.8: the footer's ⋯ stays filled while its menu is open, as under the pointer, and not once it's shut",
+    async () => {
+      await shutMenus();
+      await show('rules');
+      const more = app.locator('[data-testid="sidebar-menu"]');
+      const fill = () =>
+        more.evaluate((button) => getComputedStyle(button).backgroundColor);
+      await more.click();
+      await menuReady();
+      await awayFromTheList();
+      await sleep(250);
+      const open = await fill();
+      await app.keyboard.press('Escape');
+      await app.locator('[role="menu"]').waitFor({ state: 'detached', timeout: 3000 });
+      await awayFromTheList();
+      await sleep(250);
+      const shut = await fill();
+      expect([open, shut], [await computed('pressed'), 'rgba(0, 0, 0, 0)']);
+    },
+  );
+
+  await check(
+    "7a.9: the sidebar's usual width grows with the type, by as much as a rule row's slot does, so a name keeps its room: 272 px at Geist and Default, 282 and 292 at Large and Larger, 286, 297 and 309 in Commit Mono; a width its edge was dragged to stays",
+    async () => {
+      await shutMenus();
+      await show('rules');
+      const sidebar = app.locator('#sidebar');
+      const widthAt = async (font, size) => {
+        await app.evaluate(
+          ([fontNow, sizeNow]) => {
+            const root = document.documentElement;
+            if (fontNow) root.dataset.font = fontNow;
+            else delete root.dataset.font;
+            if (sizeNow) root.dataset.size = sizeNow;
+            else delete root.dataset.size;
+          },
+          [font, size],
+        );
+        // It slides to its new width.
+        await sleep(400);
+        return sidebar.evaluate((element) =>
+          Math.round(element.getBoundingClientRect().width),
+        );
+      };
+      try {
+        const widths = [];
+        for (const font of ['', 'mono'])
+          for (const size of ['', 'large', 'larger'])
+            widths.push(await widthAt(font, size));
+        await widthAt('', '');
+        await app.locator('[data-testid="sidebar-handle"]').focus();
+        await app.keyboard.press('Home');
+        const dragged = [await widthAt('', ''), await widthAt('mono', 'larger')];
+        expect(
+          [widths, dragged],
+          [
+            [272, 282, 292, 286, 297, 309],
+            [260, 260],
+          ],
+        );
+      } finally {
+        await widthAt('', '');
+        await app.locator('[data-testid="sidebar-handle"]').dblclick();
+        await sleep(400);
+      }
+    },
+  );
+
+  console.log('the rest of variant A (7b)');
+  // A rule of its own, answering /api/user?case=<from> alone.
+  const own = (id, from, group = '', patch = {}) =>
+    grouped(id, from, group, {
+      match: {
+        url: `/api/user?case=${from}`,
+        mode: 'contains',
+        method: 'ANY',
+        graphqlOperation: '',
+      },
+      ...patch,
+    });
+  // An open menu's items: each one's words (its key's drawn too) and the key it says it has.
+  const itemsOf = (open) =>
+    open.evaluate((menu) =>
+      [...menu.querySelectorAll('[role^="menuitem"]')].map((item) => [
+        item.textContent.replace(/\s+/g, ' ').trim(),
+        item.getAttribute('aria-keyshortcuts'),
+      ]),
+    );
+  const dropdown = app.locator('[data-slot="dropdown-menu-content"]');
+  const contextMenu = app.locator('[data-slot="context-menu-content"]');
+  const shutWithEscape = async (open) => {
+    await app.keyboard.press('Escape');
+    await open.waitFor({ state: 'detached', timeout: 3000 });
+  };
+
+  await check(
+    "7b.3: the open rule's Duplicate is an icon beside its ⋯, named Duplicate and saying so in its tooltip, wide and in a 420 px panel, where it was in the ⋯ alone; it opens the copy",
+    async () => {
+      await withGroups([own('d1', 'dup')], [], async () => {
+        try {
+          await shutMenus();
+          await openRule('From dup');
+          // Seen, named, no words of its own, and just before the ⋯, on its line.
+          const looks = () =>
+            app.evaluate(() => {
+              const button = document.querySelector('[data-testid="duplicate-rule"]');
+              const more = document.querySelector('[data-testid="rule-menu"]');
+              const box = (element) => element.getBoundingClientRect();
+              const middle = (element) => (box(element).top + box(element).bottom) / 2;
+              const gap = box(more).left - box(button).right;
+              return [
+                button.checkVisibility(),
+                button.getAttribute('aria-label'),
+                button.textContent.trim(),
+                gap >= 0 && gap <= 8,
+                Math.abs(middle(button) - middle(more)) < 1,
+              ];
+            });
+          const wide = await looks();
+          await app.locator('[data-testid="duplicate-rule"]').hover();
+          const tip = app.locator('[data-slot="tooltip"][data-open]');
+          await tip.first().waitFor({ timeout: 3000 });
+          const said = await tip.first().textContent();
+          await awayFromTheList();
+          await app.setViewportSize({ width: 420, height: 760 });
+          await sleep(300);
+          const narrow = await looks();
+          const before = (await storedRules()).length;
+          await app.click('[data-testid="duplicate-rule"]');
+          await sleep(400);
+          const after = [
+            (await storedRules()).length - before,
+            await app.locator('[data-testid="rule-name"]').inputValue(),
+          ];
+          expect(
+            [wide, said, narrow, after],
+            [
+              [true, 'Duplicate', '', true, true],
+              'Duplicate',
+              [true, 'Duplicate', '', true, true],
+              [1, 'From dup (copy)'],
+            ],
+          );
+        } finally {
+          await app.setViewportSize({ width: 1280, height: 820 });
+          await sleep(300);
+        }
+      });
+    },
+  );
+
+  await check(
+    "7b.4: the open rule's chip says how long ago it last answered, from the screens' clock, as its row does (\"Mocking · fired 1× on … · now\"), in the chip's green; before it has answered, no time",
+    async () => {
+      await withGroups([own('t1', 'timed')], [], async () => {
+        await shutMenus();
+        await openRule('From timed');
+        const chip = app.locator('[data-testid="rule-state"]');
+        const time = app.locator('[data-testid="rule-state-time"]');
+        const before = [await chip.textContent(), await time.count()];
+        await call('/api/user?case=timed');
+        await time.waitFor({ timeout: 3000 });
+        const after = await chip.textContent();
+        const row = await named('From timed')
+          .locator('[data-testid="rule-time"]')
+          .textContent();
+        const green = await chip.evaluate(
+          (element) =>
+            getComputedStyle(element.querySelector('[data-testid="rule-state-time"]'))
+              .color === getComputedStyle(element).color,
+        );
+        expect(
+          [before, /^Mocking · fired 1× on .+ · now$/.test(after), row, green],
+          [['Mocking', 0], true, '· now', true],
+          after,
+        );
+      });
+    },
+  );
+
+  await check(
+    '7b.5: the body\'s footer has Copy before Wrap, which copies the body as the editor has it and says "Copied" in itself for a second, a screen reader told "Copied the body"; in a 420 px panel, or wide in Commit Mono at Larger, the buttons go under what the check found, which keeps its row',
+    async () => {
+      const copiedBody = '{"copied": true}';
+      await withGroups(
+        [
+          own('c1', 'copied', '', {
+            response: { ...createRule().response, body: copiedBody },
+          }),
+        ],
+        [],
+        async () => {
+          try {
+            await shutMenus();
+            await openRule('From copied');
+            await watchClipboard();
+            const copy = app.locator('[data-testid="copy-rule-body"]');
+            // Where Copy is: before Wrap on its line; and whether what the check found has a
+            // line of its own.
+            const placed = () =>
+              app.evaluate(() => {
+                const box = (id) =>
+                  document.querySelector(`[data-testid="${id}"]`).getBoundingClientRect();
+                const [copyBox, wrapBox, statusBox] = [
+                  'copy-rule-body',
+                  'wrap',
+                  'code-status',
+                ].map(box);
+                return [
+                  copyBox.right <= wrapBox.left &&
+                    Math.abs(copyBox.top - wrapBox.top) < 1,
+                  statusBox.bottom <= copyBox.top,
+                ];
+              });
+            const wide = await placed();
+            await copy.click();
+            const copied = [
+              await app.evaluate(() => window.copiedTexts),
+              await copy.getAttribute('data-copied'),
+              await copy.evaluate(
+                (button) =>
+                  button.parentElement.querySelector('[data-slot="copy-announcer"]')
+                    .textContent,
+              ),
+              await copy.evaluate(
+                (button) =>
+                  getComputedStyle(button.querySelector('[data-part="copied"]')).opacity,
+              ),
+              await copy.getAttribute('aria-label'),
+              await copy.evaluate(
+                (button) => button.querySelector('[data-part="words"]').textContent,
+              ),
+            ];
+            await sleep(1300);
+            const back = await copy.getAttribute('data-copied');
+            // As wide, in Commit Mono at Larger: the buttons under it too, where beside them it
+            // wouldn't have the room of "Valid JSON · 99 lines" in that font.
+            await app.evaluate(() => {
+              document.documentElement.dataset.font = 'mono';
+              document.documentElement.dataset.size = 'larger';
+            });
+            await sleep(400);
+            const wideType = await placed();
+            await app.evaluate(() => {
+              delete document.documentElement.dataset.font;
+              delete document.documentElement.dataset.size;
+            });
+            await app.setViewportSize({ width: 420, height: 760 });
+            await sleep(300);
+            const narrow = await placed();
+            expect(
+              [wide, copied, back, wideType, narrow],
+              [
+                [true, false],
+                [[copiedBody], 'true', 'Copied the body', '1', null, 'Copy'],
+                null,
+                [true, true],
+                [true, true],
+              ],
+            );
+          } finally {
+            await unwatchClipboard();
+            await app.evaluate(() => {
+              delete document.documentElement.dataset.font;
+              delete document.documentElement.dataset.size;
+            });
+            await app.setViewportSize({ width: 1280, height: 820 });
+            await sleep(300);
+          }
+        },
+      );
+    },
+  );
+
+  await check(
+    "7b.7: a rule's row menus, its ⋯ and its right-click menu, start with Open and Rename, their keys, Enter and F2, drawn and said by aria-keyshortcuts, their names their words; the open rule has no Open, and its own menu's Rename renames in its name's crumb, or in a 420 px panel the name over it; Move to group says the rule's group, and nothing for a rule in none; a group's menus show F2 beside Rename, and F2 on its crumb renames it; nothing shows ⌘D or ⌘⌫",
+    async () => {
+      await withGroups(
+        [grouped('m1', 'M1', 'g-1'), grouped('m2', 'M2', 'g-1'), grouped('m3', 'loose')],
+        [PR1()],
+        async () => {
+          try {
+            await shutMenus();
+            await openRule('From M1');
+            const rest = (group) => [
+              ['Duplicate', null],
+              [group ? `Move to group ${group}` : 'Move to group', null],
+              ['Export this rule', null],
+              ['Delete', null],
+            ];
+            // M2's ⋯ and its right-click menu: M2 isn't the open rule.
+            await named('From M2').hover();
+            await named('From M2').locator('[data-testid="row-menu"]').click();
+            await menuReady();
+            const more = await itemsOf(dropdown);
+            const names = [
+              await dropdown.getByRole('menuitem', { name: 'Open', exact: true }).count(),
+              await dropdown
+                .getByRole('menuitem', { name: 'Rename', exact: true })
+                .count(),
+            ];
+            await shutWithEscape(dropdown);
+            await named('From M2').click({ button: 'right', position: { x: 60, y: 12 } });
+            await menuReady();
+            const right = await itemsOf(contextMenu);
+            // Open, from it; then the open rule's own row menu has no Open.
+            await contextMenu.locator('[data-testid="menu-open-rule"]').click();
+            await crumbName.filter({ hasText: 'From M2' }).waitFor({ timeout: 3000 });
+            await named('From M2').click({ button: 'right', position: { x: 60, y: 12 } });
+            await menuReady();
+            const openRow = await itemsOf(contextMenu);
+            // Rename from a row's menu: its name a field in the row, with the focus.
+            await contextMenu.locator('[data-testid="rename-rule"]').click();
+            await app
+              .locator('[data-testid="rule-name-input"]')
+              .waitFor({ timeout: 3000 });
+            await sleep(200);
+            const inRow = await app.evaluate(
+              () => document.activeElement?.dataset.testid,
+            );
+            await app.keyboard.press('Escape');
+            // The open rule's ⋯: Rename makes its name's crumb a field.
+            await app.click('[data-testid="rule-menu"]');
+            await menuReady();
+            const header = await itemsOf(dropdown);
+            await dropdown.locator('[data-testid="rename-rule"]').click();
+            const crumbField = app.locator('[data-testid="crumb-name-input"]');
+            await crumbField.waitFor({ timeout: 3000 });
+            await sleep(200);
+            const inCrumb = [
+              await app.evaluate(() => document.activeElement?.dataset.testid),
+              await crumbField.inputValue(),
+            ];
+            await app.keyboard.press('Escape');
+            // The group's ⋯, its right-click menu and its crumb's: Rename, with F2.
+            const renameOf = async (open) =>
+              (await itemsOf(open)).find(([words]) => words.startsWith('Rename'));
+            const groupHeader = app.locator('[data-testid="group"][data-group="PR-1"]');
+            await groupHeader.hover();
+            await groupHeader.locator('[data-testid="group-menu"]').click();
+            await menuReady();
+            const groupRenames = [await renameOf(dropdown)];
+            await shutWithEscape(dropdown);
+            await groupHeader.click({ button: 'right', position: { x: 120, y: 19 } });
+            await menuReady();
+            groupRenames.push(await renameOf(contextMenu));
+            await shutWithEscape(contextMenu);
+            await crumbGroup.click();
+            await menuReady();
+            groupRenames.push(await renameOf(dropdown));
+            await shutWithEscape(dropdown);
+            // A rule in no group: nothing beside its Move to group.
+            await named('From loose').click({
+              button: 'right',
+              position: { x: 60, y: 12 },
+            });
+            await menuReady();
+            const loose = await itemsOf(contextMenu);
+            await shutWithEscape(contextMenu);
+            // F2 on the group's crumb.
+            await crumbGroup.focus();
+            await app.keyboard.press('F2');
+            const groupField = app.locator('[data-testid="crumb-group-input"]');
+            await groupField.waitFor({ timeout: 3000 });
+            const byF2 = await groupField.inputValue();
+            await app.keyboard.press('Escape');
+            await groupField.waitFor({ state: 'detached', timeout: 3000 });
+            // In a 420 px panel, which has no crumbs: the name over the rule, all of it selected.
+            await app.setViewportSize({ width: 420, height: 760 });
+            await sleep(300);
+            await app.click('[data-testid="rule-menu"]');
+            await menuReady();
+            await dropdown.locator('[data-testid="rename-rule"]').click();
+            await sleep(400);
+            const narrow = await app.evaluate(() => {
+              const field = document.activeElement;
+              return [
+                field?.dataset.testid,
+                field?.selectionStart,
+                field?.selectionEnd,
+                field?.value,
+              ];
+            });
+            expect(
+              [
+                more,
+                names,
+                right,
+                openRow,
+                inRow,
+                header,
+                inCrumb,
+                groupRenames,
+                loose,
+                byF2,
+                narrow,
+              ],
+              [
+                [['Open ↵', 'Enter'], ['Rename F2', 'F2'], ...rest('PR-1')],
+                [1, 1],
+                [['Open ↵', 'Enter'], ['Rename F2', 'F2'], ...rest('PR-1')],
+                [['Rename F2', 'F2'], ...rest('PR-1')],
+                'rule-name-input',
+                [['Rename F2', 'F2'], ...rest('PR-1')],
+                ['crumb-name-input', 'From M2'],
+                [
+                  ['Rename F2', 'F2'],
+                  ['Rename F2', 'F2'],
+                  ['Rename F2', 'F2'],
+                ],
+                [['Open ↵', 'Enter'], ['Rename F2', 'F2'], ...rest('')],
+                'PR-1',
+                ['rule-name', 0, 7, 'From M2'],
+              ],
+            );
+          } finally {
+            await app.setViewportSize({ width: 1280, height: 820 });
+            await sleep(300);
+            await shutMenus();
+          }
+        },
+      );
+    },
+  );
+
+  await check(
+    '7b.10: Mock this response has no Into under it: the rule goes in at the top of the group New rule would start in, the last one a rule was made in, and the toast after it says which; with none to start in, it says no group',
+    async () => {
+      await withGroups([own('k1', 'kept', 'g-1')], [PR1()], async () => {
+        const startIn = (id) =>
+          app.evaluate((group) => {
+            if (group) localStorage.setItem('ghostfetch.newRuleGroup', group);
+            else localStorage.removeItem('ghostfetch.newRuleGroup');
+          }, id);
+        // Mock this response on a request no rule answers: whether Into shows, the toast, and the
+        // rule made, its group and its place.
+        const mock = async (mark) => {
+          await shutMenus();
+          await call(`/api/user?case=${mark}`);
+          await show('traffic');
+          await searchRequests(mark);
+          await trafficRow(mark).first().click();
+          await app.locator('[data-testid="request-detail"]').waitFor({ timeout: 3000 });
+          const into = await app
+            .locator('[data-testid="request-detail"] [data-testid="picker-group"]')
+            .count();
+          await app.click('[data-testid="mock"]');
+          await app.waitForSelector('[data-testid="view-rules"]:not([hidden])');
+          const rules = await storedRules();
+          const made = rules.findIndex((rule) => rule.match.url.includes(`case=${mark}`));
+          return [into, rules[made]?.group ?? null, made];
+        };
+        try {
+          await startIn('g-1');
+          const inGroup = await mock('mocked-in');
+          const toldGroup = await app
+            .locator('[data-slot="toast"]', { hasText: 'Rule created in “PR-1”' })
+            .count();
+          await startIn('');
+          const inNone = await mock('mocked-out');
+          const toldNone = await app
+            .locator('[data-slot="toast"]', { hasText: 'Rule created, in no group' })
+            .count();
+          expect(
+            [inGroup, toldGroup > 0, inNone, toldNone > 0],
+            [[0, 'g-1', 0], true, [0, '', 0], true],
+          );
+        } finally {
+          await startIn('');
+          await show('traffic');
+          await searchRequests('');
+          await show('rules');
+        }
+      });
+    },
+  );
+
+  await check(
+    '7b.11: the notice of a delete has an undo arrow before its key, as variant A has it, and no trash can before its words',
+    async () => {
+      await withGroups([own('n1', 'noticed'), own('n2', 'stays')], [], async () => {
+        await shutMenus();
+        await show('rules');
+        await deleteFromRow('From noticed');
+        await undoNotice.waitFor({ timeout: 3000 });
+        const shape = await undoNotice.evaluate((notice) => {
+          const undo = notice.querySelector('[data-testid="undo-notice-undo"]');
+          return [
+            notice.firstElementChild.tagName,
+            [...undo.children].map((child) =>
+              child.tagName === 'svg' ? child.dataset.icon : child.tagName,
+            ),
+            notice.querySelectorAll('svg[data-icon="trash"]').length,
+          ];
+        });
+        await noticeUndo.click();
+        await undoNotice.waitFor({ state: 'detached', timeout: 7000 });
+        expect(shape, ['SPAN', ['undo', 'KBD'], 0]);
+      });
+    },
+  );
+
+  await check(
+    "7b: in a 420 px panel the top bar's ⋯ stays filled while its menu is open, as the sidebar footer's does, and not once it's shut",
+    async () => {
+      await shutMenus();
+      try {
+        await app.setViewportSize({ width: 420, height: 760 });
+        await show('rules');
+        const back = app.locator('[data-testid="rule-back"]');
+        if (await back.isVisible()) await back.click();
+        const more = app.locator('[data-testid="editor-menu"]');
+        const fill = () =>
+          more.evaluate((button) => getComputedStyle(button).backgroundColor);
+        await more.click();
+        await menuReady();
+        await app.mouse.move(200, 740);
+        await sleep(250);
+        const open = await fill();
+        await app.keyboard.press('Escape');
+        await app.locator('[role="menu"]').waitFor({ state: 'detached', timeout: 3000 });
+        await app.mouse.move(200, 740);
+        await sleep(250);
+        const shut = await fill();
+        expect([open, shut], [await computed('pressed'), 'rgba(0, 0, 0, 0)']);
+      } finally {
+        await app.setViewportSize({ width: 1280, height: 820 });
+        await sleep(300);
+      }
     },
   );
 

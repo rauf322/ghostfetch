@@ -13,6 +13,8 @@ import type {
 import { cn } from './cn.ts';
 import { Button } from './kit/button.tsx';
 import { Icon } from './kit/icon.tsx';
+import { modKey, modKeyName, modPressed, pressedLetter } from './kit/kbd.tsx';
+import { Tooltip } from './kit/tooltip.tsx';
 
 // While it shows, the sidebar is at least this wide, and leaves what's open at least this much
 // room.
@@ -78,6 +80,9 @@ function setDragging(next: boolean) {
 }
 
 export const useSidebarHidden = () => useSyncExternalStore(subscribe, () => hidden);
+// Shows the sidebar where it's hidden, for what's about to happen in it to be seen (a name to type
+// in the rule list).
+export const showSidebar = () => setHidden(false);
 
 // The sidebar's width, for its ListPane: the width it was dragged to, as --list-width (kept
 // between MIN_LIST and what leaves MIN_OPEN for what's open, however wide the window gets), and
@@ -94,20 +99,21 @@ export function useListColumn() {
   return { style, resizing };
 }
 
-// ⌘B on a Mac and Ctrl+B elsewhere, as code editors have it.
-const MAC = /Mac/.test(navigator.userAgent);
-const SHORTCUT = MAC ? '⌘B' : 'Ctrl+B';
-
 export function SidebarToggle({ className }: { className?: string }) {
   const isHidden = useSidebarHidden();
   const button = useRef<HTMLButtonElement>(null);
 
-  // Only a button on screen answers the keys, as both views stay mounted and a narrow panel hides
-  // the button; and not a key something else has already handled (defaultPrevented).
+  // ⌘B on a Mac and Ctrl+B elsewhere (kbd.tsx). Only a button on screen answers the keys, as both
+  // views stay mounted and a narrow panel hides the button; and not a key something else has
+  // already handled (defaultPrevented).
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
-      const mod = MAC ? event.metaKey && !event.ctrlKey : event.ctrlKey && !event.metaKey;
-      if (!mod || event.altKey || event.shiftKey || event.key.toLowerCase() !== 'b')
+      if (
+        !modPressed(event) ||
+        event.altKey ||
+        event.shiftKey ||
+        !pressedLetter(event, 'b')
+      )
         return;
       if (event.defaultPrevented || !button.current?.checkVisibility()) return;
       event.preventDefault();
@@ -119,19 +125,21 @@ export function SidebarToggle({ className }: { className?: string }) {
 
   const label = isHidden ? 'Show the sidebar' : 'Hide the sidebar';
   return (
-    <Button
-      ref={button}
-      variant="ghost"
-      size="icon"
-      data-testid="sidebar-toggle"
-      aria-label={label}
-      aria-expanded={!isHidden}
-      title={`${label} (${SHORTCUT})`}
-      onClick={() => setHidden(!hidden)}
-      className={cn('flex-none max-wide:hidden', className)}
-    >
-      <Icon name="sidebar" size={18} />
-    </Button>
+    <Tooltip label={label} keys={modKey('B')}>
+      <Button
+        ref={button}
+        variant="ghost"
+        size="icon"
+        data-testid="sidebar-toggle"
+        aria-label={label}
+        aria-expanded={!isHidden}
+        aria-keyshortcuts={modKeyName('B')}
+        onClick={() => setHidden(!hidden)}
+        className={cn('flex-none max-wide:hidden', className)}
+      >
+        <Icon name="sidebar" size={18} />
+      </Button>
+    </Tooltip>
   );
 }
 

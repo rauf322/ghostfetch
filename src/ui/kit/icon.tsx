@@ -87,6 +87,7 @@ const SHAPES = {
   list: <path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01" />,
   history: <path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l3 2" />,
   trash: <path d="M4 7h16M10 11v6M14 11v6M5 7l1 13h12l1-13M9 7V4h6v3" />,
+  undo: <path d="M9 14L4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />,
   link: (
     <path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" />
   ),
@@ -113,6 +114,7 @@ const SHAPES = {
       <path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor" />
     </>
   ),
+  type: <path d="M5 7V5h14v2M12 5v14M9 19h6" />,
   split: (
     <>
       <rect x="3" y="4" width="18" height="16" rx="2" />
@@ -125,9 +127,16 @@ const SHAPES = {
       <path d="M3 12h18" />
     </>
   ),
+  diff: (
+    <>
+      <rect x="5" y="3" width="14" height="18" rx="2" />
+      <path d="M12 7v6M9 10h6M9 16h6" />
+    </>
+  ),
   edit: <path d="M4 20l1.2-4.4L16.5 4.3a2.1 2.1 0 0 1 3 3L8.2 18.6 4 20zM14.5 6.5l3 3" />,
   pause: <path d="M9 5v14M15 5v14" />,
   play: <path d="M8 5.5v13l10.5-6.5z" />,
+  power: <path d="M12 3v8M6.3 6.3a8 8 0 1 0 11.4 0" />,
   group: (
     <path d="M3 7.5A1.5 1.5 0 0 1 4.5 6H9l2 2h8.5A1.5 1.5 0 0 1 21 9.5v8a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5z" />
   ),

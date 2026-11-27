@@ -15,11 +15,12 @@
     "format": "oxfmt --check .",
     "format:fix": "oxfmt .",
     "browsers": "playwright-core install chromium",
-    "test": "node test/json.mjs && node test/diff.mjs && node test/matching.mjs && node test/order.mjs && node test/curl.mjs && wxt build && node test/e2e.mjs",
+    "test": "node test/json.mjs && node test/diff.mjs && node test/matching.mjs && node test/order.mjs && node test/curl.mjs && node test/time.mjs && node test/url-end.mjs && wxt build && node test/e2e.mjs",
     "test:firefox": "wxt build -b firefox && node test/firefox.mjs",
     "test:kit": "NODE_ENV=production wxt build --mode kit && NODE_ENV=production wxt build -b firefox --mode kit && node test/kit.mjs",
     "test:release": "npm run zip && node test/release.mjs",
     "test:agent": "wxt build && node test/agent.mjs",
+    "test:visual": "wxt build && playwright test -c test/visual/playwright.config.mjs",
     "lint:firefox": "wxt build -b firefox && web-ext lint --source-dir .output/firefox-mv3",
     "start:zen": "ZEN=/Applications/Zen.app/Contents/MacOS/zen wxt -b firefox"
   },
@@ -32,6 +33,7 @@
     "tailwind-merge": "3.7.0"
   },
   "devDependencies": {
+    "@playwright/test": "1.64.1",
     "@tailwindcss/vite": "4.3.3",
     "@types/chrome": "0.3.6",
     "@types/react": "19.3.0",

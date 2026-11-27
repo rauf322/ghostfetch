@@ -24,6 +24,9 @@ interface RulesPageProps {
   ruleGroup: string;
   onRuleGroupChange: (group: string) => void;
   onSelect: (id: string | null) => void;
+  // New rule, in a group ('' for none): an open rule's group crumb asks for it, as a group's New
+  // rule in this group in the list does.
+  onNewRule: (group: string) => void;
   // New rule made a rule.
   onCreate: (rule: Rule) => void;
   onBodyFocused: () => void;
@@ -42,6 +45,7 @@ export function RulesPage({
   ruleGroup,
   onRuleGroupChange,
   onSelect,
+  onNewRule,
   onCreate,
   onBodyFocused,
   onCancel,
@@ -78,6 +82,7 @@ export function RulesPage({
             onBodyFocused={onBodyFocused}
             revision={revision}
             onSelect={onSelect}
+            onNewRule={onNewRule}
           />
         ) : (
           <NewRule

@@ -4,6 +4,10 @@ node_modules/
 .output/
 .wxt/
 web-ext-artifacts/
+# What a run of the screenshot suite leaves (npm run test:visual): the pictures that differed and
+# its report. Its baselines (test/visual/baselines/) are kept.
+test/visual/test-results/
+test/visual/playwright-report/
 
 .DS_Store
 *.log

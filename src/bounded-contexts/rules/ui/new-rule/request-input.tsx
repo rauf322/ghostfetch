@@ -9,6 +9,7 @@ import { formatDuration, statusLabel } from '../../../../lib/index.ts';
 import { GroupPicker } from '../group-picker.tsx';
 import { Button } from '../../../../ui/kit/button.tsx';
 import { Icon } from '../../../../ui/kit/icon.tsx';
+import { Tooltip } from '../../../../ui/kit/tooltip.tsx';
 import {
   SERVER_RESPONSE,
   chooseStatus,
@@ -38,6 +39,7 @@ const DELAY_ITEMS = [0, 250, 500, 1000, 2000, 5000].map((ms) => ({
   value: String(ms),
   label: ms ? formatDuration(ms) : 'No delay',
 }));
+const PLACEHOLDER = '/api/orders, a full URL, or a cURL command';
 
 export function RequestInput({
   field,
@@ -65,10 +67,13 @@ export function RequestInput({
           is as tall as the text and the field stretches to it, in every browser. The copy wraps
           as the field does only with the field's padding, font and line height, written out on
           both (Tailwind only knows classes it can read whole); it ends with a space, so a last
-          empty line counts. Both stop at 10 rem, and a longer command scrolls in the field. */}
+          empty line counts. Both stop at 10 rem, and a longer command scrolls in the field.
+          While the field is empty the copy is its placeholder, in the placeholder's font, so a
+          placeholder that wraps (in a narrow panel, or larger text: Appearance) shows whole. */}
       <div
-        data-value={`${text} `}
-        className="grid after:invisible after:col-start-1 after:row-start-1 after:max-h-40 after:overflow-hidden after:px-1.5 after:pt-1 after:font-mono after:text-body after:leading-relaxed after:break-words after:whitespace-pre-wrap after:content-[attr(data-value)]"
+        data-value={text ? `${text} ` : PLACEHOLDER}
+        data-empty={text ? undefined : ''}
+        className="grid after:invisible after:col-start-1 after:row-start-1 after:max-h-40 after:overflow-hidden after:px-1.5 after:pt-1 after:font-mono after:text-body after:leading-relaxed after:break-words after:whitespace-pre-wrap after:content-[attr(data-value)] data-empty:after:font-sans"
       >
         <textarea
           ref={field}
@@ -77,7 +82,7 @@ export function RequestInput({
           rows={1}
           spellCheck={false}
           value={text}
-          placeholder="/api/orders, a full URL, or a cURL command"
+          placeholder={PLACEHOLDER}
           onChange={(event) => onTextChange(event.target.value)}
           onKeyDown={(event) => {
             if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing)
@@ -124,18 +129,24 @@ export function RequestInput({
           />
           <GroupPicker value={group} onChange={onGroupChange} />
         </div>
-        <Button
-          variant="primary"
-          size="icon"
-          data-testid="composer-submit"
-          aria-label="Make the rule"
-          title="Make the rule (Enter)"
-          disabled={!text.trim()}
-          onClick={onSubmit}
-          className="size-9 flex-none rounded-full text-inverse hover:text-inverse"
+        {/* Off until there's something to make it from, and saying so. */}
+        <Tooltip
+          label="Make the rule"
+          keys="Enter"
+          reason={text.trim() ? undefined : 'Type a URL or paste a cURL command first'}
         >
-          <Icon name="send" size={18} />
-        </Button>
+          <Button
+            variant="primary"
+            size="icon"
+            data-testid="composer-submit"
+            aria-label="Make the rule"
+            disabled={!text.trim()}
+            onClick={onSubmit}
+            className="size-9 flex-none rounded-full text-inverse hover:text-inverse"
+          >
+            <Icon name="send" size={18} />
+          </Button>
+        </Tooltip>
       </div>
     </div>
   );

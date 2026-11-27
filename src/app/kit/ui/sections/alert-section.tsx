@@ -59,7 +59,12 @@ function InlineToasts() {
         actionProps: { children: 'Undo' },
         timeout: 0,
       }),
-      done.add({ title: 'Copied the URL', type: 'success', timeout: 0 }),
+      done.add({
+        title: 'Rule created',
+        description: 'Edit the body: it applies right away.',
+        type: 'success',
+        timeout: 0,
+      }),
       error.add({
         title: "Couldn't import",
         description: "That file isn't a Ghostfetch export.",
